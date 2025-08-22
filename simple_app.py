@@ -625,7 +625,7 @@ def login():
                 --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.2);
                 --radius-lg: 16px;
                 --radius-xl: 20px;
-            }}
+            }
             
             * { box-sizing: border-box; margin: 0; padding: 0; }
             
@@ -768,7 +768,7 @@ def login():
             <div class="error">{{ error }}</div>
             {% endif %}
 
-            <form action="{{ url_for('login', next=request.args.get('next', '')) }}" method="post">
+            <form action="{{ url_for('login', next=request.args.get('next', '')) }" method="post">
                 <div class="form-group">
                     <label for="username">Username:</label>
                     <input type="text" id="username" name="username" required autofocus>
@@ -828,32 +828,32 @@ def change_password():
     <head>
         <title>Change Password</title>
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-            h1 {{ color: #333; }}
-            .form-container {{
+            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+            h1 { color: #333; }
+            .form-container {
                 max-width: 500px;
                 margin: 0 auto;
                 padding: 20px;
                 background-color: #f8f9fa;
                 border-radius: 5px;
                 box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }}
-            .form-group {{
+            }
+            .form-group {
                 margin-bottom: 15px;
-            }}
-            label {{
+            }
+            label {
                 display: block;
                 margin-bottom: 5px;
                 font-weight: bold;
-            }}
-            input[type="password"] {{
+            }
+            input[type="password"] {
                 width: 100%;
                 padding: 10px;
                 border: 1px solid #ddd;
                 border-radius: 3px;
                 box-sizing: border-box;
-            }}
-            .button {{
+            }
+            .button {
                 display: inline-block;
                 padding: 10px 15px;
                 background-color: #4CAF50;
@@ -861,42 +861,42 @@ def change_password():
                 border: none;
                 cursor: pointer;
                 border-radius: 3px;
-            }}
-            .error {{
+            }
+            .error {
                 color: #dc3545;
                 padding: 10px;
                 margin-bottom: 15px;
                 border-radius: 3px;
                 background-color: #f8d7da;
                 border: 1px solid #f5c6cb;
-            }}
-            .success {{
+            }
+            .success {
                 color: #28a745;
                 padding: 10px;
                 margin-bottom: 15px;
                 border-radius: 3px;
                 background-color: #d4edda;
                 border: 1px solid #c3e6cb;
-            }}
-            .menu {{
+            }
+            .menu {
                 background-color: #f8f9fa;
                 padding: 15px;
                 margin-bottom: 20px;
                 border-radius: 5px;
-            }}
-            .menu a {{
+            }
+            .menu a {
                 margin-right: 15px;
                 text-decoration: none;
                 color: #0275d8;
-            }}
-            .menu a:hover {{
+            }
+            .menu a:hover {
                 text-decoration: underline;
-            }}
-            .user-info {{
+            }
+            .user-info {
                 float: right;
                 font-size: 0.9em;
                 color: #6c757d;
-            }}
+            }
         </style>
     </head>
     <body>
@@ -1083,7 +1083,7 @@ def index():
         <title>SimPlay - Payroll Management</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
         <style>
-            :root{{ 
+            :root{ 
                 /* Your Custom Color Palette */
                 --color-yellow: #FFBE0B;
                 --color-orange: #FB5607;
@@ -1123,11 +1123,11 @@ def index():
                 --radius-md: 12px;
                 --radius-lg: 16px;
                 --radius-xl: 20px;
-            }}
+            }
             
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             
-            body {{ 
+            body { 
                 font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
                 background: var(--bg), var(--bg-pattern);
                 background-attachment: fixed;
@@ -1136,9 +1136,9 @@ def index():
                 min-height: 100vh;
                 padding: 2rem;
                 position: relative;
-            }}
+            }
             
-            body::before {{
+            body::before {
                 content: '';
                 position: fixed;
                 top: 0;
@@ -1150,11 +1150,11 @@ def index():
                     radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
                 pointer-events: none;
                 z-index: -1;
-            }}
+            }
             
-            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
+            .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
             
-            .app-title {{ 
+            .app-title { 
                 background: var(--card); 
                 padding: 2rem 2.5rem; 
                 border-radius: var(--radius-xl); 
@@ -1164,9 +1164,9 @@ def index():
                 border: 1px solid var(--border);
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .app-title::before {{
+            .app-title::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1175,11 +1175,11 @@ def index():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
                 transition: left 0.5s;
-            }}
+            }
             
-            .app-title:hover::before {{ left: 100%; }}
+            .app-title:hover::before { left: 100%; }
             
-            h1 {{ 
+            h1 { 
                 margin: 0; 
                 font-weight: 800; 
                 color: var(--text);
@@ -1188,9 +1188,9 @@ def index():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
-            }}
+            }
             
-            .version-badge {{
+            .version-badge {
                 font-size: 0.875rem;
                 color: var(--muted);
                 font-weight: 600;
@@ -1201,9 +1201,9 @@ def index():
                 display: inline-block;
                 margin-left: 1rem;
                 box-shadow: var(--shadow-sm);
-            }}
+            }
             
-            .card {{ 
+            .card { 
                 background: var(--card); 
                 border: 1px solid var(--border); 
                 border-radius: var(--radius-lg); 
@@ -1213,9 +1213,9 @@ def index():
                 transition: all 0.3s ease;
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .card::before {{
+            .card::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1225,32 +1225,32 @@ def index():
                 background: var(--primary);
                 transform: scaleX(0);
                 transition: transform 0.3s ease;
-            }}
+            }
             
-            .card:hover {{ 
+            .card:hover { 
                 transform: translateY(-2px); 
                 box-shadow: var(--shadow-lg); 
                 border-color: var(--border-hover);
-            }}
+            }
             
-            .card:hover::before {{ transform: scaleX(1); }}
+            .card:hover::before { transform: scaleX(1); }
             
-            .info {{ 
+            .info { 
                 border-left: 6px solid transparent;
                 border-image: var(--accent) 1;
                 background: linear-gradient(135deg, #f8faff 0%, #f1f8ff 100%);
-            }}
+            }
             
-            .info h2 {{ 
+            .info h2 { 
                 margin-top: 0; 
                 background: linear-gradient(135deg, var(--color-yellow) 0%, var(--color-orange) 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
                 font-weight: 700;
-            }}
+            }
             
-            .menu {{ 
+            .menu { 
                 background: var(--card); 
                 padding: 1.5rem 2rem; 
                 margin-bottom: 2rem; 
@@ -1261,9 +1261,9 @@ def index():
                 align-items: center;
                 flex-wrap: wrap;
                 gap: 1rem;
-            }}
+            }
             
-            .menu a {{ 
+            .menu a { 
                 text-decoration: none; 
                 background: var(--accent);
                 color: white;
@@ -1274,9 +1274,9 @@ def index():
                 box-shadow: var(--shadow-sm);
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .menu a::before {{
+            .menu a::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1285,17 +1285,17 @@ def index():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
                 transition: left 0.3s;
-            }}
+            }
             
-            .menu a:hover {{ 
+            .menu a:hover { 
                 transform: translateY(-2px);
                 box-shadow: var(--shadow-md);
                 background: var(--accent-hover);
-            }}
+            }
             
-            .menu a:hover::before {{ left: 100%; }}
+            .menu a:hover::before { left: 100%; }
             
-            .user-info {{ 
+            .user-info { 
                 margin-left: auto; 
                 font-size: 0.9rem; 
                 color: var(--muted);
@@ -1303,9 +1303,9 @@ def index():
                 padding: 0.5rem 1rem;
                 border-radius: var(--radius-sm);
                 border: 1px solid var(--border);
-            }}
+            }
             
-            .button {{ 
+            .button { 
                 display: inline-block; 
                 padding: 0.875rem 2rem; 
                 background: var(--primary);
@@ -1320,9 +1320,9 @@ def index():
                 position: relative;
                 overflow: hidden;
                 text-decoration: none;
-            }}
+            }
             
-            .button::before {{
+            .button::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1331,20 +1331,20 @@ def index():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
                 transition: left 0.3s;
-            }}
+            }
             
-            .button:hover {{ 
+            .button:hover { 
                 transform: translateY(-2px); 
                 box-shadow: var(--shadow-lg);
                 background: var(--primary-hover);
-            }}
+            }
             
-            .button:hover::before {{ left: 100%; }}
+            .button:hover::before { left: 100%; }
             
-            .button:active {{ transform: translateY(0); }}
+            .button:active { transform: translateY(0); }
             
             /* Enhanced Drag & Drop */
-            .dropzone {{ 
+            .dropzone { 
                 border: 3px dashed var(--border); 
                 border-radius: var(--radius-lg); 
                 padding: 3rem; 
@@ -1354,9 +1354,9 @@ def index():
                 transition: all 0.3s ease;
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .dropzone::before {{
+            .dropzone::before {
                 content: '';
                 position: absolute;
                 top: -50%;
@@ -1367,54 +1367,54 @@ def index():
                 animation: rotate 3s linear infinite;
                 opacity: 0;
                 transition: opacity 0.3s;
-            }}
+            }
             
-            @keyframes rotate {{
-                to {{ transform: rotate(360deg); }}
-            }}
+            @keyframes rotate {
+                to { transform: rotate(360deg); }
+            }
             
-            .dropzone:hover {{ 
+            .dropzone:hover { 
                 background: linear-gradient(135deg, #f8faff 0%, #f0f7ff 100%);
                 border-color: var(--accent);
                 transform: scale(1.02);
-            }}
+            }
             
-            .dropzone:hover::before {{ opacity: 1; }}
+            .dropzone:hover::before { opacity: 1; }
             
-            .dropzone.dragover {{ 
+            .dropzone.dragover { 
                 background: var(--accent);
                 border-color: transparent;
                 color: white;
                 transform: scale(1.05);
                 box-shadow: var(--shadow-xl);
-            }}
+            }
             
-            .file-note {{ 
+            .file-note { 
                 margin-top: 1rem; 
                 color: var(--muted); 
                 font-size: 0.95rem;
                 font-weight: 500;
-            }}
+            }
             
-            .dropzone.dragover .file-note {{ color: rgba(255,255,255,0.9); }}
+            .dropzone.dragover .file-note { color: rgba(255,255,255,0.9); }
             
-            ul {{ list-style: none; padding: 0; }}
-            ul li {{ 
+            ul { list-style: none; padding: 0; }
+            ul li { 
                 padding: 0.75rem 0; 
                 border-bottom: 1px solid var(--border);
                 position: relative;
                 padding-left: 1.5rem;
-            }}
-            ul li::before {{
+            }
+            ul li::before {
                 content: '✓';
                 position: absolute;
                 left: 0;
                 color: #10b981;
                 font-weight: bold;
-            }}
-            ul li:last-child {{ border-bottom: none; }}
+            }
+            ul li:last-child { border-bottom: none; }
             
-            .version-badge {{
+            .version-badge {
                 font-size: 1rem;
                 color: white;
                 font-weight: 800;
@@ -1430,14 +1430,14 @@ def index():
                 overflow: hidden;
                 transform: translateY(-2px);
                 animation: pulse 2s infinite;
-            }}
+            }
             
-            @keyframes pulse {{
-                0%, 100% {{ box-shadow: var(--shadow-lg); }}
-                50% {{ box-shadow: var(--shadow-xl), 0 0 20px rgba(131, 56, 236, 0.4); }}
-            }}
+            @keyframes pulse {
+                0%, 100% { box-shadow: var(--shadow-lg); }
+                50% { box-shadow: var(--shadow-xl), 0 0 20px rgba(131, 56, 236, 0.4); }
+            }
             
-            .version-badge::before {{
+            .version-badge::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1446,18 +1446,18 @@ def index():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
                 transition: left 0.3s;
-            }}
+            }
             
-            .version-badge:hover::before {{ left: 100%; }}
+            .version-badge:hover::before { left: 100%; }
             
             /* User Avatar and Dropdown */
-            .user-avatar-container {{
+            .user-avatar-container {
                 position: relative;
                 display: inline-block;
                 margin-left: auto;
-            }}
+            }
             
-            .user-avatar {{
+            .user-avatar {
                 width: 45px;
                 height: 45px;
                 border-radius: 50%;
@@ -1469,21 +1469,21 @@ def index():
                 transition: all 0.3s ease;
                 box-shadow: var(--shadow-md);
                 border: 3px solid rgba(255,255,255,0.3);
-            }}
+            }
             
-            .user-avatar:hover {{
+            .user-avatar:hover {
                 transform: scale(1.1);
                 box-shadow: var(--shadow-lg);
-            }}
+            }
             
-            .avatar-initials {{
+            .avatar-initials {
                 color: white;
                 font-weight: 800;
                 font-size: 1rem;
                 text-transform: uppercase;
-            }}
+            }
             
-            .user-dropdown {{
+            .user-dropdown {
                 position: absolute;
                 top: 55px;
                 right: 0;
@@ -1497,37 +1497,37 @@ def index():
                 transform: translateY(-10px);
                 transition: all 0.3s ease;
                 z-index: 1000;
-            }}
+            }
             
-            .user-dropdown.show {{
+            .user-dropdown.show {
                 opacity: 1;
                 visibility: visible;
                 transform: translateY(0);
-            }}
+            }
             
-            .user-dropdown-header {{
+            .user-dropdown-header {
                 padding: 1rem;
                 border-bottom: 1px solid var(--border);
-            }}
+            }
             
-            .user-dropdown-header strong {{
+            .user-dropdown-header strong {
                 display: block;
                 color: var(--text);
                 margin-bottom: 0.25rem;
-            }}
+            }
             
-            .user-dropdown-header small {{
+            .user-dropdown-header small {
                 color: var(--muted);
                 font-size: 0.875rem;
-            }}
+            }
             
-            .user-dropdown-divider {{
+            .user-dropdown-divider {
                 height: 1px;
                 background: var(--border);
                 margin: 0.5rem 0;
-            }}
+            }
             
-            .user-dropdown-item {{
+            .user-dropdown-item {
                 display: flex;
                 align-items: center;
                 gap: 0.75rem;
@@ -1537,17 +1537,17 @@ def index():
                 transition: all 0.3s ease;
                 border-radius: var(--radius-md);
                 margin: 0.5rem;
-            }}
+            }
             
-            .user-dropdown-item:hover {{
+            .user-dropdown-item:hover {
                 background: var(--danger);
                 color: white;
                 transform: translateX(5px);
-            }}
+            }
             
-            .user-dropdown-item span {{
+            .user-dropdown-item span {
                 font-size: 1.1rem;
-            }}
+            }
         </style>
     </head>
     <body>
@@ -1582,25 +1582,25 @@ def index():
             </div>
         </div>
         <script>
-        (function(){{
+        (function(){
             const dz = document.getElementById('dropzone');
             const input = document.getElementById('file-input');
             const note = document.getElementById('file-note');
-            const updateNote = (file)=>{{ if(!file){{ note.textContent='No file selected'; return; }} note.textContent = 'Selected: ' + file.name; }};
+            const updateNote = (file)=>{ if(!file){ note.textContent='No file selected'; return; } note.textContent = 'Selected: ' + file.name; };
             dz.addEventListener('click', ()=> input.click());
             input.addEventListener('change', ()=> updateNote(input.files && input.files[0]));
-            ;['dragenter','dragover'].forEach(evt=> dz.addEventListener(evt, (e)=>{{ e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); }}));
-            ;['dragleave','drop'].forEach(evt=> dz.addEventListener(evt, (e)=>{{ e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); }}));
-            dz.addEventListener('drop', (e)=>{{
+            ;['dragenter','dragover'].forEach(evt=> dz.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); }));
+            ;['dragleave','drop'].forEach(evt=> dz.addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); }));
+            dz.addEventListener('drop', (e)=>{
                 const files = e.dataTransfer && e.dataTransfer.files; if(!files || !files.length) return;
-                try{{
+                try{
                     const dt = new DataTransfer(); dt.items.add(files[0]); input.files = dt.files;
-                }}catch(err){{
+                }catch(err){
                     // Fallback: set via click prompt if assignment blocked
-                }}
+                }
                 updateNote(files[0]);
-            }});
-        }})();
+            });
+        })();
         </script>
     </body>
     </html>
@@ -1632,7 +1632,7 @@ def manage_rates():
     <head>
         <title>Manage Pay Rates</title>
         <style>
-            :root{{ 
+            :root{ 
                 --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
                 --card: #ffffff; 
@@ -1657,11 +1657,11 @@ def manage_rates():
                 --radius-md: 12px;
                 --radius-lg: 16px;
                 --radius-xl: 20px;
-            }}
+            }
             
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             
-            body {{ 
+            body { 
                 font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
                 background: var(--bg), var(--bg-pattern);
                 background-attachment: fixed;
@@ -1670,9 +1670,9 @@ def manage_rates():
                 min-height: 100vh;
                 padding: 2rem;
                 position: relative;
-            }}
+            }
             
-            body::before {{
+            body::before {
                 content: '';
                 position: fixed;
                 top: 0;
@@ -1684,17 +1684,17 @@ def manage_rates():
                     radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
                 pointer-events: none;
                 z-index: -1;
-            }}
+            }
             
-            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
+            .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
             
-            h1, h2 {{ 
+            h1, h2 { 
                 color: var(--text); 
                 font-weight: 700;
                 margin-bottom: 1.5rem;
-            }}
+            }
             
-            h1 {{
+            h1 {
                 font-size: 2.5rem;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 -webkit-background-clip: text;
@@ -1702,9 +1702,9 @@ def manage_rates():
                 background-clip: text;
                 text-align: center;
                 margin-bottom: 2rem;
-            }}
+            }
             
-            .version-badge {{
+            .version-badge {
                 font-size: 0.875rem;
                 color: var(--muted);
                 font-weight: 600;
@@ -1715,9 +1715,9 @@ def manage_rates():
                 display: inline-block;
                 margin-left: 1rem;
                 box-shadow: var(--shadow-sm);
-            }}
+            }
             
-            .card {{ 
+            .card { 
                 background: var(--card); 
                 border: 1px solid var(--border); 
                 border-radius: var(--radius-lg); 
@@ -1727,9 +1727,9 @@ def manage_rates():
                 transition: all 0.3s ease;
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .card::before {{
+            .card::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1739,19 +1739,19 @@ def manage_rates():
                 background: var(--primary);
                 transform: scaleX(0);
                 transition: transform 0.3s ease;
-            }}
+            }
             
-            .card:hover {{ 
+            .card:hover { 
                 transform: translateY(-2px); 
                 box-shadow: var(--shadow-lg); 
                 border-color: var(--border-hover);
-            }}
+            }
             
-            .card:hover::before {{ transform: scaleX(1); }}
+            .card:hover::before { transform: scaleX(1); }
             
-            form {{ margin: 1.5rem 0; }}
+            form { margin: 1.5rem 0; }
             
-            .button {{ 
+            .button { 
                 display: inline-block; 
                 padding: 0.875rem 2rem; 
                 background: var(--primary);
@@ -1767,9 +1767,9 @@ def manage_rates():
                 overflow: hidden;
                 text-decoration: none;
                 margin-top: 1rem;
-            }}
+            }
             
-            .button::before {{
+            .button::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1778,27 +1778,27 @@ def manage_rates():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
                 transition: left 0.3s;
-            }}
+            }
             
-            .button:hover {{ 
+            .button:hover { 
                 transform: translateY(-2px); 
                 box-shadow: var(--shadow-lg);
                 background: var(--primary-hover);
-            }}
+            }
             
-            .button:hover::before {{ left: 100%; }}
+            .button:hover::before { left: 100%; }
             
-            .button.danger {{
+            .button.danger {
                 background: var(--danger);
                 padding: 0.5rem 1rem;
                 font-size: 0.875rem;
-            }}
+            }
             
-            .button.danger:hover {{
+            .button.danger:hover {
                 background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            }}
+            }
             
-            table {{ 
+            table { 
                 width: 100%; 
                 border-collapse: separate;
                 border-spacing: 0;
@@ -1807,25 +1807,25 @@ def manage_rates():
                 border-radius: var(--radius-lg);
                 overflow: hidden;
                 box-shadow: var(--shadow-md);
-            }}
+            }
             
-            th, td {{ 
+            th, td { 
                 padding: 1rem 1.5rem; 
                 border-bottom: 1px solid var(--border); 
                 text-align: left; 
-            }}
+            }
             
-            th {{ 
+            th { 
                 background: linear-gradient(135deg, #f8faff 0%, #e8f4f8 100%);
                 font-weight: 600;
                 color: var(--text);
                 border-bottom: 2px solid var(--border);
-            }}
+            }
             
-            tr:nth-child(even) {{ background: linear-gradient(135deg, #fafbff 0%, #f8faff 100%); }}
-            tr:hover {{ background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%); }}
+            tr:nth-child(even) { background: linear-gradient(135deg, #fafbff 0%, #f8faff 100%); }
+            tr:hover { background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%); }
             
-            .menu {{ 
+            .menu { 
                 background: var(--card); 
                 padding: 1.5rem 2rem; 
                 margin-bottom: 2rem; 
@@ -1836,9 +1836,9 @@ def manage_rates():
                 align-items: center;
                 flex-wrap: wrap;
                 gap: 1rem;
-            }}
+            }
             
-            .menu a {{ 
+            .menu a { 
                 text-decoration: none; 
                 background: var(--accent);
                 color: white;
@@ -1849,9 +1849,9 @@ def manage_rates():
                 box-shadow: var(--shadow-sm);
                 position: relative;
                 overflow: hidden;
-            }}
+            }
             
-            .menu a::before {{
+            .menu a::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -1860,17 +1860,17 @@ def manage_rates():
                 height: 100%;
                 background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
                 transition: left 0.3s;
-            }}
+            }
             
-            .menu a:hover {{ 
+            .menu a:hover { 
                 transform: translateY(-2px);
                 box-shadow: var(--shadow-md);
                 background: var(--accent-hover);
-            }}
+            }
             
-            .menu a:hover::before {{ left: 100%; }}
+            .menu a:hover::before { left: 100%; }
             
-            .user-info {{ 
+            .user-info { 
                 margin-left: auto; 
                 font-size: 0.9rem; 
                 color: var(--muted);
@@ -1878,9 +1878,9 @@ def manage_rates():
                 padding: 0.5rem 1rem;
                 border-radius: var(--radius-sm);
                 border: 1px solid var(--border);
-            }}
+            }
             
-            input[type="text"], input[type="number"], input[type="file"], select {{
+            input[type="text"], input[type="number"], input[type="file"], select {
                 width: 100%;
                 padding: 0.75rem 1rem;
                 border: 2px solid var(--border);
@@ -1888,28 +1888,28 @@ def manage_rates():
                 font-size: 1rem;
                 transition: all 0.3s ease;
                 background: var(--card);
-            }}
+            }
             
-            input[type="text"]:focus, input[type="number"]:focus, input[type="file"]:focus, select:focus {{
+            input[type="text"]:focus, input[type="number"]:focus, input[type="file"]:focus, select:focus {
                 outline: none;
                 border-color: transparent;
                 box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
                 background: var(--card-hover);
-            }}
+            }
             
-            .form-row {{
+            .form-row {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 1rem;
                 margin-bottom: 1rem;
-            }}
+            }
             
-            label {{
+            label {
                 display: block;
                 margin-bottom: 0.5rem;
                 font-weight: 600;
                 color: var(--text);
-            }}
+            }
         </style>
     </head>
     <body>
@@ -2636,6 +2636,88 @@ def create_combined_report(df, filename):
     wb.save(report_path)
     return report_path
 
+def create_admin_pdf_from_excel(excel_path, pdf_filename):
+    """Create a PDF version of the admin report from Excel file"""
+    try:
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        from openpyxl import load_workbook
+        
+        # Load the Excel file
+        wb = load_workbook(excel_path, data_only=True)
+        ws = wb.active
+        
+        # Create PDF path
+        pdf_path = os.path.join(REPORT_FOLDER, pdf_filename)
+        
+        # Create PDF document
+        doc = SimpleDocTemplate(pdf_path, pagesize=landscape(letter), 
+                              rightMargin=0.5*inch, leftMargin=0.5*inch,
+                              topMargin=0.5*inch, bottomMargin=0.5*inch)
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=12,
+            alignment=1  # Center alignment
+        )
+        
+        # Extract data from Excel
+        data = []
+        for row in ws.iter_rows(values_only=True):
+            if any(cell is not None and str(cell).strip() for cell in row):
+                # Convert None values to empty strings and limit to reasonable columns
+                clean_row = [str(cell) if cell is not None else "" for cell in row[:15]]
+                data.append(clean_row)
+        
+        # Build PDF content
+        content = []
+        
+        if data:
+            # Use first row as title if it looks like a title
+            if len(data) > 0 and "Payroll Summary" in str(data[0][0]):
+                title = Paragraph(str(data[0][0]), title_style)
+                content.append(title)
+                content.append(Spacer(1, 12))
+                data = data[1:]  # Remove title from table data
+            
+            # Skip empty rows and processor info
+            filtered_data = []
+            for row in data:
+                if any(cell.strip() for cell in row) and not row[0].startswith("Processed by"):
+                    filtered_data.append(row)
+            
+            if filtered_data:
+                # Create table
+                table = Table(filtered_data)
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('FONTSIZE', (0, 1), (-1, -1), 8),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                content.append(table)
+        
+        # Build PDF
+        doc.build(content)
+        return pdf_path
+        
+    except Exception as e:
+        # Fallback: if PDF creation fails, just return the original Excel file
+        print(f"Warning: Could not create PDF version: {e}")
+        return excel_path
+
 def create_consolidated_admin_report(df, filename, creator=None):
     """Create a single-sheet admin report with all employee data"""
     wb = Workbook()
@@ -3291,17 +3373,17 @@ def validate():
         <head>
             <title>Fix Missing Clock Times</title>
             <style>
-                body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-                h1, h2 {{ color: #333; }}
-                table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
-                th, td {{ padding: 8px; text-align: left; border: 1px solid #ddd; }}
-                th {{ background-color: #f2f2f2; }}
-                input[type="text"] {{ padding: 5px; width: 100px; }}
-                .missing {{ background-color: #ffeeee; }}
-                .both-missing {{ background-color: #ffcccc; }} /* Light red for both missing */
-                .one-missing {{ background-color: #ffffcc; }} /* Light yellow for one missing */
-                .suggested {{ color: #666; font-style: italic; font-size: 0.9em; }}
-                .button {{
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                h1, h2 { color: #333; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { padding: 8px; text-align: left; border: 1px solid #ddd; }
+                th { background-color: #f2f2f2; }
+                input[type="text"] { padding: 5px; width: 100px; }
+                .missing { background-color: #ffeeee; }
+                .both-missing { background-color: #ffcccc; } /* Light red for both missing */
+                .one-missing { background-color: #ffffcc; } /* Light yellow for one missing */
+                .suggested { color: #666; font-style: italic; font-size: 0.9em; }
+                .button {
                     display: inline-block;
                     padding: 10px 15px;
                     background-color: #4CAF50;
@@ -3310,18 +3392,18 @@ def validate():
                     cursor: pointer;
                     margin-right: 20px;
                     margin-bottom: 20px;
-                }}
-                .options {{
+                }
+                .options {
                     margin: 20px 0;
                     padding: 20px;
                     background-color: #f9f9f9;
                     border-radius: 5px;
-                }}
-                .btn-container {{
+                }
+                .btn-container {
                     display: flex;
                     gap: 20px;
                     margin-top: 20px;
-                }}
+                }
             </style>
         </head>
         <body>
@@ -3421,7 +3503,11 @@ def process_ignore():
                 # NEW CONSOLIDATED SINGLE-SHEET REPORTS
                 admin_filename = f"admin_report_{week_str}.xlsx"
                 admin_path = create_consolidated_admin_report(df, admin_filename, username)
-                reports['admin'] = admin_filename
+                
+                # Create PDF version for Zoho attachment
+                admin_pdf_filename = f"admin_report_{week_str}.pdf"
+                create_admin_pdf_from_excel(admin_path, admin_pdf_filename)
+                reports['admin'] = admin_pdf_filename  # Use PDF for Zoho attachment
 
                 payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
                 payslip_path = create_consolidated_payslips(df, payslip_filename, username)
@@ -3653,7 +3739,11 @@ def process():
                     # NEW CONSOLIDATED SINGLE-SHEET REPORTS
                     admin_filename = f"admin_report_{week_str}.xlsx"
                     admin_path = create_consolidated_admin_report(df, admin_filename, username)
-                    reports['admin'] = admin_filename
+                    
+                    # Create PDF version for Zoho attachment
+                    admin_pdf_filename = f"admin_report_{week_str}.pdf"
+                    create_admin_pdf_from_excel(admin_path, admin_pdf_filename)
+                    reports['admin'] = admin_pdf_filename  # Use PDF for Zoho attachment
 
                     payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
                     payslip_path = create_consolidated_payslips(df, payslip_filename, username)
@@ -3749,7 +3839,11 @@ def fix_missing_times():
             # NEW CONSOLIDATED SINGLE-SHEET REPORTS
             admin_filename = f"admin_report_{week_str}.xlsx"
             admin_path = create_consolidated_admin_report(df, admin_filename, username)
-            reports['admin'] = admin_filename
+            
+            # Create PDF version for Zoho attachment
+            admin_pdf_filename = f"admin_report_{week_str}.pdf"
+            create_admin_pdf_from_excel(admin_path, admin_pdf_filename)
+            reports['admin'] = admin_pdf_filename  # Use PDF for Zoho attachment
 
             payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
             payslip_path = create_consolidated_payslips(df, payslip_filename, username)
@@ -3836,11 +3930,11 @@ def fix_missing_times():
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
             h1, h2 { color: #333; }
-            table {{
+            table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 20px 0;
-            }}
+            }
             th, td {
                 padding: 10px;
                 border: 1px solid #ddd;
@@ -3971,30 +4065,30 @@ def success():
     <head>
         <title>Processing Successful</title>
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }}
-            *{{ box-sizing:border-box; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; color:var(--text); background:var(--bg); }}
-            h1{{ color:var(--text); margin:8px 0 18px; font-weight:700; }}
-            h2{{ color:var(--text); margin:0 0 12px; font-weight:600; }}
+            :root{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }
+            *{ box-sizing:border-box; }
+            body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; color:var(--text); background:var(--bg); }
+            h1{ color:var(--text); margin:8px 0 18px; font-weight:700; }
+            h2{ color:var(--text); margin:0 0 12px; font-weight:600; }
 
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
+            .menu{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
+            .menu a{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }
+            .menu a:hover{ background:rgba(33,150,243,.08); }
+            .user-info{ float:right; font-size:.9em; color:var(--muted); }
 
-            .button,.print-button{{ display:inline-block; padding:10px 16px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .15s ease; }}
-            .button{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); }}
-            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            .print-button{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-700) 100%); }}
-            .print-button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
+            .button,.print-button{ display:inline-block; padding:10px 16px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .15s ease; }
+            .button{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); }
+            .button:hover{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
+            .print-button{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-700) 100%); }
+            .print-button:hover{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
 
-            .download-section{{ background:var(--card); padding:22px; border-radius:14px; margin:20px 0; border:1px solid var(--border); box-shadow:0 10px 24px rgba(17,24,39,.06); }}
-            .recommended{{ border-left:6px solid var(--primary); padding-left:16px; }}
-            small{{ color:var(--muted); }}
+            .download-section{ background:var(--card); padding:22px; border-radius:14px; margin:20px 0; border:1px solid var(--border); box-shadow:0 10px 24px rgba(17,24,39,.06); }
+            .recommended{ border-left:6px solid var(--primary); padding-left:16px; }
+            small{ color:var(--muted); }
 
-            label{{ font-weight:600; margin-right:8px; color:var(--text); }}
-            select, input[type="text"]{{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); }}
-            select:focus, input[type="text"]:focus{{ border-color:var(--accent-700); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
+            label{ font-weight:600; margin-right:8px; color:var(--text); }
+            select, input[type="text"]{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); }
+            select:focus, input[type="text"]:focus{ border-color:var(--accent-700); box-shadow:0 0 0 3px rgba(33,150,243,.15); }
         </style>
     </head>
     <body>
@@ -4040,36 +4134,36 @@ def success():
                     <button type="submit" class="button">Push Expense to Zoho Books</button>
                 </form>
                 <script>
-                (function(){{
+                (function(){
                     const form = document.getElementById('zoho-expense-form');
                     if(!form) return;
-                    form.addEventListener('submit', async function(ev){{
+                    form.addEventListener('submit', async function(ev){
                         ev.preventDefault();
                         const data = new FormData(form);
                         data.append('ajax','1');
                         const btn = form.querySelector('button[type="submit"]');
-                        if(btn){{ btn.disabled = true; btn.textContent = 'Pushing...'; }}
-                        try {{
-                            const res = await fetch(form.action, {{ method: 'POST', body: data, headers: {{'X-Requested-With':'XMLHttpRequest'}} }});
+                        if(btn){ btn.disabled = true; btn.textContent = 'Pushing...'; }
+                        try {
+                            const res = await fetch(form.action, { method: 'POST', body: data, headers: {'X-Requested-With':'XMLHttpRequest'} });
                             let payload = null;
                             let textBody = '';
-                            try {{ payload = await res.clone().json(); }} catch(e) {{ payload = null; }}
-                            try {{ textBody = await res.text(); }} catch(e) {{ textBody = ''; }}
-                            if (payload && payload.status === 'ok') {{
+                            try { payload = await res.clone().json(); } catch(e) { payload = null; }
+                            try { textBody = await res.text(); } catch(e) { textBody = ''; }
+                            if (payload && payload.status === 'ok') {
                                 const msg = payload.duplicate ? ('Expense already exists. ID: ' + payload.expense_id)
                                                               : ('Expense created successfully. ID: ' + payload.expense_id);
                                 alert(msg);
-                            }} else {{
+                            } else {
                                 const fallback = textBody || (payload ? JSON.stringify(payload) : (res.status + ' ' + res.statusText));
                                 alert('Expense push response: ' + fallback);
-                            }}
-                        }} catch (err) {{
+                            }
+                        } catch (err) {
                             alert('Error creating expense: ' + err);
-                        }} finally {{
-                            if(btn){{ btn.disabled = false; btn.textContent = 'Push Expense to Zoho Books'; }}
-                        }}
-                    }});
-                }})();
+                        } finally {
+                            if(btn){ btn.disabled = false; btn.textContent = 'Push Expense to Zoho Books'; }
+                        }
+                    });
+                })();
                 </script>
                 <p style="color:#6c757d; font-size: 0.9em;">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
             </div>
@@ -4283,63 +4377,63 @@ def print_friendly(report_type):
             <head>
                 <title>Admin Report - {date_range_display}</title>
                 <style>
-                    @page {{ size: landscape; margin: 0.5cm; }}
+                    @page { size: landscape; margin: 0.5cm; }
 
-                    body {{ font-family: Arial, sans-serif; margin: 0; padding: 5px; font-size: 9pt; line-height: 1.1; }}
-                    h1 {{ color: #333; text-align: center; margin: 5px 0; font-size: 12pt; }}
-                    h2 {{ color: #333; text-align: center; margin: 5px 0; font-size: 11pt; }}
-                    p {{ margin: 2px 0; }}
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 5px; font-size: 9pt; line-height: 1.1; }
+                    h1 { color: #333; text-align: center; margin: 5px 0; font-size: 12pt; }
+                    h2 { color: #333; text-align: center; margin: 5px 0; font-size: 11pt; }
+                    p { margin: 2px 0; }
 
-                    table {{ width: 100%; border-collapse: collapse; margin-bottom: 5px; }}
-                    th {{ background-color: #f2f2f2; text-align: left; border-bottom: 1px solid #ddd; padding: 2px; font-size: 9pt; }}
-                    td {{ padding: 1px; font-size: 8pt; }}
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+                    th { background-color: #f2f2f2; text-align: left; border-bottom: 1px solid #ddd; padding: 2px; font-size: 9pt; }
+                    td { padding: 1px; font-size: 8pt; }
 
-                    .summary-table {{ width: 100%; margin-bottom: 10px; }}
-                    .summary-table th {{ background-color: #f2f2f2; }}
+                    .summary-table { width: 100%; margin-bottom: 10px; }
+                    .summary-table th { background-color: #f2f2f2; }
 
-                    .employee-section {{ width: 32%; margin-right: 1.5%; margin-bottom: 10px; float: left; }}
-                    .employee-section:nth-child(3n) {{ margin-right: 0; }}
-                    .employee-header {{ font-size: 10pt; font-weight: bold; margin-bottom: 3px; }}
-                    .employee-info {{ font-size: 8pt; margin-bottom: 3px; }}
+                    .employee-section { width: 32%; margin-right: 1.5%; margin-bottom: 10px; float: left; }
+                    .employee-section:nth-child(3n) { margin-right: 0; }
+                    .employee-header { font-size: 10pt; font-weight: bold; margin-bottom: 3px; }
+                    .employee-info { font-size: 8pt; margin-bottom: 3px; }
 
-                    .employee-table {{ width: 100%; }}
-                    .employee-table th {{ font-size: 8pt; padding: 1px; }}
-                    .employee-table td {{ font-size: 8pt; padding: 1px; }}
+                    .employee-table { width: 100%; }
+                    .employee-table th { font-size: 8pt; padding: 1px; }
+                    .employee-table td { font-size: 8pt; padding: 1px; }
 
-                    .text-right {{ text-align: right; }}
-                    .total-row {{ border-top: 1px solid #ddd; font-weight: bold; }}
+                    .text-right { text-align: right; }
+                    .total-row { border-top: 1px solid #ddd; font-weight: bold; }
 
-                    .signature-line {{ margin-top: 5px; padding: 1px 0; }}
+                    .signature-line { margin-top: 5px; padding: 1px 0; }
 
-                    .print-button {{ position: fixed; top: 10px; right: 10px; padding: 8px 15px; background-color: #2196F3;
-                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }}
-                    .print-button:hover {{ background-color: #0b7dda; }}
+                    .print-button { position: fixed; top: 10px; right: 10px; padding: 8px 15px; background-color: #2196F3;
+                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }
+                    .print-button:hover { background-color: #0b7dda; }
 
-                    .clearfix::after {{
+                    .clearfix::after {
                         content: "";
                         clear: both;
                         display: table;
-                    }}
+                    }
 
                     /* For print view */
-                    @media print {{
-                        .print-button {{ display: none; }}
-                        .page-break {{ page-break-before: always; }}
-                        body {{ zoom: 100%; }}
-                    }}
+                    @media print {
+                        .print-button { display: none; }
+                        .page-break { page-break-before: always; }
+                        body { zoom: 100%; }
+                    }
                 </style>
                 <script>
-                    function printReport() {{
+                    function printReport() {
                         window.print();
-                    }}
+                    }
 
                     // Auto print when the page loads
-                    window.onload = function() {{
+                    window.onload = function() {
                         // Wait a moment to ensure everything has rendered
-                        setTimeout(function() {{
+                        setTimeout(function() {
                             window.print();
-                        }}, 500);
-                    }};
+                        }, 500);
+                    };
                 </script>
             </head>
             <body>
@@ -4754,101 +4848,101 @@ def print_friendly(report_type):
             <head>
                 <title>Employee Payslips - {date_range_display}</title>
                 <style>
-                    @page {{ size: portrait; margin: 0.5cm; scale: 78%; }}
+                    @page { size: portrait; margin: 0.5cm; scale: 78%; }
 
-                    body {{ font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 8pt; line-height: 1.2; }}
-                    h1 {{ color: #333; text-align: center; margin: 5px 0; font-size: 12pt; }}
-                    p {{ margin: 2px 0; }}
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 8pt; line-height: 1.2; }
+                    h1 { color: #333; text-align: center; margin: 5px 0; font-size: 12pt; }
+                    p { margin: 2px 0; }
 
-                    table {{ width: 100%; border-collapse: collapse; margin-bottom: 5px; }}
-                    th {{ background-color: #f2f2f2; text-align: left; border-bottom: 1px solid #ddd; padding: 2px; font-size: 8pt; }}
-                    td {{ padding: 2px; font-size: 8pt; }}
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+                    th { background-color: #f2f2f2; text-align: left; border-bottom: 1px solid #ddd; padding: 2px; font-size: 8pt; }
+                    td { padding: 2px; font-size: 8pt; }
 
-                    .payslip {{ break-inside: avoid; page-break-inside: avoid; border: 1px solid #ddd;
-                               border-radius: 3px; padding: 8px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }}
-                    .payslip-header {{ border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 4px; }}
-                    .employee-name {{ font-size: 10pt; font-weight: bold; }}
-                    .employee-id {{ text-align: right; font-weight: normal; font-size: 8pt; }}
+                    .payslip { break-inside: avoid; page-break-inside: avoid; border: 1px solid #ddd;
+                               border-radius: 3px; padding: 8px; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
+                    .payslip-header { border-bottom: 1px solid #eee; padding-bottom: 4px; margin-bottom: 4px; }
+                    .employee-name { font-size: 10pt; font-weight: bold; }
+                    .employee-id { text-align: right; font-weight: normal; font-size: 8pt; }
 
-                    .info-row {{ display: flex; justify-content: space-between; margin: 2px 0; }}
-                    .period {{ font-style: italic; color: #666; font-size: 7pt; }}
-                    .total-row {{ border-top: 1px solid #ddd; font-weight: bold; }}
-                    .text-right {{ text-align: right; }}
+                    .info-row { display: flex; justify-content: space-between; margin: 2px 0; }
+                    .period { font-style: italic; color: #666; font-size: 7pt; }
+                    .total-row { border-top: 1px solid #ddd; font-weight: bold; }
+                    .text-right { text-align: right; }
 
-                    .signature-line {{ margin-top: 5px; padding: 2px 0; display: flex; justify-content: space-between; font-size: 7pt; }}
+                    .signature-line { margin-top: 5px; padding: 2px 0; display: flex; justify-content: space-between; font-size: 7pt; }
 
-                    .print-button {{ position: fixed; top: 10px; right: 10px; padding: 8px 15px; background-color: #2196F3;
-                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }}
-                    .print-button:hover {{ background-color: #0b7dda; }}
+                    .print-button { position: fixed; top: 10px; right: 10px; padding: 8px 15px; background-color: #2196F3;
+                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }
+                    .print-button:hover { background-color: #0b7dda; }
 
-                    .debug-button {{ position: fixed; top: 10px; left: 10px; padding: 8px 15px; background-color: #FF5722;
-                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }}
-                    .debug-info {{ display: none; background: #f5f5f5; border: 1px solid #ddd; padding: 15px;
-                                 margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; }}
+                    .debug-button { position: fixed; top: 10px; left: 10px; padding: 8px 15px; background-color: #FF5722;
+                                   color: white; border: none; border-radius: 4px; cursor: pointer; z-index: 999; }
+                    .debug-info { display: none; background: #f5f5f5; border: 1px solid #ddd; padding: 15px;
+                                 margin: 20px 0; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
 
-                    .payslips-container {{ display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }}
+                    .payslips-container { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }
 
                     /* For print view, optimize to fit multiple per page */
-                    @media print {{
-                        .print-button, .debug-button, .debug-info {{ display: none; }}
-                        .page-break {{ page-break-before: always; }}
+                    @media print {
+                        .print-button, .debug-button, .debug-info { display: none; }
+                        .page-break { page-break-before: always; }
 
                         /* Compact layout for print */
-                        body {{ font-size: 7pt; line-height: 1.1; }}
+                        body { font-size: 7pt; line-height: 1.1; }
 
                         /* Two columns of payslips */
-                        .payslip {{
+                        .payslip {
                             width: 48%;
                             display: inline-block;
                             vertical-align: top;
                             margin-bottom: 0.2cm;
                             padding: 0.4cm;
                             border: 1px solid #ccc;
-                        }}
+                        }
 
-                        table {{ margin-bottom: 2px; }}
-                        td, th {{ padding: 1px; font-size: 7pt; }}
-                        .signature-line {{ margin-top: 5px; font-size: 6pt; }}
-                        .employee-name {{ font-size: 9pt; }}
-                    }}
+                        table { margin-bottom: 2px; }
+                        td, th { padding: 1px; font-size: 7pt; }
+                        .signature-line { margin-top: 5px; font-size: 6pt; }
+                        .employee-name { font-size: 9pt; }
+                    }
                 </style>
                 <script>
-                    function printReport() {{
+                    function printReport() {
                         window.print();
-                    }}
+                    }
 
-                    function toggleDebug() {{
+                    function toggleDebug() {
                         var debugInfo = document.getElementById('debug-info');
-                        if (debugInfo.style.display === 'none' || !debugInfo.style.display) {{
+                        if (debugInfo.style.display === 'none' || !debugInfo.style.display) {
                             debugInfo.style.display = 'block';
-                        }} else {{
+                        } else {
                             debugInfo.style.display = 'none';
-                        }}
-                    }}
+                        }
+                    }
 
                     // Set print scale to 78%
-                    function setPrintScale() {{
+                    function setPrintScale() {
                         // For Chrome and Safari
-                        if (window.matchMedia) {{
+                        if (window.matchMedia) {
                             const mediaQueryList = window.matchMedia('print');
-                            mediaQueryList.addListener(function(mql) {{
-                                if (mql.matches) {{
+                            mediaQueryList.addListener(function(mql) {
+                                if (mql.matches) {
                                     document.body.style.zoom = "78%";
-                                }}
-                            }});
-                        }}
-                    }}
+                                }
+                            });
+                        }
+                    }
 
                     // Auto print when the page loads
-                    window.onload = function() {{
+                    window.onload = function() {
                         // Set print scale
                         setPrintScale();
 
                         // Wait a moment to ensure everything has rendered
-                        setTimeout(function() {{
+                        setTimeout(function() {
                             window.print();
-                        }}, 500);
-                    }};
+                        }, 500);
+                    };
                 </script>
             </head>
             <body>
@@ -5127,66 +5221,66 @@ def reports():
     <head>
         <title>Reports</title>
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --accent:#2196F3; --border:#e6e9f0; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            h1, h2, h3{{ color:var(--text); }}
-            table {{
+            :root{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --accent:#2196F3; --border:#e6e9f0; }
+            body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }
+            h1, h2, h3{ color:var(--text); }
+            table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 20px 0;
-            }}
-            th, td{{ padding:10px; border:1px solid var(--border); text-align:left; }}
-            th{{ background-color:#f2f6ff; }}
-            tr:nth-child(even){{ background-color:#fafbff; }}
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .week-section {{ margin-bottom:28px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 8px 18px rgba(17,24,39,.05); padding:12px 14px; }}
-            .download-link {{ color:#1976d2; text-decoration:none; }}
-            .download-link:hover {{
+            }
+            th, td{ padding:10px; border:1px solid var(--border); text-align:left; }
+            th{ background-color:#f2f6ff; }
+            tr:nth-child(even){ background-color:#fafbff; }
+            .menu{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
+            .menu a{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }
+            .menu a:hover{ background:rgba(33,150,243,.08); }
+            .week-section { margin-bottom:28px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 8px 18px rgba(17,24,39,.05); padding:12px 14px; }
+            .download-link { color:#1976d2; text-decoration:none; }
+            .download-link:hover {
                 text-decoration: underline;
-            }}
-            .file-size {{ color: var(--muted); font-size: .9em; }}
-            .timestamp {{ color: var(--muted); font-size: .9em; }}
-            .report-title {{ font-weight:600; }}
-            .report-type {{ color: var(--muted); font-size: .9em; }}
-            .amount {{
+            }
+            .file-size { color: var(--muted); font-size: .9em; }
+            .timestamp { color: var(--muted); font-size: .9em; }
+            .report-title { font-weight:600; }
+            .report-type { color: var(--muted); font-size: .9em; }
+            .amount {
                 font-weight: bold;
                 color: #28a745;
-            }}
-            .user-info {{ float:right; font-size:.9em; color: var(--muted); }}
-            .creator {{ color: var(--muted); font-style: italic; font-size: .9em; }}
-            .flash-container {{
+            }
+            .user-info { float:right; font-size:.9em; color: var(--muted); }
+            .creator { color: var(--muted); font-style: italic; font-size: .9em; }
+            .flash-container {
                 margin: 10px 0 20px 0;
-            }}
-            .flash {{
+            }
+            .flash {
                 padding: 10px 12px;
                 border-radius: 4px;
                 margin-bottom: 8px;
                 border: 1px solid #ccc;
                 background: #f8f9fa;
-            }}
-            .flash.success {{
+            }
+            .flash.success {
                 border-color: #c3e6cb;
                 background: #d4edda;
                 color: #155724;
-            }}
-            .flash.warning {{
+            }
+            .flash.warning {
                 border-color: #ffeeba;
                 background: #fff3cd;
                 color: #856404;
-            }}
-            .flash.error {{
+            }
+            .flash.error {
                 border-color: #f5c6cb;
                 background: #f8d7da;
                 color: #721c24;
-            }}
+            }
         </style>
     </head>
     <body>
         <h1>Reports <span style="font-size:.6em; color:#6c757d; font-weight:600;">v{APP_VERSION}</span></h1>
         {menu_html}
-        {{ flash_block|safe }}
+        { flash_block|safe }
     """
 
     if not reports_by_week:
