@@ -878,18 +878,49 @@ def get_menu_html(username):
 
     # Use proper string concatenation to avoid issues with nested quotes and f-strings
     admin_link = '<a href="/manage_users">Manage Users</a>' if is_admin else ''
+    
+    # Get user initials for avatar
+    initials = ''.join([name[0].upper() for name in username.split()[:2]]) if username != 'Unknown' else 'U'
 
     return '''
     <div class="menu">
         <a href="/">Home</a>
-        <a href="/fetch_timecard" style="background-color: #2196F3;">Fetch from NGTeco</a>
+        <a href="/fetch_timecard" style="background: var(--color-blue);">Fetch from NGTeco</a>
         <a href="/manage_rates">Manage Pay Rates</a>
         <a href="/reports">Reports</a>
         ''' + admin_link + '''
         <a href="/change_password">Change Password</a>
-        <a href="/logout">Logout</a>
-        <span class="user-info">Logged in as: ''' + username + '''</span>
+        <div class="user-avatar-container">
+            <div class="user-avatar" onclick="toggleUserMenu()">
+                <span class="avatar-initials">''' + initials + '''</span>
+            </div>
+            <div class="user-dropdown" id="userDropdown">
+                <div class="user-dropdown-header">
+                    <strong>''' + username + '''</strong>
+                    <small>''' + ('Administrator' if is_admin else 'User') + '''</small>
+                </div>
+                <div class="user-dropdown-divider"></div>
+                <a href="/logout" class="user-dropdown-item">
+                    <span>🚪</span> Logout
+                </a>
+            </div>
+        </div>
     </div>
+    
+    <script>
+    function toggleUserMenu() {
+        const dropdown = document.getElementById('userDropdown');
+        dropdown.classList.toggle('show');
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const container = document.querySelector('.user-avatar-container');
+        if (!container.contains(event.target)) {
+            document.getElementById('userDropdown').classList.remove('show');
+        }
+    });
+    </script>
     '''
 
 @app.route('/')
@@ -903,7 +934,8 @@ def index():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Simple Payroll App</title>
+        <title>SimPlay - Payroll Management</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
         <style>
             :root{{ 
                 /* Your Custom Color Palette */
@@ -1237,19 +1269,26 @@ def index():
             ul li:last-child {{ border-bottom: none; }}
             
             .version-badge {{
-                font-size: 0.875rem;
+                font-size: 1rem;
                 color: white;
-                font-weight: 700;
+                font-weight: 800;
                 background: var(--primary);
-                padding: 0.4rem 1rem;
-                border-radius: var(--radius-md);
-                border: 2px solid rgba(255,255,255,0.3);
+                padding: 0.75rem 1.5rem;
+                border-radius: var(--radius-lg);
+                border: 3px solid rgba(255,255,255,0.4);
                 display: inline-block;
-                margin-left: 1rem;
-                box-shadow: var(--shadow-md);
+                margin-left: 1.5rem;
+                box-shadow: var(--shadow-lg);
                 vertical-align: middle;
                 position: relative;
                 overflow: hidden;
+                transform: translateY(-2px);
+                animation: pulse 2s infinite;
+            }}
+            
+            @keyframes pulse {{
+                0%, 100% {{ box-shadow: var(--shadow-lg); }}
+                50% {{ box-shadow: var(--shadow-xl), 0 0 20px rgba(131, 56, 236, 0.4); }}
             }}
             
             .version-badge::before {{
@@ -1264,12 +1303,111 @@ def index():
             }}
             
             .version-badge:hover::before {{ left: 100%; }}
+            
+            /* User Avatar and Dropdown */
+            .user-avatar-container {{
+                position: relative;
+                display: inline-block;
+                margin-left: auto;
+            }}
+            
+            .user-avatar {{
+                width: 45px;
+                height: 45px;
+                border-radius: 50%;
+                background: var(--primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: var(--shadow-md);
+                border: 3px solid rgba(255,255,255,0.3);
+            }}
+            
+            .user-avatar:hover {{
+                transform: scale(1.1);
+                box-shadow: var(--shadow-lg);
+            }}
+            
+            .avatar-initials {{
+                color: white;
+                font-weight: 800;
+                font-size: 1rem;
+                text-transform: uppercase;
+            }}
+            
+            .user-dropdown {{
+                position: absolute;
+                top: 55px;
+                right: 0;
+                background: var(--card);
+                border-radius: var(--radius-lg);
+                box-shadow: var(--shadow-xl);
+                border: 1px solid var(--border);
+                min-width: 200px;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(-10px);
+                transition: all 0.3s ease;
+                z-index: 1000;
+            }}
+            
+            .user-dropdown.show {{
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }}
+            
+            .user-dropdown-header {{
+                padding: 1rem;
+                border-bottom: 1px solid var(--border);
+            }}
+            
+            .user-dropdown-header strong {{
+                display: block;
+                color: var(--text);
+                margin-bottom: 0.25rem;
+            }}
+            
+            .user-dropdown-header small {{
+                color: var(--muted);
+                font-size: 0.875rem;
+            }}
+            
+            .user-dropdown-divider {{
+                height: 1px;
+                background: var(--border);
+                margin: 0.5rem 0;
+            }}
+            
+            .user-dropdown-item {{
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.75rem 1rem;
+                color: var(--text);
+                text-decoration: none;
+                transition: all 0.3s ease;
+                border-radius: var(--radius-md);
+                margin: 0.5rem;
+            }}
+            
+            .user-dropdown-item:hover {{
+                background: var(--danger);
+                color: white;
+                transform: translateX(5px);
+            }}
+            
+            .user-dropdown-item span {{
+                font-size: 1.1rem;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="app-title">
-                <h1>Simple Payroll App <span class="version-badge">v{APP_VERSION}</span></h1>
+                <h1>SimPlay <span class="version-badge">v{APP_VERSION}</span></h1>
             </div>
             {menu_html}
             <div class="card info">
