@@ -592,14 +592,14 @@ def login():
             error = 'Invalid credentials. Please try again.'
 
     # Login form
-    html = f"""
+    html = """
     <!DOCTYPE html>
     <html>
     <head>
         <title>SimPlay - Login</title>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
         <style>
-            :root{{ 
+            :root{ 
                 /* Your Custom Color Palette */
                 --color-yellow: #FFBE0B;
                 --color-orange: #FB5607;
@@ -627,9 +627,9 @@ def login():
                 --radius-xl: 20px;
             }}
             
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             
-            body {{ 
+            body { 
                 font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
                 background: var(--bg), var(--bg-pattern);
                 background-attachment: fixed;
@@ -640,14 +640,14 @@ def login():
                 display: flex;
                 align-items: center;
                 justify-content: center;
-            }}
+            }
             
-            .login-wrapper {{
+            .login-wrapper {
                 width: 100%;
                 max-width: 500px;
-            }}
+            }
             
-            .app-title {{ 
+            .app-title { 
                 text-align: center; 
                 margin-bottom: 2rem; 
                 background: var(--card); 
@@ -655,9 +655,9 @@ def login():
                 border-radius: var(--radius-xl); 
                 box-shadow: var(--shadow-lg); 
                 border: 1px solid var(--border);
-            }}
+            }
             
-            .app-title h1 {{ 
+            .app-title h1 { 
                 margin: 0; 
                 font-weight: 800; 
                 font-size: 2.5rem;
@@ -665,9 +665,9 @@ def login():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
-            }}
+            }
             
-            .version-badge {{
+            .version-badge {
                 font-size: 1rem;
                 color: white;
                 font-weight: 800;
@@ -679,34 +679,34 @@ def login():
                 margin-left: 1rem;
                 box-shadow: var(--shadow-md);
                 vertical-align: middle;
-            }}
+            }
             
-            .login-container {{ 
+            .login-container { 
                 background: var(--card); 
                 border: 1px solid var(--border); 
                 border-radius: var(--radius-lg); 
                 padding: 2.5rem; 
                 box-shadow: var(--shadow-lg); 
-            }}
+            }
             
-            .login-container h2 {{
+            .login-container h2 {
                 text-align: center;
                 margin-bottom: 2rem;
                 font-size: 1.5rem;
                 color: var(--text);
                 font-weight: 700;
-            }}
+            }
             
-            .form-group {{ margin-bottom: 1.5rem; }}
+            .form-group { margin-bottom: 1.5rem; }
             
-            label {{ 
+            label { 
                 display: block; 
                 margin-bottom: 0.5rem; 
                 font-weight: 600; 
                 color: var(--text);
-            }}
+            }
             
-            input[type="text"], input[type="password"] {{ 
+            input[type="text"], input[type="password"] { 
                 width: 100%; 
                 padding: 1rem; 
                 border: 2px solid var(--border); 
@@ -714,16 +714,16 @@ def login():
                 font-size: 1rem;
                 background: rgba(255,255,255,0.9);
                 transition: all 0.3s ease;
-            }}
+            }
             
-            input[type="text"]:focus, input[type="password"]:focus {{ 
+            input[type="text"]:focus, input[type="password"]:focus { 
                 outline: none;
                 border-color: transparent;
                 box-shadow: 0 0 0 3px rgba(131, 56, 236, 0.3);
                 background: white;
-            }}
+            }
             
-            .button {{ 
+            .button { 
                 width: 100%; 
                 padding: 1rem 2rem; 
                 background: var(--primary);
@@ -736,15 +736,15 @@ def login():
                 box-shadow: var(--shadow-md); 
                 transition: all 0.3s ease;
                 margin-top: 1rem;
-            }}
+            }
             
-            .button:hover {{ 
+            .button:hover { 
                 transform: translateY(-2px); 
                 box-shadow: var(--shadow-lg);
                 background: var(--primary-hover);
-            }}
+            }
             
-            .error {{ 
+            .error { 
                 color: white;
                 background: linear-gradient(135deg, var(--color-pink) 0%, #ff3d7d 100%);
                 padding: 1rem; 
@@ -752,13 +752,13 @@ def login():
                 border-radius: var(--radius-lg); 
                 text-align: center;
                 font-weight: 600;
-            }}
+            }
         </style>
     </head>
     <body>
         <div class="login-wrapper">
             <div class="app-title">
-                <h1>SimPlay <span class="version-badge">v{APP_VERSION}</span></h1>
+                <h1>SimPlay <span class="version-badge">v{}</span></h1>
             </div>
 
         <div class="login-container">
@@ -785,7 +785,7 @@ def login():
         </div>
     </body>
     </html>
-    """
+    """.format(APP_VERSION)
     return render_template_string(html, error=error, request=request)
 
 @app.route('/logout')
