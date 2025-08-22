@@ -592,29 +592,174 @@ def login():
             error = 'Invalid credentials. Please try again.'
 
     # Login form
-    html = """
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Login - Simple Payroll App</title>
+        <title>SimPlay - Login</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
         <style>
-            :root{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --border:#e6e9f0; }
-            *{ box-sizing:border-box; }
-            body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }
-            h1{ color:var(--text); margin:0; font-weight:800; }
-            .login-container{ max-width:420px; margin:0 auto; padding:22px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 24px rgba(17,24,39,.06); }
-            .form-group{ margin-bottom:15px; }
-            label{ display:block; margin-bottom:6px; font-weight:600; }
-            input[type="text"], input[type="password"]{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; }
-            input[type="text"]:focus, input[type="password"]:focus{ border-color:var(--primary-700); box-shadow:0 0 0 3px rgba(76,175,80,.15); }
-            .button{ display:inline-block; width:100%; padding:10px 16px; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); color:#fff; border:none; cursor:pointer; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); }
-            .button:hover{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
-            .error{ color:#dc3545; padding:10px; margin-bottom:15px; border-radius:10px; background:#f8d7da; border:1px solid #f5c6cb; }
-            .app-title{ text-align:center; margin-bottom:22px; background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:14px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
+            :root{{ 
+                /* Your Custom Color Palette */
+                --color-yellow: #FFBE0B;
+                --color-orange: #FB5607;
+                --color-pink: #FF006E;
+                --color-purple: #8338EC;
+                --color-blue: #3A86FF;
+                
+                /* Background with your vibrant palette */
+                --bg: linear-gradient(135deg, var(--color-yellow) 0%, var(--color-orange) 25%, var(--color-pink) 50%, var(--color-purple) 75%, var(--color-blue) 100%);
+                --bg-pattern: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.15) 0%, transparent 30%), 
+                              radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 30%);
+                
+                /* Card and surface colors */
+                --card: rgba(255, 255, 255, 0.95); 
+                --text: #1a1a1a; 
+                --muted: #666666; 
+                
+                /* Gradients using your palette */
+                --primary: linear-gradient(135deg, var(--color-purple) 0%, var(--color-blue) 100%);
+                --primary-hover: linear-gradient(135deg, #7129d4 0%, #2c6eeb 100%);
+                --border: rgba(255, 255, 255, 0.3);
+                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.15);
+                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.2);
+                --radius-lg: 16px;
+                --radius-xl: 20px;
+            }}
+            
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            
+            body {{ 
+                font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                background: var(--bg), var(--bg-pattern);
+                background-attachment: fixed;
+                color: var(--text); 
+                line-height: 1.6; 
+                min-height: 100vh;
+                padding: 2rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }}
+            
+            .login-wrapper {{
+                width: 100%;
+                max-width: 500px;
+            }}
+            
+            .app-title {{ 
+                text-align: center; 
+                margin-bottom: 2rem; 
+                background: var(--card); 
+                padding: 2rem; 
+                border-radius: var(--radius-xl); 
+                box-shadow: var(--shadow-lg); 
+                border: 1px solid var(--border);
+            }}
+            
+            .app-title h1 {{ 
+                margin: 0; 
+                font-weight: 800; 
+                font-size: 2.5rem;
+                background: linear-gradient(135deg, var(--color-pink) 0%, var(--color-purple) 50%, var(--color-blue) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }}
+            
+            .version-badge {{
+                font-size: 1rem;
+                color: white;
+                font-weight: 800;
+                background: var(--primary);
+                padding: 0.5rem 1rem;
+                border-radius: var(--radius-lg);
+                border: 2px solid rgba(255,255,255,0.3);
+                display: inline-block;
+                margin-left: 1rem;
+                box-shadow: var(--shadow-md);
+                vertical-align: middle;
+            }}
+            
+            .login-container {{ 
+                background: var(--card); 
+                border: 1px solid var(--border); 
+                border-radius: var(--radius-lg); 
+                padding: 2.5rem; 
+                box-shadow: var(--shadow-lg); 
+            }}
+            
+            .login-container h2 {{
+                text-align: center;
+                margin-bottom: 2rem;
+                font-size: 1.5rem;
+                color: var(--text);
+                font-weight: 700;
+            }}
+            
+            .form-group {{ margin-bottom: 1.5rem; }}
+            
+            label {{ 
+                display: block; 
+                margin-bottom: 0.5rem; 
+                font-weight: 600; 
+                color: var(--text);
+            }}
+            
+            input[type="text"], input[type="password"] {{ 
+                width: 100%; 
+                padding: 1rem; 
+                border: 2px solid var(--border); 
+                border-radius: var(--radius-lg); 
+                font-size: 1rem;
+                background: rgba(255,255,255,0.9);
+                transition: all 0.3s ease;
+            }}
+            
+            input[type="text"]:focus, input[type="password"]:focus {{ 
+                outline: none;
+                border-color: transparent;
+                box-shadow: 0 0 0 3px rgba(131, 56, 236, 0.3);
+                background: white;
+            }}
+            
+            .button {{ 
+                width: 100%; 
+                padding: 1rem 2rem; 
+                background: var(--primary);
+                color: white; 
+                border: none; 
+                cursor: pointer; 
+                border-radius: var(--radius-lg); 
+                font-weight: 700; 
+                font-size: 1.1rem;
+                box-shadow: var(--shadow-md); 
+                transition: all 0.3s ease;
+                margin-top: 1rem;
+            }}
+            
+            .button:hover {{ 
+                transform: translateY(-2px); 
+                box-shadow: var(--shadow-lg);
+                background: var(--primary-hover);
+            }}
+            
+            .error {{ 
+                color: white;
+                background: linear-gradient(135deg, var(--color-pink) 0%, #ff3d7d 100%);
+                padding: 1rem; 
+                margin-bottom: 1.5rem; 
+                border-radius: var(--radius-lg); 
+                text-align: center;
+                font-weight: 600;
+            }}
         </style>
     </head>
     <body>
-        <div class=\"app-title\">\n            <h1>Simple Payroll App <span style=\"font-size:.6em; color:#6c757d; font-weight:600;\">v{APP_VERSION}</span></h1>\n        </div>
+        <div class="login-wrapper">
+            <div class="app-title">
+                <h1>SimPlay <span class="version-badge">v{APP_VERSION}</span></h1>
+            </div>
 
         <div class="login-container">
             <h2>Login</h2>
@@ -636,6 +781,7 @@ def login():
 
                 <button type="submit" class="button">Login</button>
             </form>
+        </div>
         </div>
     </body>
     </html>
@@ -982,7 +1128,7 @@ def index():
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
             
             body {{ 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
                 background: var(--bg), var(--bg-pattern);
                 background-attachment: fixed;
                 color: var(--text); 
@@ -1516,7 +1662,7 @@ def manage_rates():
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
             
             body {{ 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
                 background: var(--bg), var(--bg-pattern);
                 background-attachment: fixed;
                 color: var(--text); 
