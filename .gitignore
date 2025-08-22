@@ -1,0 +1,75 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables (CRITICAL - protects API keys)
+.env
+config.py
+secrets.py
+
+# Reports and Data Files
+static/reports/*.xlsx
+static/reports/*.pdf
+static/reports/*.csv
+uploads/
+temp/
+*.csv
+*.xlsx
+*.pdf
+
+# Cache and temporary files
+reports_metadata.json
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Flask specific
+instance/
+.webassets-cache
+
+# User data and sessions
+users.json
+pay_rates.json
+session_data/
