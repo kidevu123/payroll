@@ -1,0 +1,12 @@
+{
+  "rates": {
+    "John Doe": {
+      "regular": 25.00,
+      "overtime": 37.50
+    },
+    "Jane Smith": {
+      "regular": 20.00,
+      "overtime": 30.00
+    }
+  }
+}

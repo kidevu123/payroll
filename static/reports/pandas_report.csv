@@ -1,0 +1,15 @@
+Column,Data Type,Non-Null Count,Example Value
+Person ID,int64,48,1
+First Name,object,48,Erica
+Last Name,object,48,Lopez
+Date,object,48,2025-05-02
+Timesheet,object,48,Production TimeSheet
+Clock In,object,40,6:07:47
+Clock Out,object,40,17:45:54
+Clock Time(h),object,40,11:38:07
+Total Break Time(h),float64,0,
+Total Work Time(h),object,40,11:38:07
+Total Time(h),object,40,11:38:07
+Total Overtime Time(h),float64,0,
+Statistic Rule Mode,object,48,First and Last
+Abnormal Situation,object,5,

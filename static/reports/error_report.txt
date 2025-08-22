@@ -1,0 +1,5 @@
+Error processing file: create_excel_report() takes 2 positional arguments but 3 were given
+Traceback (most recent call last):
+  File "/home/kidevu/payroll/simple_app.py", line 1934, in process_ignore
+    summary_path = create_excel_report(df, summary_filename, username)
+TypeError: create_excel_report() takes 2 positional arguments but 3 were given

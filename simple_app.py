@@ -905,53 +905,353 @@ def index():
     <head>
         <title>Simple Payroll App</title>
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }}
-            *{{ box-sizing: border-box; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            .app-title{{ background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:16px 18px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); margin:0 0 16px; }}
-            h1{{ margin:0; font-weight:800; color:var(--text); }}
-            form{{ margin: 16px 0; }}
-            .button{{ display:inline-block; padding:10px 16px; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); color:#fff; border:none; cursor:pointer; border-radius:10px; box-shadow:0 6px 14px rgba(0,0,0,.08); font-weight:600; }}
-            .button:hover{{ transform: translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            .card{{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 10px 24px rgba(17,24,39,.06); margin-bottom:20px; }}
-            .info{{ border-left:6px solid var(--accent); }}
-            .info h2{{ margin-top:0; color:var(--accent-700); }}
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
-
-            /* Drag & drop */
-            .dropzone{{ border:2px dashed var(--accent-700); border-radius:14px; padding:28px; text-align:center; background:linear-gradient(135deg,#ffffff 0%, #f5fbff 100%); cursor:pointer; transition: all .15s ease; }}
-            .dropzone:hover{{ background:#f0f7ff; }}
-            .dropzone.dragover{{ background:#e3f2fd; border-color:var(--accent); box-shadow:0 0 0 4px rgba(33,150,243,.15) inset; }}
-            .file-note{{ margin-top:10px; color:var(--muted); font-size:.95em; }}
+            :root{{ 
+                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+                --card: #ffffff; 
+                --card-hover: #fefefe;
+                --text: #1a202c; 
+                --text-light: #4a5568;
+                --muted: #718096; 
+                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
+                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+                --border: rgba(226, 232, 240, 0.8);
+                --border-hover: rgba(203, 213, 224, 0.9);
+                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
+                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
+                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+                --radius-sm: 8px;
+                --radius-md: 12px;
+                --radius-lg: 16px;
+                --radius-xl: 20px;
+            }}
+            
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            
+            body {{ 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                background: var(--bg), var(--bg-pattern);
+                background-attachment: fixed;
+                color: var(--text); 
+                line-height: 1.6; 
+                min-height: 100vh;
+                padding: 2rem;
+                position: relative;
+            }}
+            
+            body::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-image: 
+                    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
+                    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
+                pointer-events: none;
+                z-index: -1;
+            }}
+            
+            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
+            
+            .app-title {{ 
+                background: var(--card); 
+                padding: 2rem 2.5rem; 
+                border-radius: var(--radius-xl); 
+                box-shadow: var(--shadow-lg); 
+                margin-bottom: 2rem; 
+                text-align: center;
+                border: 1px solid var(--border);
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .app-title::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+                transition: left 0.5s;
+            }}
+            
+            .app-title:hover::before {{ left: 100%; }}
+            
+            h1 {{ 
+                margin: 0; 
+                font-weight: 800; 
+                color: var(--text);
+                font-size: 2.5rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }}
+            
+            .version-badge {{
+                font-size: 0.875rem;
+                color: var(--muted);
+                font-weight: 600;
+                background: var(--card);
+                padding: 0.25rem 0.75rem;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border);
+                display: inline-block;
+                margin-left: 1rem;
+                box-shadow: var(--shadow-sm);
+            }}
+            
+            .card {{ 
+                background: var(--card); 
+                border: 1px solid var(--border); 
+                border-radius: var(--radius-lg); 
+                padding: 2rem; 
+                box-shadow: var(--shadow-md); 
+                margin-bottom: 2rem; 
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .card::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: var(--primary);
+                transform: scaleX(0);
+                transition: transform 0.3s ease;
+            }}
+            
+            .card:hover {{ 
+                transform: translateY(-2px); 
+                box-shadow: var(--shadow-lg); 
+                border-color: var(--border-hover);
+            }}
+            
+            .card:hover::before {{ transform: scaleX(1); }}
+            
+            .info {{ 
+                border-left: 6px solid transparent;
+                border-image: var(--accent) 1;
+                background: linear-gradient(135deg, #f8faff 0%, #f1f8ff 100%);
+            }}
+            
+            .info h2 {{ 
+                margin-top: 0; 
+                background: var(--accent);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                font-weight: 700;
+            }}
+            
+            .menu {{ 
+                background: var(--card); 
+                padding: 1.5rem 2rem; 
+                margin-bottom: 2rem; 
+                border-radius: var(--radius-lg); 
+                border: 1px solid var(--border); 
+                box-shadow: var(--shadow-md); 
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }}
+            
+            .menu a {{ 
+                text-decoration: none; 
+                background: var(--accent);
+                color: white;
+                font-weight: 600; 
+                padding: 0.75rem 1.5rem; 
+                border-radius: var(--radius-md);
+                transition: all 0.3s ease;
+                box-shadow: var(--shadow-sm);
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .menu a::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.3s;
+            }}
+            
+            .menu a:hover {{ 
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+                background: var(--accent-hover);
+            }}
+            
+            .menu a:hover::before {{ left: 100%; }}
+            
+            .user-info {{ 
+                margin-left: auto; 
+                font-size: 0.9rem; 
+                color: var(--muted);
+                background: var(--card);
+                padding: 0.5rem 1rem;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border);
+            }}
+            
+            .button {{ 
+                display: inline-block; 
+                padding: 0.875rem 2rem; 
+                background: var(--primary);
+                color: white; 
+                border: none; 
+                cursor: pointer; 
+                border-radius: var(--radius-md); 
+                font-weight: 600; 
+                font-size: 1rem;
+                box-shadow: var(--shadow-md); 
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+                text-decoration: none;
+            }}
+            
+            .button::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.3s;
+            }}
+            
+            .button:hover {{ 
+                transform: translateY(-2px); 
+                box-shadow: var(--shadow-lg);
+                background: var(--primary-hover);
+            }}
+            
+            .button:hover::before {{ left: 100%; }}
+            
+            .button:active {{ transform: translateY(0); }}
+            
+            /* Enhanced Drag & Drop */
+            .dropzone {{ 
+                border: 3px dashed var(--border); 
+                border-radius: var(--radius-lg); 
+                padding: 3rem; 
+                text-align: center; 
+                background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); 
+                cursor: pointer; 
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .dropzone::before {{
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: conic-gradient(from 0deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+                animation: rotate 3s linear infinite;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }}
+            
+            @keyframes rotate {{
+                to {{ transform: rotate(360deg); }}
+            }}
+            
+            .dropzone:hover {{ 
+                background: linear-gradient(135deg, #f8faff 0%, #f0f7ff 100%);
+                border-color: var(--accent);
+                transform: scale(1.02);
+            }}
+            
+            .dropzone:hover::before {{ opacity: 1; }}
+            
+            .dropzone.dragover {{ 
+                background: var(--accent);
+                border-color: transparent;
+                color: white;
+                transform: scale(1.05);
+                box-shadow: var(--shadow-xl);
+            }}
+            
+            .file-note {{ 
+                margin-top: 1rem; 
+                color: var(--muted); 
+                font-size: 0.95rem;
+                font-weight: 500;
+            }}
+            
+            .dropzone.dragover .file-note {{ color: rgba(255,255,255,0.9); }}
+            
+            ul {{ list-style: none; padding: 0; }}
+            ul li {{ 
+                padding: 0.75rem 0; 
+                border-bottom: 1px solid var(--border);
+                position: relative;
+                padding-left: 1.5rem;
+            }}
+            ul li::before {{
+                content: '✓';
+                position: absolute;
+                left: 0;
+                color: #10b981;
+                font-weight: bold;
+            }}
+            ul li:last-child {{ border-bottom: none; }}
         </style>
     </head>
     <body>
-        <div class="app-title"><h1>Simple Payroll App <span style=\"font-size:.6em; color:var(--muted); font-weight:600;\">v{APP_VERSION}</span></h1></div>
-        {menu_html}
-        <div class="card info">
-            <h2>What's New</h2>
-            <ul>
-                <li><strong>v6.0</strong>: Zoho Books one‑click expense push with PDF/XLS attachment, auto summary in notes, duplicates guard, and sleek new UI.</li>
-                <li>Drag & drop CSV uploader on the home page.</li>
-                <li>Print‑friendly admin and payslip views with compact layout.</li>
-                <li>Improved payroll date posting (end‑of‑week + 1 day).</li>
-            </ul>
-        </div>
-        <div class="card">
-            <form id="upload-form" action="/validate" method="post" enctype="multipart/form-data">
-                <p>Upload CSV file with timesheet data:</p>
-                <div id="dropzone" class="dropzone">
-                    <strong>Drag & drop</strong> your CSV here, or <u>click to choose</u>
-                    <div id="file-note" class="file-note">No file selected</div>
-                    <input id="file-input" type="file" name="file" accept=".csv" style="display:none" required>
-                </div>
-                <div style="margin-top:14px;">
-                    <button type="submit" class="button">Process File</button>
-                </div>
-            </form>
+        <div class="container">
+            <div class="app-title">
+                <h1>Simple Payroll App <span class="version-badge">v{APP_VERSION}</span></h1>
+            </div>
+            {menu_html}
+            <div class="card info">
+                <h2>What's New</h2>
+                <ul>
+                    <li><strong>v6.0</strong>: Zoho Books one‑click expense push with PDF/XLS attachment, auto summary in notes, duplicates guard, and sleek new UI.</li>
+                    <li>Drag & drop CSV uploader on the home page.</li>
+                    <li>Print‑friendly admin and payslip views with compact layout.</li>
+                    <li>Improved payroll date posting (end‑of‑week + 1 day).</li>
+                </ul>
+            </div>
+            <div class="card">
+                <form id="upload-form" action="/validate" method="post" enctype="multipart/form-data">
+                    <h3 style="margin-bottom: 1.5rem; color: var(--text); font-weight: 600;">Upload CSV file with timesheet data</h3>
+                    <div id="dropzone" class="dropzone">
+                        <div style="font-size: 1.125rem; margin-bottom: 0.5rem;">
+                            <strong>Drag & drop</strong> your CSV here, or <u>click to choose</u>
+                        </div>
+                        <div id="file-note" class="file-note">No file selected</div>
+                        <input id="file-input" type="file" name="file" accept=".csv" style="display:none" required>
+                    </div>
+                    <div style="margin-top: 2rem; text-align: center;">
+                        <button type="submit" class="button">Process File</button>
+                    </div>
+                </form>
+            </div>
         </div>
         <script>
         (function(){{
@@ -1004,25 +1304,292 @@ def manage_rates():
     <head>
         <title>Manage Pay Rates</title>
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --accent:#2196F3; --border:#e6e9f0; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            h1,h2{{ color:var(--text); }}
-            form{{ margin: 20px 0; }}
-            .button{{ display:inline-block; padding:10px 15px; background:linear-gradient(135deg,var(--primary) 0%, #388e3c 100%); color:#fff; border:none; cursor:pointer; margin-top:10px; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); }}
-            table{{ width:100%; border-collapse:collapse; margin:20px 0; }}
-            th,td{{ padding:10px; border:1px solid var(--border); text-align:left; }}
-            th{{ background:#f2f6ff; }}
-            tr:nth-child(even){{ background:#fafbff; }}
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
+            :root{{ 
+                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
+                --card: #ffffff; 
+                --card-hover: #fefefe;
+                --text: #1a202c; 
+                --text-light: #4a5568;
+                --muted: #718096; 
+                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
+                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+                --border: rgba(226, 232, 240, 0.8);
+                --border-hover: rgba(203, 213, 224, 0.9);
+                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
+                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
+                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
+                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+                --radius-sm: 8px;
+                --radius-md: 12px;
+                --radius-lg: 16px;
+                --radius-xl: 20px;
+            }}
+            
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            
+            body {{ 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+                background: var(--bg), var(--bg-pattern);
+                background-attachment: fixed;
+                color: var(--text); 
+                line-height: 1.6; 
+                min-height: 100vh;
+                padding: 2rem;
+                position: relative;
+            }}
+            
+            body::before {{
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-image: 
+                    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
+                    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
+                pointer-events: none;
+                z-index: -1;
+            }}
+            
+            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
+            
+            h1, h2 {{ 
+                color: var(--text); 
+                font-weight: 700;
+                margin-bottom: 1.5rem;
+            }}
+            
+            h1 {{
+                font-size: 2.5rem;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                text-align: center;
+                margin-bottom: 2rem;
+            }}
+            
+            .version-badge {{
+                font-size: 0.875rem;
+                color: var(--muted);
+                font-weight: 600;
+                background: var(--card);
+                padding: 0.25rem 0.75rem;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border);
+                display: inline-block;
+                margin-left: 1rem;
+                box-shadow: var(--shadow-sm);
+            }}
+            
+            .card {{ 
+                background: var(--card); 
+                border: 1px solid var(--border); 
+                border-radius: var(--radius-lg); 
+                padding: 2rem; 
+                box-shadow: var(--shadow-md); 
+                margin-bottom: 2rem; 
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .card::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: var(--primary);
+                transform: scaleX(0);
+                transition: transform 0.3s ease;
+            }}
+            
+            .card:hover {{ 
+                transform: translateY(-2px); 
+                box-shadow: var(--shadow-lg); 
+                border-color: var(--border-hover);
+            }}
+            
+            .card:hover::before {{ transform: scaleX(1); }}
+            
+            form {{ margin: 1.5rem 0; }}
+            
+            .button {{ 
+                display: inline-block; 
+                padding: 0.875rem 2rem; 
+                background: var(--primary);
+                color: white; 
+                border: none; 
+                cursor: pointer; 
+                border-radius: var(--radius-md); 
+                font-weight: 600; 
+                font-size: 1rem;
+                box-shadow: var(--shadow-md); 
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+                text-decoration: none;
+                margin-top: 1rem;
+            }}
+            
+            .button::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.3s;
+            }}
+            
+            .button:hover {{ 
+                transform: translateY(-2px); 
+                box-shadow: var(--shadow-lg);
+                background: var(--primary-hover);
+            }}
+            
+            .button:hover::before {{ left: 100%; }}
+            
+            .button.danger {{
+                background: var(--danger);
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }}
+            
+            .button.danger:hover {{
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            }}
+            
+            table {{ 
+                width: 100%; 
+                border-collapse: separate;
+                border-spacing: 0;
+                margin: 2rem 0; 
+                background: var(--card);
+                border-radius: var(--radius-lg);
+                overflow: hidden;
+                box-shadow: var(--shadow-md);
+            }}
+            
+            th, td {{ 
+                padding: 1rem 1.5rem; 
+                border-bottom: 1px solid var(--border); 
+                text-align: left; 
+            }}
+            
+            th {{ 
+                background: linear-gradient(135deg, #f8faff 0%, #e8f4f8 100%);
+                font-weight: 600;
+                color: var(--text);
+                border-bottom: 2px solid var(--border);
+            }}
+            
+            tr:nth-child(even) {{ background: linear-gradient(135deg, #fafbff 0%, #f8faff 100%); }}
+            tr:hover {{ background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%); }}
+            
+            .menu {{ 
+                background: var(--card); 
+                padding: 1.5rem 2rem; 
+                margin-bottom: 2rem; 
+                border-radius: var(--radius-lg); 
+                border: 1px solid var(--border); 
+                box-shadow: var(--shadow-md); 
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }}
+            
+            .menu a {{ 
+                text-decoration: none; 
+                background: var(--accent);
+                color: white;
+                font-weight: 600; 
+                padding: 0.75rem 1.5rem; 
+                border-radius: var(--radius-md);
+                transition: all 0.3s ease;
+                box-shadow: var(--shadow-sm);
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .menu a::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.3s;
+            }}
+            
+            .menu a:hover {{ 
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+                background: var(--accent-hover);
+            }}
+            
+            .menu a:hover::before {{ left: 100%; }}
+            
+            .user-info {{ 
+                margin-left: auto; 
+                font-size: 0.9rem; 
+                color: var(--muted);
+                background: var(--card);
+                padding: 0.5rem 1rem;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border);
+            }}
+            
+            input[type="text"], input[type="number"], input[type="file"], select {{
+                width: 100%;
+                padding: 0.75rem 1rem;
+                border: 2px solid var(--border);
+                border-radius: var(--radius-md);
+                font-size: 1rem;
+                transition: all 0.3s ease;
+                background: var(--card);
+            }}
+            
+            input[type="text"]:focus, input[type="number"]:focus, input[type="file"]:focus, select:focus {{
+                outline: none;
+                border-color: transparent;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+                background: var(--card-hover);
+            }}
+            
+            .form-row {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }}
+            
+            label {{
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 600;
+                color: var(--text);
+            }}
         </style>
     </head>
     <body>
-        <h1>Manage Pay Rates <span style="font-size:.6em; color:#6c757d; font-weight:600;">v{APP_VERSION}</span></h1>
-        {menu_html}
-        <h2>Current Pay Rates</h2>
+        <div class="container">
+            <h1>Manage Pay Rates <span class="version-badge">v{APP_VERSION}</span></h1>
+            {menu_html}
+            <div class="card">
+                <h2>Current Pay Rates</h2>
     """
 
     if employees:
@@ -1043,7 +1610,7 @@ def manage_rates():
                 <td>
                     <form action="/delete_rate" method="post" style="margin:0;">
                         <input type="hidden" name="emp_id" value="{emp['id']}">
-                        <button type="submit" onclick="return confirm('Are you sure you want to delete this pay rate?');">Delete</button>
+                        <button type="submit" class="button danger" onclick="return confirm('Are you sure you want to delete this pay rate?');">Delete</button>
                     </form>
                 </td>
             </tr>
@@ -1054,26 +1621,36 @@ def manage_rates():
         html += "<p>No pay rates configured yet. Add your first rate below.</p>"
 
     html += """
-        <h2>Add New Pay Rate</h2>
-        <form action="/add_rate" method="post">
-            <div>
-                <label for="emp_id">Employee ID:</label>
-                <input type="text" id="emp_id" name="emp_id" required>
             </div>
-            <div style="margin-top: 10px;">
-                <label for="pay_rate">Pay Rate ($/hour):</label>
-                <input type="number" id="pay_rate" name="pay_rate" step="0.01" min="0" required>
+            
+            <div class="card">
+                <h2>Add New Pay Rate</h2>
+                <form action="/add_rate" method="post">
+                    <div class="form-row">
+                        <div>
+                            <label for="emp_id">Employee ID:</label>
+                            <input type="text" id="emp_id" name="emp_id" required>
+                        </div>
+                        <div>
+                            <label for="pay_rate">Pay Rate ($/hour):</label>
+                            <input type="number" id="pay_rate" name="pay_rate" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="button">Add Pay Rate</button>
+                </form>
             </div>
-            <button type="submit" class="button">Add Pay Rate</button>
-        </form>
 
-        <div style="margin-top: 30px;">
-            <h2>Bulk Import Pay Rates</h2>
-            <p>Upload a CSV file with columns "Person ID" and "Rate".</p>
-            <form action="/import_rates" method="post" enctype="multipart/form-data">
-                <input type="file" name="rates_file" required>
-                <button type="submit" class="button">Import Rates</button>
-            </form>
+            <div class="card">
+                <h2>Bulk Import Pay Rates</h2>
+                <p style="margin-bottom: 1.5rem; color: var(--muted);">Upload a CSV file with columns "Person ID" and "Rate".</p>
+                <form action="/import_rates" method="post" enctype="multipart/form-data">
+                    <div style="margin-bottom: 1rem;">
+                        <label for="rates_file">Choose CSV file:</label>
+                        <input type="file" id="rates_file" name="rates_file" required>
+                    </div>
+                    <button type="submit" class="button">Import Rates</button>
+                </form>
+            </div>
         </div>
     </body>
     </html>
@@ -3127,7 +3704,7 @@ def success():
                         <option value="boomin">Boomin Brands</option>
                     </select>
                     <input type="hidden" name="week" value="{week}">
-                    
+
                     <div style="margin-top:8px;">
                         <label for="custom_desc">Notes (append to description):</label>
                         <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." style="width:360px;">
