@@ -906,26 +906,41 @@ def index():
         <title>Simple Payroll App</title>
         <style>
             :root{{ 
-                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
-                --card: #ffffff; 
-                --card-hover: #fefefe;
-                --text: #1a202c; 
-                --text-light: #4a5568;
-                --muted: #718096; 
-                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
-                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-                --border: rgba(226, 232, 240, 0.8);
-                --border-hover: rgba(203, 213, 224, 0.9);
-                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+                /* Your Custom Color Palette */
+                --color-yellow: #FFBE0B;
+                --color-orange: #FB5607;
+                --color-pink: #FF006E;
+                --color-purple: #8338EC;
+                --color-blue: #3A86FF;
+                
+                /* Background with your vibrant palette */
+                --bg: linear-gradient(135deg, var(--color-yellow) 0%, var(--color-orange) 25%, var(--color-pink) 50%, var(--color-purple) 75%, var(--color-blue) 100%);
+                --bg-pattern: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.15) 0%, transparent 30%), 
+                              radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 30%);
+                
+                /* Card and surface colors */
+                --card: rgba(255, 255, 255, 0.95); 
+                --card-hover: rgba(255, 255, 255, 0.98);
+                --text: #1a1a1a; 
+                --text-light: #4a4a4a;
+                --muted: #666666; 
+                
+                /* Gradients using your palette */
+                --primary: linear-gradient(135deg, var(--color-purple) 0%, var(--color-blue) 100%);
+                --primary-hover: linear-gradient(135deg, #7129d4 0%, #2c6eeb 100%);
+                --accent: linear-gradient(135deg, var(--color-pink) 0%, var(--color-orange) 100%);
+                --accent-hover: linear-gradient(135deg, #e6005e 0%, #e04d06 100%);
+                --success: linear-gradient(135deg, var(--color-blue) 0%, var(--color-purple) 100%);
+                --warning: linear-gradient(135deg, var(--color-yellow) 0%, var(--color-orange) 100%);
+                --danger: linear-gradient(135deg, var(--color-pink) 0%, #ff3d7d 100%);
+                
+                /* UI Elements */
+                --border: rgba(255, 255, 255, 0.3);
+                --border-hover: rgba(255, 255, 255, 0.5);
+                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.1);
+                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.15);
+                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.2);
+                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.25);
                 --radius-sm: 8px;
                 --radius-md: 12px;
                 --radius-lg: 16px;
@@ -991,7 +1006,7 @@ def index():
                 font-weight: 800; 
                 color: var(--text);
                 font-size: 2.5rem;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, var(--color-pink) 0%, var(--color-purple) 50%, var(--color-blue) 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
@@ -1050,7 +1065,7 @@ def index():
             
             .info h2 {{ 
                 margin-top: 0; 
-                background: var(--accent);
+                background: linear-gradient(135deg, var(--color-yellow) 0%, var(--color-orange) 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
@@ -1220,6 +1235,35 @@ def index():
                 font-weight: bold;
             }}
             ul li:last-child {{ border-bottom: none; }}
+            
+            .version-badge {{
+                font-size: 0.875rem;
+                color: white;
+                font-weight: 700;
+                background: var(--primary);
+                padding: 0.4rem 1rem;
+                border-radius: var(--radius-md);
+                border: 2px solid rgba(255,255,255,0.3);
+                display: inline-block;
+                margin-left: 1rem;
+                box-shadow: var(--shadow-md);
+                vertical-align: middle;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .version-badge::before {{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                transition: left 0.3s;
+            }}
+            
+            .version-badge:hover::before {{ left: 100%; }}
         </style>
     </head>
     <body>
