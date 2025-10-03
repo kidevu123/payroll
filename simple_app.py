@@ -2876,12 +2876,9 @@ def validate():
             # Not a timesheet, proceed with normal processing
             return redirect(url_for('process'))
 
-        # Validate the timesheet
-        issues = validate_timesheet(df)
 
-        # If no issues, show employee confirmation
-        if len(issues) == 0:
-            return redirect(url_for('confirm_employees'))
+        # Show employee confirmation FIRST (before validation)
+        return redirect(url_for('confirm_employees'))
 
         # There are issues, show them to the user for fixing
 
