@@ -2833,6 +2833,16 @@ def validate_timesheet(df):
     # Return only records with issues
     return df[df['Has_Issue']].copy()
 
+def get_unique_employees_from_df(df):
+    """Extract unique employees from dataframe"""
+    try:
+        if 'Person ID' in df.columns and 'First Name' in df.columns and 'Last Name' in df.columns:
+            employees = df[['Person ID', 'First Name', 'Last Name']].drop_duplicates()
+            return employees.to_dict('records')
+        return []
+    except Exception:
+        return []
+
 @app.route('/validate', methods=['POST'])
 def validate():
     """Validate uploaded CSV and show issues if any"""
@@ -2869,9 +2879,9 @@ def validate():
         # Validate the timesheet
         issues = validate_timesheet(df)
 
-        # If no issues, proceed with normal processing
+        # If no issues, show employee confirmation
         if len(issues) == 0:
-            return redirect(url_for('process'))
+            return redirect(url_for('confirm_employees'))
 
         # There are issues, show them to the user for fixing
 
@@ -5636,6 +5646,178 @@ def convert_json_to_csv(data):
         csv_lines.append(f'{person_id},{first_name},{last_name},{date},Production TimeSheet,{clock_in},{clock_out},,{work_time}')
 
     return '\n'.join(csv_lines)
+
+
+
+@app.route('/confirm_employees')
+@login_required
+def confirm_employees():
+    """Show employee confirmation page before processing"""
+    try:
+        username = session.get('username', 'Unknown')
+        menu_html = get_menu_html(username)
+        
+        file_path = session.get('uploaded_file')
+        if not file_path:
+            return "No file found in session. Please upload again.", 400
+        
+        df = pd.read_csv(file_path)
+        employees = get_unique_employees_from_df(df)
+        employees_json = json.dumps(employees)
+        
+        html = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Employees - SimPlay</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        h2 { color: #333; margin-top: 0; }
+        .employee-item { padding: 1rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6; display: flex; align-items: center; }
+        .employee-checkbox { width: 20px; height: 20px; margin-right: 1rem; cursor: pointer; }
+        .employee-name { flex: 1; font-weight: 600; }
+        .employee-id { color: #666; font-size: 0.9rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 4px; }
+        .button { padding: 0.75rem 2rem; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; text-decoration: none; display: inline-block; }
+        .button:hover { background: #0056b3; }
+        .button-danger { background: #dc3545; }
+        .button-danger:hover { background: #c82333; }
+        .button-container { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>Confirm Employees for Payroll</h2>
+            <p>Review and confirm which employees to process for this payroll run.</p>
+            <div id="employee-list"></div>
+            <div class="button-container">
+                <a href="/" class="button button-danger">Cancel</a>
+                <button class="button" onclick="processPayroll()">Confirm & Process</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const employees = """ + employees_json + """;
+        
+        function populateEmployees() {
+            const list = document.getElementById('employee-list');
+            employees.forEach(emp => {
+                const div = document.createElement('div');
+                div.className = 'employee-item';
+                div.innerHTML = `
+                    <input type="checkbox" class="employee-checkbox" value="${emp['Person ID']}" checked>
+                    <span class="employee-name">${emp['First Name']} ${emp['Last Name']}</span>
+                    <span class="employee-id">ID: ${emp['Person ID']}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+        
+        function processPayroll() {
+            const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                alert('Please select at least one employee.');
+                return;
+            }
+            
+            fetch('/confirm_and_process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_ids: selectedIds })
+            }).then(response => {
+                if (response.ok) window.location.href = '/process_confirmed';
+                else alert('Error processing payroll.');
+            });
+        }
+        
+        populateEmployees();
+    </script>
+</body>
+</html>"""
+        
+        return render_template_string(html)
+    except Exception as e:
+        import traceback
+        return f"Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
+
+@app.route('/confirm_and_process', methods=['POST'])
+@login_required
+def confirm_and_process():
+    """Store confirmed employee IDs"""
+    try:
+        data = request.get_json()
+        session['confirmed_employee_ids'] = data.get('employee_ids', [])
+        return jsonify({'status': 'ok'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/process_confirmed')
+@login_required
+def process_confirmed():
+    """Process payroll for confirmed employees only"""
+    try:
+        file_path = session.get('uploaded_file')
+        confirmed_ids = session.get('confirmed_employee_ids', [])
+        
+        if not file_path:
+            return "No file found. Please upload again.", 400
+        
+        df = pd.read_csv(file_path)
+        
+        if confirmed_ids:
+            df = df[df['Person ID'].astype(str).isin(confirmed_ids)]
+        
+        username = session.get('username', 'Unknown')
+        
+        is_timesheet = all(col in df.columns for col in ['Person ID', 'First Name', 'Last Name', 'Date'])
+        
+        if is_timesheet:
+            try:
+                df['Date'] = pd.to_datetime(df['Date'])
+                week_str = df['Date'].min().strftime('%Y-%m-%d')
+            except:
+                week_str = datetime.now().strftime('%Y-%m-%d')
+        else:
+            week_str = datetime.now().strftime('%Y-%m-%d')
+        
+        reports = {}
+        
+        summary_filename = f"payroll_summary_{week_str}.xlsx"
+        summary_path = create_excel_report(df, summary_filename, username)
+        reports['summary'] = summary_filename
+        
+        if is_timesheet:
+            payslips_filename = f"employee_payslips_{week_str}.xlsx"
+            payslips_path = create_payslips(df, payslips_filename, username)
+            reports['payslips'] = payslips_filename
+            
+            admin_filename = f"admin_report_{week_str}.xlsx"
+            admin_path = create_consolidated_admin_report(df, admin_filename, username)
+            reports['admin'] = admin_filename
+            
+            payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
+            payslip_path = create_consolidated_payslips(df, payslip_filename, username)
+            reports['payslips_sheet'] = payslip_filename
+        
+        session['reports'] = reports
+        session['week'] = week_str
+        session.pop('confirmed_employee_ids', None)
+        
+        return redirect(url_for('success'))
+        
+    except Exception as e:
+        import traceback
+        txt_filename = "error_report.txt"
+        report_path = os.path.join(REPORT_FOLDER, txt_filename)
+        with open(report_path, 'w') as f:
+            f.write(f"Error: {str(e)}\n")
+            f.write(traceback.format_exc())
+        session['reports'] = {'error': txt_filename}
+        return redirect(url_for('success'))
 
 
 if __name__ == '__main__':
