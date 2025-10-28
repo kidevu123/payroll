@@ -1189,285 +1189,163 @@ def manage_rates():
     <html>
     <head>
         <title>Manage Pay Rates</title>
-        <style>
-            :root{{ 
-                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
-                --card: #ffffff; 
-                --card-hover: #fefefe;
-                --text: #1a202c; 
-                --text-light: #4a5568;
-                --muted: #718096; 
-                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
-                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-                --border: rgba(226, 232, 240, 0.8);
-                --border-hover: rgba(203, 213, 224, 0.9);
-                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-                --radius-sm: 8px;
-                --radius-md: 12px;
-                --radius-lg: 16px;
-                --radius-xl: 20px;
+                <style>
+            :root{{
+                --bg: #f5f7fb;
+                --card: #ffffff;
+                --text: #2d3748;
+                --muted: #718096;
+                --primary: #4CAF50;
+                --primary-dark: #388e3c;
+                --accent: #2196F3;
+                --accent-dark: #1976d2;
+                --danger: #dc3545;
+                --border: #e6e9f0;
             }}
             
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
             
-            body {{ 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-                background: var(--bg), var(--bg-pattern);
-                background-attachment: fixed;
-                color: var(--text); 
-                line-height: 1.6; 
-                min-height: 100vh;
-                padding: 2rem;
-                position: relative;
-            }}
-            
-            body::before {{
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-image: 
-                    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
-                pointer-events: none;
-                z-index: -1;
-            }}
-            
-            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
-            
-            h1, h2 {{ 
-                color: var(--text); 
-                font-weight: 700;
-                margin-bottom: 1.5rem;
-            }}
-            
-            h1 {{
-                font-size: 2.5rem;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                text-align: center;
-                margin-bottom: 2rem;
-            }}
-            
-            .version-badge {{
-                font-size: 0.875rem;
-                color: var(--muted);
-                font-weight: 600;
-                background: var(--card);
-                padding: 0.25rem 0.75rem;
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--border);
-                display: inline-block;
-                margin-left: 1rem;
-                box-shadow: var(--shadow-sm);
-            }}
-            
-            .card {{ 
-                background: var(--card); 
-                border: 1px solid var(--border); 
-                border-radius: var(--radius-lg); 
-                padding: 2rem; 
-                box-shadow: var(--shadow-md); 
-                margin-bottom: 2rem; 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .card::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: var(--primary);
-                transform: scaleX(0);
-                transition: transform 0.3s ease;
-            }}
-            
-            .card:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg); 
-                border-color: var(--border-hover);
-            }}
-            
-            .card:hover::before {{ transform: scaleX(1); }}
-            
-            form {{ margin: 1.5rem 0; }}
-            
-            .button {{ 
-                display: inline-block; 
-                padding: 0.875rem 2rem; 
-                background: var(--primary);
-                color: white; 
-                border: none; 
-                cursor: pointer; 
-                border-radius: var(--radius-md); 
-                font-weight: 600; 
-                font-size: 1rem;
-                box-shadow: var(--shadow-md); 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-                text-decoration: none;
-                margin-top: 1rem;
-            }}
-            
-            .button::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
-            }}
-            
-            .button:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg);
-                background: var(--primary-hover);
-            }}
-            
-            .button:hover::before {{ left: 100%; }}
-            
-            .button.danger {{
-                background: var(--danger);
-                padding: 0.5rem 1rem;
-                font-size: 0.875rem;
-            }}
-            
-            .button.danger:hover {{
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            }}
-            
-            table {{ 
-                width: 100%; 
-                border-collapse: separate;
-                border-spacing: 0;
-                margin: 2rem 0; 
-                background: var(--card);
-                border-radius: var(--radius-lg);
-                overflow: hidden;
-                box-shadow: var(--shadow-md);
-            }}
-            
-            th, td {{ 
-                padding: 1rem 1.5rem; 
-                border-bottom: 1px solid var(--border); 
-                text-align: left; 
-            }}
-            
-            th {{ 
-                background: linear-gradient(135deg, #f8faff 0%, #e8f4f8 100%);
-                font-weight: 600;
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                background: var(--bg);
                 color: var(--text);
-                border-bottom: 2px solid var(--border);
+                line-height: 1.6;
+                min-height: 100vh;
+                padding: 32px;
             }}
             
-            tr:nth-child(even) {{ background: linear-gradient(135deg, #fafbff 0%, #f8faff 100%); }}
-            tr:hover {{ background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%); }}
+            .container {{ max-width: 1200px; margin: 0 auto; }}
             
-            .menu {{ 
-                background: var(--card); 
-                padding: 1.5rem 2rem; 
-                margin-bottom: 2rem; 
-                border-radius: var(--radius-lg); 
-                border: 1px solid var(--border); 
-                box-shadow: var(--shadow-md); 
+            .app-title, h1 {{
+                background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+                padding: 20px;
+                border-radius: 14px;
+                text-align: center;
+                margin-bottom: 24px;
+                border: 1px solid var(--border);
+                box-shadow: 0 4px 10px rgba(17,24,39,.04);
+                color: var(--text);
+                font-weight: 800;
+            }}
+            
+            h2 {{ color: var(--text); font-weight: 700; margin-bottom: 16px; }}
+            h3 {{ color: var(--text); font-weight: 600; margin-bottom: 12px; }}
+            
+            .card, .info {{
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 10px 24px rgba(17,24,39,.06);
+            }}
+            
+            .menu {{
+                background: var(--card);
+                padding: 16px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                margin-bottom: 24px;
                 display: flex;
-                align-items: center;
                 flex-wrap: wrap;
-                gap: 1rem;
+                gap: 12px;
+                align-items: center;
             }}
             
-            .menu a {{ 
-                text-decoration: none; 
+            .menu a {{
+                padding: 10px 20px;
                 background: var(--accent);
                 color: white;
-                font-weight: 600; 
-                padding: 0.75rem 1.5rem; 
-                border-radius: var(--radius-md);
-                transition: all 0.3s ease;
-                box-shadow: var(--shadow-sm);
-                position: relative;
-                overflow: hidden;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                transition: all 0.2s;
             }}
             
-            .menu a::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
+            .menu a:hover {{
+                background: var(--accent-dark);
+                transform: translateY(-1px);
             }}
             
-            .menu a:hover {{ 
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-md);
-                background: var(--accent-hover);
-            }}
-            
-            .menu a:hover::before {{ left: 100%; }}
-            
-            .user-info {{ 
-                margin-left: auto; 
-                font-size: 0.9rem; 
+            .user-info {{
+                margin-left: auto;
                 color: var(--muted);
+                font-size: 0.9rem;
+            }}
+            
+            .button {{
+                padding: 12px 24px;
+                background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 6px 14px rgba(0,0,0,.08);
+                transition: all 0.2s;
+                text-decoration: none;
+                display: inline-block;
+            }}
+            
+            .button:hover {{
+                transform: translateY(-1px);
+                box-shadow: 0 10px 18px rgba(0,0,0,.12);
+            }}
+            
+            .button.danger, .delete-button {{
+                background: var(--danger);
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }}
+            
+            input[type="text"], input[type="password"], input[type="number"], select, textarea {{
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--border);
+                border-radius: 10px;
+                outline: none;
+            }}
+            
+            input:focus {{ border-color: var(--primary-dark); box-shadow: 0 0 0 3px rgba(76,175,80,.15); }}
+            
+            table {{
+                width: 100%;
+                border-collapse: collapse;
                 background: var(--card);
-                padding: 0.5rem 1rem;
-                border-radius: var(--radius-sm);
+                margin: 20px 0;
+            }}
+            
+            th {{
+                background: #f2f6ff;
+                padding: 12px;
+                font-weight: 700;
                 border: 1px solid var(--border);
             }}
             
-            input[type="text"], input[type="number"], input[type="file"], select {{
-                width: 100%;
-                padding: 0.75rem 1rem;
-                border: 2px solid var(--border);
-                border-radius: var(--radius-md);
-                font-size: 1rem;
-                transition: all 0.3s ease;
+            td {{
+                padding: 12px;
+                border: 1px solid var(--border);
+            }}
+            
+            tr:hover {{ background: #fafbff; }}
+            
+            .app-footer {{
+                text-align: center;
+                margin-top: 48px;
+                padding: 20px;
                 background: var(--card);
+                border-radius: 14px;
+                border: 1px solid var(--border);
             }}
             
-            input[type="text"]:focus, input[type="number"]:focus, input[type="file"]:focus, select:focus {{
-                outline: none;
-                border-color: transparent;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
-                background: var(--card-hover);
+            .app-footer p {{
+                margin: 4px 0;
+                color: var(--muted);
+                font-size: 0.875rem;
             }}
             
-            .form-row {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
-                margin-bottom: 1rem;
-            }}
-            
-            label {{
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 600;
-                color: var(--text);
-            }}
+            .version-info {{ font-weight: 600; color: var(--text); }}
+            .version-badge {{ font-size: 0.7rem; color: var(--muted); font-weight: 600; margin-left: 8px; }}
         </style>
     </head>
     <body>
@@ -5555,202 +5433,149 @@ def confirm_employees():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        :root {{
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-bg: #ffffff;
-            --text-primary: #1a202c;
-            --text-secondary: #4a5568;
-            --text-muted: #718096;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-            --gradient-danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-            --border-color: rgba(226, 232, 240, 0.8);
-            --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-            --radius-lg: 16px;
-            --radius-md: 12px;
-        }}
         
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        
-        body {{ 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
-            color: var(--text-primary);
-            line-height: 1.6;
-            min-height: 100vh;
-            padding: 2rem;
-        }}
-        
-        body::before {{
-            content: '';
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
-            pointer-events: none;
-            z-index: -1;
-        }}
-        
-        .container {{ max-width: 1000px; margin: 0 auto; position: relative; z-index: 1; }}
-        
-        .app-title {{
-            background: var(--card-bg);
-            padding: 2rem 2.5rem;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
-            margin-bottom: 2rem;
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }}
-        
-        h1 {{
-            margin: 0;
-            font-weight: 800;
-            font-size: 2.5rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }}
-        
-        .version-badge {{
-            font-size: 0.875rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            background: var(--card-bg);
-            padding: 0.25rem 0.75rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            display: inline-block;
-            margin-left: 1rem;
-        }}
-        
-        .card {{
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 2rem;
-        }}
-        
-        h2 {{
-            color: var(--text-primary);
-            font-weight: 700;
-            margin-bottom: 1rem;
-            font-size: 1.75rem;
-        }}
-        
-        .card p {{
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
-        }}
-        
-        .employee-item {{
-            padding: 1rem 1.25rem;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: var(--radius-md);
-            border: 2px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            transition: all 0.3s ease;
-        }}
-        
-        .employee-item:hover {{
-            transform: translateX(4px);
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-        }}
-        
-        .employee-checkbox {{
-            width: 22px;
-            height: 22px;
-            margin-right: 1rem;
-            cursor: pointer;
-            accent-color: #667eea;
-        }}
-        
-        .employee-name {{
-            flex: 1;
-            font-weight: 600;
-            color: var(--text-primary);
-        }}
-        
-        .employee-id {{
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            background: rgba(102, 126, 234, 0.1);
-            padding: 0.4rem 1rem;
-            border-radius: 8px;
-            font-weight: 600;
-        }}
-        
-        .button {{
-            padding: 0.875rem 2rem;
-            color: white;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 700;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }}
-        
-        .button:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-        }}
-        
-        .button-primary {{
-            background: var(--gradient-primary);
-        }}
-        
-        .button-danger {{
-            background: var(--gradient-danger);
-        }}
-        
-        .button-container {{
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-        }}
-        
-        .app-footer {{
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem 2rem;
-            margin-top: 2rem;
-            text-align: center;
-            box-shadow: var(--shadow-md);
-        }}
-        
-        .app-footer p {{
-            margin: 0.25rem 0;
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }}
-        
-        .app-footer .version-info {{
-            font-weight: 600;
-            color: var(--text-secondary);
-        }}
-        
-        @media (max-width: 768px) {{
-            body {{ padding: 1rem; }}
-            .card {{ padding: 1.5rem; }}
-            h1 {{ font-size: 2rem; }}
-            h2 {{ font-size: 1.5rem; }}
-        }}
-    </style>
+            :root {{
+                --bg: #f5f7fb;
+                --card: #ffffff;
+                --text: #2d3748;
+                --muted: #718096;
+                --primary: #4CAF50;
+                --primary-dark: #388e3c;
+                --accent: #2196F3;
+                --danger-grad: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+                --border: #e6e9f0;
+            }}
+            
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+                line-height: 1.6;
+                min-height: 100vh;
+                padding: 32px;
+            }}
+            
+            .container {{ max-width: 1000px; margin: 0 auto; }}
+            
+            .app-title {{
+                background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+                padding: 20px;
+                border-radius: 14px;
+                text-align: center;
+                margin-bottom: 24px;
+                border: 1px solid var(--border);
+            }}
+            
+            h1 {{ margin: 0; font-weight: 800; color: var(--text); font-size: 2rem; }}
+            h2 {{ color: var(--text); font-weight: 700; margin-bottom: 16px; }}
+            
+            .card {{
+                background: var(--card);
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 10px 24px rgba(17,24,39,.06);
+            }}
+            
+            .card p {{
+                color: #4a5568;
+                margin-bottom: 20px;
+            }}
+            
+            .employee-item {{
+                padding: 16px;
+                margin-bottom: 12px;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-radius: 12px;
+                border: 2px solid var(--border);
+                display: flex;
+                align-items: center;
+                transition: all 0.2s;
+            }}
+            
+            .employee-item:hover {{
+                transform: translateX(4px);
+                border-color: #667eea;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            }}
+            
+            .employee-checkbox {{
+                width: 22px;
+                height: 22px;
+                margin-right: 16px;
+                cursor: pointer;
+                accent-color: #667eea;
+            }}
+            
+            .employee-name {{
+                flex: 1;
+                font-weight: 600;
+                color: var(--text);
+            }}
+            
+            .employee-id {{
+                color: var(--muted);
+                font-size: 0.875rem;
+                background: rgba(102, 126, 234, 0.1);
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-weight: 600;
+            }}
+            
+            .button {{
+                padding: 14px 32px;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                font-weight: 700;
+                text-decoration: none;
+                display: inline-block;
+                transition: all 0.2s;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }}
+            
+            .button:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            }}
+            
+            .button-primary {{
+                background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            }}
+            
+            .button-danger {{
+                background: var(--danger-grad);
+            }}
+            
+            .button-container {{
+                display: flex;
+                gap: 16px;
+                justify-content: center;
+                margin-top: 24px;
+            }}
+            
+            .app-footer {{
+                text-align: center;
+                margin-top: 48px;
+                padding: 20px;
+                background: var(--card);
+                border-radius: 14px;
+                border: 1px solid var(--border);
+            }}
+            
+            .app-footer p {{
+                margin: 4px 0;
+                color: var(--muted);
+                font-size: 0.875rem;
+            }}
+            
+            .version-info {{ font-weight: 600; color: var(--text); }}
+            .version-badge {{ font-size: 0.7rem; color: var(--muted); margin-left: 8px; }}
+            </style>
 </head>
 <body>
     <div class="container">
