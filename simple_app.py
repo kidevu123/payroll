@@ -3333,13 +3333,22 @@ def fix_missing_times():
         return redirect(url_for('success'))
 
     # GET request - show the form
-    missing_records = session.get('missing_records', [])
+    try:
+        missing_records = session.get('missing_records', [])
+        
+        # If no missing records, redirect to process
+        if not missing_records:
+            return redirect(url_for('process_confirmed'))
 
-    # Get the original dataframe to calculate suggestions
-    file_path = session.get('file_path')
-    df = None
-    if file_path and os.path.exists(file_path):
-        df = pd.read_csv(file_path)
+        # Get the original dataframe to calculate suggestions
+        file_path = session.get('file_path')
+        df = None
+        if file_path and os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+    except Exception as e:
+        import traceback
+        error_msg = f"Error loading fix_missing_times page: {str(e)}\n{traceback.format_exc()}"
+        return f"<h1>Error</h1><pre>{error_msg}</pre><br><a href='/'>Go Home</a>", 500
 
     # Function to calculate suggested times
     def get_suggested_time(target_date, time_type, current_df):
@@ -5550,199 +5559,180 @@ def confirm_employees():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         :root {{
-            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --card-bg: #ffffff;
-            --text-primary: #1a202c;
-            --text-secondary: #4a5568;
-            --text-muted: #718096;
-            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-            --gradient-danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-            --border-color: rgba(226, 232, 240, 0.8);
-            --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-            --radius-lg: 16px;
-            --radius-md: 12px;
+            --bg: #f5f7fb;
+            --card: #ffffff;
+            --text: #2d3748;
+            --muted: #718096;
+            --primary: #4CAF50;
+            --primary-dark: #388e3c;
+            --accent: #2196F3;
+            --accent-dark: #1976d2;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --border: #e6e9f0;
         }}
         
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         
-        body {{ 
+        body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
-            color: var(--text-primary);
+            background: var(--bg);
+            color: var(--text);
             line-height: 1.6;
             min-height: 100vh;
-            padding: 2rem;
+            padding: 32px;
         }}
         
-        body::before {{
-            content: '';
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
-            pointer-events: none;
-            z-index: -1;
-        }}
-        
-        .container {{ max-width: 1000px; margin: 0 auto; position: relative; z-index: 1; }}
+        .container {{ max-width: 1000px; margin: 0 auto; }}
         
         .app-title {{
-            background: var(--card-bg);
-            padding: 2rem 2.5rem;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
-            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+            padding: 20px;
+            border-radius: 14px;
             text-align: center;
-            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 10px rgba(17,24,39,.04);
         }}
         
         h1 {{
             margin: 0;
             font-weight: 800;
-            font-size: 2.5rem;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--text);
+            font-size: 2rem;
         }}
         
         .version-badge {{
-            font-size: 0.875rem;
-            color: var(--text-muted);
+            font-size: 0.7rem;
+            color: var(--muted);
             font-weight: 600;
-            background: var(--card-bg);
-            padding: 0.25rem 0.75rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            display: inline-block;
-            margin-left: 1rem;
+            margin-left: 8px;
         }}
         
         .card {{
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 2rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 24px rgba(17,24,39,.06);
         }}
         
         h2 {{
-            color: var(--text-primary);
+            color: var(--text);
             font-weight: 700;
-            margin-bottom: 1rem;
-            font-size: 1.75rem;
+            margin-bottom: 12px;
+            font-size: 1.5rem;
         }}
         
         .card p {{
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
+            color: var(--muted);
+            margin-bottom: 20px;
+            font-size: 0.95rem;
         }}
         
         .employee-item {{
-            padding: 1rem 1.25rem;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: var(--radius-md);
-            border: 2px solid var(--border-color);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            background: #fafbfc;
+            border-radius: 10px;
+            border: 1px solid var(--border);
             display: flex;
             align-items: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s;
         }}
         
         .employee-item:hover {{
-            transform: translateX(4px);
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            background: #f0f7ff;
+            border-color: var(--accent);
+            transform: translateX(2px);
         }}
         
         .employee-checkbox {{
-            width: 22px;
-            height: 22px;
-            margin-right: 1rem;
+            width: 20px;
+            height: 20px;
+            margin-right: 14px;
             cursor: pointer;
-            accent-color: #667eea;
+            accent-color: var(--primary);
         }}
         
         .employee-name {{
             flex: 1;
             font-weight: 600;
-            color: var(--text-primary);
+            color: var(--text);
+            font-size: 0.95rem;
         }}
         
         .employee-id {{
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            background: rgba(102, 126, 234, 0.1);
-            padding: 0.4rem 1rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            background: #e3f2fd;
+            padding: 6px 14px;
             border-radius: 8px;
             font-weight: 600;
         }}
         
         .button {{
-            padding: 0.875rem 2rem;
+            padding: 12px 24px;
             color: white;
             border: none;
-            border-radius: var(--radius-md);
+            border-radius: 10px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 700;
             text-decoration: none;
             display: inline-block;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            box-shadow: 0 6px 14px rgba(0,0,0,.08);
         }}
         
         .button:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 18px rgba(0,0,0,.12);
         }}
         
         .button-primary {{
-            background: var(--gradient-primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         }}
         
         .button-danger {{
-            background: var(--gradient-danger);
+            background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
         }}
         
         .button-container {{
             display: flex;
-            gap: 1rem;
+            gap: 12px;
             justify-content: center;
-            margin-top: 2rem;
+            margin-top: 24px;
         }}
         
         .app-footer {{
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem 2rem;
-            margin-top: 2rem;
             text-align: center;
-            box-shadow: var(--shadow-md);
+            margin-top: 32px;
+            padding: 20px;
+            background: var(--card);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 10px rgba(17,24,39,.04);
         }}
         
         .app-footer p {{
-            margin: 0.25rem 0;
-            color: var(--text-muted);
+            margin: 4px 0;
+            color: var(--muted);
             font-size: 0.875rem;
         }}
         
         .app-footer .version-info {{
             font-weight: 600;
-            color: var(--text-secondary);
+            color: var(--text);
         }}
         
         @media (max-width: 768px) {{
-            body {{ padding: 1rem; }}
-            .card {{ padding: 1.5rem; }}
-            h1 {{ font-size: 2rem; }}
-            h2 {{ font-size: 1.5rem; }}
+            body {{ padding: 16px; }}
+            .card {{ padding: 20px; }}
+            h1 {{ font-size: 1.5rem; }}
+            h2 {{ font-size: 1.25rem; }}
+            .button-container {{ flex-direction: column; }}
         }}
     </style>
 </head>
