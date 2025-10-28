@@ -2763,27 +2763,8 @@ def validate():
             # Not a timesheet, proceed with normal processing
             return redirect(url_for('process'))
 
-        # STEP 1: Validate timesheet for missing clock times
-        issues = validate_timesheet(df)
-        
-        if len(issues) > 0:
-            # There are missing times - format for fix_missing_times page
-            missing_records = []
-            for idx, row in issues.iterrows():
-                missing_records.append({
-                    'index': idx,
-                    'person_id': row['Person ID'],
-                    'name': f"{row['First Name']} {row['Last Name']}",
-                    'date': row['Date'],
-                    'clock_in': row['Clock In'] if pd.notna(row['Clock In']) and row['Clock In'] != '' else '',
-                    'clock_out': row['Clock Out'] if pd.notna(row['Clock Out']) and row['Clock Out'] != '' else ''
-                })
-            
-            session['file_path'] = file_path  # Store file path for fix_missing_times route
-            session['missing_records'] = missing_records
-            return redirect(url_for('fix_missing_times'))
-        
-        # STEP 2: No issues - proceed to employee confirmation
+        # STEP 1: Go to employee confirmation FIRST
+        # (No point fixing times for employees we won't process)
         return redirect(url_for('confirm_employees'))
 
         # Legacy code below (kept for reference but unreachable)
@@ -3306,11 +3287,50 @@ def fix_missing_times():
         # Save the updated dataframe
         df.to_csv(file_path, index=False)
         
-        # Update session with fixed file
-        session['uploaded_file'] = file_path
+        # Update session with fixed file (keep as file_path for processing)
+        session['file_path'] = file_path
 
-        # After fixing times, proceed to employee confirmation
-        return redirect(url_for('confirm_employees'))
+        # After fixing times, process the selected employees
+        # (they were already confirmed before we got here)
+        username = session.get('username', 'Unknown')
+        
+        # Determine if this is a timesheet
+        is_timesheet = all(col in df.columns for col in ['Person ID', 'First Name', 'Last Name', 'Date'])
+        
+        if is_timesheet:
+            try:
+                df['Date'] = pd.to_datetime(df['Date'])
+                week_str = df['Date'].min().strftime('%Y-%m-%d')
+            except:
+                week_str = datetime.now().strftime('%Y-%m-%d')
+        else:
+            week_str = datetime.now().strftime('%Y-%m-%d')
+        
+        # Generate reports
+        reports = {}
+        
+        summary_filename = f"payroll_summary_{week_str}.xlsx"
+        summary_path = create_excel_report(df, summary_filename, username)
+        reports['summary'] = summary_filename
+        
+        if is_timesheet:
+            payslips_filename = f"employee_payslips_{week_str}.xlsx"
+            payslips_path = create_payslips(df, payslips_filename, username)
+            reports['payslips'] = payslips_filename
+            
+            admin_filename = f"admin_report_{week_str}.xlsx"
+            admin_path = create_consolidated_admin_report(df, admin_filename, username)
+            reports['admin'] = admin_filename
+            
+            payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
+            payslip_path = create_consolidated_payslips(df, payslip_filename, username)
+            reports['payslips_sheet'] = payslip_filename
+        
+        session['reports'] = reports
+        session['week'] = week_str
+        session.pop('confirmed_employee_ids', None)
+        
+        return redirect(url_for('success'))
 
     # GET request - show the form
     missing_records = session.get('missing_records', [])
@@ -5820,9 +5840,35 @@ def process_confirmed():
         
         df = pd.read_csv(file_path)
         
+        # STEP 2: Filter to only selected employees
         if confirmed_ids:
             df = df[df['Person ID'].astype(str).isin(confirmed_ids)]
         
+        # STEP 3: NOW validate for missing times (only for selected employees)
+        issues = validate_timesheet(df)
+        
+        if len(issues) > 0:
+            # There are missing times in SELECTED employees - show fix page
+            missing_records = []
+            for idx, row in issues.iterrows():
+                missing_records.append({
+                    'index': idx,
+                    'person_id': row['Person ID'],
+                    'name': f"{row['First Name']} {row['Last Name']}",
+                    'date': row['Date'],
+                    'clock_in': row['Clock In'] if pd.notna(row['Clock In']) and row['Clock In'] != '' else '',
+                    'clock_out': row['Clock Out'] if pd.notna(row['Clock Out']) and row['Clock Out'] != '' else ''
+                })
+            
+            # Save filtered dataframe for fix_missing_times
+            filtered_path = file_path.replace('.csv', '_filtered.csv')
+            df.to_csv(filtered_path, index=False)
+            
+            session['file_path'] = filtered_path
+            session['missing_records'] = missing_records
+            return redirect(url_for('fix_missing_times'))
+        
+        # STEP 4: No issues - proceed with processing
         username = session.get('username', 'Unknown')
         
         is_timesheet = all(col in df.columns for col in ['Person ID', 'First Name', 'Last Name', 'Date'])
