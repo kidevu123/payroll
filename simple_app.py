@@ -2769,8 +2769,28 @@ def validate():
             # Not a timesheet, proceed with normal processing
             return redirect(url_for('process'))
 
-        # RESTORED ORIGINAL WORKING ORDER
-        # Employee confirmation happens AFTER validation in confirm_employees route
+        # SAFE VALIDATION - Check for missing times EARLY
+        # Use the fixed validate_timesheet that works on a copy
+        issues = validate_timesheet(df)
+        
+        if len(issues) > 0:
+            # Found missing times - let user fix them BEFORE employee selection
+            missing_records = []
+            for idx, row in issues.iterrows():
+                missing_records.append({
+                    'index': idx,
+                    'person_id': row['Person ID'],
+                    'name': f"{row['First Name']} {row['Last Name']}",
+                    'date': row['Date'],
+                    'clock_in': row['Clock In'] if pd.notna(row['Clock In']) and row['Clock In'] != '' else '',
+                    'clock_out': row['Clock Out'] if pd.notna(row['Clock Out']) and row['Clock Out'] != '' else ''
+                })
+            
+            session['file_path'] = file_path
+            session['missing_records'] = missing_records
+            return redirect(url_for('fix_missing_times'))
+        
+        # No issues - go directly to employee confirmation
         return redirect(url_for('confirm_employees'))
 
         # Legacy code below (kept for reference but unreachable)

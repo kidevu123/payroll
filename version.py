@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.4"
+__version__ = "6.0.5"
 __version_name__ = "Production"
 __release_date__ = "2025-10-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.0.5",
+        "date": "2025-10-28",
+        "changes": [
+            "SAFE validation re-added: Upload → Validate → Fix (if needed) → Employee Selection → Process",
+            "Validation happens EARLY (right after upload) and ONCE",
+            "After fixing times, goes to employee selection (working flow preserved)",
+            "process_confirmed has NO validation (just processes clean data)"
+        ]
+    },
     {
         "version": "6.0.4",
         "date": "2025-10-28",
