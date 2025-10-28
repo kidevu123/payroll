@@ -596,41 +596,43 @@ def login():
             error = 'Invalid credentials. Please try again.'
 
     # Login form
-    html = """
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Login - Simple Payroll App</title>
         <style>
-            :root{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --border:#e6e9f0; }
-            *{ box-sizing:border-box; }
-            body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }
-            h1{ color:var(--text); margin:0; font-weight:800; }
-            .login-container{ max-width:420px; margin:0 auto; padding:22px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 24px rgba(17,24,39,.06); }
-            .form-group{ margin-bottom:15px; }
-            label{ display:block; margin-bottom:6px; font-weight:600; }
-            input[type="text"], input[type="password"]{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; }
-            input[type="text"]:focus, input[type="password"]:focus{ border-color:var(--primary-700); box-shadow:0 0 0 3px rgba(76,175,80,.15); }
-            .button{ display:inline-block; width:100%; padding:10px 16px; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); color:#fff; border:none; cursor:pointer; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); }
-            .button:hover{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
-            .error{ color:#dc3545; padding:10px; margin-bottom:15px; border-radius:10px; background:#f8d7da; border:1px solid #f5c6cb; }
-            .app-title{ text-align:center; margin-bottom:22px; background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:14px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
-            .app-footer{ text-align:center; margin-top:32px; padding:16px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
-            .app-footer p{ margin:4px 0; color:var(--muted); font-size:0.875rem; }
-            .version-info{ font-weight:600; color:var(--text); }
+            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --border:#e6e9f0; }}
+            *{{ box-sizing:border-box; }}
+            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
+            h1{{ color:var(--text); margin:0; font-weight:800; }}
+            .login-container{{ max-width:420px; margin:0 auto; padding:22px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 24px rgba(17,24,39,.06); }}
+            .form-group{{ margin-bottom:15px; }}
+            label{{ display:block; margin-bottom:6px; font-weight:600; }}
+            input[type="text"], input[type="password"]{{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; }}
+            input[type="text"]:focus, input[type="password"]:focus{{ border-color:var(--primary-700); box-shadow:0 0 0 3px rgba(76,175,80,.15); }}
+            .button{{ display:inline-block; width:100%; padding:10px 16px; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); color:#fff; border:none; cursor:pointer; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); }}
+            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
+            .error{{ color:#dc3545; padding:10px; margin-bottom:15px; border-radius:10px; background:#f8d7da; border:1px solid #f5c6cb; }}
+            .app-title{{ text-align:center; margin-bottom:22px; background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:14px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
+            .app-footer{{ text-align:center; margin-top:32px; padding:16px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
+            .app-footer p{{ margin:4px 0; color:var(--muted); font-size:0.875rem; }}
+            .version-info{{ font-weight:600; color:var(--text); }}
         </style>
     </head>
     <body>
-        <div class=\"app-title\">\n            <h1>Simple Payroll App <span style=\"font-size:.6em; color:#6c757d; font-weight:600;\">{get_version_display()}</span></h1>\n        </div>
+        <div class="app-title">
+            <h1>Simple Payroll App <span style="font-size:.6em; color:#6c757d; font-weight:600;">{get_version_display()}</span></h1>
+        </div>
 
         <div class="login-container">
             <h2>Login</h2>
 
-            {% if error %}
-            <div class="error">{{ error }}</div>
-            {% endif %}
+            {{% if error %}}
+            <div class="error">{{{{ error }}}}</div>
+            {{% endif %}}
 
-            <form action="{{ url_for('login', next=request.args.get('next', '')) }}" method="post">
+            <form action="{{{{ url_for('login', next=request.args.get('next', '')) }}}}" method="post">
                 <div class="form-group">
                     <label for="username">Username:</label>
                     <input type="text" id="username" name="username" required autofocus>
@@ -5155,33 +5157,33 @@ def manage_users():
 
     users = load_users()
 
-    html = """
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Manage Users</title>
         <style>
-            :root{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --danger:#dc3545; --accent:#2196F3; --border:#e6e9f0; }
-            body{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }
-            h1,h2{ color:var(--text); }
-            form{ margin:20px 0; }
-            .button{ display:inline-block; padding:10px 15px; background:linear-gradient(135deg,var(--primary) 0%, #388e3c 100%); color:#fff; border:none; cursor:pointer; margin-top:10px; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); }
-            .delete-button{ display:inline-block; padding:6px 10px; background-color: var(--danger); color:#fff; border:none; cursor:pointer; font-size:.8em; margin-left:10px; border-radius:8px; }
-            table{ width:100%; border-collapse:collapse; margin:20px 0; }
-            th,td{ padding:10px; border:1px solid var(--border); text-align:left; }
-            th{ background:#f2f6ff; }
-            tr:nth-child(even){ background:#fafbff; }
-            .menu{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
-            .menu a{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }
-            .menu a:hover{ background:rgba(33,150,243,.08); }
-            .user-info{ float:right; font-size:.9em; color:var(--muted); }
-            .admin-badge{ display:inline-block; padding:2px 8px; background-color:#007bff; color:#fff; border-radius:10px; font-size:.8em; margin-left:10px; }
+            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --danger:#dc3545; --accent:#2196F3; --border:#e6e9f0; }}
+            body{{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
+            h1,h2{{ color:var(--text); }}
+            form{{ margin:20px 0; }}
+            .button{{ display:inline-block; padding:10px 15px; background:linear-gradient(135deg,var(--primary) 0%, #388e3c 100%); color:#fff; border:none; cursor:pointer; margin-top:10px; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); }}
+            .delete-button{{ display:inline-block; padding:6px 10px; background-color: var(--danger); color:#fff; border:none; cursor:pointer; font-size:.8em; margin-left:10px; border-radius:8px; }}
+            table{{ width:100%; border-collapse:collapse; margin:20px 0; }}
+            th,td{{ padding:10px; border:1px solid var(--border); text-align:left; }}
+            th{{ background:#f2f6ff; }}
+            tr:nth-child(even){{ background:#fafbff; }}
+            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
+            .menu a{{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }}
+            .menu a:hover{{ background:rgba(33,150,243,.08); }}
+            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
+            .admin-badge{{ display:inline-block; padding:2px 8px; background-color:#007bff; color:#fff; border-radius:10px; font-size:.8em; margin-left:10px; }}
         </style>
     </head>
     <body>
-        <h1>Manage Users <span style="font-size:.6em; color:#6c757d; font-weight:600;">v{APP_VERSION}</span></h1>
+        <h1>Manage Users <span style="font-size:.6em; color:#6c757d; font-weight:600;">{get_version_display()}</span></h1>
 
-    """ + get_menu_html(username) + """
+    {get_menu_html(username)}
 
         <h2>Current Users</h2>
     """
