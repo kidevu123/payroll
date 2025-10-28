@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.5"
+__version__ = "6.0.6"
 __version_name__ = "Production"
 __release_date__ = "2025-10-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.0.6",
+        "date": "2025-10-28",
+        "changes": [
+            "Added clear step-by-step instructions on home page",
+            "5-step process guide with visual formatting",
+            "CSV format tip included for users"
+        ]
+    },
     {
         "version": "6.0.5",
         "date": "2025-10-28",

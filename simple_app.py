@@ -1110,6 +1110,21 @@ def index():
                 <h1>Simple Payroll App <span class="version-badge">{get_version_display()}</span></h1>
             </div>
             {menu_html}
+            
+            <div class="card" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-left: 4px solid var(--primary);">
+                <h2 style="color: var(--primary);">📋 How to Process Payroll</h2>
+                <ol style="list-style: decimal; padding-left: 24px; margin: 16px 0;">
+                    <li style="padding: 10px 0; border-bottom: 1px solid var(--border);"><strong>Upload CSV</strong>: Drag & drop or click to select your timesheet CSV file below</li>
+                    <li style="padding: 10px 0; border-bottom: 1px solid var(--border);"><strong>Fix Missing Times</strong> (if needed): If any employee has missing Clock In/Out times, you'll see a page to fix them</li>
+                    <li style="padding: 10px 0; border-bottom: 1px solid var(--border);"><strong>Select Employees</strong>: Choose which employees to include in this payroll run (uncheck to exclude)</li>
+                    <li style="padding: 10px 0; border-bottom: 1px solid var(--border);"><strong>Review & Process</strong>: Click "Confirm & Process" to generate payroll reports</li>
+                    <li style="padding: 10px 0;"><strong>Download Reports</strong>: Get your Excel reports (Summary, Payslips, Admin Report) and optionally push to Zoho Books</li>
+                </ol>
+                <div style="margin-top: 16px; padding: 12px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; font-size: 0.9rem;">
+                    <strong>💡 Tip:</strong> Your CSV should have columns: Person ID, First Name, Last Name, Date, Clock In, Clock Out
+                </div>
+            </div>
+            
             <div class="card info">
                 <h2>What's New in v6.0.1</h2>
                 <ul>
