@@ -2763,11 +2763,30 @@ def validate():
             # Not a timesheet, proceed with normal processing
             return redirect(url_for('process'))
 
-
-        # Show employee confirmation FIRST (before validation)
+        # STEP 1: Validate timesheet for missing clock times
+        issues = validate_timesheet(df)
+        
+        if len(issues) > 0:
+            # There are missing times - format for fix_missing_times page
+            missing_records = []
+            for idx, row in issues.iterrows():
+                missing_records.append({
+                    'index': idx,
+                    'person_id': row['Person ID'],
+                    'name': f"{row['First Name']} {row['Last Name']}",
+                    'date': row['Date'],
+                    'clock_in': row['Clock In'] if pd.notna(row['Clock In']) and row['Clock In'] != '' else '',
+                    'clock_out': row['Clock Out'] if pd.notna(row['Clock Out']) and row['Clock Out'] != '' else ''
+                })
+            
+            session['file_path'] = file_path  # Store file path for fix_missing_times route
+            session['missing_records'] = missing_records
+            return redirect(url_for('fix_missing_times'))
+        
+        # STEP 2: No issues - proceed to employee confirmation
         return redirect(url_for('confirm_employees'))
 
-        # There are issues, show them to the user for fixing
+        # Legacy code below (kept for reference but unreachable)
 
         # Calculate suggested times based on other employees
         def get_suggested_time(target_date, time_type, current_df):
@@ -3286,58 +3305,12 @@ def fix_missing_times():
 
         # Save the updated dataframe
         df.to_csv(file_path, index=False)
+        
+        # Update session with fixed file
+        session['uploaded_file'] = file_path
 
-        # Get current username
-        username = session.get('username', 'Unknown')
-
-        # Process the updated file
-        try:
-            # Try to parse dates
-            try:
-                df['Date'] = pd.to_datetime(df['Date'])
-                week_str = df['Date'].min().strftime('%Y-%m-%d')
-            except:
-                week_str = datetime.now().strftime('%Y-%m-%d')
-
-            # Generate reports
-            reports = {}
-
-            # Main payroll report
-            summary_filename = f"payroll_summary_{week_str}.xlsx"
-            summary_path = create_excel_report(df, summary_filename, username)
-            reports['summary'] = summary_filename
-
-            # Individual payslips
-            payslips_filename = f"employee_payslips_{week_str}.xlsx"
-            payslips_path = create_payslips(df, payslips_filename, username)
-            reports['payslips'] = payslips_filename
-
-            # NEW CONSOLIDATED SINGLE-SHEET REPORTS
-            admin_filename = f"admin_report_{week_str}.xlsx"
-            admin_path = create_consolidated_admin_report(df, admin_filename, username)
-            reports['admin'] = admin_filename
-
-            payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
-            payslip_path = create_consolidated_payslips(df, payslip_filename, username)
-            reports['payslips_sheet'] = payslip_filename
-
-            # Store the reports in session
-            session['reports'] = reports
-            session['week'] = week_str
-
-            return redirect(url_for('success'))
-
-        except Exception as e:
-            # If processing fails, create an error report
-            import traceback
-            txt_filename = "error_report.txt"
-            report_path = os.path.join(REPORT_FOLDER, txt_filename)
-            with open(report_path, 'w') as f:
-                f.write(f"Error processing after time corrections: {str(e)}\n")
-                f.write(traceback.format_exc())
-            session['reports'] = {'error': txt_filename}
-
-            return redirect(url_for('success'))
+        # After fixing times, proceed to employee confirmation
+        return redirect(url_for('confirm_employees'))
 
     # GET request - show the form
     missing_records = session.get('missing_records', [])
