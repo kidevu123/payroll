@@ -919,312 +919,162 @@ def index():
     <head>
         <title>Simple Payroll App</title>
         <style>
-            :root{{ 
-                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
-                --card: #ffffff; 
-                --card-hover: #fefefe;
-                --text: #1a202c; 
-                --text-light: #4a5568;
-                --muted: #718096; 
-                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
-                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-                --border: rgba(226, 232, 240, 0.8);
-                --border-hover: rgba(203, 213, 224, 0.9);
-                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-                --radius-sm: 8px;
-                --radius-md: 12px;
-                --radius-lg: 16px;
-                --radius-xl: 20px;
+            :root{{
+                --bg: #f5f7fb;
+                --card: #ffffff;
+                --text: #2d3748;
+                --muted: #718096;
+                --primary: #4CAF50;
+                --primary-dark: #388e3c;
+                --accent: #2196F3;
+                --accent-dark: #1976d2;
+                --border: #e6e9f0;
             }}
             
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
             
-            body {{ 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-                background: var(--bg), var(--bg-pattern);
-                background-attachment: fixed;
-                color: var(--text); 
-                line-height: 1.6; 
-                min-height: 100vh;
-                padding: 2rem;
-                position: relative;
-            }}
-            
-            body::before {{
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-image: 
-                    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
-                pointer-events: none;
-                z-index: -1;
-            }}
-            
-            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
-            
-            .app-title {{ 
-                background: var(--card); 
-                padding: 2rem 2.5rem; 
-                border-radius: var(--radius-xl); 
-                box-shadow: var(--shadow-lg); 
-                margin-bottom: 2rem; 
-                text-align: center;
-                border: 1px solid var(--border);
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .app-title::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-                transition: left 0.5s;
-            }}
-            
-            .app-title:hover::before {{ left: 100%; }}
-            
-            h1 {{ 
-                margin: 0; 
-                font-weight: 800; 
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                background: var(--bg);
                 color: var(--text);
-                font-size: 2.5rem;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
+                line-height: 1.6;
+                min-height: 100vh;
+                padding: 32px;
             }}
+            
+            .container {{ max-width: 1200px; margin: 0 auto; }}
+            
+            .app-title {{
+                background: linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%);
+                padding: 20px;
+                border-radius: 14px;
+                text-align: center;
+                margin-bottom: 24px;
+                border: 1px solid var(--border);
+                box-shadow: 0 4px 10px rgba(17,24,39,.04);
+            }}
+            
+            h1 {{
+                margin: 0;
+                font-weight: 800;
+                color: var(--text);
+                font-size: 2rem;
+            }}
+            
+            h2 {{ color: var(--text); font-weight: 700; margin-bottom: 16px; }}
+            h3 {{ color: var(--text); font-weight: 600; margin-bottom: 12px; }}
             
             .version-badge {{
-                font-size: 0.875rem;
+                font-size: 0.7rem;
                 color: var(--muted);
                 font-weight: 600;
+                margin-left: 8px;
+            }}
+            
+            .card {{
                 background: var(--card);
-                padding: 0.25rem 0.75rem;
-                border-radius: var(--radius-sm);
                 border: 1px solid var(--border);
-                display: inline-block;
-                margin-left: 1rem;
-                box-shadow: var(--shadow-sm);
+                border-radius: 14px;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 10px 24px rgba(17,24,39,.06);
             }}
             
-            .card {{ 
-                background: var(--card); 
-                border: 1px solid var(--border); 
-                border-radius: var(--radius-lg); 
-                padding: 2rem; 
-                box-shadow: var(--shadow-md); 
-                margin-bottom: 2rem; 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .card::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: var(--primary);
-                transform: scaleX(0);
-                transition: transform 0.3s ease;
-            }}
-            
-            .card:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg); 
-                border-color: var(--border-hover);
-            }}
-            
-            .card:hover::before {{ transform: scaleX(1); }}
-            
-            .info {{ 
-                border-left: 6px solid transparent;
-                border-image: var(--accent) 1;
+            .info {{
                 background: linear-gradient(135deg, #f8faff 0%, #f1f8ff 100%);
+                border-left: 4px solid var(--accent);
             }}
             
-            .info h2 {{ 
-                margin-top: 0; 
-                background: var(--accent);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                font-weight: 700;
-            }}
-            
-            .menu {{ 
-                background: var(--card); 
-                padding: 1.5rem 2rem; 
-                margin-bottom: 2rem; 
-                border-radius: var(--radius-lg); 
-                border: 1px solid var(--border); 
-                box-shadow: var(--shadow-md); 
+            .menu {{
+                background: var(--card);
+                padding: 16px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                box-shadow: 0 4px 10px rgba(17,24,39,.04);
+                margin-bottom: 24px;
                 display: flex;
-                align-items: center;
                 flex-wrap: wrap;
-                gap: 1rem;
+                gap: 12px;
+                align-items: center;
             }}
             
-            .menu a {{ 
-                text-decoration: none; 
+            .menu a {{
+                display: inline-block;
+                padding: 10px 20px;
                 background: var(--accent);
                 color: white;
-                font-weight: 600; 
-                padding: 0.75rem 1.5rem; 
-                border-radius: var(--radius-md);
-                transition: all 0.3s ease;
-                box-shadow: var(--shadow-sm);
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .menu a::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
-            }}
-            
-            .menu a:hover {{ 
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-md);
-                background: var(--accent-hover);
-            }}
-            
-            .menu a:hover::before {{ left: 100%; }}
-            
-            .user-info {{ 
-                margin-left: auto; 
-                font-size: 0.9rem; 
-                color: var(--muted);
-                background: var(--card);
-                padding: 0.5rem 1rem;
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--border);
-            }}
-            
-            .button {{ 
-                display: inline-block; 
-                padding: 0.875rem 2rem; 
-                background: var(--primary);
-                color: white; 
-                border: none; 
-                cursor: pointer; 
-                border-radius: var(--radius-md); 
-                font-weight: 600; 
-                font-size: 1rem;
-                box-shadow: var(--shadow-md); 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
                 text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                transition: all 0.2s;
             }}
             
-            .button::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
+            .menu a:hover {{
+                background: var(--accent-dark);
+                transform: translateY(-1px);
             }}
             
-            .button:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg);
-                background: var(--primary-hover);
+            .user-info {{
+                margin-left: auto;
+                color: var(--muted);
+                font-size: 0.9rem;
             }}
             
-            .button:hover::before {{ left: 100%; }}
-            
-            .button:active {{ transform: translateY(0); }}
-            
-            /* Enhanced Drag & Drop */
-            .dropzone {{ 
-                border: 3px dashed var(--border); 
-                border-radius: var(--radius-lg); 
-                padding: 3rem; 
-                text-align: center; 
-                background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); 
-                cursor: pointer; 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
+            .button {{
+                display: inline-block;
+                padding: 12px 24px;
+                background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-weight: 700;
+                cursor: pointer;
+                box-shadow: 0 6px 14px rgba(0,0,0,.08);
+                transition: all 0.2s;
+                text-decoration: none;
+                font-size: 1rem;
             }}
             
-            .dropzone::before {{
-                content: '';
-                position: absolute;
-                top: -50%;
-                left: -50%;
-                width: 200%;
-                height: 200%;
-                background: conic-gradient(from 0deg, transparent, rgba(102, 126, 234, 0.1), transparent);
-                animation: rotate 3s linear infinite;
-                opacity: 0;
-                transition: opacity 0.3s;
+            .button:hover {{
+                transform: translateY(-1px);
+                box-shadow: 0 10px 18px rgba(0,0,0,.12);
             }}
             
-            @keyframes rotate {{
-                to {{ transform: rotate(360deg); }}
+            .dropzone {{
+                border: 3px dashed var(--border);
+                border-radius: 14px;
+                padding: 3rem;
+                text-align: center;
+                background: #fafbfc;
+                cursor: pointer;
+                transition: all 0.2s;
             }}
             
-            .dropzone:hover {{ 
-                background: linear-gradient(135deg, #f8faff 0%, #f0f7ff 100%);
+            .dropzone:hover {{
+                background: #f0f7ff;
                 border-color: var(--accent);
-                transform: scale(1.02);
             }}
             
-            .dropzone:hover::before {{ opacity: 1; }}
-            
-            .dropzone.dragover {{ 
+            .dropzone.dragover {{
                 background: var(--accent);
                 border-color: transparent;
                 color: white;
-                transform: scale(1.05);
-                box-shadow: var(--shadow-xl);
             }}
             
-            .file-note {{ 
-                margin-top: 1rem; 
-                color: var(--muted); 
+            .file-note {{
+                margin-top: 1rem;
+                color: var(--muted);
                 font-size: 0.95rem;
-                font-weight: 500;
             }}
             
             .dropzone.dragover .file-note {{ color: rgba(255,255,255,0.9); }}
             
             ul {{ list-style: none; padding: 0; }}
-            ul li {{ 
-                padding: 0.75rem 0; 
+            ul li {{
+                padding: 12px 0;
                 border-bottom: 1px solid var(--border);
                 position: relative;
-                padding-left: 1.5rem;
+                padding-left: 24px;
             }}
             ul li::before {{
                 content: '✓';
@@ -1234,12 +1084,30 @@ def index():
                 font-weight: bold;
             }}
             ul li:last-child {{ border-bottom: none; }}
+            
+            .app-footer {{
+                text-align: center;
+                margin-top: 48px;
+                padding: 20px;
+                background: var(--card);
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                box-shadow: 0 4px 10px rgba(17,24,39,.04);
+            }}
+            
+            .app-footer p {{
+                margin: 4px 0;
+                color: var(--muted);
+                font-size: 0.875rem;
+            }}
+            
+            .version-info {{ font-weight: 600; color: var(--text); }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="app-title">
-                <h1>Simple Payroll App <span class="version-badge">v{APP_VERSION}</span></h1>
+                <h1>Simple Payroll App <span class="version-badge">{get_version_display()}</span></h1>
             </div>
             {menu_html}
             <div class="card info">
@@ -1253,7 +1121,7 @@ def index():
             </div>
             <div class="card">
                 <form id="upload-form" action="/validate" method="post" enctype="multipart/form-data">
-                    <h3 style="margin-bottom: 1.5rem; color: var(--text); font-weight: 600;">Upload CSV file with timesheet data</h3>
+                    <h3>Upload CSV file with timesheet data</h3>
                     <div id="dropzone" class="dropzone">
                         <div style="font-size: 1.125rem; margin-bottom: 0.5rem;">
                             <strong>Drag & drop</strong> your CSV here, or <u>click to choose</u>
@@ -1265,6 +1133,10 @@ def index():
                         <button type="submit" class="button">Process File</button>
                     </div>
                 </form>
+            </div>
+            <div class="app-footer">
+                <p class="version-info">Payroll Management System {get_version_display()}</p>
+                <p>© 2024-2025 | Secure Payroll Processing</p>
             </div>
         </div>
         <script>
