@@ -2712,13 +2712,19 @@ def create_consolidated_payslips(df, filename, creator=None):
 
 def validate_timesheet(df):
     """Validate timesheet data and identify records with missing clock in/out times"""
+    # Work with a copy to avoid modifying the original dataframe
+    df_check = df.copy()
+    
     # Create validation columns - True means there's an issue
-    df['Missing_Clock_In'] = df['Clock In'].isna() | (df['Clock In'] == '')
-    df['Missing_Clock_Out'] = df['Clock Out'].isna() | (df['Clock Out'] == '')
-    df['Has_Issue'] = df['Missing_Clock_In'] | df['Missing_Clock_Out']
+    df_check['Missing_Clock_In'] = df_check['Clock In'].isna() | (df_check['Clock In'] == '')
+    df_check['Missing_Clock_Out'] = df_check['Clock Out'].isna() | (df_check['Clock Out'] == '')
+    df_check['Has_Issue'] = df_check['Missing_Clock_In'] | df_check['Missing_Clock_Out']
 
-    # Return only records with issues
-    return df[df['Has_Issue']].copy()
+    # Return only records with issues (without the validation columns)
+    issues = df_check[df_check['Has_Issue']].copy()
+    # Drop the temporary validation columns
+    issues = issues.drop(columns=['Missing_Clock_In', 'Missing_Clock_Out', 'Has_Issue'], errors='ignore')
+    return issues
 
 def get_unique_employees_from_df(df):
     """Extract unique employees from dataframe"""
