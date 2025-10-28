@@ -20,9 +20,13 @@ from bs4 import BeautifulSoup
 import time
 # Selenium imports removed - not supported on PythonAnywhere
 
+# Import centralized version management
+from version import get_version, get_version_display, get_version_info
+
 app = Flask(__name__)
 app.secret_key = 'a_very_secret_key'
-APP_VERSION = '6.0.1'
+# Use centralized version management
+APP_VERSION = get_version()
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -611,10 +615,13 @@ def login():
             .button:hover{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }
             .error{ color:#dc3545; padding:10px; margin-bottom:15px; border-radius:10px; background:#f8d7da; border:1px solid #f5c6cb; }
             .app-title{ text-align:center; margin-bottom:22px; background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:14px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
+            .app-footer{ text-align:center; margin-top:32px; padding:16px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }
+            .app-footer p{ margin:4px 0; color:var(--muted); font-size:0.875rem; }
+            .version-info{ font-weight:600; color:var(--text); }
         </style>
     </head>
     <body>
-        <div class=\"app-title\">\n            <h1>Simple Payroll App <span style=\"font-size:.6em; color:#6c757d; font-weight:600;\">v{APP_VERSION}</span></h1>\n        </div>
+        <div class=\"app-title\">\n            <h1>Simple Payroll App <span style=\"font-size:.6em; color:#6c757d; font-weight:600;\">{get_version_display()}</span></h1>\n        </div>
 
         <div class="login-container">
             <h2>Login</h2>
@@ -636,6 +643,11 @@ def login():
 
                 <button type="submit" class="button">Login</button>
             </form>
+        </div>
+        
+        <div class="app-footer">
+            <p class="version-info">Payroll Management System {get_version_display()}</p>
+            <p>© 2024-2025 | Secure Payroll Processing</p>
         </div>
     </body>
     </html>
@@ -5662,36 +5674,231 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
-        html = """<!DOCTYPE html>
+        html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>Confirm Employees - SimPlay</title>
+    <title>Confirm Employees - Payroll App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; margin: 2rem; background: #f5f5f5; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        h2 { color: #333; margin-top: 0; }
-        .employee-item { padding: 1rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6; display: flex; align-items: center; }
-        .employee-checkbox { width: 20px; height: 20px; margin-right: 1rem; cursor: pointer; }
-        .employee-name { flex: 1; font-weight: 600; }
-        .employee-id { color: #666; font-size: 0.9rem; background: #e9ecef; padding: 0.3rem 0.8rem; border-radius: 4px; }
-        .button { padding: 0.75rem 2rem; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; text-decoration: none; display: inline-block; }
-        .button:hover { background: #0056b3; }
-        .button-danger { background: #dc3545; }
-        .button-danger:hover { background: #c82333; }
-        .button-container { display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; }
+        :root {{
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            --border-color: rgba(226, 232, 240, 0.8);
+            --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
+            --radius-lg: 16px;
+            --radius-md: 12px;
+        }}
+        
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem;
+        }}
+        
+        body::before {{
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
+                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
+            pointer-events: none;
+            z-index: -1;
+        }}
+        
+        .container {{ max-width: 1000px; margin: 0 auto; position: relative; z-index: 1; }}
+        
+        .app-title {{
+            background: var(--card-bg);
+            padding: 2rem 2.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }}
+        
+        h1 {{
+            margin: 0;
+            font-weight: 800;
+            font-size: 2.5rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+        
+        .version-badge {{
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            background: var(--card-bg);
+            padding: 0.25rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: inline-block;
+            margin-left: 1rem;
+        }}
+        
+        .card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 2rem;
+        }}
+        
+        h2 {{
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.75rem;
+        }}
+        
+        .card p {{
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }}
+        
+        .employee-item {{
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }}
+        
+        .employee-item:hover {{
+            transform: translateX(4px);
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }}
+        
+        .employee-checkbox {{
+            width: 22px;
+            height: 22px;
+            margin-right: 1rem;
+            cursor: pointer;
+            accent-color: #667eea;
+        }}
+        
+        .employee-name {{
+            flex: 1;
+            font-weight: 600;
+            color: var(--text-primary);
+        }}
+        
+        .employee-id {{
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }}
+        
+        .button {{
+            padding: 0.875rem 2rem;
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }}
+        
+        .button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }}
+        
+        .button-primary {{
+            background: var(--gradient-primary);
+        }}
+        
+        .button-danger {{
+            background: var(--gradient-danger);
+        }}
+        
+        .button-container {{
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }}
+        
+        .app-footer {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            margin-top: 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }}
+        
+        .app-footer p {{
+            margin: 0.25rem 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }}
+        
+        .app-footer .version-info {{
+            font-weight: 600;
+            color: var(--text-secondary);
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ padding: 1rem; }}
+            .card {{ padding: 1.5rem; }}
+            h1 {{ font-size: 2rem; }}
+            h2 {{ font-size: 1.5rem; }}
+        }}
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="app-title">
+            <h1>Simple Payroll App <span class="version-badge">{get_version_display()}</span></h1>
+        </div>
+        
+        {menu_html}
+        
         <div class="card">
             <h2>Confirm Employees for Payroll</h2>
-            <p>Review and confirm which employees to process for this payroll run.</p>
+            <p>Review and select which employees to include in this payroll run. Uncheck any employees you want to exclude.</p>
             <div id="employee-list"></div>
             <div class="button-container">
                 <a href="/" class="button button-danger">Cancel</a>
-                <button class="button" onclick="processPayroll()">Confirm & Process</button>
+                <button class="button button-primary" onclick="processPayroll()">Confirm & Process</button>
             </div>
+        </div>
+        
+        <div class="app-footer">
+            <p class="version-info">Payroll Management System {get_version_display()}</p>
+            <p>© 2024-2025 | Secure Payroll Processing</p>
         </div>
     </div>
     

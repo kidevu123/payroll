@@ -2,7 +2,15 @@
 
 A Flask-based payroll management system with automated expense posting to Zoho Books.
 
-## Version 6.0.1
+## Version
+
+Current version: **6.0.1** (see `version.py` for version management)
+
+To check version programmatically:
+```python
+from version import get_version, get_version_info
+print(get_version())  # Returns: 6.0.1
+```
 
 ### Features
 - CSV timesheet processing and validation
