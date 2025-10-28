@@ -3515,7 +3515,8 @@ def fix_missing_times():
         </html>
         """
 
-        return render_template_string(html)
+        # Return HTML directly (already fully built with f-strings)
+        return html
     
     except Exception as e:
         import traceback
