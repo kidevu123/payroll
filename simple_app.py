@@ -3345,58 +3345,54 @@ def fix_missing_times():
         df = None
         if file_path and os.path.exists(file_path):
             df = pd.read_csv(file_path)
-    except Exception as e:
-        import traceback
-        error_msg = f"Error loading fix_missing_times page: {str(e)}\n{traceback.format_exc()}"
-        return f"<h1>Error</h1><pre>{error_msg}</pre><br><a href='/'>Go Home</a>", 500
 
-    # Function to calculate suggested times
-    def get_suggested_time(target_date, time_type, current_df):
-        """Get suggested time based on other employees' times for the same date"""
-        if current_df is None:
+        # Function to calculate suggested times
+        def get_suggested_time(target_date, time_type, current_df):
+            """Get suggested time based on other employees' times for the same date"""
+            if current_df is None:
+                return '09:00:00' if time_type == 'Clock In' else '17:00:00'
+
+            same_date_entries = current_df[current_df['Date'] == target_date]
+
+            if time_type == 'Clock In':
+                valid_times = same_date_entries[same_date_entries['Clock In'].notna()]['Clock In']
+            else:
+                valid_times = same_date_entries[same_date_entries['Clock Out'].notna()]['Clock Out']
+
+            if len(valid_times) > 0:
+                # Convert times to datetime objects for averaging
+                times_list = []
+                for time_str in valid_times:
+                    if time_str and str(time_str).strip():
+                        try:
+                            time_obj = datetime.strptime(str(time_str).strip(), '%H:%M:%S')
+                            times_list.append(time_obj)
+                        except:
+                            pass
+
+                if times_list:
+                    # Find the most common time range (within 30 minutes)
+                    from collections import Counter
+                    rounded_times = []
+                    for t in times_list:
+                        # Round to nearest 15 minutes
+                        minutes = t.minute
+                        rounded_min = round(minutes / 15) * 15
+                        if rounded_min == 60:
+                            rounded_time = t.replace(hour=(t.hour + 1) % 24, minute=0, second=0)
+                        else:
+                            rounded_time = t.replace(minute=rounded_min, second=0)
+                        rounded_times.append(rounded_time.strftime('%H:%M:%S'))
+
+                    # Get most common time
+                    most_common = Counter(rounded_times).most_common(1)
+                    if most_common:
+                        return most_common[0][0]
+
+            # Default suggestions if no data
             return '09:00:00' if time_type == 'Clock In' else '17:00:00'
 
-        same_date_entries = current_df[current_df['Date'] == target_date]
-
-        if time_type == 'Clock In':
-            valid_times = same_date_entries[same_date_entries['Clock In'].notna()]['Clock In']
-        else:
-            valid_times = same_date_entries[same_date_entries['Clock Out'].notna()]['Clock Out']
-
-        if len(valid_times) > 0:
-            # Convert times to datetime objects for averaging
-            times_list = []
-            for time_str in valid_times:
-                if time_str and str(time_str).strip():
-                    try:
-                        time_obj = datetime.strptime(str(time_str).strip(), '%H:%M:%S')
-                        times_list.append(time_obj)
-                    except:
-                        pass
-
-            if times_list:
-                # Find the most common time range (within 30 minutes)
-                from collections import Counter
-                rounded_times = []
-                for t in times_list:
-                    # Round to nearest 15 minutes
-                    minutes = t.minute
-                    rounded_min = round(minutes / 15) * 15
-                    if rounded_min == 60:
-                        rounded_time = t.replace(hour=(t.hour + 1) % 24, minute=0, second=0)
-                    else:
-                        rounded_time = t.replace(minute=rounded_min, second=0)
-                    rounded_times.append(rounded_time.strftime('%H:%M:%S'))
-
-                # Get most common time
-                most_common = Counter(rounded_times).most_common(1)
-                if most_common:
-                    return most_common[0][0]
-
-        # Default suggestions if no data
-        return '09:00:00' if time_type == 'Clock In' else '17:00:00'
-
-    html = """
+        html = """
     <!DOCTYPE html>
     <html>
     <head>
@@ -3471,55 +3467,66 @@ def fix_missing_times():
                 </tr>
     """
 
-    for record in missing_records:
-        # Determine row class based on missing data
-        row_class = ""
-        if not record['clock_in'] and not record['clock_out']:
-            row_class = "both-missing"
-        elif not record['clock_in'] or not record['clock_out']:
-            row_class = "one-missing"
+        for record in missing_records:
+            # Determine row class based on missing data
+            row_class = ""
+            if not record['clock_in'] and not record['clock_out']:
+                row_class = "both-missing"
+            elif not record['clock_in'] or not record['clock_out']:
+                row_class = "one-missing"
 
-        # Get suggestions for missing times
-        clock_in_suggestion = ""
-        clock_out_suggestion = ""
-        if not record['clock_in'] and df is not None:
-            suggested_in = get_suggested_time(record['date'], 'Clock In', df)
-            clock_in_suggestion = f'<span class="suggested">Suggested: {suggested_in}</span>'
-        if not record['clock_out'] and df is not None:
-            suggested_out = get_suggested_time(record['date'], 'Clock Out', df)
-            clock_out_suggestion = f'<span class="suggested">Suggested: {suggested_out}</span>'
+            # Get suggestions for missing times
+            clock_in_suggestion = ""
+            clock_out_suggestion = ""
+            if not record['clock_in'] and df is not None:
+                suggested_in = get_suggested_time(record['date'], 'Clock In', df)
+                clock_in_suggestion = f'<span class="suggested">Suggested: {suggested_in}</span>'
+            if not record['clock_out'] and df is not None:
+                suggested_out = get_suggested_time(record['date'], 'Clock Out', df)
+                clock_out_suggestion = f'<span class="suggested">Suggested: {suggested_out}</span>'
 
-        html += f"""
-                <tr class="{row_class}">
-                    <td>{record['name']} (ID: {record['person_id']})</td>
-                    <td>{record['date']}</td>
-                    <td>
-                        <input type="text" name="fix_clockin_{record['index']}" value="{record['clock_in']}"
-                               placeholder="e.g., 09:00:00">
-                        {clock_in_suggestion}
-                    </td>
-                    <td>
-                        <input type="text" name="fix_clockout_{record['index']}" value="{record['clock_out']}"
-                               placeholder="e.g., 17:00:00">
-                        {clock_out_suggestion}
-                    </td>
+            html += f"""
+                    <tr class="{row_class}">
+                        <td>{record['name']} (ID: {record['person_id']})</td>
+                        <td>{record['date']}</td>
+                        <td>
+                            <input type="text" name="fix_clockin_{record['index']}" value="{record['clock_in']}"
+                                   placeholder="e.g., 09:00:00">
+                            {clock_in_suggestion}
+                        </td>
+                        <td>
+                            <input type="text" name="fix_clockout_{record['index']}" value="{record['clock_out']}"
+                                   placeholder="e.g., 09:00:00">
+                            {clock_out_suggestion}
+                        </td>
 
-                </tr>
+                    </tr>
+            """
+
+        html += """
+                </table>
+
+                <div class="action-buttons">
+                    <button type="submit" name="action" value="fix" class="button">Fix and Continue</button>
+                    <button type="submit" name="action" value="ignore" class="button" style="background-color: #f44336;">Ignore Missing Values</button>
+                </div>
+            </form>
+        </body>
+        </html>
         """
 
-    html += """
-            </table>
-
-            <div class="action-buttons">
-                <button type="submit" name="action" value="fix" class="button">Fix and Continue</button>
-                <button type="submit" name="action" value="ignore" class="button" style="background-color: #f44336;">Ignore Missing Values</button>
-            </div>
-        </form>
-    </body>
-    </html>
-    """
-
-    return render_template_string(html)
+        return render_template_string(html)
+    
+    except Exception as e:
+        import traceback
+        error_msg = f"Error in fix_missing_times: {str(e)}\n\n{traceback.format_exc()}"
+        return f"""
+        <html><head><title>Error</title></head><body>
+        <h1>Error Loading Fix Times Page</h1>
+        <pre style="background:#f8d7da; padding:20px; border-radius:8px; color:#721c24;">{error_msg}</pre>
+        <br><a href="/" style="padding:10px 20px; background:#007bff; color:white; text-decoration:none; border-radius:5px;">Go Home</a>
+        </body></html>
+        """, 500
 
 @app.route('/success')
 @login_required
