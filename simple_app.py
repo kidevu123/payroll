@@ -3549,74 +3549,113 @@ def success():
     <html>
     <head>
         <title>Processing Successful</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }}
-            *{{ box-sizing:border-box; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; color:var(--text); background:var(--bg); }}
-            h1{{ color:var(--text); margin:8px 0 18px; font-weight:700; }}
-            h2{{ color:var(--text); margin:0 0 12px; font-weight:600; }}
-
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
-
-            .button,.print-button{{ display:inline-block; padding:10px 16px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .15s ease; }}
-            .button{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); }}
+            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#718096; --primary:#4CAF50; --primary-dark:#388e3c; --accent:#2196F3; --accent-dark:#1976d2; --border:#e6e9f0; --success:#10b981; }}
+            *{{ box-sizing:border-box; margin:0; padding:0; }}
+            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; padding:32px; }}
+            
+            .container{{ max-width:1200px; margin:0 auto; }}
+            
+            .success-header{{ background:linear-gradient(135deg,#e8f5e9 0%,#c8e6c9 100%); padding:32px; border-radius:14px; text-align:center; margin-bottom:32px; border:1px solid #a5d6a7; box-shadow:0 10px 24px rgba(16,185,129,.12); }}
+            .success-header h1{{ font-size:2rem; font-weight:800; color:var(--primary-dark); margin-bottom:8px; }}
+            .success-header .checkmark{{ font-size:3rem; color:var(--success); margin-bottom:12px; }}
+            .success-header p{{ font-size:1.1rem; color:#2e7d32; font-weight:500; }}
+            
+            h2{{ color:var(--text); font-weight:700; margin-bottom:16px; font-size:1.5rem; }}
+            h3{{ color:var(--text); font-weight:600; margin-bottom:12px; font-size:1.2rem; }}
+            
+            .card{{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px; margin-bottom:24px; box-shadow:0 10px 24px rgba(17,24,39,.06); }}
+            .card.recommended{{ border-left:5px solid var(--primary); background:linear-gradient(to right,rgba(76,175,80,.03) 0%,var(--card) 30px); }}
+            
+            .report-grid{{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin:20px 0; }}
+            .report-item{{ background:#fafbfc; border:1px solid var(--border); border-radius:10px; padding:16px; transition:all .2s; }}
+            .report-item:hover{{ background:#f0f7ff; border-color:var(--accent); transform:translateY(-2px); box-shadow:0 4px 12px rgba(33,150,243,.12); }}
+            .report-label{{ font-weight:600; color:var(--text); margin-bottom:6px; font-size:.95rem; }}
+            .report-desc{{ color:var(--muted); font-size:.85rem; margin-bottom:12px; line-height:1.4; }}
+            
+            .button{{ display:inline-block; padding:10px 20px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .2s; cursor:pointer; font-size:.95rem; margin-right:8px; }}
+            .button.primary{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%); }}
+            .button.secondary{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-dark) 100%); }}
             .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            .print-button{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-700) 100%); }}
-            .print-button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-
-            .download-section{{ background:var(--card); padding:22px; border-radius:14px; margin:20px 0; border:1px solid var(--border); box-shadow:0 10px 24px rgba(17,24,39,.06); }}
-            .recommended{{ border-left:6px solid var(--primary); padding-left:16px; }}
-            small{{ color:var(--muted); }}
-
-            label{{ font-weight:600; margin-right:8px; color:var(--text); }}
-            select, input[type="text"]{{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); }}
-            select:focus, input[type="text"]:focus{{ border-color:var(--accent-700); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
+            
+            .zoho-section{{ background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%); padding:20px; border-radius:10px; margin-top:24px; border:1px solid #90caf9; }}
+            .zoho-section h3{{ color:#1565c0; margin-bottom:16px; }}
+            
+            .form-group{{ margin-bottom:16px; }}
+            label{{ display:block; font-weight:600; margin-bottom:6px; color:var(--text); font-size:.9rem; }}
+            select,input[type="text"]{{ width:100%; max-width:400px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); font-size:.95rem; }}
+            select:focus,input[type="text"]:focus{{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
+            
+            .alt-links{{ background:#f8f9fa; padding:16px; border-radius:8px; margin-top:16px; }}
+            .alt-links p{{ font-weight:600; color:var(--text); margin-bottom:8px; font-size:.9rem; }}
+            .alt-links a{{ color:var(--accent-dark); text-decoration:none; font-size:.85rem; word-break:break-all; }}
+            .alt-links a:hover{{ text-decoration:underline; }}
+            
+            .note{{ color:var(--muted); font-size:.85rem; margin-top:12px; padding:10px; background:rgba(113,128,150,.05); border-radius:6px; }}
+            
+            @media(max-width:768px){{ body{{ padding:16px; }} .report-grid{{ grid-template-columns:1fr; }} .button{{ display:block; margin:8px 0; }} }}
         </style>
     </head>
     <body>
-        <h1>Processing Successful</h1>
-        {menu_html}
-        <p>Your file was successfully processed for week {week}.</p>
+        <div class="container">
+            <div class="success-header">
+                <div class="checkmark">✓</div>
+                <h1>Payroll Processing Complete!</h1>
+                <p>Successfully processed for week {week}</p>
+            </div>
+            {menu_html}
     """
 
     if 'admin' in reports and 'payslips_sheet' in reports:
         html += f"""
-        <div class="download-section recommended">
-            <h2>Recommended Reports (Single Sheet)</h2>
+        <div class="card recommended">
+            <h2>📊 Recommended Reports (Single Sheet)</h2>
+            
+            <div class="report-grid">
+                <div class="report-item">
+                    <div class="report-label">📋 Admin Report</div>
+                    <div class="report-desc">All employee data in a single sheet with signature lines for your records</div>
+                    <a href="/download/admin" class="button primary">Download</a>
+                    <a href="/print/admin" target="_blank" class="button secondary">Print</a>
+                </div>
+                
+                <div class="report-item">
+                    <div class="report-label">✂️ Cuttable Payslips</div>
+                    <div class="report-desc">All employee payslips in a single sheet with cut lines for easy distribution</div>
+                    <a href="/download/payslips_sheet" class="button primary">Download</a>
+                    <a href="/print/payslips" target="_blank" class="button secondary">Print</a>
+                </div>
+            </div>
 
-            <p><a href="/download/admin" class="button">Download Admin Report</a>
-               <a href="/print/admin" target="_blank" class="print-button">Print-Friendly Admin Report</a></p>
-            <p><small>This report contains all employee data in a single sheet with signature lines for your records</small></p>
+            <div class="alt-links">
+                <p>Alternative Download Methods:</p>
+                <div style="display:grid; gap:6px; margin-top:8px;">
+                    <div>Admin Report: <a href="/static/reports/{reports['admin']}">/static/reports/{reports['admin']}</a></div>
+                    <div>Cuttable Payslips: <a href="/static/reports/{reports['payslips_sheet']}">/static/reports/{reports['payslips_sheet']}</a></div>
+                </div>
+            </div>
 
-            <p><a href="/download/payslips_sheet" class="button">Download Cuttable Payslips</a>
-               <a href="/print/payslips" target="_blank" class="print-button">Print-Friendly Payslips</a></p>
-            <p><small>This report contains all employee payslips in a single sheet with cut lines for easy distribution</small></p>
-
-            <p>Alternative download methods:</p>
-            <ul>
-                <li>Admin Report: <a href="/static/reports/{reports['admin']}">/static/reports/{reports['admin']}</a></li>
-                <li>Cuttable Payslips: <a href="/static/reports/{reports['payslips_sheet']}">/static/reports/{reports['payslips_sheet']}</a></li>
-            </ul>
-
-            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                <h3>Create Zoho Books Expense</h3>
-                <p>Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
+            <div class="zoho-section">
+                <h3>💼 Create Zoho Books Expense</h3>
+                <p style="margin-bottom:16px; color:#1565c0; font-size:.95rem;">Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
                 <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
-                    <label for="company">Company to post to:</label>
-                    <select id="company" name="company">
-                        <option value="haute">Haute Brands</option>
-                        <option value="boomin">Boomin Brands</option>
-                    </select>
+                    <div class="form-group">
+                        <label for="company">Company to post to:</label>
+                        <select id="company" name="company">
+                            <option value="haute">Haute Brands</option>
+                            <option value="boomin">Boomin Brands</option>
+                        </select>
+                    </div>
                     <input type="hidden" name="week" value="{week}">
 
-                    <div style="margin-top:8px;">
-                        <label for="custom_desc">Notes (append to description):</label>
-                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." style="width:360px;">
+                    <div class="form-group">
+                        <label for="custom_desc">Notes (optional):</label>
+                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes to append...">
                     </div>
-                    <button type="submit" class="button">Push Expense to Zoho Books</button>
+                    <button type="submit" class="button primary">Push Expense to Zoho Books</button>
+                    <div class="note">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*</div>
                 </form>
                 <script>
                 (function(){{
@@ -3635,8 +3674,8 @@ def success():
                             try {{ payload = await res.clone().json(); }} catch(e) {{ payload = null; }}
                             try {{ textBody = await res.text(); }} catch(e) {{ textBody = ''; }}
                             if (payload && payload.status === 'ok') {{
-                                const msg = payload.duplicate ? ('Expense already exists. ID: ' + payload.expense_id)
-                                                              : ('Expense created successfully. ID: ' + payload.expense_id);
+                                const msg = payload.duplicate ? ('✓ Expense already exists. ID: ' + payload.expense_id)
+                                                              : ('✓ Expense created successfully! ID: ' + payload.expense_id);
                                 alert(msg);
                             }} else {{
                                 const fallback = textBody || (payload ? JSON.stringify(payload) : (res.status + ' ' + res.statusText));
@@ -3650,47 +3689,66 @@ def success():
                     }});
                 }})();
                 </script>
-                <p style="color:#6c757d; font-size: 0.9em;">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
             </div>
         </div>
         """
 
     if 'combined' in reports and 'combined_no_sig' in reports:
         html += f"""
-        <div class="download-section">
-            <h2>Multi-Tab Combined Reports</h2>
-
-            <p><a href="/download/combined" class="button">Download Combined Report (With Signatures)</a></p>
-            <p><small>This report includes a summary page and individual employee sheets with signature lines</small></p>
-
-            <p><a href="/download/combined_no_sig" class="button">Download Combined Report (Without Signatures)</a></p>
-            <p><small>This report includes a summary page and individual employee sheets without signature lines, perfect for distributing</small></p>
+        <div class="card">
+            <h2>📑 Multi-Tab Combined Reports</h2>
+            
+            <div class="report-grid">
+                <div class="report-item">
+                    <div class="report-label">📝 With Signatures</div>
+                    <div class="report-desc">Includes a summary page and individual employee sheets with signature lines</div>
+                    <a href="/download/combined" class="button primary">Download</a>
+                </div>
+                
+                <div class="report-item">
+                    <div class="report-label">📄 Without Signatures</div>
+                    <div class="report-desc">Summary page and individual employee sheets without signature lines, perfect for distributing</div>
+                    <a href="/download/combined_no_sig" class="button primary">Download</a>
+                </div>
+            </div>
         </div>
         """
 
     if 'summary' in reports:
         html += f"""
-        <div class="download-section">
-            <h2>Other Reports</h2>
-
-            <p><a href="/download/summary" class="button">Download Payroll Summary</a></p>
-
-            <p><a href="/download/payslips" class="button">Download Employee Payslips</a></p>
+        <div class="card">
+            <h2>📈 Other Reports</h2>
+            
+            <div class="report-grid">
+                <div class="report-item">
+                    <div class="report-label">💰 Payroll Summary</div>
+                    <div class="report-desc">Detailed summary of all payroll data</div>
+                    <a href="/download/summary" class="button primary">Download</a>
+                </div>
+                
+                <div class="report-item">
+                    <div class="report-label">👥 Employee Payslips</div>
+                    <div class="report-desc">Individual payslips for all employees</div>
+                    <a href="/download/payslips" class="button primary">Download</a>
+                </div>
+            </div>
         </div>
         """
 
     if 'error' in reports:
         html += f"""
-        <div class="download-section">
-            <h2>Error Report</h2>
-            <p>There was an error processing your file. Please check the error report for details.</p>
-
-            <p><a href="/static/reports/{reports['error']}" class="button">View Error Report</a></p>
+        <div class="card" style="border-left:5px solid #ef4444; background:linear-gradient(to right,rgba(239,68,68,.05) 0%,var(--card) 30px);">
+            <h2 style="color:#dc2626;">⚠️ Error Report</h2>
+            <p style="margin-bottom:16px; color:var(--muted);">There was an error processing your file. Please check the error report for details.</p>
+            <a href="/static/reports/{reports['error']}" class="button" style="background:#ef4444;">View Error Report</a>
         </div>
         """
 
     html += """
-        <p><a href="/" class="button">Process Another File</a></p>
+            <div style="text-align:center; margin-top:32px; padding:24px;">
+                <a href="/" class="button primary" style="font-size:1.1rem; padding:14px 32px;">← Process Another File</a>
+            </div>
+        </div>
     </body>
     </html>
     """

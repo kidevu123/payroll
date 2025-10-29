@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.6"
+__version__ = "6.0.7"
 __version_name__ = "Production"
 __release_date__ = "2025-10-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.0.7",
+        "date": "2025-10-28",
+        "changes": [
+            "Complete redesign of success/reports page",
+            "Added prominent success header with checkmark",
+            "Grid layout for report cards with hover effects",
+            "Visual icons for each report type",
+            "Improved Zoho Books expense section with blue gradient",
+            "Better mobile responsiveness"
+        ]
+    },
     {
         "version": "6.0.6",
         "date": "2025-10-28",
