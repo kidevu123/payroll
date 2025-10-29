@@ -1462,17 +1462,17 @@ def manage_rates():
     
     for emp in employees:
         html += f"""
-                            <tr class="hover:bg-gray-50" id="row-{{emp['id']}}">
-                                <td class="px-6 py-4 text-sm text-textDark">{{emp['id']}}</td>
+                            <tr class="hover:bg-gray-50" id="row-{emp['id']}">
+                                <td class="px-6 py-4 text-sm text-textDark">{emp['id']}</td>
                                 <td class="px-6 py-4">
-                                    <span class="rate-display text-sm font-medium text-textDark">${{emp['rate']}}</span>
-                                    <input type="number" class="rate-edit hidden w-32 px-3 py-1 border border-gray-300 rounded-lg" step="0.01" value="{{emp['rate']}}">
+                                    <span class="rate-display text-sm font-medium text-textDark">${emp['rate']}</span>
+                                    <input type="number" class="rate-edit hidden w-32 px-3 py-1 border border-gray-300 rounded-lg" step="0.01" value="{emp['rate']}">
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <button onclick="editRate('{{emp['id']}}')" class="edit-btn px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 mr-2">Edit</button>
-                                    <button onclick="saveRate('{{emp['id']}}')" class="save-btn hidden px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 mr-2">Save</button>
-                                    <button onclick="cancelEdit('{{emp['id']}}')" class="cancel-btn hidden px-4 py-2 bg-gray-500 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 mr-2">Cancel</button>
-                                    <form method="post" action="/delete_rate/{{emp['id']}}" style="display:inline;" onsubmit="return confirm('Delete rate for employee {{emp['id']}}?');">
+                                    <button onclick="editRate('{emp['id']}')" class="edit-btn px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 mr-2">Edit</button>
+                                    <button onclick="saveRate('{emp['id']}')" class="save-btn hidden px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 mr-2">Save</button>
+                                    <button onclick="cancelEdit('{emp['id']}')" class="cancel-btn hidden px-4 py-2 bg-gray-500 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 mr-2">Cancel</button>
+                                    <form method="post" action="/delete_rate/{emp['id']}" style="display:inline;" onsubmit="return confirm('Delete rate for employee {emp['id']}?');">
                                         <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700">Delete</button>
                                     </form>
                                 </td>
