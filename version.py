@@ -3,11 +3,30 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.9"
-__version_name__ = "Enterprise UI Foundation"
-__release_date__ = "2025-10-28"
+__version__ = "6.1.0"
+__version_name__ = "Enterprise SaaS UI"
+__release_date__ = "2025-10-29"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.1.0",
+        "date": "2025-10-29",
+        "changes": [
+            "COMPLETE ENTERPRISE UI REDESIGN - HOME PAGE",
+            "Migrated to TailwindCSS for pixel-perfect enterprise styling",
+            "Implemented professional sidebar navigation (Stripe/Notion style)",
+            "Applied approved enterprise color palette: Deep blue (#1e40af), slate gray, off-white backgrounds",
+            "Added Inter font family for professional typography",
+            "Heroicons SVG integration for consistent iconography",
+            "Sidebar features: Collapsible on mobile, clear hierarchy, hover states",
+            "Home page: Modern card layout, step-by-step instructions, drag-and-drop upload",
+            "What's New section with visual checkmarks and feature highlights",
+            "Professional gradients, shadows, and transitions throughout",
+            "100% responsive: Desktop sidebar, mobile-optimized layout",
+            "ZERO functionality changes - pure visual upgrade",
+            "All calculations, reports, Zoho integration unchanged"
+        ]
+    },
     {
         "version": "6.0.9",
         "date": "2025-10-28",
