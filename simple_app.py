@@ -1719,7 +1719,7 @@ def manage_rates():
         <div class="container">
             <h1>Manage Pay Rates <span class="version-badge">v{APP_VERSION}</span></h1>
             {menu_html}
-            <div class="card">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                 <h2>Current Pay Rates</h2>
     """
 
@@ -1754,7 +1754,7 @@ def manage_rates():
     html += """
             </div>
             
-            <div class="card">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                 <h2>Add New Pay Rate</h2>
                 <form action="/add_rate" method="post">
                     <div class="form-row">
@@ -1771,7 +1771,7 @@ def manage_rates():
                 </form>
             </div>
 
-            <div class="card">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                 <h2>Bulk Import Pay Rates</h2>
                 <p style="margin-bottom: 1.5rem; color: var(--muted);">Upload a CSV file with columns "Person ID" and "Rate".</p>
                 <form action="/import_rates" method="post" enctype="multipart/form-data">
@@ -3768,222 +3768,48 @@ def success():
     reports = session.get('reports', {})
     week = session.get('week', datetime.now().strftime('%Y-%m-%d'))
     username = session.get('username', 'Unknown')
-    menu_html = get_menu_html(username)
+    is_admin = username == 'admin'
+    
+    # Admin menu for sidebar
+    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Manage Users</span>
+                    </a>''' if is_admin else ''
 
-    # Clear the report cache so the reports page will show the new reports
+    # Clear the report cache
     clear_report_cache()
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Processing Successful</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#718096; --primary:#4CAF50; --primary-dark:#388e3c; --accent:#2196F3; --accent-dark:#1976d2; --border:#e6e9f0; --success:#10b981; }}
-            *{{ box-sizing:border-box; margin:0; padding:0; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; padding:32px; }}
-            
-            .container{{ max-width:1200px; margin:0 auto; }}
-            
-            .success-header{{ background:linear-gradient(135deg,#e8f5e9 0%,#c8e6c9 100%); padding:32px; border-radius:14px; text-align:center; margin-bottom:32px; border:1px solid #a5d6a7; box-shadow:0 10px 24px rgba(16,185,129,.12); }}
-            .success-header h1{{ font-size:2rem; font-weight:800; color:var(--primary-dark); margin-bottom:8px; }}
-            .success-header .checkmark{{ font-size:3rem; color:var(--success); margin-bottom:12px; }}
-            .success-header p{{ font-size:1.1rem; color:#2e7d32; font-weight:500; }}
-            
-            h2{{ color:var(--text); font-weight:700; margin-bottom:16px; font-size:1.5rem; }}
-            h3{{ color:var(--text); font-weight:600; margin-bottom:12px; font-size:1.2rem; }}
-            
-            .card{{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px; margin-bottom:24px; box-shadow:0 10px 24px rgba(17,24,39,.06); }}
-            .card.recommended{{ border-left:5px solid var(--primary); background:linear-gradient(to right,rgba(76,175,80,.03) 0%,var(--card) 30px); }}
-            
-            .report-grid{{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin:20px 0; }}
-            .report-item{{ background:#fafbfc; border:1px solid var(--border); border-radius:10px; padding:16px; transition:all .2s; }}
-            .report-item:hover{{ background:#f0f7ff; border-color:var(--accent); transform:translateY(-2px); box-shadow:0 4px 12px rgba(33,150,243,.12); }}
-            .report-label{{ font-weight:600; color:var(--text); margin-bottom:6px; font-size:.95rem; }}
-            .report-desc{{ color:var(--muted); font-size:.85rem; margin-bottom:12px; line-height:1.4; }}
-            
-            .button{{ display:inline-block; padding:10px 20px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .2s; cursor:pointer; font-size:.95rem; margin-right:8px; }}
-            .button.primary{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%); }}
-            .button.secondary{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-dark) 100%); }}
-            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            
-            .zoho-section{{ background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%); padding:20px; border-radius:10px; margin-top:24px; border:1px solid #90caf9; }}
-            .zoho-section h3{{ color:#1565c0; margin-bottom:16px; }}
-            
-            .form-group{{ margin-bottom:16px; }}
-            label{{ display:block; font-weight:600; margin-bottom:6px; color:var(--text); font-size:.9rem; }}
-            select,input[type="text"]{{ width:100%; max-width:400px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); font-size:.95rem; }}
-            select:focus,input[type="text"]:focus{{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
-            
-            .alt-links{{ background:#f8f9fa; padding:16px; border-radius:8px; margin-top:16px; }}
-            .alt-links p{{ font-weight:600; color:var(--text); margin-bottom:8px; font-size:.9rem; }}
-            .alt-links a{{ color:var(--accent-dark); text-decoration:none; font-size:.85rem; word-break:break-all; }}
-            .alt-links a:hover{{ text-decoration:underline; }}
-            
-            .note{{ color:var(--muted); font-size:.85rem; margin-top:12px; padding:10px; background:rgba(113,128,150,.05); border-radius:6px; }}
-            
-            @media(max-width:768px){{ body{{ padding:16px; }} .report-grid{{ grid-template-columns:1fr; }} .button{{ display:block; margin:8px 0; }} }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="success-header">
-                <div class="checkmark">✓</div>
-                <h1>Payroll Processing Complete!</h1>
-                <p>Successfully processed for week {week}</p>
-            </div>
-            {menu_html}
+    # Start HTML with Tailwind
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Complete | Payroll Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}
+    </script>
+</head>
+<body class="bg-bgLight font-sans">
+<div class="flex h-screen overflow-hidden">
+    {admin_menu}
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
+            <p class="text-sm text-secondary mt-1">Week: {week}</p>
+        </header>
+        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+            <div class="max-w-5xl mx-auto">
+                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6 text-center">
+                    <div class="text-5xl mb-3">✓</div>
+                    <h1 class="text-3xl font-bold text-green-800">Payroll Processing Complete!</h1>
+                    <p class="text-green-700 mt-2">Successfully processed for week {week}</p>
+                </div>
     """
-
-    if 'admin' in reports and 'payslips_sheet' in reports:
-        html += f"""
-        <div class="card recommended">
-            <h2>📊 Recommended Reports (Single Sheet)</h2>
-            
-            <div class="report-grid">
-                <div class="report-item">
-                    <div class="report-label">📋 Admin Report</div>
-                    <div class="report-desc">All employee data in a single sheet with signature lines for your records</div>
-                    <a href="/download/admin" class="button primary">Download</a>
-                    <a href="/print/admin" target="_blank" class="button secondary">Print</a>
-                </div>
-                
-                <div class="report-item">
-                    <div class="report-label">✂️ Cuttable Payslips</div>
-                    <div class="report-desc">All employee payslips in a single sheet with cut lines for easy distribution</div>
-                    <a href="/download/payslips_sheet" class="button primary">Download</a>
-                    <a href="/print/payslips" target="_blank" class="button secondary">Print</a>
-                </div>
-            </div>
-
-            <div class="alt-links">
-                <p>Alternative Download Methods:</p>
-                <div style="display:grid; gap:6px; margin-top:8px;">
-                    <div>Admin Report: <a href="/static/reports/{reports['admin']}">/static/reports/{reports['admin']}</a></div>
-                    <div>Cuttable Payslips: <a href="/static/reports/{reports['payslips_sheet']}">/static/reports/{reports['payslips_sheet']}</a></div>
-                </div>
-            </div>
-
-            <div class="zoho-section">
-                <h3>💼 Create Zoho Books Expense</h3>
-                <p style="margin-bottom:16px; color:#1565c0; font-size:.95rem;">Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
-                <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
-                    <div class="form-group">
-                        <label for="company">Company to post to:</label>
-                        <select id="company" name="company">
-                            <option value="haute">Haute Brands</option>
-                            <option value="boomin">Boomin Brands</option>
-                        </select>
-                    </div>
-                    <input type="hidden" name="week" value="{week}">
-
-                    <div class="form-group">
-                        <label for="custom_desc">Notes (optional):</label>
-                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes to append...">
-                    </div>
-                    <button type="submit" class="button primary">Push Expense to Zoho Books</button>
-                    <div class="note">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*</div>
-                </form>
-                <script>
-                (function(){{
-                    const form = document.getElementById('zoho-expense-form');
-                    if(!form) return;
-                    form.addEventListener('submit', async function(ev){{
-                        ev.preventDefault();
-                        const data = new FormData(form);
-                        data.append('ajax','1');
-                        const btn = form.querySelector('button[type="submit"]');
-                        if(btn){{ btn.disabled = true; btn.textContent = 'Pushing...'; }}
-                        try {{
-                            const res = await fetch(form.action, {{ method: 'POST', body: data, headers: {{'X-Requested-With':'XMLHttpRequest'}} }});
-                            let payload = null;
-                            let textBody = '';
-                            try {{ payload = await res.clone().json(); }} catch(e) {{ payload = null; }}
-                            try {{ textBody = await res.text(); }} catch(e) {{ textBody = ''; }}
-                            if (payload && payload.status === 'ok') {{
-                                const msg = payload.duplicate ? ('✓ Expense already exists. ID: ' + payload.expense_id)
-                                                              : ('✓ Expense created successfully! ID: ' + payload.expense_id);
-                                alert(msg);
-                            }} else {{
-                                const fallback = textBody || (payload ? JSON.stringify(payload) : (res.status + ' ' + res.statusText));
-                                alert('Expense push response: ' + fallback);
-                            }}
-                        }} catch (err) {{
-                            alert('Error creating expense: ' + err);
-                        }} finally {{
-                            if(btn){{ btn.disabled = false; btn.textContent = 'Push Expense to Zoho Books'; }}
-                        }}
-                    }});
-                }})();
-                </script>
-            </div>
-        </div>
-        """
-
-    if 'combined' in reports and 'combined_no_sig' in reports:
-        html += f"""
-        <div class="card">
-            <h2>📑 Multi-Tab Combined Reports</h2>
-            
-            <div class="report-grid">
-                <div class="report-item">
-                    <div class="report-label">📝 With Signatures</div>
-                    <div class="report-desc">Includes a summary page and individual employee sheets with signature lines</div>
-                    <a href="/download/combined" class="button primary">Download</a>
-                </div>
-                
-                <div class="report-item">
-                    <div class="report-label">📄 Without Signatures</div>
-                    <div class="report-desc">Summary page and individual employee sheets without signature lines, perfect for distributing</div>
-                    <a href="/download/combined_no_sig" class="button primary">Download</a>
-                </div>
-            </div>
-        </div>
-        """
-
-    if 'summary' in reports:
-        html += f"""
-        <div class="card">
-            <h2>📈 Other Reports</h2>
-            
-            <div class="report-grid">
-                <div class="report-item">
-                    <div class="report-label">💰 Payroll Summary</div>
-                    <div class="report-desc">Detailed summary of all payroll data</div>
-                    <a href="/download/summary" class="button primary">Download</a>
-                </div>
-                
-                <div class="report-item">
-                    <div class="report-label">👥 Employee Payslips</div>
-                    <div class="report-desc">Individual payslips for all employees</div>
-                    <a href="/download/payslips" class="button primary">Download</a>
-                </div>
-            </div>
-        </div>
-        """
-
-    if 'error' in reports:
-        html += f"""
-        <div class="card" style="border-left:5px solid #ef4444; background:linear-gradient(to right,rgba(239,68,68,.05) 0%,var(--card) 30px);">
-            <h2 style="color:#dc2626;">⚠️ Error Report</h2>
-            <p style="margin-bottom:16px; color:var(--muted);">There was an error processing your file. Please check the error report for details.</p>
-            <a href="/static/reports/{reports['error']}" class="button" style="background:#ef4444;">View Error Report</a>
-        </div>
-        """
-
-    html += """
-            <div style="text-align:center; margin-top:32px; padding:24px;">
-                <a href="/" class="button primary" style="font-size:1.1rem; padding:14px 32px;">← Process Another File</a>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    return render_template_string(html)
-
 @app.route('/print/<report_type>')
 def print_friendly(report_type):
     """Generate a print-friendly version of a report"""
@@ -4376,7 +4202,14 @@ def print_friendly(report_type):
                 </div>
             </body>
             </html>
-            """
+            
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
+    """
 
             return render_template_string(html)
 
