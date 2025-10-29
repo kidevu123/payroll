@@ -5841,14 +5841,6 @@ def confirm_employees():
         username = session.get('username', 'Unknown')
         is_admin = username == 'admin'
         
-        # Admin menu for sidebar
-        admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <span>Manage Users</span>
-                        </a>''' if is_admin else ''
-        
         file_path = session.get('uploaded_file')
         if not file_path:
             return "No file found in session. Please upload again.", 400
@@ -5857,89 +5849,38 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
+        # Simple HTML without complex template
         html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Employees | Payroll Management</title>
+<html>
+<head><title>Confirm Employees</title></head>
+<body style="font-family: Arial; padding: 20px;">
+    <h1>Confirm Employees for Payroll</h1>
+    <p>Select employees to include:</p>
+    <div id="employee-list"></div>
+    <br>
+    <a href="/" style="padding: 10px 20px; background: #ccc; text-decoration: none; margin-right: 10px;">Cancel</a>
+    <button onclick="processPayroll()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer;">Confirm & Process</button>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Inter Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {{{{
-            theme: {{{{
-                extend: {{{{
-                    colors: {{{{
-                        primary: '#1e40af',
-                        secondary: '#64748b',
-                        bgLight: '#f8fafc',
-                        textDark: '#0f172a',
-                        accent: '#0ea5e9',
-                        success: '#10b981',
-                        danger: '#ef4444'
-                    }}}},
-                    fontFamily: {{{{
-                        sans: ['Inter', 'system-ui', 'sans-serif']
-                    }}}}
-                }}}}
-            }}}}
-        }}}}
-    </script>
-</head>
-<body class="bg-bgLight font-sans">
-    <div class="flex h-screen overflow-hidden">
-        {admin_menu}
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <header class="bg-white border-b border-gray-200 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-2xl font-bold text-textDark">Confirm Employees</h2>
-                        <p class="text-sm text-secondary mt-1">Select employees to include</p>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">v{{get_version()}}</span>
-                        <span class="font-medium text-textDark">{{username}}</span>
-                    </div>
-                </div>
-            </header>
-            <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-                <div class="max-w-4xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-                        <div class="px-6 py-4 border-b"><h3 class="text-lg font-semibold">Employee List</h3></div>
-                        <div class="p-6"><div id="employee-list" class="space-y-3"></div></div>
-                        <div class="px-6 py-4 bg-gray-50 border-t flex justify-end space-x-3">
-                            <a href="/" class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg">Cancel</a>
-                            <button onclick="processPayroll()" class="px-8 py-2.5 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg">Confirm & Process</button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
     <script>
         const employees = """ + employees_json + """;
-        function populateEmployees() {{{{
+        function populateEmployees() {{
             const list = document.getElementById('employee-list');
-            employees.forEach(emp => {{{{
+            employees.forEach(emp => {{
                 const div = document.createElement('div');
-                div.className = 'flex items-center p-4 bg-gray-50 rounded-lg border';
-                div.innerHTML = `<input type="checkbox" class="w-5 h-5" value="${{{{emp['Person ID']}}}}" checked><span class="flex-1 ml-4 font-semibold">${{{{emp['First Name']}}}} ${{{{emp['Last Name']}}}}</span><span class="px-3 py-1 bg-blue-100 text-sm font-semibold rounded">ID: ${{{{emp['Person ID']}}}}</span>`;
+                div.style.padding = '10px';
+                div.style.marginBottom = '5px';
+                div.style.background = '#f0f0f0';
+                div.innerHTML = `<input type="checkbox" value="${{emp['Person ID']}}" checked> ${{emp['First Name']}} ${{emp['Last Name']}} (ID: ${{emp['Person ID']}})`;
                 list.appendChild(div);
-            }}}});
-        }}}}
-        function processPayroll() {{{{
+            }});
+        }}
+        function processPayroll() {{
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            if (selectedIds.length === 0) {{{{ alert('Please select at least one employee.'); return; }}}}
-            fetch('/confirm_and_process', {{{{ method: 'POST', headers: {{{{ 'Content-Type': 'application/json' }}}}, body: JSON.stringify({{{{ employee_ids: selectedIds }}}}) }}}}).then(response => {{{{ if (response.ok) window.location.href = '/process_confirmed'; else alert('Error processing payroll.'); }}}});
-        }}}}
+            if (selectedIds.length === 0) {{alert('Select at least one employee.'); return;}}
+            fetch('/confirm_and_process', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({{employee_ids: selectedIds}})}})
+            .then(response => {{if (response.ok) window.location.href = '/process_confirmed'; else alert('Error');}});
+        }}
         populateEmployees();
     </script>
 </body>
