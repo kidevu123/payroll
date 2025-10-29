@@ -5849,8 +5849,8 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
-        # Simple HTML without complex template
-        html = f"""<!DOCTYPE html>
+        # Using string concatenation to avoid f-string issues
+        html = """<!DOCTYPE html>
 <html>
 <head><title>Confirm Employees</title></head>
 <body style="font-family: Arial; padding: 20px;">
@@ -5863,24 +5863,24 @@ def confirm_employees():
     
     <script>
         const employees = """ + employees_json + """;
-        function populateEmployees() {{
+        function populateEmployees() {
             const list = document.getElementById('employee-list');
-            employees.forEach(emp => {{
+            employees.forEach(emp => {
                 const div = document.createElement('div');
                 div.style.padding = '10px';
                 div.style.marginBottom = '5px';
                 div.style.background = '#f0f0f0';
-                div.innerHTML = `<input type="checkbox" value="${{emp['Person ID']}}" checked> ${{emp['First Name']}} ${{emp['Last Name']}} (ID: ${{emp['Person ID']}})`;
+                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> ' + emp['First Name'] + ' ' + emp['Last Name'] + ' (ID: ' + emp['Person ID'] + ')';
                 list.appendChild(div);
-            }});
-        }}
-        function processPayroll() {{
+            });
+        }
+        function processPayroll() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            if (selectedIds.length === 0) {{alert('Select at least one employee.'); return;}}
-            fetch('/confirm_and_process', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({{employee_ids: selectedIds}})}})
-            .then(response => {{if (response.ok) window.location.href = '/process_confirmed'; else alert('Error');}});
-        }}
+            if (selectedIds.length === 0) {alert('Select at least one employee.'); return;}
+            fetch('/confirm_and_process', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({employee_ids: selectedIds})})
+            .then(response => {if (response.ok) window.location.href = '/process_confirmed'; else alert('Error');});
+        }
         populateEmployees();
     </script>
 </body>
@@ -5889,7 +5889,7 @@ def confirm_employees():
         return render_template_string(html)
     except Exception as e:
         import traceback
-        return f"Error: {{str(e)}}<br><pre>{{traceback.format_exc()}}</pre>", 500
+        return f"Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
 
 @app.route('/confirm_and_process', methods=['POST'])
 @login_required
