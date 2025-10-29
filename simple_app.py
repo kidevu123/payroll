@@ -4921,90 +4921,104 @@ def zoho_create_expense_route():
 @login_required
 def manage_users():
     """Manage system users"""
-    # Only admin can manage users
     username = session.get('username', 'Unknown')
     if username != 'admin':
         return redirect(url_for('index'))
+    
+    is_admin = True  # Already checked above
+    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-primary/10 text-primary">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Manage Users</span>
+                    </a>'''
 
     users = load_users()
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Manage Users</title>
-        <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --danger:#dc3545; --accent:#2196F3; --border:#e6e9f0; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            h1,h2{{ color:var(--text); }}
-            form{{ margin:20px 0; }}
-            .button{{ display:inline-block; padding:10px 15px; background:linear-gradient(135deg,var(--primary) 0%, #388e3c 100%); color:#fff; border:none; cursor:pointer; margin-top:10px; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); }}
-            .delete-button{{ display:inline-block; padding:6px 10px; background-color: var(--danger); color:#fff; border:none; cursor:pointer; font-size:.8em; margin-left:10px; border-radius:8px; }}
-            table{{ width:100%; border-collapse:collapse; margin:20px 0; }}
-            th,td{{ padding:10px; border:1px solid var(--border); text-align:left; }}
-            th{{ background:#f2f6ff; }}
-            tr:nth-child(even){{ background:#fafbff; }}
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
-            .admin-badge{{ display:inline-block; padding:2px 8px; background-color:#007bff; color:#fff; border-radius:10px; font-size:.8em; margin-left:10px; }}
-        </style>
-    </head>
-    <body>
-        <h1>Manage Users <span style="font-size:.6em; color:#6c757d; font-weight:600;">{get_version_display()}</span></h1>
-
-    {get_menu_html(username)}
-
-        <h2>Current Users</h2>
-    """
-
-    if users:
-        html += """
-        <table>
-            <tr>
-                <th>Username</th>
-                <th>Actions</th>
-            </tr>
-        """
-
-        for username in users:
-            is_admin = username == 'admin'
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users | Payroll</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+</head>
+<body class="bg-bgLight font-sans">
+<div class="flex h-screen overflow-hidden">
+    {admin_menu}
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h2 class="text-2xl font-bold text-textDark">Manage Users</h2>
+            <p class="text-sm text-secondary mt-1">Add and remove system users</p>
+        </header>
+        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-textDark">Current Users</h3>
+                    </div>
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Username</th>
+                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+"""
+    
+    for user in users.keys():
+        is_admin_user = user == 'admin'
+        if is_admin_user:
             html += f"""
-            <tr>
-                <td>{username} {' <span class="admin-badge">Admin</span>' if is_admin else ''}</td>
-                <td>
-                    {'<em>Cannot delete admin</em>' if is_admin else f'''
-                    <form action="/delete_user" method="post" style="margin:0;display:inline;">
-                        <input type="hidden" name="username" value="{username}">
-                        <button type="submit" class="delete-button" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
-                    </form>
-                    '''}
-                </td>
-            </tr>
-            """
-
-        html += "</table>"
-    else:
-        html += "<p>No users configured yet.</p>"
-
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-textDark">
+                                    {user}
+                                    <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">Admin</span>
+                                </td>
+                                <td class="px-6 py-4 text-right text-sm text-secondary italic">Cannot delete admin</td>
+                            </tr>
+"""
+        else:
+            html += f"""
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-textDark">{user}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <form method="post" action="/delete_user/{user}" style="display:inline;" onsubmit="return confirm('Delete user {user}?');">
+                                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+"""
+    
     html += """
-        <h2>Add New User</h2>
-        <form action="/add_user" method="post">
-            <div>
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-textDark mb-4">Add New User</h3>
+                    <form method="post" action="/add_user" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-textDark mb-2">Username</label>
+                            <input type="text" name="username" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-textDark mb-2">Password</label>
+                            <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <button type="submit" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Add User</button>
+                    </form>
+                </div>
             </div>
-            <div style="margin-top: 10px;">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            <button type="submit" class="button">Add User</button>
-        </form>
-    </body>
-    </html>
-    """
-
+        </main>
+    </div>
+</div>
+</body>
+</html>"""
+    
     return render_template_string(html)
 
 @app.route('/add_user', methods=['POST'])
