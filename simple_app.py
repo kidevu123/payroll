@@ -3617,9 +3617,11 @@ def success():
                     </div>
                 </div>
 
-            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #ccc;">
-                <h3>Create Zoho Books Expense</h3>
-                <p>Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
+                
+                <!-- Zoho Books Integration -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6 mt-6">
+                    <h3 class="text-lg font-semibold text-textDark mb-2">💼 Zoho Books Integration</h3>
+                    <p class="text-sm text-secondary mb-4">Automatically create an expense and attach the admin report</p>
                 <form id="zoho-expense-form" action="/zoho/create_expense" method="post" class="space-y-4">
                     <label for="company">Company to post to:</label>
                     <select id="company" name="company" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
@@ -3632,7 +3634,7 @@ def success():
                         <label for="custom_desc">Notes (append to description):</label>
                         <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
                     </div>
-                    <button type="submit" class="button">Push Expense to Zoho Books</button>
+                    <button type="submit" class="px-6 py-3 bg-success text-white font-semibold rounded-lg hover:bg-success/90 transition-colors">🚀 Push to Zoho Books</button>
                 </form>
                 <script>
                 (function(){{
@@ -3666,7 +3668,7 @@ def success():
                     }});
                 }})();
                 </script>
-                <p style="color:#6c757d; font-size: 0.9em;">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
+                <p class="text-xs text-secondary mt-4">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
             </div>
         </div>
         """
@@ -3697,16 +3699,22 @@ def success():
 
     if 'error' in reports:
         html += f"""
-        <div class="download-section">
-            <h2>Error Report</h2>
-            <p>There was an error processing your file. Please check the error report for details.</p>
-
-            <p><a href="/static/reports/{reports['error']}" class="button">View Error Report</a></p>
-        </div>
+                <!-- Error Report -->
+                <div class="bg-red-50 rounded-xl border border-red-200 p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-red-800 mb-2">⚠️ Error Report</h3>
+                    <p class="text-sm text-red-700 mb-4">There was an error processing your file. Check details below.</p>
+                    <a href="/static/reports/{reports['error']}" class="px-4 py-2 bg-danger text-white font-semibold rounded-lg hover:bg-danger/90 transition-colors inline-block">
+                        📄 View Error Report
+                    </a>
+                </div>
         """
 
     html += """
-        <p><a href="/" class="button">Process Another File</a></p>
+                <div class="text-center">
+                    <a href="/" class="px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors inline-block">
+                        🔄 Process Another File
+                    </a>
+                </div>
     </body>
     </html>
     """
