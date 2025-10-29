@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.7"
+__version__ = "6.0.8"
 __version_name__ = "Production"
 __release_date__ = "2025-10-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.0.8",
+        "date": "2025-10-28",
+        "changes": [
+            "Professional menu bar redesign across entire site",
+            "Consistent button styling for all navigation items",
+            "Color-coded buttons: Green (Home), Blue (Actions), Red (Logout)",
+            "Smooth hover effects and transitions",
+            "User info badge on the right with icon",
+            "Mobile responsive with flexbox layout"
+        ]
+    },
     {
         "version": "6.0.7",
         "date": "2025-10-28",

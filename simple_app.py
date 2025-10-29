@@ -890,19 +890,91 @@ def get_menu_html(username):
     """Generate HTML for the menu bar based on user role"""
     is_admin = username == 'admin'
 
-    # Use proper string concatenation to avoid issues with nested quotes and f-strings
-    admin_link = '<a href="/manage_users">Manage Users</a>' if is_admin else ''
+    # Build admin link if user is admin
+    admin_link = '<a href="/manage_users" class="menu-btn">Manage Users</a>' if is_admin else ''
 
-    return '''
-    <div class="menu">
-        <a href="/">Home</a>
-        <a href="/fetch_timecard" style="background-color: #2196F3;">Fetch from NGTeco</a>
-        <a href="/manage_rates">Manage Pay Rates</a>
-        <a href="/reports">Reports</a>
-        ''' + admin_link + '''
-        <a href="/change_password">Change Password</a>
-        <a href="/logout">Logout</a>
-        <span class="user-info">Logged in as: ''' + username + '''</span>
+    return f'''
+    <style>
+        .menu-container {{
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e6e9f0;
+            border-radius: 14px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 10px rgba(17,24,39,.04);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }}
+        .menu-btn {{
+            display: inline-block;
+            padding: 10px 18px;
+            background: linear-gradient(135deg, #2196F3 0%, #1976d2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(33,150,243,.2);
+            border: none;
+        }}
+        .menu-btn:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(33,150,243,.3);
+            background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+        }}
+        .menu-btn.home {{
+            background: linear-gradient(135deg, #4CAF50 0%, #388e3c 100%);
+            box-shadow: 0 2px 6px rgba(76,175,80,.2);
+        }}
+        .menu-btn.home:hover {{
+            background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+            box-shadow: 0 4px 10px rgba(76,175,80,.3);
+        }}
+        .menu-btn.logout {{
+            background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
+            box-shadow: 0 2px 6px rgba(244,67,54,.2);
+        }}
+        .menu-btn.logout:hover {{
+            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+            box-shadow: 0 4px 10px rgba(244,67,54,.3);
+        }}
+        .menu-user-info {{
+            margin-left: auto;
+            padding: 8px 16px;
+            background: rgba(33,150,243,.08);
+            border-radius: 8px;
+            color: #1976d2;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }}
+        @media (max-width: 768px) {{
+            .menu-container {{
+                padding: 12px 16px;
+                gap: 8px;
+            }}
+            .menu-btn {{
+                padding: 8px 14px;
+                font-size: 0.85rem;
+            }}
+            .menu-user-info {{
+                margin-left: 0;
+                width: 100%;
+                text-align: center;
+            }}
+        }}
+    </style>
+    <div class="menu-container">
+        <a href="/" class="menu-btn home">Home</a>
+        <a href="/fetch_timecard" class="menu-btn">Fetch from NGTeco</a>
+        <a href="/manage_rates" class="menu-btn">Manage Pay Rates</a>
+        <a href="/reports" class="menu-btn">Reports</a>
+        {admin_link}
+        <a href="/change_password" class="menu-btn">Change Password</a>
+        <a href="/logout" class="menu-btn logout">Logout</a>
+        <span class="menu-user-info">👤 {username}</span>
     </div>
     '''
 
