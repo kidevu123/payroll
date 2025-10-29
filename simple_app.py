@@ -3541,9 +3541,9 @@ def success():
     reports = session.get('reports', {})
     week = session.get('week', datetime.now().strftime('%Y-%m-%d'))
     username = session.get('username', 'Unknown')
-    is_admin = username == 'admin'
     
     sidebar = get_enterprise_sidebar(username, 'success')
+
     # Admin menu for sidebar
     admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3570,7 +3570,7 @@ def success():
 </head>
 <body class="bg-bgLight font-sans">
 <div class="flex h-screen overflow-hidden">
-    {sidebar}
+    {admin_menu}
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
