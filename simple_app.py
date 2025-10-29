@@ -3544,45 +3544,40 @@ def success():
     
     sidebar = get_enterprise_sidebar(username, 'success')
 
-    # Clear the report cache so the reports page will show the new reports
+    # Clear the report cache
     clear_report_cache()
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Processing Successful</title>
-        <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }}
-            *{{ box-sizing:border-box; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; color:var(--text); background:var(--bg); }}
-            h1{{ color:var(--text); margin:8px 0 18px; font-weight:700; }}
-            h2{{ color:var(--text); margin:0 0 12px; font-weight:600; }}
-
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
-
-            .button,.print-button{{ display:inline-block; padding:10px 16px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .15s ease; }}
-            .button{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); }}
-            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            .print-button{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-700) 100%); }}
-            .print-button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-
-            .download-section{{ background:var(--card); padding:22px; border-radius:14px; margin:20px 0; border:1px solid var(--border); box-shadow:0 10px 24px rgba(17,24,39,.06); }}
-            .recommended{{ border-left:6px solid var(--primary); padding-left:16px; }}
-            small{{ color:var(--muted); }}
-
-            label{{ font-weight:600; margin-right:8px; color:var(--text); }}
-            select, input[type="text"]{{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); }}
-            select:focus, input[type="text"]:focus{{ border-color:var(--accent-700); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
-        </style>
-    </head>
-    <body>
-        <h1>Processing Successful</h1>
-        {sidebar}
-        <p>Your file was successfully processed for week {week}.</p>
+    # Start HTML with Tailwind
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Complete | Payroll Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}
+    </script>
+</head>
+<body class="bg-bgLight font-sans">
+<div class="flex h-screen overflow-hidden">
+    {sidebar}
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
+            <p class="text-sm text-secondary mt-1">Week: {week}</p>
+        </header>
+        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+            <div class="max-w-5xl mx-auto">
+                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6 text-center">
+                    <div class="text-5xl mb-3">✓</div>
+                    <h1 class="text-3xl font-bold text-green-800">Payroll Processing Complete!</h1>
+                    <p class="text-green-700 mt-2">Successfully processed for week {week}</p>
+                </div>
+                
+                <!-- Reports Section -->
+                <div class="space-y-6">
     """
 
     if 'admin' in reports and 'payslips_sheet' in reports:
@@ -3697,10 +3692,17 @@ def success():
     </body>
     </html>
     """
+
+    html += """
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>
+    """
     return html
-
-    return render_template_string(html)
-
 
 @app.route('/print/<report_type>')
 def print_friendly(report_type):
