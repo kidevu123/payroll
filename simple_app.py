@@ -3582,29 +3582,47 @@ def success():
 
     if 'admin' in reports and 'payslips_sheet' in reports:
         html += f"""
-        <div class="download-section recommended">
-            <h2>Recommended Reports (Single Sheet)</h2>
-
-            <p><a href="/download/admin" class="button">Download Admin Report</a>
-               <a href="/print/admin" target="_blank" class="print-button">Print-Friendly Admin Report</a></p>
-            <p><small>This report contains all employee data in a single sheet with signature lines for your records</small></p>
-
-            <p><a href="/download/payslips_sheet" class="button">Download Cuttable Payslips</a>
-               <a href="/print/payslips" target="_blank" class="print-button">Print-Friendly Payslips</a></p>
-            <p><small>This report contains all employee payslips in a single sheet with cut lines for easy distribution</small></p>
-
-            <p>Alternative download methods:</p>
-            <ul>
-                <li>Admin Report: <a href="/static/reports/{reports['admin']}">/static/reports/{reports['admin']}</a></li>
-                <li>Cuttable Payslips: <a href="/static/reports/{reports['payslips_sheet']}">/static/reports/{reports['payslips_sheet']}</a></li>
-            </ul>
+                <!-- Admin & Payslips Reports -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-textDark mb-4">📊 Recommended Reports</h3>
+                    
+                    <!-- Admin Report -->
+                    <div class="mb-6 pb-6 border-b border-gray-200">
+                        <h4 class="font-medium text-textDark mb-2">Admin Report (Single Sheet)</h4>
+                        <p class="text-sm text-secondary mb-4">All employee data with signature lines</p>
+                        <div class="flex gap-3">
+                            <a href="/download/admin" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
+                                📥 Download Excel
+                            </a>
+                            <a href="/print/admin" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
+                                🖨️ Print Version
+                            </a>
+                        </div>
+                        <p class="text-xs text-secondary mt-2">Direct link: <a href="/static/reports/{reports['admin']}" class="text-accent hover:underline">{reports['admin']}</a></p>
+                    </div>
+                    
+                    <!-- Payslips Report -->
+                    <div>
+                        <h4 class="font-medium text-textDark mb-2">Cuttable Payslips</h4>
+                        <p class="text-sm text-secondary mb-4">All payslips with cut lines for distribution</p>
+                        <div class="flex gap-3">
+                            <a href="/download/payslips_sheet" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
+                                📥 Download Excel
+                            </a>
+                            <a href="/print/payslips" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
+                                🖨️ Print Version
+                            </a>
+                        </div>
+                        <p class="text-xs text-secondary mt-2">Direct link: <a href="/static/reports/{reports['payslips_sheet']}" class="text-accent hover:underline">{reports['payslips_sheet']}</a></p>
+                    </div>
+                </div>
 
             <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #ccc;">
                 <h3>Create Zoho Books Expense</h3>
                 <p>Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
-                <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
+                <form id="zoho-expense-form" action="/zoho/create_expense" method="post" class="space-y-4">
                     <label for="company">Company to post to:</label>
-                    <select id="company" name="company">
+                    <select id="company" name="company" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
                         <option value="haute">Haute Brands</option>
                         <option value="boomin">Boomin Brands</option>
                     </select>
@@ -3612,7 +3630,7 @@ def success():
 
                     <div style="margin-top:8px;">
                         <label for="custom_desc">Notes (append to description):</label>
-                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." style="width:360px;">
+                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
                     </div>
                     <button type="submit" class="button">Push Expense to Zoho Books</button>
                 </form>
