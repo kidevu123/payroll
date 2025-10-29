@@ -3557,7 +3557,7 @@ def success():
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
-        tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}
+        tailwind.config = {theme: {extend: {colors: {primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}, fontFamily: {sans: ['Inter', 'system-ui', 'sans-serif']}}}}
     </script>
 </head>
 <body class="bg-bgLight font-sans">
