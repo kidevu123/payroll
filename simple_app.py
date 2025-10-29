@@ -1408,7 +1408,7 @@ def index():
 
 
     """
-    return render_template_string(html)
+    return html
 
 @app.route('/manage_rates')
 @login_required
@@ -1532,7 +1532,7 @@ function saveRate(id) {
 </body>
 </html>"""
     
-    return render_template_string(html)
+    return html
 
 @app.route('/add_rate', methods=['POST'])
 def add_rate():
@@ -2968,7 +2968,7 @@ def validate():
         </html>
         """
 
-        return render_template_string(html)
+        return html
 
     except Exception as e:
         import traceback
@@ -3976,7 +3976,7 @@ def print_friendly(report_type):
 </html>
     """
 
-            return render_template_string(html)
+            return html
 
         elif report_type == 'payslips':
             filename = session.get('reports', {}).get('payslips_sheet', '')
@@ -4438,7 +4438,7 @@ def print_friendly(report_type):
             </html>
             """
 
-            return render_template_string(html)
+            return html
         else:
             return "Invalid report type for printing", 400
     except Exception as e:
@@ -5206,7 +5206,7 @@ def fetch_timecard():
         </body>
         </html>
         """
-        return render_template_string(html)
+        return html
 
     # POST - Process the request
     method = request.form.get('method', 'paste')
@@ -5498,7 +5498,7 @@ def confirm_employees():
 </body>
 </html>"""
         
-        return render_template_string(html)
+        return html
     except Exception as e:
         import traceback
         return f"Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
