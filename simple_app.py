@@ -5849,8 +5849,7 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
-        html = f"""
-<!DOCTYPE html>
+        html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -5887,198 +5886,61 @@ def confirm_employees():
     </script>
 </head>
 <body class="bg-bgLight font-sans">
-    <!-- Sidebar Navigation -->
     <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r border-gray-200 flex-shrink-0 hidden lg:block">
-            <div class="h-full flex flex-col">
-                <!-- Logo -->
-                <div class="px-6 py-6 border-b border-gray-200">
-                    <div class="flex items-center space-x-3">
-                        <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                            <h1 class="text-lg font-bold text-textDark">Payroll</h1>
-                            <p class="text-xs text-secondary">Management</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Navigation -->
-                <nav class="flex-1 px-4 py-6 space-y-1">
-                    <a href="/" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        <span>Home</span>
-                    </a>
-                    
-                    <a href="/fetch_timecard" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                        </svg>
-                        <span>Fetch from NGTeco</span>
-                    </a>
-                    
-                    <a href="/manage_rates" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Pay Rates</span>
-                    </a>
-                    
-                    <a href="/reports" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>Reports</span>
-                    </a>
-                    
-                    {admin_menu}
-                </nav>
-                
-                <!-- Bottom Section -->
-                <div class="px-4 py-4 border-t border-gray-200 space-y-1">
-                    <a href="/change_password" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                        </svg>
-                        <span>Change Password</span>
-                    </a>
-                    
-                    <a href="/logout" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-danger hover:bg-danger/10 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <span>Logout</span>
-                    </a>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
+        {admin_menu}
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Bar -->
             <header class="bg-white border-b border-gray-200 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-2xl font-bold text-textDark">Confirm Employees</h2>
-                        <p class="text-sm text-secondary mt-1">Select employees to include in this payroll run</p>
+                        <p class="text-sm text-secondary mt-1">Select employees to include</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">v{get_version()}</span>
-                        <div class="flex items-center space-x-2 text-sm">
-                            <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span class="font-medium text-textDark">{username}</span>
-                        </div>
+                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">v{{get_version()}}</span>
+                        <span class="font-medium text-textDark">{{username}}</span>
                     </div>
                 </div>
             </header>
-
-            <!-- Scrollable Content -->
-            <main class="flex-1 overflow-y-auto bg-bgLight">
-                <div class="max-w-4xl mx-auto px-6 py-8">
-                    
-                    <!-- Instructions -->
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                        <div class="flex items-start">
-                            <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div>
-                                <p class="text-sm font-medium text-textDark">Review and select which employees to include in this payroll run.</p>
-                                <p class="text-sm text-secondary mt-1">Uncheck any employees you want to exclude from processing.</p>
-                            </div>
+            <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b"><h3 class="text-lg font-semibold">Employee List</h3></div>
+                        <div class="p-6"><div id="employee-list" class="space-y-3"></div></div>
+                        <div class="px-6 py-4 bg-gray-50 border-t flex justify-end space-x-3">
+                            <a href="/" class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg">Cancel</a>
+                            <button onclick="processPayroll()" class="px-8 py-2.5 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg">Confirm & Process</button>
                         </div>
                     </div>
-                    
-                    <!-- Employee List Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                            <h3 class="text-lg font-semibold text-textDark">Employee List</h3>
-                        </div>
-                        <div class="p-6">
-                            <div id="employee-list" class="space-y-3">
-                                <!-- Populated by JavaScript -->
-                            </div>
-                        </div>
-                        
-                        <!-- Action Buttons -->
-                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
-                            <a href="/" class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center space-x-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span>Cancel</span>
-                            </a>
-                            <button onclick="processPayroll()" class="px-8 py-2.5 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5 flex items-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <span>Confirm & Process</span>
-                            </button>
-                        </div>
-                    </div>
-
                 </div>
             </main>
         </div>
     </div>
-
     <script>
         const employees = """ + employees_json + """;
-        
         function populateEmployees() {{{{
             const list = document.getElementById('employee-list');
             employees.forEach(emp => {{{{
                 const div = document.createElement('div');
-                div.className = 'flex items-center p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-all';
-                div.innerHTML = `
-                    <input type="checkbox" 
-                           class="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary focus:ring-2 cursor-pointer" 
-                           value="${{{{emp['Person ID']}}}}" 
-                           checked>
-                    <span class="flex-1 ml-4 font-semibold text-textDark">${{{{emp['First Name']}}}} ${{{{emp['Last Name']}}}}</span>
-                    <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-semibold rounded-md">ID: ${{{{emp['Person ID']}}}}</span>
-                `;
+                div.className = 'flex items-center p-4 bg-gray-50 rounded-lg border';
+                div.innerHTML = `<input type="checkbox" class="w-5 h-5" value="${{{{emp['Person ID']}}}}" checked><span class="flex-1 ml-4 font-semibold">${{{{emp['First Name']}}}} ${{{{emp['Last Name']}}}}</span><span class="px-3 py-1 bg-blue-100 text-sm font-semibold rounded">ID: ${{{{emp['Person ID']}}}}</span>`;
                 list.appendChild(div);
             }}}});
         }}}}
-        
         function processPayroll() {{{{
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            
-            if (selectedIds.length === 0) {{{{
-                alert('Please select at least one employee.');
-                return;
-            }}}}
-            
-            fetch('/confirm_and_process', {{{{
-                method: 'POST',
-                headers: {{{{ 'Content-Type': 'application/json' }}}},
-                body: JSON.stringify({{{{ employee_ids: selectedIds }}}})
-            }}}}).then(response => {{{{
-                if (response.ok) window.location.href = '/process_confirmed';
-                else alert('Error processing payroll.');
-            }}}});
+            if (selectedIds.length === 0) {{{{ alert('Please select at least one employee.'); return; }}}}
+            fetch('/confirm_and_process', {{{{ method: 'POST', headers: {{{{ 'Content-Type': 'application/json' }}}}, body: JSON.stringify({{{{ employee_ids: selectedIds }}}}) }}}}).then(response => {{{{ if (response.ok) window.location.href = '/process_confirmed'; else alert('Error processing payroll.'); }}}});
         }}}}
-        
         populateEmployees();
     </script>
 </body>
-</html>
-
-        """
+</html>"""
         
         return render_template_string(html)
     except Exception as e:
         import traceback
-        return f"Error: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
-
+        return f"Error: {{str(e)}}<br><pre>{{traceback.format_exc()}}</pre>", 500
 
 @app.route('/confirm_and_process', methods=['POST'])
 @login_required
