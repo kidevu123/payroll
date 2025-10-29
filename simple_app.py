@@ -886,96 +886,173 @@ def create_report(df, week_str):
 
 # ========== ROUTES ==========
 
-def get_menu_html(username):
-    """Generate HTML for the menu bar based on user role"""
-    is_admin = username == 'admin'
-
-    # Build admin link if user is admin
-    admin_link = '<a href="/manage_users" class="menu-btn">Manage Users</a>' if is_admin else ''
-
+def get_base_html_head(title="Payroll Management"):
+    """Generate consistent HTML head with Bootstrap 5 and custom styles"""
     return f'''
-    <style>
-        .menu-container {{
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid #e6e9f0;
-            border-radius: 14px;
-            padding: 16px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 10px rgba(17,24,39,.04);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 10px;
-        }}
-        .menu-btn {{
-            display: inline-block;
-            padding: 10px 18px;
-            background: linear-gradient(135deg, #2196F3 0%, #1976d2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(33,150,243,.2);
-            border: none;
-        }}
-        .menu-btn:hover {{
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(33,150,243,.3);
-            background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
-        }}
-        .menu-btn.home {{
-            background: linear-gradient(135deg, #4CAF50 0%, #388e3c 100%);
-            box-shadow: 0 2px 6px rgba(76,175,80,.2);
-        }}
-        .menu-btn.home:hover {{
-            background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
-            box-shadow: 0 4px 10px rgba(76,175,80,.3);
-        }}
-        .menu-btn.logout {{
-            background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
-            box-shadow: 0 2px 6px rgba(244,67,54,.2);
-        }}
-        .menu-btn.logout:hover {{
-            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
-            box-shadow: 0 4px 10px rgba(244,67,54,.3);
-        }}
-        .menu-user-info {{
-            margin-left: auto;
-            padding: 8px 16px;
-            background: rgba(33,150,243,.08);
-            border-radius: 8px;
-            color: #1976d2;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }}
-        @media (max-width: 768px) {{
-            .menu-container {{
-                padding: 12px 16px;
-                gap: 8px;
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{title}</title>
+        
+        <!-- Bootstrap 5.3 CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        
+        <!-- Inter Font -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        
+        <!-- Bootstrap Icons -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        
+        <style>
+            :root {{
+                --bs-body-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                --bs-body-font-size: 0.95rem;
+                --bs-body-line-height: 1.6;
             }}
-            .menu-btn {{
-                padding: 8px 14px;
-                font-size: 0.85rem;
+            
+            body {{
+                font-family: var(--bs-body-font-family);
+                background-color: #f8f9fa;
+                min-height: 100vh;
             }}
-            .menu-user-info {{
-                margin-left: 0;
-                width: 100%;
-                text-align: center;
+            
+            .navbar-brand {{
+                font-weight: 700;
+                font-size: 1.25rem;
             }}
-        }}
-    </style>
-    <div class="menu-container">
-        <a href="/" class="menu-btn home">Home</a>
-        <a href="/fetch_timecard" class="menu-btn">Fetch from NGTeco</a>
-        <a href="/manage_rates" class="menu-btn">Manage Pay Rates</a>
-        <a href="/reports" class="menu-btn">Reports</a>
-        {admin_link}
-        <a href="/change_password" class="menu-btn">Change Password</a>
-        <a href="/logout" class="menu-btn logout">Logout</a>
-        <span class="menu-user-info">👤 {username}</span>
-    </div>
+            
+            .btn {{
+                font-weight: 600;
+                padding: 0.5rem 1.25rem;
+                border-radius: 0.5rem;
+                transition: all 0.2s ease;
+            }}
+            
+            .btn:hover {{
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }}
+            
+            .card {{
+                border: none;
+                border-radius: 1rem;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                margin-bottom: 1.5rem;
+            }}
+            
+            .card-header {{
+                background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+                color: white;
+                font-weight: 700;
+                border-radius: 1rem 1rem 0 0 !important;
+                padding: 1rem 1.5rem;
+            }}
+            
+            .form-label {{
+                font-weight: 600;
+                color: #495057;
+                margin-bottom: 0.5rem;
+            }}
+            
+            .form-control, .form-select {{
+                border-radius: 0.5rem;
+                border: 1px solid #dee2e6;
+                padding: 0.625rem 0.875rem;
+            }}
+            
+            .form-control:focus, .form-select:focus {{
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.25);
+            }}
+            
+            .table {{
+                font-size: 0.9rem;
+            }}
+            
+            .badge {{
+                font-weight: 600;
+                padding: 0.375rem 0.75rem;
+                border-radius: 0.375rem;
+            }}
+            
+            .alert {{
+                border: none;
+                border-radius: 0.75rem;
+                font-weight: 500;
+            }}
+            
+            footer {{
+                background: white;
+                border-top: 1px solid #dee2e6;
+                padding: 1.5rem 0;
+                margin-top: 3rem;
+            }}
+        </style>
+    </head>
+    '''
+
+def get_menu_html(username):
+    """Generate Bootstrap-based navigation bar"""
+    is_admin = username == 'admin'
+    admin_link = '<li class="nav-item"><a class="nav-link" href="/manage_users"><i class="bi bi-people-fill me-1"></i>Manage Users</a></li>' if is_admin else ''
+    
+    return f'''
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-calculator-fill me-2"></i>Payroll Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill me-1"></i>Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/fetch_timecard"><i class="bi bi-cloud-download-fill me-1"></i>Fetch from NGTeco</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/manage_rates"><i class="bi bi-currency-dollar me-1"></i>Pay Rates</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/reports"><i class="bi bi-file-earmark-text-fill me-1"></i>Reports</a></li>
+                    {admin_link}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="/change_password"><i class="bi bi-key-fill me-1"></i>Change Password</a></li>
+                    <li class="nav-item"><a class="nav-link text-warning" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a></li>
+                    <li class="nav-item">
+                        <span class="navbar-text ms-3">
+                            <i class="bi bi-person-circle me-1"></i>{username}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    '''
+
+def get_footer_html():
+    """Generate consistent footer"""
+    return '''
+    <footer class="mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-0 text-muted">
+                        <small>&copy; 2024-2025 Payroll Management System | Secure Processing</small>
+                    </p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <p class="mb-0">
+                        <small class="text-muted">Version <span class="badge bg-primary">{get_version()}</span></small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap 5.3 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     '''
 
 @app.route('/')

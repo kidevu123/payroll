@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.0.8"
-__version_name__ = "Production"
+__version__ = "6.0.9"
+__version_name__ = "Enterprise UI Foundation"
 __release_date__ = "2025-10-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.0.9",
+        "date": "2025-10-28",
+        "changes": [
+            "PHASE 1: Enterprise UI Upgrade Foundation",
+            "Integrated Bootstrap 5.3.2 framework",
+            "Added Inter font family for professional typography",
+            "Added Bootstrap Icons for consistent iconography",
+            "Created base template system: get_base_html_head(), get_menu_html(), get_footer_html()",
+            "Professional navigation with collapsible mobile menu",
+            "Established design system: color palette, spacing, typography",
+            "Created comprehensive UI_UPGRADE_PLAN.md documentation"
+        ]
+    },
     {
         "version": "6.0.8",
         "date": "2025-10-28",
