@@ -1156,7 +1156,7 @@ def index():
                         <span>Reports</span>
                     </a>
                     
-                    {admin_menu}
+                    {sidebar}
                 </nav>
                 
                 <!-- Bottom Section -->
@@ -1415,14 +1415,9 @@ def index():
 def manage_rates():
     """Manage employee pay rates"""
     username = session.get('username', 'Unknown')
-    is_admin = username == 'admin'
     
-    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <span>Manage Users</span>
-                    </a>''' if is_admin else ''
+    sidebar = get_enterprise_sidebar(username, 'rates')
+    
     
     pay_rates = load_pay_rates()
     employees = [{'id': emp_id, 'rate': rate} for emp_id, rate in pay_rates.items()]
@@ -1440,7 +1435,7 @@ def manage_rates():
 </head>
 <body class="bg-bgLight font-sans">
 <div class="flex h-screen overflow-hidden">
-    {admin_menu}
+    {sidebar}
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <h2 class="text-2xl font-bold text-textDark">Current Pay Rates</h2>
@@ -3561,7 +3556,7 @@ def success():
 </head>
 <body class="bg-bgLight font-sans">
 <div class="flex h-screen overflow-hidden">
-    {admin_menu}
+    {sidebar}
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
@@ -4947,7 +4942,7 @@ def manage_users():
 </head>
 <body class="bg-bgLight font-sans">
 <div class="flex h-screen overflow-hidden">
-    {admin_menu}
+    {sidebar}
     <div class="flex-1 flex flex-col overflow-hidden">
         <header class="bg-white border-b border-gray-200 px-6 py-4">
             <h2 class="text-2xl font-bold text-textDark">Manage Users</h2>
