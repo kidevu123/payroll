@@ -3544,40 +3544,163 @@ def success():
     
     sidebar = get_enterprise_sidebar(username, 'success')
 
-
-    # Clear the report cache
+    # Clear the report cache so the reports page will show the new reports
     clear_report_cache()
 
-    # Start HTML with Tailwind
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Complete | Payroll Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}
-    </script>
-</head>
-<body class="bg-bgLight font-sans">
-<div class="flex h-screen overflow-hidden">
-    {admin_menu}
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
-            <p class="text-sm text-secondary mt-1">Week: {week}</p>
-        </header>
-        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-            <div class="max-w-5xl mx-auto">
-                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6 text-center">
-                    <div class="text-5xl mb-3">✓</div>
-                    <h1 class="text-3xl font-bold text-green-800">Payroll Processing Complete!</h1>
-                    <p class="text-green-700 mt-2">Successfully processed for week {week}</p>
-                </div>
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Processing Successful</title>
+        <style>
+            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --accent:#2196F3; --accent-700:#1976d2; --border:#e6e9f0; }}
+            *{{ box-sizing:border-box; }}
+            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; color:var(--text); background:var(--bg); }}
+            h1{{ color:var(--text); margin:8px 0 18px; font-weight:700; }}
+            h2{{ color:var(--text); margin:0 0 12px; font-weight:600; }}
+
+            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
+            .menu a{{ margin-right:14px; text-decoration:none; color:var(--accent-700); font-weight:600; padding:6px 10px; border-radius:8px; }}
+            .menu a:hover{{ background:rgba(33,150,243,.08); }}
+            .user-info{{ float:right; font-size:.9em; color:var(--muted); }}
+
+            .button,.print-button{{ display:inline-block; padding:10px 16px; color:#fff; text-decoration:none; border:none; border-radius:10px; font-weight:600; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:all .15s ease; }}
+            .button{{ background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); }}
+            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
+            .print-button{{ background:linear-gradient(135deg,var(--accent) 0%,var(--accent-700) 100%); }}
+            .print-button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
+
+            .download-section{{ background:var(--card); padding:22px; border-radius:14px; margin:20px 0; border:1px solid var(--border); box-shadow:0 10px 24px rgba(17,24,39,.06); }}
+            .recommended{{ border-left:6px solid var(--primary); padding-left:16px; }}
+            small{{ color:var(--muted); }}
+
+            label{{ font-weight:600; margin-right:8px; color:var(--text); }}
+            select, input[type="text"]{{ padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; background:#fff; color:var(--text); }}
+            select:focus, input[type="text"]:focus{{ border-color:var(--accent-700); box-shadow:0 0 0 3px rgba(33,150,243,.15); }}
+        </style>
+    </head>
+    <body>
+        <h1>Processing Successful</h1>
+        {sidebar}
+        <p>Your file was successfully processed for week {week}.</p>
+    """
+
+    if 'admin' in reports and 'payslips_sheet' in reports:
+        html += f"""
+        <div class="download-section recommended">
+            <h2>Recommended Reports (Single Sheet)</h2>
+
+            <p><a href="/download/admin" class="button">Download Admin Report</a>
+               <a href="/print/admin" target="_blank" class="print-button">Print-Friendly Admin Report</a></p>
+            <p><small>This report contains all employee data in a single sheet with signature lines for your records</small></p>
+
+            <p><a href="/download/payslips_sheet" class="button">Download Cuttable Payslips</a>
+               <a href="/print/payslips" target="_blank" class="print-button">Print-Friendly Payslips</a></p>
+            <p><small>This report contains all employee payslips in a single sheet with cut lines for easy distribution</small></p>
+
+            <p>Alternative download methods:</p>
+            <ul>
+                <li>Admin Report: <a href="/static/reports/{reports['admin']}">/static/reports/{reports['admin']}</a></li>
+                <li>Cuttable Payslips: <a href="/static/reports/{reports['payslips_sheet']}">/static/reports/{reports['payslips_sheet']}</a></li>
+            </ul>
+
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #ccc;">
+                <h3>Create Zoho Books Expense</h3>
+                <p>Automatically create an expense in Zoho Books and attach the admin report as the receipt.</p>
+                <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
+                    <label for="company">Company to post to:</label>
+                    <select id="company" name="company">
+                        <option value="haute">Haute Brands</option>
+                        <option value="boomin">Boomin Brands</option>
+                    </select>
+                    <input type="hidden" name="week" value="{week}">
+
+                    <div style="margin-top:8px;">
+                        <label for="custom_desc">Notes (append to description):</label>
+                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." style="width:360px;">
+                    </div>
+                    <button type="submit" class="button">Push Expense to Zoho Books</button>
+                </form>
+                <script>
+                (function(){{
+                    const form = document.getElementById('zoho-expense-form');
+                    if(!form) return;
+                    form.addEventListener('submit', async function(ev){{
+                        ev.preventDefault();
+                        const data = new FormData(form);
+                        data.append('ajax','1');
+                        const btn = form.querySelector('button[type="submit"]');
+                        if(btn){{ btn.disabled = true; btn.textContent = 'Pushing...'; }}
+                        try {{
+                            const res = await fetch(form.action, {{ method: 'POST', body: data, headers: {{'X-Requested-With':'XMLHttpRequest'}} }});
+                            let payload = null;
+                            let textBody = '';
+                            try {{ payload = await res.clone().json(); }} catch(e) {{ payload = null; }}
+                            try {{ textBody = await res.text(); }} catch(e) {{ textBody = ''; }}
+                            if (payload && payload.status === 'ok') {{
+                                const msg = payload.duplicate ? ('Expense already exists. ID: ' + payload.expense_id)
+                                                              : ('Expense created successfully. ID: ' + payload.expense_id);
+                                alert(msg);
+                            }} else {{
+                                const fallback = textBody || (payload ? JSON.stringify(payload) : (res.status + ' ' + res.statusText));
+                                alert('Expense push response: ' + fallback);
+                            }}
+                        }} catch (err) {{
+                            alert('Error creating expense: ' + err);
+                        }} finally {{
+                            if(btn){{ btn.disabled = false; btn.textContent = 'Push Expense to Zoho Books'; }}
+                        }}
+                    }});
+                }})();
+                </script>
+                <p style="color:#6c757d; font-size: 0.9em;">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
+            </div>
+        </div>
+        """
+
+    if 'combined' in reports and 'combined_no_sig' in reports:
+        html += f"""
+        <div class="download-section">
+            <h2>Multi-Tab Combined Reports</h2>
+
+            <p><a href="/download/combined" class="button">Download Combined Report (With Signatures)</a></p>
+            <p><small>This report includes a summary page and individual employee sheets with signature lines</small></p>
+
+            <p><a href="/download/combined_no_sig" class="button">Download Combined Report (Without Signatures)</a></p>
+            <p><small>This report includes a summary page and individual employee sheets without signature lines, perfect for distributing</small></p>
+        </div>
+        """
+
+    if 'summary' in reports:
+        html += f"""
+        <div class="download-section">
+            <h2>Other Reports</h2>
+
+            <p><a href="/download/summary" class="button">Download Payroll Summary</a></p>
+
+            <p><a href="/download/payslips" class="button">Download Employee Payslips</a></p>
+        </div>
+        """
+
+    if 'error' in reports:
+        html += f"""
+        <div class="download-section">
+            <h2>Error Report</h2>
+            <p>There was an error processing your file. Please check the error report for details.</p>
+
+            <p><a href="/static/reports/{reports['error']}" class="button">View Error Report</a></p>
+        </div>
+        """
+
+    html += """
+        <p><a href="/" class="button">Process Another File</a></p>
+    </body>
+    </html>
     """
     return html
+
+    return render_template_string(html)
+
 
 @app.route('/print/<report_type>')
 def print_friendly(report_type):
