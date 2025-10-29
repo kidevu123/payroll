@@ -1415,378 +1415,123 @@ def index():
 def manage_rates():
     """Manage employee pay rates"""
     username = session.get('username', 'Unknown')
-    menu_html = get_menu_html(username)
+    is_admin = username == 'admin'
+    
+    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Manage Users</span>
+                    </a>''' if is_admin else ''
+    
     pay_rates = load_pay_rates()
-
-    # Convert to sorted list for display
-    employees = []
-    for emp_id, rate in pay_rates.items():
-        employees.append({
-            'id': emp_id,
-            'rate': rate
-        })
-
-    # Sort by ID
+    employees = [{{'id': emp_id, 'rate': rate}} for emp_id, rate in pay_rates.items()]
     employees.sort(key=lambda x: x['id'])
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Manage Pay Rates</title>
-        <style>
-            :root{{ 
-                --bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --bg-pattern: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%);
-                --card: #ffffff; 
-                --card-hover: #fefefe;
-                --text: #1a202c; 
-                --text-light: #4a5568;
-                --muted: #718096; 
-                --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                --primary-hover: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-                --accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-                --accent-hover: linear-gradient(135deg, #43a3f5 0%, #00d4ff 100%);
-                --success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-                --warning: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-                --danger: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-                --border: rgba(226, 232, 240, 0.8);
-                --border-hover: rgba(203, 213, 224, 0.9);
-                --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.05);
-                --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
-                --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
-                --shadow-xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-                --radius-sm: 8px;
-                --radius-md: 12px;
-                --radius-lg: 16px;
-                --radius-xl: 20px;
-            }}
-            
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            
-            body {{ 
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
-                background: var(--bg), var(--bg-pattern);
-                background-attachment: fixed;
-                color: var(--text); 
-                line-height: 1.6; 
-                min-height: 100vh;
-                padding: 2rem;
-                position: relative;
-            }}
-            
-            body::before {{
-                content: '';
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-image: 
-                    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                    radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 0%, transparent 25%);
-                pointer-events: none;
-                z-index: -1;
-            }}
-            
-            .container {{ max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }}
-            
-            h1, h2 {{ 
-                color: var(--text); 
-                font-weight: 700;
-                margin-bottom: 1.5rem;
-            }}
-            
-            h1 {{
-                font-size: 2.5rem;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                text-align: center;
-                margin-bottom: 2rem;
-            }}
-            
-            .version-badge {{
-                font-size: 0.875rem;
-                color: var(--muted);
-                font-weight: 600;
-                background: var(--card);
-                padding: 0.25rem 0.75rem;
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--border);
-                display: inline-block;
-                margin-left: 1rem;
-                box-shadow: var(--shadow-sm);
-            }}
-            
-            .card {{ 
-                background: var(--card); 
-                border: 1px solid var(--border); 
-                border-radius: var(--radius-lg); 
-                padding: 2rem; 
-                box-shadow: var(--shadow-md); 
-                margin-bottom: 2rem; 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .card::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: var(--primary);
-                transform: scaleX(0);
-                transition: transform 0.3s ease;
-            }}
-            
-            .card:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg); 
-                border-color: var(--border-hover);
-            }}
-            
-            .card:hover::before {{ transform: scaleX(1); }}
-            
-            form {{ margin: 1.5rem 0; }}
-            
-            .button {{ 
-                display: inline-block; 
-                padding: 0.875rem 2rem; 
-                background: var(--primary);
-                color: white; 
-                border: none; 
-                cursor: pointer; 
-                border-radius: var(--radius-md); 
-                font-weight: 600; 
-                font-size: 1rem;
-                box-shadow: var(--shadow-md); 
-                transition: all 0.3s ease;
-                position: relative;
-                overflow: hidden;
-                text-decoration: none;
-                margin-top: 1rem;
-            }}
-            
-            .button::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
-            }}
-            
-            .button:hover {{ 
-                transform: translateY(-2px); 
-                box-shadow: var(--shadow-lg);
-                background: var(--primary-hover);
-            }}
-            
-            .button:hover::before {{ left: 100%; }}
-            
-            .button.danger {{
-                background: var(--danger);
-                padding: 0.5rem 1rem;
-                font-size: 0.875rem;
-            }}
-            
-            .button.danger:hover {{
-                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            }}
-            
-            table {{ 
-                width: 100%; 
-                border-collapse: separate;
-                border-spacing: 0;
-                margin: 2rem 0; 
-                background: var(--card);
-                border-radius: var(--radius-lg);
-                overflow: hidden;
-                box-shadow: var(--shadow-md);
-            }}
-            
-            th, td {{ 
-                padding: 1rem 1.5rem; 
-                border-bottom: 1px solid var(--border); 
-                text-align: left; 
-            }}
-            
-            th {{ 
-                background: linear-gradient(135deg, #f8faff 0%, #e8f4f8 100%);
-                font-weight: 600;
-                color: var(--text);
-                border-bottom: 2px solid var(--border);
-            }}
-            
-            tr:nth-child(even) {{ background: linear-gradient(135deg, #fafbff 0%, #f8faff 100%); }}
-            tr:hover {{ background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%); }}
-            
-            .menu {{ 
-                background: var(--card); 
-                padding: 1.5rem 2rem; 
-                margin-bottom: 2rem; 
-                border-radius: var(--radius-lg); 
-                border: 1px solid var(--border); 
-                box-shadow: var(--shadow-md); 
-                display: flex;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 1rem;
-            }}
-            
-            .menu a {{ 
-                text-decoration: none; 
-                background: var(--accent);
-                color: white;
-                font-weight: 600; 
-                padding: 0.75rem 1.5rem; 
-                border-radius: var(--radius-md);
-                transition: all 0.3s ease;
-                box-shadow: var(--shadow-sm);
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .menu a::before {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                transition: left 0.3s;
-            }}
-            
-            .menu a:hover {{ 
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-md);
-                background: var(--accent-hover);
-            }}
-            
-            .menu a:hover::before {{ left: 100%; }}
-            
-            .user-info {{ 
-                margin-left: auto; 
-                font-size: 0.9rem; 
-                color: var(--muted);
-                background: var(--card);
-                padding: 0.5rem 1rem;
-                border-radius: var(--radius-sm);
-                border: 1px solid var(--border);
-            }}
-            
-            input[type="text"], input[type="number"], input[type="file"], select {{
-                width: 100%;
-                padding: 0.75rem 1rem;
-                border: 2px solid var(--border);
-                border-radius: var(--radius-md);
-                font-size: 1rem;
-                transition: all 0.3s ease;
-                background: var(--card);
-            }}
-            
-            input[type="text"]:focus, input[type="number"]:focus, input[type="file"]:focus, select:focus {{
-                outline: none;
-                border-color: transparent;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
-                background: var(--card-hover);
-            }}
-            
-            .form-row {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
-                margin-bottom: 1rem;
-            }}
-            
-            label {{
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 600;
-                color: var(--text);
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Manage Pay Rates <span class="version-badge">v{APP_VERSION}</span></h1>
-            {menu_html}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <h2>Current Pay Rates</h2>
-    """
-
-    if employees:
-        html += """
-        <table>
-            <tr>
-                <th>Employee ID</th>
-                <th>Pay Rate ($/hour)</th>
-                <th>Action</th>
-            </tr>
-        """
-
-        for emp in employees:
-            html += f"""
-            <tr>
-                <td>{emp['id']}</td>
-                <td>${emp['rate']:.2f}</td>
-                <td>
-                    <form action="/delete_rate" method="post" style="margin:0;">
-                        <input type="hidden" name="emp_id" value="{emp['id']}">
-                        <button type="submit" class="button danger" onclick="return confirm('Are you sure you want to delete this pay rate?');">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            """
-
-        html += "</table>"
-    else:
-        html += "<p>No pay rates configured yet. Add your first rate below.</p>"
-
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Pay Rates | Payroll</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+</head>
+<body class="bg-bgLight font-sans">
+<div class="flex h-screen overflow-hidden">
+    {admin_menu}
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h2 class="text-2xl font-bold text-textDark">Current Pay Rates</h2>
+            <p class="text-sm text-secondary mt-1">Manage employee hourly rates</p>
+        </header>
+        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Employee ID</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Pay Rate ($/hour)</th>
+                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+"""
+    
+    for emp in employees:
+        html += f"""
+                            <tr class="hover:bg-gray-50" id="row-{{emp['id']}}">
+                                <td class="px-6 py-4 text-sm text-textDark">{{emp['id']}}</td>
+                                <td class="px-6 py-4">
+                                    <span class="rate-display text-sm font-medium text-textDark">${{emp['rate']}}</span>
+                                    <input type="number" class="rate-edit hidden w-32 px-3 py-1 border border-gray-300 rounded-lg" step="0.01" value="{{emp['rate']}}">
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button onclick="editRate('{{emp['id']}}')" class="edit-btn px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 mr-2">Edit</button>
+                                    <button onclick="saveRate('{{emp['id']}}')" class="save-btn hidden px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 mr-2">Save</button>
+                                    <button onclick="cancelEdit('{{emp['id']}}')" class="cancel-btn hidden px-4 py-2 bg-gray-500 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 mr-2">Cancel</button>
+                                    <form method="post" action="/delete_rate/{{emp['id']}}" style="display:inline;" onsubmit="return confirm('Delete rate for employee {{emp['id']}}?');">
+                                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+"""
+    
     html += """
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <h2>Add New Pay Rate</h2>
-                <form action="/add_rate" method="post">
-                    <div class="form-row">
-                        <div>
-                            <label for="emp_id">Employee ID:</label>
-                            <input type="text" id="emp_id" name="emp_id" required>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-textDark mb-4">Add New Pay Rate</h3>
+                    <form method="post" action="/add_rate" class="flex gap-4 items-end">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-textDark mb-2">Employee ID</label>
+                            <input type="text" name="employee_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
-                        <div>
-                            <label for="pay_rate">Pay Rate ($/hour):</label>
-                            <input type="number" id="pay_rate" name="pay_rate" step="0.01" min="0" required>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-textDark mb-2">Pay Rate ($/hour)</label>
+                            <input type="number" name="rate" step="0.01" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
-                    </div>
-                    <button type="submit" class="button">Add Pay Rate</button>
-                </form>
+                        <button type="submit" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Add Rate</button>
+                    </form>
+                </div>
             </div>
-
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <h2>Bulk Import Pay Rates</h2>
-                <p style="margin-bottom: 1.5rem; color: var(--muted);">Upload a CSV file with columns "Person ID" and "Rate".</p>
-                <form action="/import_rates" method="post" enctype="multipart/form-data">
-                    <div style="margin-bottom: 1rem;">
-                        <label for="rates_file">Choose CSV file:</label>
-                        <input type="file" id="rates_file" name="rates_file" required>
-                    </div>
-                    <button type="submit" class="button">Import Rates</button>
-                </form>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
+        </main>
+    </div>
+</div>
+<script>
+function editRate(id) {
+    const row = document.getElementById('row-' + id);
+    row.querySelector('.rate-display').classList.add('hidden');
+    row.querySelector('.rate-edit').classList.remove('hidden');
+    row.querySelector('.edit-btn').classList.add('hidden');
+    row.querySelector('.save-btn').classList.remove('hidden');
+    row.querySelector('.cancel-btn').classList.remove('hidden');
+}
+function cancelEdit(id) {
+    const row = document.getElementById('row-' + id);
+    row.querySelector('.rate-display').classList.remove('hidden');
+    row.querySelector('.rate-edit').classList.add('hidden');
+    row.querySelector('.edit-btn').classList.remove('hidden');
+    row.querySelector('.save-btn').classList.add('hidden');
+    row.querySelector('.cancel-btn').classList.add('hidden');
+}
+function saveRate(id) {
+    const row = document.getElementById('row-' + id);
+    const newRate = row.querySelector('.rate-edit').value;
+    fetch('/update_rate/' + id, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({rate: newRate})
+    }).then(r => r.ok ? location.reload() : alert('Error updating rate'));
+}
+</script>
+</body>
+</html>"""
+    
     return render_template_string(html)
 
 @app.route('/add_rate', methods=['POST'])
@@ -1812,6 +1557,26 @@ def add_rate():
         return redirect(url_for('manage_rates'))
     except Exception as e:
         return f"Error adding pay rate: {str(e)}", 400
+
+
+@app.route('/update_rate/<employee_id>', methods=['POST'])
+@login_required
+def update_rate(employee_id):
+    """Update employee pay rate"""
+    try:
+        data = request.get_json()
+        new_rate = float(data.get('rate', 0))
+        
+        if new_rate <= 0:
+            return jsonify({'error': 'Invalid rate'}), 400
+        
+        pay_rates = load_pay_rates()
+        pay_rates[employee_id] = new_rate
+        save_pay_rates(pay_rates)
+        
+        return jsonify({'status': 'ok', 'rate': new_rate}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/delete_rate', methods=['POST'])
 def delete_rate():
