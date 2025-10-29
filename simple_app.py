@@ -1425,7 +1425,7 @@ def manage_rates():
                     </a>''' if is_admin else ''
     
     pay_rates = load_pay_rates()
-    employees = [{{'id': emp_id, 'rate': rate}} for emp_id, rate in pay_rates.items()]
+    employees = [{'id': emp_id, 'rate': rate} for emp_id, rate in pay_rates.items()]
     employees.sort(key=lambda x: x['id'])
 
     html = f"""<!DOCTYPE html>
@@ -4650,7 +4650,7 @@ def reports():
     <body>
         <h1>Reports <span style="font-size:.6em; color:#6c757d; font-weight:600;">v{APP_VERSION}</span></h1>
         {menu_html}
-        {{ flash_block|safe }}
+        {block}
     """
 
     if not reports_by_week:
@@ -4730,7 +4730,7 @@ def reports():
     else:
         block = ''
 
-    return render_template_string(html, flash_block=block)
+    return html
 
 # Add a cache clearing function for when new reports are generated
 def clear_report_cache():
@@ -5019,7 +5019,7 @@ def manage_users():
 </body>
 </html>"""
     
-    return render_template_string(html)
+    return html
 
 @app.route('/add_user', methods=['POST'])
 @login_required
