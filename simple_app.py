@@ -3544,13 +3544,6 @@ def success():
     
     sidebar = get_enterprise_sidebar(username, 'success')
 
-    # Admin menu for sidebar
-    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg text-secondary hover:bg-gray-100 hover:text-textDark transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <span>Manage Users</span>
-                    </a>''' if is_admin else ''
 
     # Clear the report cache
     clear_report_cache()
@@ -4495,6 +4488,7 @@ def reports():
     # Get username for menu display
     username = session.get('username', 'Unknown')
     menu_html = get_menu_html(username)
+    block = ''
 
     # Check if we have cached report data that's still valid (less than 5 minutes old)
     current_time = datetime.now()
