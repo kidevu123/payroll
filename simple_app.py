@@ -1201,7 +1201,7 @@ def index():
                         <p class="text-sm text-secondary mt-1">Upload timesheet and generate reports</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">{{version}}</span>
+                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">{get_version()}</span>
                         <div class="flex items-center space-x-2 text-sm">
                             <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -3584,6 +3584,8 @@ def success():
                     <p class="text-green-700 mt-2">Successfully processed for week {week}</p>
                 </div>
     """
+    return html
+
 @app.route('/print/<report_type>')
 def print_friendly(report_type):
     """Generate a print-friendly version of a report"""
