@@ -4963,7 +4963,7 @@ def _auto_push_expense_if_configured(week):
         reference_number = f"PAYROLL-{start_str}_to_{end_str}"
         post_date = compute_expense_date_from_data(week)
         # Auto-notes from summary
-        csv_path = session.get('uploaded_file')
+        csv_path = session.get('filtered_file') or session.get('uploaded_file')
         auto_notes = build_admin_summary_text_from_csv(csv_path, start_str, end_str)
         base_desc = f"Weekly payroll expense for {start_str} to {end_str} created by {session.get('username', 'Unknown')}"
         description = _compose_zoho_description(base_desc, auto_notes, '')
@@ -5056,7 +5056,7 @@ def zoho_create_expense_route():
         # Compose description with automated admin summary + optional notes
         base_desc = f"Weekly payroll expense for {start_str} to {end_str} created by {session.get('username', 'Unknown')}"
         extra_desc = request.form.get('custom_desc', '').strip()
-        csv_path = session.get('uploaded_file')
+        csv_path = session.get('filtered_file') or session.get('uploaded_file')
         auto_notes = build_admin_summary_text_from_csv(csv_path, start_str, end_str)
         # Build within Zoho's 500-char limit
         final_desc = _compose_zoho_description(base_desc, auto_notes, extra_desc)
@@ -5704,7 +5704,12 @@ def process_confirmed():
         # Filter to only selected employees
         if confirmed_ids:
             df = df[df['Person ID'].astype(str).isin(confirmed_ids)]
-        
+            # Save filtered CSV for Zoho summary
+            filtered_path = file_path.replace('.csv', '_filtered.csv')
+            df.to_csv(filtered_path, index=False)
+            session['filtered_file'] = filtered_path
+        else:
+            session['filtered_file'] = file_path
         # NO VALIDATION HERE - just process directly
         username = session.get('username', 'Unknown')
         
