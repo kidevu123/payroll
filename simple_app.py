@@ -3609,7 +3609,7 @@ def success():
                         <p class="text-sm text-secondary mb-4">All employee data with signature lines</p>
                         <div class="flex gap-3">
                             <a href="/download/admin" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
-                                Download Excel
+                                Download
                             </a>
                             <a href="/print/admin" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
                                 Print Version
@@ -3624,7 +3624,7 @@ def success():
                         <p class="text-sm text-secondary mb-4">All payslips with cut lines for distribution</p>
                         <div class="flex gap-3">
                             <a href="/download/payslips_sheet" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
-                                Download Excel
+                                Download
                             </a>
                             <a href="/print/payslips" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
                                 Print Version
@@ -3703,16 +3703,6 @@ def success():
         </div>
         """
 
-    if 'summary' in reports:
-        html += f"""
-        <div class="download-section">
-            <h2>Other Reports</h2>
-
-            <p><a href="/download/summary" class="button">Download Payroll Summary</a></p>
-
-            <p><a href="/download/payslips" class="button">Download Employee Payslips</a></p>
-        </div>
-        """
 
     if 'error' in reports:
         html += f"""
