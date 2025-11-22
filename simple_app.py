@@ -64,6 +64,12 @@ MISSING_TIMES_FILE = 'missing_times.csv'
 # Caching for report data
 report_cache = {}
 report_cache_expiry = {}
+
+# Caching for pay rates (reduces file I/O)
+pay_rates_cache = None
+pay_rates_cache_time = None
+PAY_RATES_CACHE_TTL = 300  # Cache for 5 minutes
+
 REPORTS_METADATA_FILE = os.path.join(REPORT_FOLDER, 'reports_metadata.json')
 REPORTS_LIST_LIMIT = int(os.getenv('REPORTS_LIST_LIMIT', '24'))
 
@@ -658,11 +664,25 @@ def login_required(f):
 
 # Pay rate management functions
 def load_pay_rates():
-    """Load pay rates from JSON file with error handling"""
+    """Load pay rates from JSON file with caching to reduce file I/O"""
+    global pay_rates_cache, pay_rates_cache_time
+    
+    # Check if cache is valid
+    current_time = time.time()
+    if (pay_rates_cache is not None and 
+        pay_rates_cache_time is not None and 
+        current_time - pay_rates_cache_time < PAY_RATES_CACHE_TTL):
+        app.logger.debug("Using cached pay rates")
+        return pay_rates_cache
+    
+    # Load from file
     try:
         with open(CONFIG_FILE, 'r') as f:
             rates = json.load(f)
-            app.logger.info(f"Successfully loaded {len(rates)} pay rates")
+            app.logger.info(f"Successfully loaded {len(rates)} pay rates from disk")
+            # Update cache
+            pay_rates_cache = rates
+            pay_rates_cache_time = current_time
             return rates
     except FileNotFoundError:
         app.logger.warning(f"Pay rates file not found: {CONFIG_FILE}. Creating new file.")
@@ -675,7 +695,9 @@ def load_pay_rates():
         return {}
 
 def save_pay_rates(rates):
-    """Save pay rates to JSON file with error handling"""
+    """Save pay rates to JSON file with error handling and cache invalidation"""
+    global pay_rates_cache, pay_rates_cache_time
+    
     try:
         # Create backup before saving
         if os.path.exists(CONFIG_FILE):
@@ -686,6 +708,10 @@ def save_pay_rates(rates):
         with open(CONFIG_FILE, 'w') as f:
             json.dump(rates, f, indent=2)
         app.logger.info(f"Successfully saved {len(rates)} pay rates")
+        
+        # Invalidate cache after saving
+        pay_rates_cache = rates
+        pay_rates_cache_time = time.time()
     except IOError as e:
         app.logger.error(f"Failed to save pay rates: {e}")
         raise RuntimeError(f"Could not save pay rates: {str(e)}")

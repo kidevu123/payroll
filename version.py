@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.3.1"
-__version_name__ = "Code Quality - Debug Cleanup"
+__version__ = "6.4.0"
+__version_name__ = "Performance - Pay Rates Caching"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.4.0",
+        "date": "2025-11-22",
+        "changes": [
+            "CODE OPTIMIZATION: Phase 6 - Performance & Caching",
+            "Implemented pay rates caching (5-minute TTL)",
+            "Reduced file I/O for pay_rates from 13 reads to 1 per request",
+            "Cache automatically invalidates when rates are saved",
+            "Significant performance improvement for payroll processing",
+            "NO functionality changes"
+        ]
+    },
     {
         "version": "6.3.1",
         "date": "2025-11-22",
