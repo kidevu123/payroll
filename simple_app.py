@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 from flask import Flask, request, send_file, render_template_string, redirect, url_for, jsonify, session, flash, get_flashed_messages
 from werkzeug.security import generate_password_hash, check_password_hash
+from markupsafe import escape
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -697,6 +698,70 @@ def migrate_plaintext_passwords():
     except Exception as e:
         app.logger.error(f"Error during password migration: {e}")
 
+def validate_username(username):
+    """
+    Validate username format
+    Returns (is_valid, error_message)
+    """
+    if not username:
+        return False, "Username is required"
+    
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters"
+    
+    if len(username) > 50:
+        return False, "Username must be less than 50 characters"
+    
+    # Allow alphanumeric, underscore, and hyphen only
+    if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+        return False, "Username can only contain letters, numbers, underscores, and hyphens"
+    
+    return True, None
+
+def validate_password(password):
+    """
+    Validate password strength
+    Returns (is_valid, error_message)
+    """
+    if not password:
+        return False, "Password is required"
+    
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters"
+    
+    if len(password) > 100:
+        return False, "Password must be less than 100 characters"
+    
+    # Check for at least one letter and one number
+    if not re.search(r'[a-zA-Z]', password):
+        return False, "Password must contain at least one letter"
+    
+    if not re.search(r'[0-9]', password):
+        return False, "Password must contain at least one number"
+    
+    return True, None
+
+def validate_pay_rate(rate_str):
+    """
+    Validate pay rate value
+    Returns (is_valid, error_message, rate_float)
+    """
+    try:
+        rate = float(rate_str)
+        
+        if rate < 0:
+            return False, "Pay rate cannot be negative", None
+        
+        if rate > 10000:
+            return False, "Pay rate seems unreasonably high (max: $10,000/hour)", None
+        
+        if rate == 0:
+            app.logger.warning("Pay rate of $0.00 set for employee")
+        
+        return True, None, rate
+    except (ValueError, TypeError):
+        return False, "Pay rate must be a valid number", None
+
 # Login required decorator
 def login_required(f):
     @wraps(f)
@@ -921,13 +986,16 @@ def change_password():
             error = 'Current password is incorrect'
         elif new_password != confirm_password:
             error = 'New passwords do not match'
-        elif len(new_password) < 4:
-            error = 'Password must be at least 4 characters'
         else:
-            users[username] = hash_password(new_password)
-            save_users(users)
-            app.logger.info(f"Password changed for user: {username}")
-            success = 'Password changed successfully'
+            # Validate new password strength
+            valid, validation_error = validate_password(new_password)
+            if not valid:
+                error = validation_error
+            else:
+                users[username] = hash_password(new_password)
+                save_users(users)
+                app.logger.info(f"Password changed for user: {username}")
+                success = 'Password changed successfully'
 
     html = f"""
     <!DOCTYPE html>
@@ -1010,8 +1078,8 @@ def change_password():
         <h1>Change Password</h1>
         {menu_html}
         <div class="form-container">
-            {('<div class="error">' + error + '</div>') if error else ''}
-            {('<div class="success">' + success + '</div>') if success else ''}
+            {('<div class="error">' + escape(error) + '</div>') if error else ''}
+            {('<div class="success">' + escape(success) + '</div>') if success else ''}
 
             <form action="/change_password" method="post">
                 <div class="form-group">
@@ -1269,7 +1337,7 @@ def get_menu_html(username):
                     <li class="nav-item"><a class="nav-link text-warning" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a></li>
                     <li class="nav-item">
                         <span class="navbar-text ms-3">
-                            <i class="bi bi-person-circle me-1"></i>{username}
+                            <i class="bi bi-person-circle me-1"></i>{escape(username)}
                         </span>
                     </li>
                 </ul>
@@ -1807,14 +1875,22 @@ function saveRate(id) {
 @app.route('/add_rate', methods=['POST'])
 @login_required
 def add_rate():
-    """Add a new pay rate"""
+    """Add a new pay rate with validation"""
     try:
-        emp_id = request.form['employee_id']
-        pay_rate = float(request.form['rate'])
+        emp_id = request.form.get('employee_id', '').strip()
+        rate_str = request.form.get('rate', '').strip()
 
-        # Validate
-        if pay_rate <= 0:
-            return "Pay rate must be greater than zero", 400
+        # Validate employee ID
+        if not emp_id:
+            return "Employee ID is required", 400
+        
+        if not re.match(r'^[a-zA-Z0-9_-]+$', emp_id):
+            return "Invalid employee ID format", 400
+
+        # Validate pay rate
+        valid, error, pay_rate = validate_pay_rate(rate_str)
+        if not valid:
+            return error, 400
 
         # Load existing rates
         pay_rates = load_pay_rates()
@@ -1824,29 +1900,35 @@ def add_rate():
 
         # Save updated rates
         save_pay_rates(pay_rates)
+        app.logger.info(f"Pay rate added for employee {emp_id}: ${pay_rate}")
 
         return redirect(url_for('manage_rates'))
     except Exception as e:
+        app.logger.error(f"Error adding pay rate: {e}")
         return f"Error adding pay rate: {str(e)}", 400
 
 
 @app.route('/update_rate/<employee_id>', methods=['POST'])
 @login_required
 def update_rate(employee_id):
-    """Update employee pay rate"""
+    """Update employee pay rate with validation"""
     try:
         data = request.get_json()
-        new_rate = float(data.get('rate', 0))
+        rate_value = data.get('rate', '')
         
-        if new_rate <= 0:
-            return jsonify({'error': 'Invalid rate'}), 400
+        # Validate pay rate
+        valid, error, new_rate = validate_pay_rate(rate_value)
+        if not valid:
+            return jsonify({'error': error}), 400
         
         pay_rates = load_pay_rates()
         pay_rates[employee_id] = new_rate
         save_pay_rates(pay_rates)
+        app.logger.info(f"Pay rate updated for employee {employee_id}: ${new_rate}")
         
         return jsonify({'status': 'ok', 'rate': new_rate}), 200
     except Exception as e:
+        app.logger.error(f"Error updating pay rate for {employee_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/delete_rate/<employee_id>', methods=['POST'])
@@ -5508,18 +5590,22 @@ def manage_users():
 @app.route('/add_user', methods=['POST'])
 @login_required
 def add_user():
-    """Add a new user"""
+    """Add a new user with input validation"""
     if session.get('username') != 'admin':
         return "Only admin can add users", 403
 
-    username = request.form.get('username')
-    password = request.form.get('password')
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '')
 
-    if not username or not password:
-        return "Username and password are required", 400
+    # Validate username
+    valid, error = validate_username(username)
+    if not valid:
+        return error, 400
 
-    if len(password) < 4:
-        return "Password must be at least 4 characters", 400
+    # Validate password
+    valid, error = validate_password(password)
+    if not valid:
+        return error, 400
 
     users = load_users()
 

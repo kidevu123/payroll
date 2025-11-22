@@ -3,11 +3,30 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "7.0.0"
-__version_name__ = "CRITICAL SECURITY: Password Hashing"
+__version__ = "7.1.0"
+__version_name__ = "Security: XSS & Input Validation"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "7.1.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🔒 SECURITY: XSS Prevention Implemented",
+            "Fixed XSS vulnerability in username display (menu)",
+            "Fixed XSS vulnerability in error/success messages",
+            "Added HTML escaping using markupsafe.escape",
+            "SQL Injection audit: No vulnerabilities found (JSON-based storage)",
+            "🛡️ SECURITY: Input Validation Implemented",
+            "Username validation: 3-50 chars, alphanumeric + underscore/hyphen",
+            "Password validation: 8+ chars, must contain letter and number",
+            "Pay rate validation: 0-10000, proper number format",
+            "Employee ID validation: alphanumeric format",
+            "All validation functions with detailed error messages",
+            "Updated add_user, change_password, add_rate, update_rate with validation",
+            "Comprehensive input sanitization throughout"
+        ]
+    },
     {
         "version": "7.0.0",
         "date": "2025-11-22",
