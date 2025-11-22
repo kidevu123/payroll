@@ -4464,7 +4464,7 @@ def success():
     # Clear the report cache
     clear_report_cache()
 
-    # Start HTML with design system
+    # Start HTML with design system - COMPACT LAYOUT
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4480,21 +4480,41 @@ def success():
         .success-header {{
             background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+            padding: var(--spacing-3) 0;
+            margin-bottom: var(--spacing-3);
         }}
         .success-banner {{
             background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             border: 2px solid var(--color-success);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-4);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-3);
             text-align: center;
-            margin-bottom: var(--spacing-4);
+            margin-bottom: var(--spacing-3);
         }}
         .success-icon {{
-            font-size: 48px;
+            font-size: 32px;
             color: var(--color-success);
+            margin-bottom: var(--spacing-1);
+        }}
+        .success-layout {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-3);
+            align-items: start;
+        }}
+        @media (max-width: 1024px) {{
+            .success-layout {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+        .report-item {{
+            padding: var(--spacing-2);
             margin-bottom: var(--spacing-2);
+            border-bottom: 1px solid var(--color-gray-200);
+        }}
+        .report-item:last-child {{
+            border-bottom: none;
+            margin-bottom: 0;
         }}
     </style>
 </head>
@@ -4503,30 +4523,27 @@ def success():
     
     <div class="success-header">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Payroll Complete</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Week: {week}</p>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <h1 style="color:white;margin-bottom:0;font-size:var(--font-size-xl)">Payroll Complete</h1>
+                    <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Week: {week}</p>
+                </div>
+                <div style="font-size:48px;color:rgba(255,255,255,0.9)">✓</div>
+            </div>
         </div>
     </div>
     
     <div class="container">
-        <div class="success-banner">
-            <div class="success-icon">✓</div>
-            <h1 style="font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);color:var(--color-success);margin-bottom:var(--spacing-2)">
-                Payroll Processing Complete!
-            </h1>
-            <p style="font-size:var(--font-size-lg);color:var(--color-success);margin:0">Successfully processed for week {week}</p>
-        </div>
-                
-        <div class="grid grid-cols-1 gap-4">
+        <div class="success-layout">
     """
 
     if 'admin' in reports and 'payslips_sheet' in reports:
         html += f"""
-            <!-- Recommended Reports -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+            <!-- Reports Card -->
+            <div class="card" style="margin-bottom:0">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base)">
+                        <svg style="width:20px;height:20px;display:inline;margin-right:6px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
                         </svg>
                         Recommended Reports
@@ -4534,78 +4551,86 @@ def success():
                 </div>
                 
                 <!-- Admin Report -->
-                <div style="padding-bottom:var(--spacing-3);margin-bottom:var(--spacing-3);border-bottom:1px solid var(--color-gray-200)">
-                    <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">Admin Report (Single Sheet)</h3>
-                    <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--spacing-4)">All employee data with signature lines</p>
-                    <div style="display:flex;gap:var(--spacing-3);margin-bottom:var(--spacing-2)">
-                        <a href="/download/admin" class="btn btn-primary">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                            Download
-                        </a>
-                        <a href="/print/admin" target="_blank" class="btn btn-secondary">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
-                            </svg>
-                            Print Version
-                        </a>
+                <div class="report-item">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--spacing-2)">
+                        <div style="flex:1">
+                            <h3 style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Admin Report</h3>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">All employee data with signature lines</p>
+                        </div>
+                        <div style="display:flex;gap:var(--spacing-2)">
+                            <a href="/download/admin" class="btn btn-primary btn-sm">
+                                <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Download
+                            </a>
+                            <a href="/print/admin" target="_blank" class="btn btn-secondary btn-sm">
+                                <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Print
+                            </a>
+                        </div>
                     </div>
-                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Direct link: <a href="/static/reports/{reports['admin']}" style="color:var(--color-primary);text-decoration:underline">{reports['admin']}</a></p>
+                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin:0"><a href="/static/reports/{reports['admin']}" style="color:var(--color-primary);text-decoration:underline">{reports['admin']}</a></p>
                 </div>
                 
                 <!-- Payslips Report -->
-                <div>
-                    <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">Cuttable Payslips</h3>
-                    <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--spacing-4)">All payslips with cut lines for distribution</p>
-                    <div style="display:flex;gap:var(--spacing-3);margin-bottom:var(--spacing-2)">
-                        <a href="/download/payslips_sheet" class="btn btn-primary">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                            </svg>
-                            Download
-                        </a>
-                        <a href="/print/payslips" target="_blank" class="btn btn-secondary">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
-                            </svg>
-                            Print Version
-                        </a>
+                <div class="report-item">
+                    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:var(--spacing-2)">
+                        <div style="flex:1">
+                            <h3 style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Cuttable Payslips</h3>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">All payslips with cut lines for distribution</p>
+                        </div>
+                        <div style="display:flex;gap:var(--spacing-2)">
+                            <a href="/download/payslips_sheet" class="btn btn-primary btn-sm">
+                                <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Download
+                            </a>
+                            <a href="/print/payslips" target="_blank" class="btn btn-secondary btn-sm">
+                                <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Print
+                            </a>
+                        </div>
                     </div>
-                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Direct link: <a href="/static/reports/{reports['payslips_sheet']}" style="color:var(--color-primary);text-decoration:underline">{reports['payslips_sheet']}</a></p>
+                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-500);margin:0"><a href="/static/reports/{reports['payslips_sheet']}" style="color:var(--color-primary);text-decoration:underline">{reports['payslips_sheet']}</a></p>
                 </div>
             </div>
             
             <!-- Zoho Books Integration -->
-            <div class="card" style="background:linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);border-color:var(--color-primary)">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+            <div class="card" style="margin-bottom:0;background:linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);border-color:var(--color-primary)">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base)">
+                        <svg style="width:20px;height:20px;display:inline;margin-right:6px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
                         </svg>
                         Zoho Books Integration
                     </h2>
                 </div>
                 
-                <p style="font-size:var(--font-size-sm);color:var(--color-gray-700);margin-bottom:var(--spacing-4)">Automatically create an expense and attach the admin report</p>
+                <p style="font-size:var(--font-size-xs);color:var(--color-gray-700);margin-bottom:var(--spacing-3)">Automatically create an expense and attach the admin report</p>
                 
                 <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
-                    <div class="form-group">
-                        <label for="company" class="form-label">Company to post to</label>
-                        <select id="company" name="company" class="form-select">
+                    <div class="form-group" style="margin-bottom:var(--spacing-2)">
+                        <label for="company" class="form-label" style="font-size:var(--font-size-xs)">Company</label>
+                        <select id="company" name="company" class="form-select" style="padding:var(--spacing-2)">
                             <option value="haute">Haute Brands</option>
                             <option value="boomin">Boomin Brands</option>
                         </select>
                     </div>
                     <input type="hidden" name="week" value="{week}">
 
-                    <div class="form-group">
-                        <label for="custom_desc" class="form-label">Notes (append to description)</label>
-                        <input type="text" id="custom_desc" name="custom_desc" class="form-input" placeholder="Optional notes...">
+                    <div class="form-group" style="margin-bottom:var(--spacing-3)">
+                        <label for="custom_desc" class="form-label" style="font-size:var(--font-size-xs)">Notes (optional)</label>
+                        <input type="text" id="custom_desc" name="custom_desc" class="form-input" style="padding:var(--spacing-2)" placeholder="Optional notes...">
                     </div>
                     
-                    <button type="submit" class="btn btn-success">
-                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                    <button type="submit" class="btn btn-success btn-sm" style="width:100%">
+                        <svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
                         </svg>
                         Push to Zoho Books
@@ -4620,7 +4645,7 @@ def success():
                         const data = new FormData(form);
                         data.append('ajax','1');
                         const btn = form.querySelector('button[type="submit"]');
-                        if(btn){{ btn.disabled = true; btn.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Pushing...'; }}
+                        if(btn){{ btn.disabled = true; btn.innerHTML = '<svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Pushing...'; }}
                         try {{
                             const res = await fetch(form.action, {{ method: 'POST', body: data, headers: {{'X-Requested-With':'XMLHttpRequest'}} }});
                             let payload = null;
@@ -4638,29 +4663,28 @@ def success():
                         }} catch (err) {{
                             alert('Error creating expense: ' + err);
                         }} finally {{
-                            if(btn){{ btn.disabled = false; btn.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Push to Zoho Books'; }}
+                            if(btn){{ btn.disabled = false; btn.innerHTML = '<svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Push to Zoho Books'; }}
                         }}
                     }});
                 }})();
                 </script>
-                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin-top:var(--spacing-4)">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
             </div>
         """
 
     if 'combined' in reports and 'combined_no_sig' in reports:
         html += f"""
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Multi-Tab Combined Reports</h2>
+            <div class="card" style="grid-column:1/-1;margin-bottom:0">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base)">Multi-Tab Combined Reports</h2>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:var(--spacing-4)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--spacing-3)">
                     <div>
-                        <a href="/download/combined" class="btn btn-primary">Download Combined Report (With Signatures)</a>
-                        <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-top:var(--spacing-2)">This report includes a summary page and individual employee sheets with signature lines</p>
+                        <a href="/download/combined" class="btn btn-primary btn-sm" style="width:100%;margin-bottom:var(--spacing-1)">Download (With Signatures)</a>
+                        <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Summary + individual sheets with signature lines</p>
                     </div>
                     <div>
-                        <a href="/download/combined_no_sig" class="btn btn-primary">Download Combined Report (Without Signatures)</a>
-                        <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-top:var(--spacing-2)">This report includes a summary page and individual employee sheets without signature lines, perfect for distributing</p>
+                        <a href="/download/combined_no_sig" class="btn btn-primary btn-sm" style="width:100%;margin-bottom:var(--spacing-1)">Download (Without Signatures)</a>
+                        <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Summary + individual sheets without signatures</p>
                     </div>
                 </div>
             </div>
@@ -4668,32 +4692,33 @@ def success():
 
     if 'error' in reports:
         html += f"""
-            <div class="alert alert-danger">
-                <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+            <div class="alert alert-danger" style="grid-column:1/-1;padding:var(--spacing-3);margin-bottom:0">
+                <svg style="width:18px;height:18px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
                 </svg>
-                <div>
-                    <strong>Error Report</strong>
-                    <p style="margin-top:var(--spacing-2);margin-bottom:var(--spacing-3)">There was an error processing your file. Check details below.</p>
+                <div style="flex:1">
+                    <strong style="font-size:var(--font-size-sm)">Error Report</strong>
+                    <p style="font-size:var(--font-size-xs);margin-top:var(--spacing-1);margin-bottom:var(--spacing-2)">There was an error processing your file. Check details below.</p>
                     <a href="/static/reports/{reports['error']}" class="btn btn-danger btn-sm">View Error Report</a>
                 </div>
             </div>
         """
 
     html += """
-        <div style="text-align:center;margin-top:var(--spacing-4)">
-            <a href="/" class="btn btn-primary btn-lg">
-                <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+        </div>
+        
+        <div style="text-align:center;margin-top:var(--spacing-3);padding-top:var(--spacing-3);border-top:1px solid var(--color-gray-200)">
+            <a href="/" class="btn btn-primary">
+                <svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
                 </svg>
                 Process Another File
             </a>
         </div>
-        </div>
     </div>
 </body>
 </html>
-    """
+"""
     return html
 
 @app.route('/print/<report_type>')

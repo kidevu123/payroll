@@ -3,11 +3,29 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.1"
-__version_name__ = "CRITICAL FIX: Process Confirmed Route"
+__version__ = "8.9.2"
+__version_name__ = "Success Page: Zero-Scroll Compact Layout"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.2",
+        "date": "2025-11-22",
+        "changes": [
+            "📐 UX: Success Page - Zero-Scroll Compact Layout",
+            "Redesigned success page to fit without scrolling",
+            "Side-by-side layout: Reports card + Zoho integration",
+            "Compact header with inline checkmark icon",
+            "Reports displayed in compact list format",
+            "Smaller buttons (btn-sm) for space efficiency",
+            "Reduced padding and margins throughout",
+            "Zoho form more compact with smaller inputs",
+            "Combined reports section spans full width when present",
+            "Error alerts more compact",
+            "Process Another File button at bottom with minimal spacing",
+            "All content fits in single viewport - no scrolling required"
+        ]
+    },
     {
         "version": "8.9.1",
         "date": "2025-11-22",
