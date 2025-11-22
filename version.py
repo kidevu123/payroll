@@ -3,11 +3,27 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "7.2.0"
-__version_name__ = "Security: Configuration Management"
+__version__ = "7.3.0"
+__version_name__ = "Enhanced Duplicate Prevention"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "7.3.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🔒 ENHANCED: Robust Duplicate Prevention for Zoho Expenses",
+            "Added zoho_find_expense_by_reference() - searches Zoho by reference number",
+            "Two-tier duplicate check: Session cache (fast) + Zoho search (robust)",
+            "Prevents duplicates across different sessions and users",
+            "Works even if user logs out and back in",
+            "Reference number format: PAYROLL-{start_date}_to_{end_date}",
+            "Automatic session cache update when Zoho duplicate found",
+            "Comprehensive logging for all duplicate prevention",
+            "Applied to both automatic and manual expense creation",
+            "User-friendly alert messages with expense ID and reference"
+        ]
+    },
     {
         "version": "7.2.0",
         "date": "2025-11-22",

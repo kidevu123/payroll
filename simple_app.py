@@ -420,6 +420,44 @@ def zoho_get_expense(company_raw, expense_id: str):
     except Exception:
         return None
 
+def zoho_find_expense_by_reference(company_raw, reference_number: str):
+    """
+    Search Zoho Books for an expense with the given reference number.
+    Returns expense_id if found, else None.
+    This provides robust duplicate prevention across sessions and users.
+    """
+    try:
+        cfg = get_zoho_company_cfg(company_raw)
+        if not cfg:
+            app.logger.warning(f"No Zoho config for {company_raw}")
+            return None
+        
+        # Search expenses with reference number filter
+        url = f"{ZB_DOMAIN}/books/v3/expenses?organization_id={cfg['org_id']}&reference_number={reference_number}"
+        app.logger.info(f"Searching Zoho for expense with reference: {reference_number}")
+        
+        resp = requests.get(url, headers=zoho_headers(company_raw), timeout=15)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            expenses = data.get('expenses', [])
+            
+            if expenses:
+                # Return the first matching expense ID
+                expense_id = expenses[0].get('expense_id')
+                app.logger.info(f"Found existing expense: {expense_id} with reference: {reference_number}")
+                return expense_id
+            else:
+                app.logger.debug(f"No existing expense found with reference: {reference_number}")
+                return None
+        else:
+            app.logger.warning(f"Zoho search failed: {resp.status_code} - {resp.text[:200]}")
+            return None
+            
+    except Exception as e:
+        app.logger.error(f"Error searching Zoho for expense: {e}")
+        return None
+
 def build_admin_summary_text_from_csv(file_path: str, start_str: str, end_str: str) -> str:
     """Create a compact text version of the admin summary (top table) for Notes.
     Uses the uploaded CSV to recompute the same summary to avoid brittle Excel parsing.
@@ -5354,14 +5392,26 @@ def _auto_push_expense_if_configured(week):
         if amount is None:
             return
         # Prevent duplicate creation for the same company+week
+        # First check session cache for quick lookup
         existing = _get_existing_expense(default_company, week)
         if existing:
             # If previously stored, ensure it still exists; if not, allow recreation
             if zoho_get_expense(default_company, existing):
+                app.logger.info(f"Duplicate prevented (session cache): expense {existing} already exists")
                 return
             _clear_existing_expense(default_company, week)
+        
+        # Second check: Search Zoho directly by reference number for robust duplicate prevention
         start_str, end_str = compute_week_range_strings(week)
         reference_number = f"PAYROLL-{start_str}_to_{end_str}"
+        
+        # Check if expense with this reference number already exists in Zoho
+        existing_by_ref = zoho_find_expense_by_reference(default_company, reference_number)
+        if existing_by_ref:
+            app.logger.warning(f"Duplicate prevented (Zoho search): expense {existing_by_ref} with reference {reference_number} already exists")
+            # Store in session to avoid future API calls
+            _set_existing_expense(default_company, week, existing_by_ref)
+            return
         post_date = compute_expense_date_from_data(week)
         # Auto-notes from summary
         csv_path = session.get('filtered_file') or session.get('uploaded_file')
@@ -5398,6 +5448,7 @@ def zoho_create_expense_route():
             return "Admin report not found in session. Please process payroll first.", 400
 
         # Prevent duplicate creation for same company+week
+        # First check session cache
         existing = _get_existing_expense(company, week)
         if existing:
             # Validate that the expense still exists in Zoho; if deleted, clear cache and proceed
@@ -5405,9 +5456,24 @@ def zoho_create_expense_route():
             if not exists_remote:
                 _clear_existing_expense(company, week)
             else:
+                app.logger.info(f"Duplicate prevented (session cache): expense {existing} already exists")
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.form.get('ajax') == '1':
                     return jsonify({'status': 'ok', 'expense_id': existing, 'duplicate': True})
                 return f"<script>alert('Expense already exists. ID: {existing}'); history.back();</script>", 200
+        
+        # Second check: Search Zoho directly by reference number for robust duplicate prevention
+        start_str, end_str = compute_week_range_strings(week)
+        reference_number = f"PAYROLL-{start_str}_to_{end_str}"
+        
+        # Check if expense with this reference number already exists in Zoho
+        existing_by_ref = zoho_find_expense_by_reference(company, reference_number)
+        if existing_by_ref:
+            app.logger.warning(f"Duplicate prevented (Zoho search): expense {existing_by_ref} with reference {reference_number} already exists")
+            # Store in session to avoid future API calls
+            _set_existing_expense(company, week, existing_by_ref)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.form.get('ajax') == '1':
+                return jsonify({'status': 'ok', 'expense_id': existing_by_ref, 'duplicate': True})
+            return f"<script>alert('Expense already exists in Zoho. ID: {existing_by_ref}\\nReference: {reference_number}'); history.back();</script>", 200
 
         # Compute total amount from dataframe stored during processing is not persisted.
         # Re-open the admin report to extract the grand total if possible; otherwise recompute from uploaded CSV.
@@ -5452,7 +5518,7 @@ def zoho_create_expense_route():
             amount = round(total_pay, 2)
 
         # Create expense with posting date = end-of-week + 1
-        start_str, end_str = compute_week_range_strings(week)
+        # Note: start_str, end_str, and reference_number already defined in duplicate check above
         post_date = compute_expense_date_from_data(week)
         # Compose description with automated admin summary + optional notes
         base_desc = f"Weekly payroll expense for {start_str} to {end_str} created by {session.get('username', 'Unknown')}"
