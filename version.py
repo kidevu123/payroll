@@ -3,11 +3,27 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.6.0"
-__version_name__ = "Enterprise UI - Change Password & Progress Update"
+__version__ = "8.7.0"
+__version_name__ = "Enterprise UI - Success & User Management Pages"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.7.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🎨 UI: Success Page & User Management Redesign",
+            "Success page (Payroll Complete) - removed Tailwind, added design system",
+            "Professional success banner with checkmark",
+            "Download buttons with icons",
+            "Zoho integration form redesigned",
+            "Manage Users page - removed Tailwind, added design system",
+            "Professional user table with badges",
+            "Add user form with validation helpers",
+            "All pages now use consistent navigation",
+            "Removed all sidebar dependencies"
+        ]
+    },
     {
         "version": "8.6.0",
         "date": "2025-11-22",

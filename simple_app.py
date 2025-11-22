@@ -4425,117 +4425,157 @@ def success():
     reports = session.get('reports', {})
     week = session.get('week', datetime.now().strftime('%Y-%m-%d'))
     username = session.get('username', 'Unknown')
-    
-    sidebar = get_enterprise_sidebar(username, 'success')
+    menu_html = get_menu_html(username)
 
     # Clear the report cache
     clear_report_cache()
 
-    # Start HTML with Tailwind
+    # Start HTML with design system
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Complete | Payroll Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {{
-            theme: {{
-                extend: {{
-                    colors: {{
-                        primary: '#1e40af',
-                        secondary: '#64748b',
-                        bgLight: '#f8fafc',
-                        textDark: '#0f172a',
-                        accent: '#0ea5e9',
-                        success: '#10b981',
-                        danger: '#ef4444'
-                    }},
-                    fontFamily: {{
-                        sans: ['Inter', 'system-ui', 'sans-serif']
-                    }}
-                }}
-            }}
+    <title>Payroll Complete - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .success-header {{
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
         }}
-    </script>
+        .success-banner {{
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border: 2px solid var(--color-success);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-8);
+            text-align: center;
+            margin-bottom: var(--spacing-8);
+        }}
+        .success-icon {{
+            font-size: 64px;
+            color: var(--color-success);
+            margin-bottom: var(--spacing-4);
+        }}
+    </style>
 </head>
-<body class="bg-bgLight font-sans">
-<div class="flex h-screen overflow-hidden">
-    {sidebar}
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 class="text-2xl font-bold text-textDark">Payroll Complete</h2>
-            <p class="text-sm text-secondary mt-1">Week: {week}</p>
-        </header>
-        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-            <div class="max-w-5xl mx-auto">
-                <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6 text-center">
-                    <div class="text-5xl mb-3">✓</div>
-                    <h1 class="text-3xl font-bold text-green-800">Payroll Processing Complete!</h1>
-                    <p class="text-green-700 mt-2">Successfully processed for week {week}</p>
-                </div>
+<body>
+    {menu_html}
+    
+    <div class="success-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Payroll Complete</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Week: {week}</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="success-banner">
+            <div class="success-icon">✓</div>
+            <h1 style="font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);color:var(--color-success);margin-bottom:var(--spacing-2)">
+                Payroll Processing Complete!
+            </h1>
+            <p style="font-size:var(--font-size-lg);color:var(--color-success);margin:0">Successfully processed for week {week}</p>
+        </div>
                 
-                <!-- Reports Section -->
-                <div class="space-y-6">
+        <div class="grid grid-cols-1 gap-6">
     """
 
     if 'admin' in reports and 'payslips_sheet' in reports:
         html += f"""
-                <!-- Admin & Payslips Reports -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                    <h3 class="text-lg font-semibold text-textDark mb-4">Recommended Reports</h3>
-                    
-                    <!-- Admin Report -->
-                    <div class="mb-6 pb-6 border-b border-gray-200">
-                        <h4 class="font-medium text-textDark mb-2">Admin Report (Single Sheet)</h4>
-                        <p class="text-sm text-secondary mb-4">All employee data with signature lines</p>
-                        <div class="flex gap-3">
-                            <a href="/download/admin" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
-                                Download
-                            </a>
-                            <a href="/print/admin" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
-                                Print Version
-                            </a>
-                        </div>
-                        <p class="text-xs text-secondary mt-2">Direct link: <a href="/static/reports/{reports['admin']}" class="text-accent hover:underline">{reports['admin']}</a></p>
-                    </div>
-                    
-                    <!-- Payslips Report -->
-                    <div>
-                        <h4 class="font-medium text-textDark mb-2">Cuttable Payslips</h4>
-                        <p class="text-sm text-secondary mb-4">All payslips with cut lines for distribution</p>
-                        <div class="flex gap-3">
-                            <a href="/download/payslips_sheet" class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">
-                                Download
-                            </a>
-                            <a href="/print/payslips" target="_blank" class="px-4 py-2 bg-accent text-white font-semibold rounded-lg hover:bg-accent/90 transition-colors">
-                                Print Version
-                            </a>
-                        </div>
-                        <p class="text-xs text-secondary mt-2">Direct link: <a href="/static/reports/{reports['payslips_sheet']}" class="text-accent hover:underline">{reports['payslips_sheet']}</a></p>
-                    </div>
+            <!-- Recommended Reports -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                        </svg>
+                        Recommended Reports
+                    </h2>
                 </div>
-
                 
-                <!-- Zoho Books Integration -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6 mt-6">
-                    <h3 class="text-lg font-semibold text-textDark mb-2">Zoho Books Integration</h3>
-                    <p class="text-sm text-secondary mb-4">Automatically create an expense and attach the admin report</p>
-                <form id="zoho-expense-form" action="/zoho/create_expense" method="post" class="space-y-4">
-                    <label for="company">Company to post to:</label>
-                    <select id="company" name="company" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-                        <option value="haute">Haute Brands</option>
-                        <option value="boomin">Boomin Brands</option>
-                    </select>
+                <!-- Admin Report -->
+                <div style="padding-bottom:var(--spacing-6);margin-bottom:var(--spacing-6);border-bottom:1px solid var(--color-gray-200)">
+                    <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">Admin Report (Single Sheet)</h3>
+                    <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--spacing-4)">All employee data with signature lines</p>
+                    <div style="display:flex;gap:var(--spacing-3);margin-bottom:var(--spacing-2)">
+                        <a href="/download/admin" class="btn btn-primary">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Download
+                        </a>
+                        <a href="/print/admin" target="_blank" class="btn btn-secondary">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
+                            </svg>
+                            Print Version
+                        </a>
+                    </div>
+                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Direct link: <a href="/static/reports/{reports['admin']}" style="color:var(--color-primary);text-decoration:underline">{reports['admin']}</a></p>
+                </div>
+                
+                <!-- Payslips Report -->
+                <div>
+                    <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">Cuttable Payslips</h3>
+                    <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--spacing-4)">All payslips with cut lines for distribution</p>
+                    <div style="display:flex;gap:var(--spacing-3);margin-bottom:var(--spacing-2)">
+                        <a href="/download/payslips_sheet" class="btn btn-primary">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Download
+                        </a>
+                        <a href="/print/payslips" target="_blank" class="btn btn-secondary">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/>
+                            </svg>
+                            Print Version
+                        </a>
+                    </div>
+                    <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Direct link: <a href="/static/reports/{reports['payslips_sheet']}" style="color:var(--color-primary);text-decoration:underline">{reports['payslips_sheet']}</a></p>
+                </div>
+            </div>
+            
+            <!-- Zoho Books Integration -->
+            <div class="card" style="background:linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);border-color:var(--color-primary)">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+                        </svg>
+                        Zoho Books Integration
+                    </h2>
+                </div>
+                
+                <p style="font-size:var(--font-size-sm);color:var(--color-gray-700);margin-bottom:var(--spacing-4)">Automatically create an expense and attach the admin report</p>
+                
+                <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
+                    <div class="form-group">
+                        <label for="company" class="form-label">Company to post to</label>
+                        <select id="company" name="company" class="form-select">
+                            <option value="haute">Haute Brands</option>
+                            <option value="boomin">Boomin Brands</option>
+                        </select>
+                    </div>
                     <input type="hidden" name="week" value="{week}">
 
-                    <div style="margin-top:8px;">
-                        <label for="custom_desc">Notes (append to description):</label>
-                        <input type="text" id="custom_desc" name="custom_desc" placeholder="Optional notes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                    <div class="form-group">
+                        <label for="custom_desc" class="form-label">Notes (append to description)</label>
+                        <input type="text" id="custom_desc" name="custom_desc" class="form-input" placeholder="Optional notes...">
                     </div>
-                    <button type="submit" class="px-6 py-3 bg-success text-white font-semibold rounded-lg hover:bg-success/90 transition-colors">Push to Zoho Books</button>
+                    
+                    <button type="submit" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                        Push to Zoho Books
+                    </button>
                 </form>
                 <script>
                 (function(){{
@@ -4546,7 +4586,7 @@ def success():
                         const data = new FormData(form);
                         data.append('ajax','1');
                         const btn = form.querySelector('button[type="submit"]');
-                        if(btn){{ btn.disabled = true; btn.textContent = 'Pushing...'; }}
+                        if(btn){{ btn.disabled = true; btn.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Pushing...'; }}
                         try {{
                             const res = await fetch(form.action, {{ method: 'POST', body: data, headers: {{'X-Requested-With':'XMLHttpRequest'}} }});
                             let payload = null;
@@ -4564,58 +4604,59 @@ def success():
                         }} catch (err) {{
                             alert('Error creating expense: ' + err);
                         }} finally {{
-                            if(btn){{ btn.disabled = false; btn.textContent = 'Push Expense to Zoho Books'; }}
+                            if(btn){{ btn.disabled = false; btn.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Push to Zoho Books'; }}
                         }}
                     }});
                 }})();
                 </script>
-                <p class="text-xs text-secondary mt-4">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
+                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin-top:var(--spacing-4)">Configure credentials via environment variables: ZB_HAUTE_* and ZB_BOOMIN_*.</p>
             </div>
-        </div>
         """
 
     if 'combined' in reports and 'combined_no_sig' in reports:
         html += f"""
-        <div class="download-section">
-            <h2>Multi-Tab Combined Reports</h2>
-
-            <p><a href="/download/combined" class="button">Download Combined Report (With Signatures)</a></p>
-            <p><small>This report includes a summary page and individual employee sheets with signature lines</small></p>
-
-            <p><a href="/download/combined_no_sig" class="button">Download Combined Report (Without Signatures)</a></p>
-            <p><small>This report includes a summary page and individual employee sheets without signature lines, perfect for distributing</small></p>
-        </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Multi-Tab Combined Reports</h2>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:var(--spacing-4)">
+                    <div>
+                        <a href="/download/combined" class="btn btn-primary">Download Combined Report (With Signatures)</a>
+                        <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-top:var(--spacing-2)">This report includes a summary page and individual employee sheets with signature lines</p>
+                    </div>
+                    <div>
+                        <a href="/download/combined_no_sig" class="btn btn-primary">Download Combined Report (Without Signatures)</a>
+                        <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-top:var(--spacing-2)">This report includes a summary page and individual employee sheets without signature lines, perfect for distributing</p>
+                    </div>
+                </div>
+            </div>
         """
-
 
     if 'error' in reports:
         html += f"""
-                <!-- Error Report -->
-                <div class="bg-red-50 rounded-xl border border-red-200 p-6 mb-6">
-                    <h3 class="text-lg font-semibold text-red-800 mb-2">Error Report</h3>
-                    <p class="text-sm text-red-700 mb-4">There was an error processing your file. Check details below.</p>
-                    <a href="/static/reports/{reports['error']}" class="px-4 py-2 bg-danger text-white font-semibold rounded-lg hover:bg-danger/90 transition-colors inline-block">
-                        View Error Report
-                    </a>
+            <div class="alert alert-danger">
+                <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <strong>Error Report</strong>
+                    <p style="margin-top:var(--spacing-2);margin-bottom:var(--spacing-3)">There was an error processing your file. Check details below.</p>
+                    <a href="/static/reports/{reports['error']}" class="btn btn-danger btn-sm">View Error Report</a>
                 </div>
+            </div>
         """
 
     html += """
-                <div class="text-center">
-                    <a href="/" class="px-6 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors inline-block">
-                        Process Another File
-                    </a>
-                </div>
-    </body>
-    </html>
-    """
-
-    html += """
-                </div>
-            </div>
-        </main>
+        <div style="text-align:center;margin-top:var(--spacing-8)">
+            <a href="/" class="btn btn-primary btn-lg">
+                <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+                </svg>
+                Process Another File
+            </a>
+        </div>
+        </div>
     </div>
-</div>
 </body>
 </html>
     """
@@ -6020,15 +6061,7 @@ def manage_users():
     if username != 'admin':
         return redirect(url_for('index'))
     
-    sidebar = get_enterprise_sidebar(username, 'users')
-    is_admin = True  # Already checked above
-    admin_menu = '''<a href="/manage_users" class="flex items-center space-x-3 px-3 py-2.5 text-sm font-medium rounded-lg bg-primary/10 text-primary">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <span>Manage Users</span>
-                    </a>'''
-
+    menu_html = get_menu_html(username)
     users = load_users()
 
     html = f"""<!DOCTYPE html>
@@ -6036,82 +6069,124 @@ def manage_users():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Users | Payroll</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+    <title>Manage Users - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .users-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
+        }}
+    </style>
 </head>
-<body class="bg-bgLight font-sans">
-<div class="flex h-screen overflow-hidden">
-    {sidebar}
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 class="text-2xl font-bold text-textDark">Manage Users</h2>
-            <p class="text-sm text-secondary mt-1">Add and remove system users</p>
-        </header>
-        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-                    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                        <h3 class="text-lg font-semibold text-textDark">Current Users</h3>
-                    </div>
-                    <table class="w-full">
-                        <thead class="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Username</th>
-                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
+<body>
+    {menu_html}
+    
+    <div class="users-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Manage Users</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Add and remove system users</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                    </svg>
+                    Current Users
+                </h2>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
 """
     
     for user in users.keys():
         is_admin_user = user == 'admin'
         if is_admin_user:
             html += f"""
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm text-textDark">
-                                    {user}
-                                    <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">Admin</span>
-                                </td>
-                                <td class="px-6 py-4 text-right text-sm text-secondary italic">Cannot delete admin</td>
-                            </tr>
+                        <tr>
+                            <td>
+                                <strong>{escape(user)}</strong>
+                                <span class="badge badge-primary" style="margin-left:var(--spacing-2)">Admin</span>
+                            </td>
+                            <td class="text-right">
+                                <span style="color:var(--color-gray-500);font-size:var(--font-size-sm);font-style:italic">Cannot delete admin</span>
+                            </td>
+                        </tr>
 """
         else:
             html += f"""
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm text-textDark">{user}</td>
-                                <td class="px-6 py-4 text-right">
-                                    <form method="post" action="/delete_user/{user}" style="display:inline;" onsubmit="return confirm('Delete user {user}?');">
-                                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td><strong>{escape(user)}</strong></td>
+                            <td class="text-right">
+                                <form method="post" action="/delete_user/{escape(user)}" style="display:inline;" onsubmit="return confirm('Delete user {escape(user)}?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
 """
     
     html += """
-                        </tbody>
-                    </table>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Add New User
+                </h2>
+            </div>
+            
+            <form method="post" action="/add_user">
+                <div class="form-group">
+                    <label for="username" class="form-label form-label-required">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Enter username" required>
+                    <span class="form-help">3-50 characters, alphanumeric only</span>
                 </div>
                 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 class="text-lg font-semibold text-textDark mb-4">Add New User</h3>
-                    <form method="post" action="/add_user" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-textDark mb-2">Username</label>
-                            <input type="text" name="username" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-textDark mb-2">Password</label>
-                            <input type="password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <button type="submit" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Add User</button>
-                    </form>
+                <div class="form-group">
+                    <label for="password" class="form-label form-label-required">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Enter password" required>
+                    <span class="form-help">At least 8 characters, must include letters and numbers</span>
                 </div>
-            </div>
-        </main>
+                
+                <div style="margin-top:var(--spacing-6);text-align:right">
+                    <button type="submit" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Add User
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 </body>
 </html>"""
     
