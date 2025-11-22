@@ -1454,39 +1454,288 @@ def get_base_html_head(title="Payroll Management"):
     '''
 
 def get_menu_html(username):
-    """Generate Bootstrap-based navigation bar"""
+    """Generate enterprise navigation bar with design system"""
     is_admin = username == 'admin'
-    admin_link = '<li class="nav-item"><a class="nav-link" href="/manage_users"><i class="bi bi-people-fill me-1"></i>Manage Users</a></li>' if is_admin else ''
+    admin_link = '''
+        <a href="/manage_users" class="nav-link">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+            </svg>
+            <span>Manage Users</span>
+        </a>
+    ''' if is_admin else ''
     
     return f'''
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-calculator-fill me-2"></i>Payroll Management
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="/static/favicon.svg" alt="Logo" class="navbar-logo">
+                <span class="navbar-title">Payroll Management</span>
+                <span class="navbar-version">{get_version_display()}</span>
+            </div>
+            
+            <button class="navbar-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-house-fill me-1"></i>Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/fetch_timecard"><i class="bi bi-cloud-download-fill me-1"></i>Fetch from NGTeco</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/manage_rates"><i class="bi bi-currency-dollar me-1"></i>Pay Rates</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/reports"><i class="bi bi-file-earmark-text-fill me-1"></i>Reports</a></li>
+            
+            <div class="navbar-menu" id="navbarMenu">
+                <div class="navbar-left">
+                    <a href="/" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                        </svg>
+                        <span>Home</span>
+                    </a>
+                    <a href="/fetch_timecard" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Fetch Timecard</span>
+                    </a>
+                    <a href="/manage_rates" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Pay Rates</span>
+                    </a>
+                    <a href="/reports" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                        </svg>
+                        <span>Reports</span>
+                    </a>
                     {admin_link}
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link" href="/change_password"><i class="bi bi-key-fill me-1"></i>Change Password</a></li>
-                    <li class="nav-item"><a class="nav-link text-warning" href="/logout"><i class="bi bi-box-arrow-right me-1"></i>Logout</a></li>
-                    <li class="nav-item">
-                        <span class="navbar-text ms-3">
-                            <i class="bi bi-person-circle me-1"></i>{escape(username)}
-                        </span>
-                    </li>
-                </ul>
+                </div>
+                
+                <div class="navbar-right">
+                    <div class="user-menu">
+                        <button class="user-menu-button" onclick="toggleUserMenu()" aria-label="User menu">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>{escape(username)}</span>
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <div class="user-menu-dropdown" id="userMenuDropdown">
+                            <a href="/change_password" class="user-menu-item">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                Change Password
+                            </a>
+                            <a href="/logout" class="user-menu-item user-menu-item-danger">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
+                                </svg>
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
+    
+    <style>
+        .navbar {{
+            background: white;
+            border-bottom: 1px solid var(--color-gray-200);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: var(--z-sticky);
+        }}
+        .navbar-container {{
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 var(--spacing-6);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }}
+        .navbar-brand {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+        }}
+        .navbar-logo {{
+            width: 32px;
+            height: 32px;
+        }}
+        .navbar-title {{
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-gray-900);
+        }}
+        .navbar-version {{
+            font-size: var(--font-size-xs);
+            color: var(--color-gray-500);
+            padding: var(--spacing-1) var(--spacing-2);
+            background: var(--color-gray-100);
+            border-radius: var(--radius-full);
+        }}
+        .navbar-toggle {{
+            display: none;
+            background: none;
+            border: none;
+            color: var(--color-gray-700);
+            cursor: pointer;
+            padding: var(--spacing-2);
+        }}
+        .navbar-menu {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex: 1;
+            margin-left: var(--spacing-8);
+        }}
+        .navbar-left {{
+            display: flex;
+            gap: var(--spacing-2);
+        }}
+        .navbar-right {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-4);
+        }}
+        .nav-link {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-4);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-gray-700);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }}
+        .nav-link:hover {{
+            background: var(--color-gray-100);
+            color: var(--color-primary);
+        }}
+        .user-menu {{
+            position: relative;
+        }}
+        .user-menu-button {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-2);
+            padding: var(--spacing-2) var(--spacing-3);
+            background: var(--color-gray-50);
+            border: 1px solid var(--color-gray-200);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-gray-700);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }}
+        .user-menu-button:hover {{
+            background: var(--color-gray-100);
+            border-color: var(--color-gray-300);
+        }}
+        .user-menu-dropdown {{
+            display: none;
+            position: absolute;
+            right: 0;
+            top: calc(100% + var(--spacing-2));
+            background: white;
+            border: 1px solid var(--color-gray-200);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
+            z-index: var(--z-dropdown);
+        }}
+        .user-menu-dropdown.show {{
+            display: block;
+        }}
+        .user-menu-item {{
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+            padding: var(--spacing-3) var(--spacing-4);
+            font-size: var(--font-size-sm);
+            color: var(--color-gray-700);
+            text-decoration: none;
+            transition: background var(--transition-fast);
+        }}
+        .user-menu-item:hover {{
+            background: var(--color-gray-50);
+        }}
+        .user-menu-item-danger {{
+            color: var(--color-danger);
+        }}
+        .user-menu-item-danger:hover {{
+            background: var(--color-danger-light);
+        }}
+        
+        @media (max-width: 768px) {{
+            .navbar-toggle {{
+                display: block;
+            }}
+            .navbar-title {{
+                font-size: var(--font-size-base);
+            }}
+            .navbar-version {{
+                display: none;
+            }}
+            .navbar-menu {{
+                display: none;
+                position: absolute;
+                top: 64px;
+                left: 0;
+                right: 0;
+                background: white;
+                border-bottom: 1px solid var(--color-gray-200);
+                box-shadow: var(--shadow-lg);
+                flex-direction: column;
+                padding: var(--spacing-4);
+                margin-left: 0;
+            }}
+            .navbar-menu.show {{
+                display: flex;
+            }}
+            .navbar-left,
+            .navbar-right {{
+                flex-direction: column;
+                width: 100%;
+                gap: var(--spacing-2);
+            }}
+            .nav-link {{
+                width: 100%;
+                justify-content: flex-start;
+            }}
+            .user-menu {{
+                width: 100%;
+            }}
+            .user-menu-button {{
+                width: 100%;
+                justify-content: space-between;
+            }}
+        }}
+    </style>
+    
+    <script>
+        function toggleMobileMenu() {{
+            document.getElementById('navbarMenu').classList.toggle('show');
+        }}
+        function toggleUserMenu() {{
+            document.getElementById('userMenuDropdown').classList.toggle('show');
+        }}
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {{
+            if (!event.target.closest('.user-menu')) {{
+                document.getElementById('userMenuDropdown').classList.remove('show');
+            }}
+        }});
+    </script>
     '''
 
 def get_enterprise_sidebar(username, active_page="home"):
