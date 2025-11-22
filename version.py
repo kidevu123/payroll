@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.4.0"
-__version_name__ = "Performance - Pay Rates Caching"
+__version__ = "7.0.0"
+__version_name__ = "CRITICAL SECURITY: Password Hashing"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "7.0.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🔒 CRITICAL SECURITY UPDATE: Password Hashing Implemented",
+            "All passwords now stored as pbkdf2:sha256 hashes",
+            "Automatic migration of plaintext passwords on startup",
+            "Backward compatibility with existing passwords during migration",
+            "Updated login to use secure password verification",
+            "Updated add_user to hash new passwords",
+            "Updated change_password to hash new passwords",
+            "Comprehensive logging for password operations",
+            "MAJOR VERSION BUMP: Security critical update"
+        ]
+    },
     {
         "version": "6.4.0",
         "date": "2025-11-22",

@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from flask import Flask, request, send_file, render_template_string, redirect, url_for, jsonify, session, flash, get_flashed_messages
+from werkzeug.security import generate_password_hash, check_password_hash
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -653,6 +654,49 @@ def save_users(users):
         app.logger.error(f"Unexpected error saving users: {e}")
         raise
 
+def hash_password(password):
+    """Hash a password using werkzeug's secure password hashing"""
+    return generate_password_hash(password, method='pbkdf2:sha256')
+
+def verify_password(stored_password, provided_password):
+    """
+    Verify a password against the stored hash.
+    Also supports legacy plaintext passwords for backwards compatibility.
+    """
+    # Check if password is already hashed (starts with method identifier)
+    if stored_password.startswith('pbkdf2:sha256:') or stored_password.startswith('scrypt:'):
+        return check_password_hash(stored_password, provided_password)
+    else:
+        # Legacy plaintext password - compare directly but log warning
+        app.logger.warning(f"Plaintext password detected - please update to hashed password")
+        return stored_password == provided_password
+
+def migrate_plaintext_passwords():
+    """
+    Migrate all plaintext passwords to hashed passwords.
+    This function should be called on app startup.
+    """
+    try:
+        users = load_users()
+        migrated = False
+        
+        for username, password in users.items():
+            # Check if password is already hashed
+            if not (password.startswith('pbkdf2:sha256:') or password.startswith('scrypt:')):
+                # Migrate to hashed password
+                users[username] = hash_password(password)
+                migrated = True
+                app.logger.info(f"Migrated password for user: {username}")
+        
+        if migrated:
+            save_users(users)
+            app.logger.info("Password migration completed successfully")
+        else:
+            app.logger.debug("No plaintext passwords found - all passwords already hashed")
+            
+    except Exception as e:
+        app.logger.error(f"Error during password migration: {e}")
+
 # Login required decorator
 def login_required(f):
     @wraps(f)
@@ -755,6 +799,16 @@ def get_employee_names():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# SECURITY INITIALIZATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# Migrate plaintext passwords to hashed passwords on startup
+try:
+    migrate_plaintext_passwords()
+except Exception as e:
+    app.logger.error(f"Failed to migrate passwords: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # AUTHENTICATION ROUTES
 # ═══════════════════════════════════════════════════════════════════════════════
 # Login, logout, and password management endpoints
@@ -769,7 +823,7 @@ def login():
 
         users = load_users()
 
-        if username in users and users[username] == password:
+        if username in users and verify_password(users[username], password):
             session['logged_in'] = True
             session['username'] = username
             next_page = request.args.get('next')
@@ -863,15 +917,16 @@ def change_password():
 
         users = load_users()
 
-        if users.get(username) != current_password:
+        if not verify_password(users.get(username), current_password):
             error = 'Current password is incorrect'
         elif new_password != confirm_password:
             error = 'New passwords do not match'
         elif len(new_password) < 4:
             error = 'Password must be at least 4 characters'
         else:
-            users[username] = new_password
+            users[username] = hash_password(new_password)
             save_users(users)
+            app.logger.info(f"Password changed for user: {username}")
             success = 'Password changed successfully'
 
     html = f"""
@@ -5471,8 +5526,9 @@ def add_user():
     if username in users:
         return "Username already exists", 400
 
-    users[username] = password
+    users[username] = hash_password(password)
     save_users(users)
+    app.logger.info(f"New user added: {username}")
 
     return redirect(url_for('manage_users'))
 
