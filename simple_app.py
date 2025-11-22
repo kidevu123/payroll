@@ -3443,27 +3443,36 @@ def fix_times():
         error_details = traceback.format_exc()
         return f"Error fixing times: {str(e)}<br><pre>{error_details}</pre>", 500
 
-@app.route('/process', methods=['POST'])
+@app.route('/process', methods=['GET', 'POST'])
 @login_required
 def process():
     """Process the uploaded file"""
     try:
-        if 'file' not in request.files:
-            return "No file part", 400
+        # Check if this is a redirect from validation (file already in session)
+        if request.method == 'GET' and 'uploaded_file' in session:
+            file_path = session.get('uploaded_file')
+            if not file_path or not os.path.exists(file_path):
+                return "No file found in session. Please upload again.", 400
+            filename = os.path.basename(file_path)
+        else:
+            # Original POST handling with file upload
+            if 'file' not in request.files:
+                return "No file part", 400
 
-        file = request.files['file']
-        if file.filename == '':
-            return "No selected file", 400
+            file = request.files['file']
+            if file.filename == '':
+                return "No selected file", 400
 
-        # Save the file
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(file_path)
+            # Save the file
+            file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(file_path)
+            filename = file.filename
 
         # Get current username for report creation
         username = session.get('username', 'Unknown')
 
         # For CSV files, create reports
-        if file.filename.endswith('.csv'):
+        if filename.endswith('.csv'):
             try:
                 # Read the CSV file
                 df = pd.read_csv(file_path)
@@ -3544,7 +3553,7 @@ def process():
                 txt_filename = "error_report.txt"
                 report_path = os.path.join(REPORT_FOLDER, txt_filename)
                 with open(report_path, 'w') as f:
-                    f.write(f"Error processing {file.filename}: {str(e)}\n")
+                    f.write(f"Error processing {filename}: {str(e)}\n")
                     f.write(traceback.format_exc())
                 session['reports'] = {'error': txt_filename}
 
@@ -3554,7 +3563,7 @@ def process():
             txt_filename = "file_report.txt"
             report_path = os.path.join(REPORT_FOLDER, txt_filename)
             with open(report_path, 'w') as f:
-                f.write(f"Report for {file.filename}\n")
+                f.write(f"Report for {filename}\n")
                 f.write(f"File size: {os.path.getsize(file_path)} bytes\n")
             session['reports'] = {'file': txt_filename}
 

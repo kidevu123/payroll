@@ -3,11 +3,22 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.2.1"
-__version_name__ = "Code Optimization - Phase 5"
+__version__ = "6.2.2"
+__version_name__ = "Critical Bug Fix - Process Route"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.2.2",
+        "date": "2025-11-22",
+        "changes": [
+            "CRITICAL FIX: Method Not Allowed error on /process route",
+            "Fixed /process route to accept both GET and POST methods",
+            "Resolved redirect issue from /validate causing 405 errors",
+            "Process route now handles both direct uploads and validation redirects",
+            "All payroll processing workflows restored to working state"
+        ]
+    },
     {
         "version": "6.2.1",
         "date": "2025-11-22",
