@@ -2160,9 +2160,7 @@ def index():
 def manage_rates():
     """Manage employee pay rates"""
     username = session.get('username', 'Unknown')
-    
-    sidebar = get_enterprise_sidebar(username, 'rates')
-    
+    menu_html = get_menu_html(username)
     
     pay_rates = load_pay_rates()
     employee_names = get_employee_names()  # Get employee names for display
@@ -2174,104 +2172,186 @@ def manage_rates():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Pay Rates | Payroll</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+    <title>Pay Rates - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .rates-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
+        }}
+        .rate-display.hidden, .rate-edit.hidden, 
+        .edit-btn.hidden, .save-btn.hidden, .cancel-btn.hidden {{
+            display: none !important;
+        }}
+        .rate-edit {{
+            width: 120px;
+        }}
+    </style>
 </head>
-<body class="bg-bgLight font-sans">
-<div class="flex h-screen overflow-hidden">
-    {sidebar}
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 class="text-2xl font-bold text-textDark">Current Pay Rates</h2>
-            <p class="text-sm text-secondary mt-1">Manage employee hourly rates</p>
-        </header>
-        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Employee ID</th>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Employee Name</th>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Pay Rate ($/hour)</th>
-                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
+<body>
+    {menu_html}
+    
+    <div class="rates-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Employee Pay Rates</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Manage hourly rates for all employees</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                    </svg>
+                    Current Pay Rates
+                </h2>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Employee Name</th>
+                            <th class="text-right">Pay Rate ($/hour)</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
 """
     
     for emp in employees:
         html += f"""
-                            <tr class="hover:bg-gray-50" id="row-{emp['id']}">
-                                <td class="px-6 py-4 text-sm text-textDark">{emp['id']}</td>
-                                <td class="px-6 py-4 text-sm text-textDark">{emp['name']}</td>
-                                <td class="px-6 py-4">
-                                    <span class="rate-display text-sm font-medium text-textDark">${emp['rate']}</span>
-                                    <input type="number" class="rate-edit hidden w-32 px-3 py-1 border border-gray-300 rounded-lg" step="0.01" value="{emp['rate']}">
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <button onclick="editRate('{emp['id']}')" class="edit-btn px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 mr-2">Edit</button>
-                                    <button onclick="saveRate('{emp['id']}')" class="save-btn hidden px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 mr-2">Save</button>
-                                    <button onclick="cancelEdit('{emp['id']}')" class="cancel-btn hidden px-4 py-2 bg-gray-500 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 mr-2">Cancel</button>
-                                    <form method="post" action="/delete_rate/{emp['id']}" style="display:inline;" onsubmit="return confirm('Delete rate for employee {emp['id']}?');">
-                                        <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700">Delete</button>
-                                    </form>
-                                </td>
-                            </tr>
+                        <tr id="row-{escape(emp['id'])}">
+                            <td><span class="badge badge-primary">{escape(emp['id'])}</span></td>
+                            <td><strong>{escape(emp['name'])}</strong></td>
+                            <td class="text-right">
+                                <span class="rate-display" style="color:var(--color-success);font-weight:var(--font-weight-semibold);font-size:var(--font-size-lg)">${emp['rate']}</span>
+                                <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}">
+                            </td>
+                            <td class="text-right">
+                                <button onclick="editRate('{escape(emp['id'])}')" class="edit-btn btn btn-primary btn-sm">
+                                    <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                                    </svg>
+                                    Edit
+                                </button>
+                                <button onclick="saveRate('{escape(emp['id'])}')" class="save-btn hidden btn btn-success btn-sm">
+                                    <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Save
+                                </button>
+                                <button onclick="cancelEdit('{escape(emp['id'])}')" class="cancel-btn hidden btn btn-secondary btn-sm">
+                                    Cancel
+                                </button>
+                                <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {escape(emp['name'])} ({escape(emp['id'])})?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
 """
     
     html += """
-                        </tbody>
-                    </table>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Add New Pay Rate
+                </h2>
+            </div>
+            
+            <form method="post" action="/add_rate" class="grid grid-cols-2" style="gap:var(--spacing-4);align-items:end">
+                <div class="form-group">
+                    <label for="employee_id" class="form-label form-label-required">Employee ID</label>
+                    <input type="text" id="employee_id" name="employee_id" class="form-input" placeholder="e.g., EMP001" required>
+                    <span class="form-help">Alphanumeric ID (letters, numbers, dash, underscore)</span>
                 </div>
                 
-                <div class="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 class="text-lg font-semibold text-textDark mb-4">Add New Pay Rate</h3>
-                    <form method="post" action="/add_rate" class="flex gap-4 items-end">
-                        <div class="flex-1">
-                            <label class="block text-sm font-medium text-textDark mb-2">Employee ID</label>
-                            <input type="text" name="employee_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-sm font-medium text-textDark mb-2">Pay Rate ($/hour)</label>
-                            <input type="number" name="rate" step="0.01" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                        </div>
-                        <button type="submit" class="px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Add Rate</button>
-                    </form>
+                <div class="form-group">
+                    <label for="rate" class="form-label form-label-required">Pay Rate ($/hour)</label>
+                    <input type="number" id="rate" name="rate" step="0.01" min="0" max="10000" class="form-input" placeholder="e.g., 25.00" required>
+                    <span class="form-help">Between $0.00 and $10,000.00</span>
                 </div>
-            </div>
-        </main>
+                
+                <div style="grid-column:1/-1;text-align:right">
+                    <button type="submit" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Add Pay Rate
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
-<script>
-function editRate(id) {
-    const row = document.getElementById('row-' + id);
-    row.querySelector('.rate-display').classList.add('hidden');
-    row.querySelector('.rate-edit').classList.remove('hidden');
-    row.querySelector('.edit-btn').classList.add('hidden');
-    row.querySelector('.save-btn').classList.remove('hidden');
-    row.querySelector('.cancel-btn').classList.remove('hidden');
-}
-function cancelEdit(id) {
-    const row = document.getElementById('row-' + id);
-    row.querySelector('.rate-display').classList.remove('hidden');
-    row.querySelector('.rate-edit').classList.add('hidden');
-    row.querySelector('.edit-btn').classList.remove('hidden');
-    row.querySelector('.save-btn').classList.add('hidden');
-    row.querySelector('.cancel-btn').classList.add('hidden');
-}
-function saveRate(id) {
-    const row = document.getElementById('row-' + id);
-    const newRate = row.querySelector('.rate-edit').value;
-    fetch('/update_rate/' + id, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({rate: newRate})
-    }).then(r => r.ok ? location.reload() : alert('Error updating rate'));
-}
-</script>
+    
+    <script>
+        function editRate(id) {{
+            const row = document.getElementById('row-' + id);
+            if (!row) return;
+            row.querySelector('.rate-display').classList.add('hidden');
+            row.querySelector('.rate-edit').classList.remove('hidden');
+            row.querySelector('.edit-btn').classList.add('hidden');
+            row.querySelector('.save-btn').classList.remove('hidden');
+            row.querySelector('.cancel-btn').classList.remove('hidden');
+        }}
+        
+        function cancelEdit(id) {{
+            const row = document.getElementById('row-' + id);
+            if (!row) return;
+            row.querySelector('.rate-display').classList.remove('hidden');
+            row.querySelector('.rate-edit').classList.add('hidden');
+            row.querySelector('.edit-btn').classList.remove('hidden');
+            row.querySelector('.save-btn').classList.add('hidden');
+            row.querySelector('.cancel-btn').classList.add('hidden');
+        }}
+        
+        function saveRate(id) {{
+            const row = document.getElementById('row-' + id);
+            if (!row) return;
+            const newRate = row.querySelector('.rate-edit').value;
+            if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
+                alert('Please enter a valid pay rate');
+                return;
+            }}
+            
+            fetch('/update_rate/' + id, {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{rate: parseFloat(newRate)}})
+            }}).then(response => {{
+                if (response.ok) {{
+                    location.reload();
+                }} else {{
+                    alert('Error updating rate. Please try again.');
+                }}
+            }}).catch(error => {{
+                alert('Network error. Please check your connection.');
+            }});
+        }}
+    </script>
 </body>
 </html>"""
     

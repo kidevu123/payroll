@@ -3,11 +3,28 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.4.0"
-__version_name__ = "Enterprise UI - Reports Page"
+__version__ = "8.5.0"
+__version_name__ = "Enterprise UI - Pay Rates Page"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.5.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🎨 UI: Professional Pay Rates Page Redesign",
+            "Replaced Tailwind with design system CSS",
+            "Clean gradient header banner",
+            "Professional table with Employee ID AND Name columns",
+            "Badge-styled Employee IDs",
+            "Inline edit functionality preserved",
+            "Professional form for adding new rates",
+            "Form validation helpers displayed",
+            "Delete confirmation with employee name",
+            "All CRUD operations fully functional",
+            "XSS protection (all data escaped)"
+        ]
+    },
     {
         "version": "8.4.0",
         "date": "2025-11-22",
