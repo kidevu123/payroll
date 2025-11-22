@@ -3,11 +3,28 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "7.1.0"
-__version_name__ = "Security: XSS & Input Validation"
+__version__ = "7.2.0"
+__version_name__ = "Security: Configuration Management"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "7.2.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🔐 SECURITY: Secure Configuration Management",
+            "Moved Flask secret_key to environment variable (FLASK_SECRET_KEY)",
+            "Added warning if secret_key not set in production",
+            "Created .env.example with all required environment variables",
+            "Created comprehensive SECURITY.md documentation",
+            "Documented all Zoho API environment variables",
+            "Security checklist for deployment",
+            "Security incident response procedures",
+            "Password security best practices documented",
+            "All sensitive config now in environment variables",
+            "✅ SECURITY AUDIT COMPLETE: Phase 8 finished"
+        ]
+    },
     {
         "version": "7.1.0",
         "date": "2025-11-22",

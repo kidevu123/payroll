@@ -25,7 +25,16 @@ from logging.handlers import RotatingFileHandler
 from version import get_version, get_version_display, get_version_info
 
 app = Flask(__name__)
-app.secret_key = 'a_very_secret_key'
+# Use environment variable for secret key, fallback to random for development
+app.secret_key = os.getenv('FLASK_SECRET_KEY', os.urandom(24).hex())
+if not os.getenv('FLASK_SECRET_KEY'):
+    import warnings
+    warnings.warn(
+        "WARNING: FLASK_SECRET_KEY not set in environment. "
+        "Using random key - sessions will not persist across restarts. "
+        "Set FLASK_SECRET_KEY environment variable for production.",
+        RuntimeWarning
+    )
 # Use centralized version management
 APP_VERSION = get_version()
 
