@@ -573,6 +573,40 @@ def save_pay_rates(rates):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(rates, f, indent=2)
 
+def get_employee_names():
+    """Extract employee names from uploaded CSV files (front-end display only)"""
+    employee_names = {}
+    try:
+        # Get all CSV files from uploads folder
+        csv_files = []
+        if os.path.exists(UPLOAD_FOLDER):
+            for filename in os.listdir(UPLOAD_FOLDER):
+                if filename.endswith('.csv'):
+                    filepath = os.path.join(UPLOAD_FOLDER, filename)
+                    csv_files.append((filepath, os.path.getmtime(filepath)))
+        
+        # Sort by modification time (newest first) and limit to recent files
+        csv_files.sort(key=lambda x: x[1], reverse=True)
+        recent_files = [f for f, _ in csv_files[:10]]  # Check last 10 files
+        
+        # Extract employee names from CSV files
+        for filepath in recent_files:
+            try:
+                df = pd.read_csv(filepath, dtype=str)
+                if all(col in df.columns for col in ['Person ID', 'First Name', 'Last Name']):
+                    for _, row in df.iterrows():
+                        emp_id = str(row['Person ID']).strip()
+                        first_name = str(row['First Name']).strip()
+                        last_name = str(row['Last Name']).strip()
+                        if emp_id and first_name and last_name and emp_id not in employee_names:
+                            employee_names[emp_id] = f"{first_name} {last_name}"
+            except Exception:
+                continue  # Skip files that can't be read
+    except Exception:
+        pass
+    
+    return employee_names
+
 # ========== LOGIN ROUTES ==========
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1433,7 +1467,8 @@ def manage_rates():
     
     
     pay_rates = load_pay_rates()
-    employees = [{'id': emp_id, 'rate': rate} for emp_id, rate in pay_rates.items()]
+    employee_names = get_employee_names()  # Get employee names for display
+    employees = [{'id': emp_id, 'rate': rate, 'name': employee_names.get(emp_id, 'Unknown')} for emp_id, rate in pay_rates.items()]
     employees.sort(key=lambda x: x['id'])
 
     html = f"""<!DOCTYPE html>
@@ -1461,6 +1496,7 @@ def manage_rates():
                         <thead class="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Employee ID</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Employee Name</th>
                                 <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Pay Rate ($/hour)</th>
                                 <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Action</th>
                             </tr>
@@ -1472,6 +1508,7 @@ def manage_rates():
         html += f"""
                             <tr class="hover:bg-gray-50" id="row-{emp['id']}">
                                 <td class="px-6 py-4 text-sm text-textDark">{emp['id']}</td>
+                                <td class="px-6 py-4 text-sm text-textDark">{emp['name']}</td>
                                 <td class="px-6 py-4">
                                     <span class="rate-display text-sm font-medium text-textDark">${emp['rate']}</span>
                                     <input type="number" class="rate-edit hidden w-32 px-3 py-1 border border-gray-300 rounded-lg" step="0.01" value="{emp['rate']}">
@@ -4645,7 +4682,7 @@ def reports():
     """Display all generated reports grouped by week"""
     # Get username for menu display
     username = session.get('username', 'Unknown')
-    menu_html = get_menu_html(username)
+    sidebar = get_enterprise_sidebar(username, 'reports')
     block = ''
 
     # Check if we have cached report data that's still valid (less than 5 minutes old)
@@ -4748,92 +4785,54 @@ def reports():
         }
         report_cache_expiry[cache_key] = current_time + timedelta(minutes=5)
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Reports</title>
-        <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --accent:#2196F3; --border:#e6e9f0; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            h1, h2, h3{{ color:var(--text); }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-            }}
-            th, td{{ padding:10px; border:1px solid var(--border); text-align:left; }}
-            th{{ background-color:#f2f6ff; }}
-            tr:nth-child(even){{ background-color:#fafbff; }}
-            .menu{{ background:var(--card); padding:14px 16px; margin-bottom:20px; border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .menu a{{ margin-right:14px; text-decoration:none; color:#1976d2; font-weight:600; padding:6px 10px; border-radius:8px; }}
-            .menu a:hover{{ background:rgba(33,150,243,.08); }}
-            .week-section {{ margin-bottom:28px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 8px 18px rgba(17,24,39,.05); padding:12px 14px; }}
-            .download-link {{ color:#1976d2; text-decoration:none; }}
-            .download-link:hover {{
-                text-decoration: underline;
-            }}
-            .file-size {{ color: var(--muted); font-size: .9em; }}
-            .timestamp {{ color: var(--muted); font-size: .9em; }}
-            .report-title {{ font-weight:600; }}
-            .report-type {{ color: var(--muted); font-size: .9em; }}
-            .amount {{
-                font-weight: bold;
-                color: #28a745;
-            }}
-            .user-info {{ float:right; font-size:.9em; color: var(--muted); }}
-            .creator {{ color: var(--muted); font-style: italic; font-size: .9em; }}
-            .flash-container {{
-                margin: 10px 0 20px 0;
-            }}
-            .flash {{
-                padding: 10px 12px;
-                border-radius: 4px;
-                margin-bottom: 8px;
-                border: 1px solid #ccc;
-                background: #f8f9fa;
-            }}
-            .flash.success {{
-                border-color: #c3e6cb;
-                background: #d4edda;
-                color: #155724;
-            }}
-            .flash.warning {{
-                border-color: #ffeeba;
-                background: #fff3cd;
-                color: #856404;
-            }}
-            .flash.error {{
-                border-color: #f5c6cb;
-                background: #f8d7da;
-                color: #721c24;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>Reports <span style="font-size:.6em; color:#6c757d; font-weight:600;">v{APP_VERSION}</span></h1>
-        {menu_html}
-        {block}
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports | Payroll</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+</head>
+<body class="bg-bgLight font-sans">
+<div class="flex h-screen overflow-hidden">
+    {sidebar}
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h2 class="text-2xl font-bold text-textDark">Reports <span class="text-sm text-secondary font-semibold">v{APP_VERSION}</span></h2>
+            <p class="text-sm text-secondary mt-1">View and download payroll reports</p>
+        </header>
+        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
+            <div class="max-w-6xl mx-auto">
+                {block}
     """
 
     if not reports_by_week:
         html += """
-        <div class="week-section">
-            <h2>No reports found</h2>
-            <p>No payroll reports have been generated yet. Process a timesheet to create reports.</p>
-        </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="text-lg font-semibold text-textDark mb-2">No Reports Found</h3>
+                    <p class="text-secondary">No payroll reports have been generated yet. Process a timesheet to create reports.</p>
+                </div>
         """
     else:
-        # Render a single compact table for all weeks
+        # Render a single compact table for all weeks with modern styling
         html += """
-        <table class=\"compact\">
-            <tr>
-                <th>Week</th>
-                <th>Amount</th>
-                <th>Created By</th>
-                <th>Posting Date</th>
-                <th>Actions</th>
-            </tr>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Week</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Amount</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Created By</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Posting Date</th>
+                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
         """
         for week in sorted_weeks:
             # Format the week date for display as a range and compute posting date (end-of-week + 1)
@@ -4866,22 +4865,28 @@ def reports():
                 download_filename = admin_entry.get('filename') or ''
 
             html += f"""
-            <tr>
-                <td>{week_display}</td>
-                <td><span class=\"amount\">{amount_str}</span></td>
-                <td><span class=\"creator\">{creator_str}</span></td>
-                <td><span class=\"timestamp\">{posting_date_display}</span></td>
-                <td>{('<a href="/static/reports/' + download_filename + '" class="download-link" download>Download</a>') if download_filename else ''}</td>
-            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm text-textDark">{week_display}</td>
+                                <td class="px-6 py-4 text-sm font-semibold text-success">{amount_str}</td>
+                                <td class="px-6 py-4 text-sm text-secondary italic">{creator_str}</td>
+                                <td class="px-6 py-4 text-sm text-secondary">{posting_date_display}</td>
+                                <td class="px-6 py-4 text-right">{('<a href="/static/reports/' + download_filename + '" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 inline-block" download>Download</a>') if download_filename else '<span class="text-secondary text-sm">N/A</span>'}</td>
+                            </tr>
             """
 
         html += """
-        </table>
+                        </tbody>
+                    </table>
+                </div>
         """
 
     html += """
-    </body>
-    </html>
+            </div>
+        </main>
+    </div>
+</div>
+</body>
+</html>
     """
 
     # Prepare flash messages block separately to avoid Jinja parsing errors in f-strings
