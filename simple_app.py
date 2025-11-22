@@ -190,14 +190,17 @@ def get_zoho_company_cfg(company_raw):
     return cfg
 
 def zoho_refresh_access_token(company_raw):
-    """Refresh and cache access token for a company using its refresh token."""
+    """Refresh and cache access token for a company using its refresh token with retry logic."""
     cfg = get_zoho_company_cfg(company_raw)
     if not cfg:
-        raise ValueError('Zoho Books credentials not configured for company: ' + str(company_raw))
+        error_msg = f'Zoho Books credentials not configured for company: {company_raw}'
+        app.logger.error(error_msg)
+        raise ValueError(error_msg)
 
     # Return cached token if valid for at least 60 seconds
     cached = zoho_token_cache.get(company_raw)
     if cached and cached.get('expires_at', 0) - time.time() > 60:
+        app.logger.debug(f"Using cached Zoho token for {company_raw}")
         return cached['access_token']
 
     token_url = f'{ZB_ACCOUNTS_DOMAIN}/oauth/v2/token'
@@ -207,19 +210,53 @@ def zoho_refresh_access_token(company_raw):
         'client_secret': cfg['client_secret'],
         'grant_type': 'refresh_token'
     }
-    resp = requests.post(token_url, params=params, timeout=20)
-    if resp.status_code != 200:
-        raise RuntimeError(f"Zoho token refresh failed: {resp.status_code} {resp.text}")
-    data = resp.json()
-    access_token = data.get('access_token')
-    expires_in = int(data.get('expires_in', 3600))
-    if not access_token:
-        raise RuntimeError('Zoho token refresh returned no access_token')
-    zoho_token_cache[company_raw] = {
-        'access_token': access_token,
-        'expires_at': time.time() + expires_in
-    }
-    return access_token
+    
+    # Retry logic for network errors
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            app.logger.info(f"Refreshing Zoho token for {company_raw} (attempt {attempt + 1}/{max_retries})")
+            resp = requests.post(token_url, params=params, timeout=20)
+            
+            if resp.status_code != 200:
+                error_msg = f"Zoho token refresh failed: {resp.status_code} {resp.text}"
+                app.logger.error(error_msg)
+                if attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                raise RuntimeError(error_msg)
+            
+            data = resp.json()
+            access_token = data.get('access_token')
+            expires_in = int(data.get('expires_in', 3600))
+            
+            if not access_token:
+                error_msg = 'Zoho token refresh returned no access_token'
+                app.logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            zoho_token_cache[company_raw] = {
+                'access_token': access_token,
+                'expires_at': time.time() + expires_in
+            }
+            app.logger.info(f"Successfully refreshed Zoho token for {company_raw}")
+            return access_token
+            
+        except requests.exceptions.Timeout as e:
+            app.logger.warning(f"Zoho API timeout (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Zoho API timeout after {max_retries} attempts")
+        except requests.exceptions.ConnectionError as e:
+            app.logger.warning(f"Zoho API connection error (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise RuntimeError(f"Cannot connect to Zoho API after {max_retries} attempts")
+        except Exception as e:
+            app.logger.error(f"Unexpected error refreshing Zoho token: {e}")
+            raise
 
 def zoho_headers(company_raw):
     access_token = zoho_refresh_access_token(company_raw)

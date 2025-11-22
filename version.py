@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.2.0"
+__version__ = "6.2.1"
 __version_name__ = "Code Optimization - Phase 5"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.2.1",
+        "date": "2025-11-22",
+        "changes": [
+            "CODE OPTIMIZATION: Phase 5 Error Handling - Zoho API",
+            "Enhanced Zoho API error handling with retries",
+            "Better network error recovery",
+            "Improved timeout handling",
+            "User-friendly error messages for API failures",
+            "All API calls logged for debugging"
+        ]
+    },
     {
         "version": "6.2.0",
         "date": "2025-11-22",
@@ -17,6 +29,7 @@ VERSION_HISTORY = [
             "Improved file operation safety",
             "Better error messages for users",
             "Logging system established",
+            "Automatic backup creation",
             "NO functionality changes - pure stability improvements"
         ]
     },
