@@ -1765,6 +1765,111 @@ def compute_daily_hours(row):
     # otherwise parse the provided Total Work Time
     return parse_work_hours(twh)
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXCEL REPORT HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Common styling and formatting functions for consistent Excel report generation
+
+def excel_set_header(cell, text, size=14, bold=True):
+    """
+    Apply consistent header styling to a cell
+    
+    Args:
+        cell: Excel cell object
+        text: Header text
+        size: Font size (default 14)
+        bold: Bold font (default True)
+    """
+    cell.value = text
+    cell.font = Font(bold=bold, size=size)
+
+
+def excel_set_column_headers(ws, headers, row=1, start_col=1):
+    """
+    Create styled column headers with gray background
+    
+    Args:
+        ws: Worksheet object
+        headers: List of header strings
+        row: Row number for headers (default 1)
+        start_col: Starting column number (default 1)
+    """
+    for col_offset, header in enumerate(headers):
+        cell = ws.cell(row=row, column=start_col + col_offset)
+        cell.value = header
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="DDDDDD", fill_type="solid")
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+
+def excel_apply_borders(ws, start_row, end_row, start_col, end_col):
+    """
+    Apply thin borders to a range of cells
+    
+    Args:
+        ws: Worksheet object
+        start_row: Starting row number
+        end_row: Ending row number
+        start_col: Starting column number
+        end_col: Ending column number
+    """
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for row in range(start_row, end_row + 1):
+        for col in range(start_col, end_col + 1):
+            ws.cell(row=row, column=col).border = thin_border
+
+
+def excel_set_column_widths(ws, widths):
+    """
+    Set column widths for better readability
+    
+    Args:
+        ws: Worksheet object
+        widths: Dict mapping column letters to widths, e.g. {'A': 12, 'B': 25}
+    """
+    for col_letter, width in widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+
+def excel_format_currency(cell, value):
+    """
+    Format a cell as currency
+    
+    Args:
+        cell: Excel cell object
+        value: Numeric value
+    """
+    cell.value = value
+    cell.number_format = '$#,##0.00'
+
+
+def excel_add_creator_info(ws, creator, row=2):
+    """
+    Add creator/processor information to worksheet
+    
+    Args:
+        ws: Worksheet object
+        creator: Username/creator string
+        row: Row number for creator info (default 2)
+    """
+    ws.cell(row=row, column=1).value = f"Processed by: {creator}"
+    ws.cell(row=row, column=1).font = Font(size=10, italic=True)
+    # Also store in hidden cell for reports page
+    ws['AA1'] = creator
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXCEL REPORT GENERATION FUNCTIONS  
+# ═══════════════════════════════════════════════════════════════════════════════
+# Functions to generate various Excel reports from payroll data
+
 def create_excel_report(df, filename, creator=None):
     """Create an Excel report from the DataFrame with proper timesheet formatting"""
     wb = Workbook()
@@ -1807,27 +1912,18 @@ def create_excel_report(df, filename, creator=None):
         weekly_totals['Weekly_Total'] = weekly_totals['Weekly_Total'].round(2)
         weekly_totals['Rounded_Weekly'] = weekly_totals['Weekly_Total'].round(0).astype(int)
 
-        # Add header
-        ws['A1'] = "Payroll Report"
-        ws['A1'].font = Font(bold=True, size=14)
+        # Add header using helper function
+        excel_set_header(ws['A1'], "Payroll Report", size=14)
 
-        # Add processor information
-        ws['A2'] = f"Processed by: {creator}"
-        ws['A2'].font = Font(size=10, italic=True)
+        # Add processor information using helper function
+        excel_add_creator_info(ws, creator, row=2)
 
-        # Add creator to hidden cell for reporting
-        ws['AA1'] = creator
-
-        # Add column headers in row 2
+        # Add column headers using helper function
         headers = ["Person ID", "Employee Name", "Total Hours", "Total Pay", "Rounded Pay"]
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=2, column=col)
-            cell.value = header
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color="DDDDDD", fill_type="solid")
+        excel_set_column_headers(ws, headers, row=4, start_col=1)
 
         # Add data rows - using iterrows instead of itertuples
-        for i, (_, row) in enumerate(weekly_totals.iterrows(), 3):
+        for i, (_, row) in enumerate(weekly_totals.iterrows(), 5):
             ws.cell(row=i, column=1).value = row['Person ID']
             ws.cell(row=i, column=2).value = f"{row['First_Name']} {row['Last_Name']}"
             ws.cell(row=i, column=3).value = round(row['Total_Hours'], 2)
@@ -1836,17 +1932,12 @@ def create_excel_report(df, filename, creator=None):
     else:
         # Generic format - create a standard report
 
-        # Add header
-        ws['A1'] = "Payroll Report"
-        ws['A1'].font = Font(bold=True, size=14)
+        # Add header using helper function
+        excel_set_header(ws['A1'], "Payroll Report", size=14)
 
-        # Add column headers in row 2
+        # Add column headers using helper function
         headers = ["ID", "Name", "Total Hours", "Pay Rate", "Total Pay"]
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=2, column=col)
-            cell.value = header
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color="DDDDDD", fill_type="solid")
+        excel_set_column_headers(ws, headers, row=2, start_col=1)
 
         # For demo data, just put it in the report
         row_num = 3
@@ -2302,14 +2393,13 @@ def create_consolidated_admin_report(df, filename, creator=None):
     elif not creator:
         creator = "Unknown"
 
-    # Add processor information
-    ws['A2'] = f"Processed by: {creator}"
+    # Add processor information using helper (with manual merge for this report)
+    ws['A2'].value = f"Processed by: {creator}"
     ws['A2'].font = Font(size=10, italic=True)
     ws.merge_cells('A2:Z2')
     ws['A2'].alignment = Alignment(horizontal='center')
-
-    # Store the creator in a hidden cell for extraction later
-    # This is the key cell we'll look for when displaying reports
+    
+    # Store the creator in hidden cell
     ws['AA1'] = creator
 
     # Continue with the existing function
