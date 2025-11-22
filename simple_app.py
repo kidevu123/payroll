@@ -9,9 +9,6 @@ import json
 import re
 from datetime import datetime, timedelta
 from functools import wraps
-import csv
-import random
-import string
 import sqlite3
 import hashlib
 from collections import defaultdict
@@ -112,7 +109,12 @@ def _ensure_report_metadata(file_path: str, filename: str, meta: dict) -> dict:
     except Exception:
         return meta.get(filename) or {}
 
-# ========== ZOHO BOOKS INTEGRATION CONFIG ==========
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZOHO BOOKS INTEGRATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# Configuration and functions for Zoho Books API integration
+# Handles expense creation, receipt attachment, and account management
 # Configuration is read from environment variables so secrets are not stored in code.
 # For each company (haute, boomin) set:
 #   ZB_<COMPANY>_ORG_ID, ZB_<COMPANY>_CLIENT_ID, ZB_<COMPANY>_CLIENT_SECRET, ZB_<COMPANY>_REFRESH_TOKEN
@@ -531,11 +533,14 @@ def zoho_attach_receipt(company_raw, expense_id, file_path):
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
 Path(REPORT_FOLDER).mkdir(parents=True, exist_ok=True)
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# USER MANAGEMENT & AUTHENTICATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# User authentication, session management, and access control
+
 # Default admin user (will be created if no users exist)
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'password'
-
-# User management functions
 def load_users():
     """Load users from JSON file"""
     try:
@@ -609,7 +614,11 @@ def get_employee_names():
     
     return employee_names
 
-# ========== LOGIN ROUTES ==========
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUTHENTICATION ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+# Login, logout, and password management endpoints
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -834,7 +843,11 @@ def change_password():
     """
     return render_template_string(html, error=error, success=success)
 
-# ========== CORE FUNCTIONS ==========
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAYROLL CALCULATION FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Time parsing, hours calculation, and pay rate management
 
 def process_csv_data(file_path):
     """Process CSV timesheet data"""
@@ -920,7 +933,11 @@ def create_report(df, week_str):
 
     return report_path
 
-# ========== ROUTES ==========
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# UI TEMPLATE FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# HTML generation helpers for consistent UI across pages
 
 def get_base_html_head(title="Payroll Management"):
     """Generate consistent HTML head with Bootstrap 5 and custom styles"""
@@ -1175,6 +1192,12 @@ def get_footer_html():
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     '''
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MAIN APPLICATION ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+# Core application endpoints for timesheet processing and payroll generation
 
 @app.route('/')
 @login_required
@@ -1459,6 +1482,12 @@ def index():
     """
     return html
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAY RATES MANAGEMENT ROUTES  
+# ═══════════════════════════════════════════════════════════════════════════════
+# Employee pay rate management - view, add, edit, delete rates
+
 @app.route('/manage_rates')
 @login_required
 def manage_rates():
@@ -1708,14 +1737,6 @@ def compute_daily_hours(row):
         if 'Clock In' in row and 'Clock Out' in row:
             clock_in = row['Clock In']
             clock_out = row['Clock Out']
-
-            # Debug logging
-            if 'Person ID' in row and row['Person ID'] in [2, 3]:  # Hilda and Sehreesh
-                print(f"DEBUG compute_daily_hours for Person {row['Person ID']}:")
-                print(f"  Clock In raw: '{clock_in}', type: {type(clock_in)}")
-                print(f"  Clock Out raw: '{clock_out}', type: {type(clock_out)}")
-                print(f"  Clock In stripped: '{str(clock_in).strip()}'")
-                print(f"  Clock Out stripped: '{str(clock_out).strip()}'")
 
             # Verify both values are not empty/null
             if (pd.notna(clock_in) and pd.notna(clock_out) and
@@ -4678,7 +4699,12 @@ def download(report_type):
     except Exception as e:
         return f"Error downloading file: {str(e)}", 500
 
-# Add a new route to display reports
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# REPORTS & DOWNLOADS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Report listing, viewing, and download functionality
+
 @app.route('/reports')
 @login_required
 def reports():
