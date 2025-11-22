@@ -3,11 +3,31 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.7.0"
-__version_name__ = "Enterprise UI - Success & User Management Pages"
+__version__ = "8.8.0"
+__version_name__ = "Compact Layout - Reduced Scrolling"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.8.0",
+        "date": "2025-11-22",
+        "changes": [
+            "📐 UX: Compact Layout - Reduced Scrolling",
+            "Reduced spacing system (8px → 4px grid)",
+            "Card padding: 24px → 16px",
+            "Card margins: 24px → 16px",
+            "Table padding: 16px → 8px vertical, 12px horizontal",
+            "Form group margins: 20px → 12px",
+            "Header padding: 32px → 16px",
+            "Alert padding: 16px → 12px",
+            "Heading margins: 16px → 8px",
+            "Paragraph margins: 16px → 8px",
+            "Grid gaps: 24px → 16px",
+            "Success banner: reduced padding and icon size",
+            "Empty state: reduced padding and icon size",
+            "All pages now more compact with less scrolling"
+        ]
+    },
     {
         "version": "8.7.0",
         "date": "2025-11-22",

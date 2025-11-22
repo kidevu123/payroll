@@ -965,7 +965,7 @@ def login():
                 justify-content: center;
                 min-height: 100vh;
                 background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-                padding: var(--spacing-6);
+                padding: var(--spacing-3);
             }}
             .login-wrapper {{
                 width: 100%;
@@ -975,12 +975,12 @@ def login():
                 background: white;
                 border-radius: var(--radius-xl);
                 box-shadow: var(--shadow-xl);
-                padding: var(--spacing-8);
+                padding: var(--spacing-4);
                 border: 1px solid var(--color-gray-200);
             }}
             .login-header {{
                 text-align: center;
-                margin-bottom: var(--spacing-8);
+                margin-bottom: var(--spacing-4);
             }}
             .login-logo {{
                 width: 64px;
@@ -1010,10 +1010,10 @@ def login():
                 margin: 0;
             }}
             .login-form {{
-                margin-top: var(--spacing-6);
+                margin-top: var(--spacing-3);
             }}
             .form-footer {{
-                margin-top: var(--spacing-6);
+                margin-top: var(--spacing-3);
                 text-align: center;
                 font-size: var(--font-size-sm);
                 color: var(--color-gray-600);
@@ -1155,8 +1155,8 @@ def change_password():
         .password-header {{
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
     </style>
 </head>
@@ -1201,7 +1201,7 @@ def change_password():
                     <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Confirm your new password" required>
                 </div>
 
-                <div style="margin-top:var(--spacing-6);display:flex;gap:var(--spacing-4);justify-content:flex-end">
+                <div style="margin-top:var(--spacing-3);display:flex;gap:var(--spacing-4);justify-content:flex-end">
                     <a href="/" class="btn btn-secondary">Cancel</a>
                     <button type="submit" class="btn btn-primary">
                         <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
@@ -1523,7 +1523,7 @@ def get_menu_html(username):
         .navbar-container {{
             max-width: 1600px;
             margin: 0 auto;
-            padding: 0 var(--spacing-6);
+            padding: 0 var(--spacing-3);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -1563,7 +1563,7 @@ def get_menu_html(username):
             align-items: center;
             justify-content: space-between;
             flex: 1;
-            margin-left: var(--spacing-8);
+            margin-left: var(--spacing-4);
         }}
         .navbar-left {{
             display: flex;
@@ -1846,8 +1846,8 @@ def index():
         .home-header {{
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
         .step-number {{
             width: 32px;
@@ -1919,7 +1919,7 @@ def index():
     </div>
     
     <div class="container container-narrow">
-        <div class="grid grid-cols-1 gap-6" style="grid-template-columns:1fr;">
+        <div class="grid grid-cols-1 gap-4" style="grid-template-columns:1fr;">
             
             <!-- Upload Card -->
             <div class="card">
@@ -1949,7 +1949,7 @@ def index():
                         <input id="file-input" type="file" name="file" accept=".csv" style="display:none" required>
                     </div>
                     
-                    <div style="margin-top:var(--spacing-6);text-align:center">
+                    <div style="margin-top:var(--spacing-3);text-align:center">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
@@ -2013,7 +2013,7 @@ def index():
                     </div>
                 </div>
                 
-                <div class="alert alert-info" style="margin-top:var(--spacing-6)">
+                <div class="alert alert-info" style="margin-top:var(--spacing-3)">
                     <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                     </svg>
@@ -2152,8 +2152,8 @@ def manage_rates():
         .rates-header {{
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
         .rate-display.hidden, .rate-edit.hidden, 
         .edit-btn.hidden, .save-btn.hidden, .cancel-btn.hidden {{
@@ -4446,21 +4446,21 @@ def success():
         .success-header {{
             background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
         .success-banner {{
             background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
             border: 2px solid var(--color-success);
             border-radius: var(--radius-xl);
-            padding: var(--spacing-8);
+            padding: var(--spacing-4);
             text-align: center;
-            margin-bottom: var(--spacing-8);
+            margin-bottom: var(--spacing-4);
         }}
         .success-icon {{
-            font-size: 64px;
+            font-size: 48px;
             color: var(--color-success);
-            margin-bottom: var(--spacing-4);
+            margin-bottom: var(--spacing-2);
         }}
     </style>
 </head>
@@ -4483,7 +4483,7 @@ def success():
             <p style="font-size:var(--font-size-lg);color:var(--color-success);margin:0">Successfully processed for week {week}</p>
         </div>
                 
-        <div class="grid grid-cols-1 gap-6">
+        <div class="grid grid-cols-1 gap-4">
     """
 
     if 'admin' in reports and 'payslips_sheet' in reports:
@@ -4500,7 +4500,7 @@ def success():
                 </div>
                 
                 <!-- Admin Report -->
-                <div style="padding-bottom:var(--spacing-6);margin-bottom:var(--spacing-6);border-bottom:1px solid var(--color-gray-200)">
+                <div style="padding-bottom:var(--spacing-3);margin-bottom:var(--spacing-3);border-bottom:1px solid var(--color-gray-200)">
                     <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">Admin Report (Single Sheet)</h3>
                     <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-bottom:var(--spacing-4)">All employee data with signature lines</p>
                     <div style="display:flex;gap:var(--spacing-3);margin-bottom:var(--spacing-2)">
@@ -4647,7 +4647,7 @@ def success():
         """
 
     html += """
-        <div style="text-align:center;margin-top:var(--spacing-8)">
+        <div style="text-align:center;margin-top:var(--spacing-4)">
             <a href="/" class="btn btn-primary btn-lg">
                 <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
@@ -5706,17 +5706,17 @@ def reports():
         .reports-header {{
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
         .empty-state {{
             text-align: center;
-            padding: var(--spacing-12);
+            padding: var(--spacing-4);
         }}
         .empty-state-icon {{
-            width: 64px;
-            height: 64px;
-            margin: 0 auto var(--spacing-4);
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--spacing-2);
             color: var(--color-gray-400);
         }}
     </style>
@@ -5744,7 +5744,7 @@ def reports():
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <h3 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">No Reports Found</h3>
-                <p style="color:var(--color-gray-600);margin-bottom:var(--spacing-6)">No payroll reports have been generated yet. Process a timesheet to create reports.</p>
+                <p style="color:var(--color-gray-600);margin-bottom:var(--spacing-3)">No payroll reports have been generated yet. Process a timesheet to create reports.</p>
                 <a href="/" class="btn btn-primary">Process Payroll</a>
             </div>
         </div>
@@ -6079,8 +6079,8 @@ def manage_users():
         .users-header {{
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
-            padding: var(--spacing-8) 0;
-            margin-bottom: var(--spacing-8);
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
         }}
     </style>
 </head>
@@ -6176,7 +6176,7 @@ def manage_users():
                     <span class="form-help">At least 8 characters, must include letters and numbers</span>
                 </div>
                 
-                <div style="margin-top:var(--spacing-6);text-align:right">
+                <div style="margin-top:var(--spacing-3);text-align:right">
                     <button type="submit" class="btn btn-success">
                         <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
