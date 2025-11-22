@@ -1856,10 +1856,9 @@ def get_footer_html():
 @app.route('/')
 @login_required
 def index():
-    """Simple upload form"""
+    """Home page with payroll upload form"""
     username = session.get('username', 'Unknown')
-    
-    sidebar = get_enterprise_sidebar(username, 'home')
+    menu_html = get_menu_html(username)
 
     html = f"""
 <!DOCTYPE html>
@@ -1867,216 +1866,234 @@ def index():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll Management | Home</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Inter Font -->
+    <title>Home - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script>
-        tailwind.config = {{
-            theme: {{
-                extend: {{
-                    colors: {{
-                        primary: '#1e40af',
-                        secondary: '#64748b',
-                        bgLight: '#f8fafc',
-                        textDark: '#0f172a',
-                        accent: '#0ea5e9',
-                        success: '#10b981',
-                        danger: '#ef4444'
-                    }},
-                    fontFamily: {{
-                        sans: ['Inter', 'system-ui', 'sans-serif']
-                    }}
-                }}
-            }}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .home-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
         }}
-    </script>
+        .step-number {{
+            width: 32px;
+            height: 32px;
+            background: var(--color-primary-pale);
+            color: var(--color-primary);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: var(--font-weight-bold);
+            flex-shrink: 0;
+        }}
+        .step-item {{
+            display: flex;
+            gap: var(--spacing-4);
+            padding: var(--spacing-4);
+            border-radius: var(--radius-md);
+            transition: background var(--transition-fast);
+        }}
+        .step-item:hover {{
+            background: var(--color-gray-50);
+        }}
+        .dropzone {{
+            border: 2px dashed var(--color-gray-300);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-12);
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-base);
+            background: var(--color-gray-50);
+        }}
+        .dropzone:hover {{
+            border-color: var(--color-primary);
+            background: var(--color-primary-pale);
+        }}
+        .dropzone.dragover {{
+            border-color: var(--color-primary);
+            background: var(--color-primary-pale);
+            transform: scale(1.02);
+        }}
+        .upload-icon {{
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--spacing-4);
+            color: var(--color-gray-400);
+        }}
+        .feature-icon {{
+            width: 48px;
+            height: 48px;
+            background: var(--color-success-light);
+            color: var(--color-success);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }}
+    </style>
 </head>
-<body class="bg-bgLight font-sans">
-    <!-- Sidebar Navigation -->
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        {sidebar}
-
-        <!-- Main Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Bar -->
-            <header class="bg-white border-b border-gray-200 px-6 py-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-2xl font-bold text-textDark">Process Payroll</h2>
-                        <p class="text-sm text-secondary mt-1">Upload timesheet and generate reports</p>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <span class="px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">{get_version()}</span>
-                        <div class="flex items-center space-x-2 text-sm">
-                            <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span class="font-medium text-textDark">{username}</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Scrollable Content -->
-            <main class="flex-1 overflow-y-auto bg-bgLight">
-                <div class="max-w-5xl mx-auto px-6 py-8 space-y-6">
-                    
-                    <!-- Instructions Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 bg-gradient-to-r from-primary to-blue-700 border-b border-blue-800">
-                            <h3 class="text-lg font-semibold text-white flex items-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                </svg>
-                                How to Process Payroll
-                            </h3>
-                        </div>
-                        <div class="px-6 py-5">
-                            <ol class="space-y-4">
-                                <li class="flex items-start">
-                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0 mr-4">1</span>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-textDark">Upload CSV</h4>
-                                        <p class="text-sm text-secondary mt-0.5">Drag & drop or click to select your timesheet CSV file below</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0 mr-4">2</span>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-textDark">Fix Missing Times <span class="text-xs text-secondary font-normal">(if needed)</span></h4>
-                                        <p class="text-sm text-secondary mt-0.5">Review and correct any missing Clock In/Out times</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0 mr-4">3</span>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-textDark">Select Employees</h4>
-                                        <p class="text-sm text-secondary mt-0.5">Choose which employees to include in this payroll run</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0 mr-4">4</span>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-textDark">Review & Process</h4>
-                                        <p class="text-sm text-secondary mt-0.5">Confirm details and generate payroll reports</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0 mr-4">5</span>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-textDark">Download Reports</h4>
-                                        <p class="text-sm text-secondary mt-0.5">Get Excel reports and optionally push to Zoho Books</p>
-                                    </div>
-                                </li>
-                            </ol>
-                            
-                            <div class="mt-5 p-4 bg-accent/5 border border-accent/20 rounded-lg">
-                                <div class="flex items-start">
-                                    <svg class="w-5 h-5 text-accent flex-shrink-0 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <div class="flex-1">
-                                        <p class="text-sm font-medium text-textDark">CSV Format Required</p>
-                                        <p class="text-xs text-secondary mt-1">Columns: Person ID, First Name, Last Name, Date, Clock In, Clock Out</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Upload Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200">
-                            <h3 class="text-lg font-semibold text-textDark flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                                Upload Timesheet
-                            </h3>
-                        </div>
-                        <div class="px-6 py-6">
-                            <form id="upload-form" action="/validate" method="post" enctype="multipart/form-data">
-                                <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-primary hover:bg-primary/5 transition-all cursor-pointer">
-                                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <div class="text-lg font-semibold text-textDark mb-2">
-                                        Drag & drop your CSV file here
-                                    </div>
-                                    <div class="text-sm text-secondary mb-4">
-                                        or <span class="text-accent font-medium">click to browse</span>
-                                    </div>
-                                    <div id="file-note" class="text-sm text-secondary font-medium">No file selected</div>
-                                    <input id="file-input" type="file" name="file" accept=".csv" class="hidden" required>
-                                </div>
-                                <div class="mt-6 flex justify-center">
-                                    <button type="submit" class="px-8 py-3 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5 flex items-center space-x-2">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                        </svg>
-                                        <span>Process File</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- What's New Card -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-success/5 to-emerald-50">
-                            <h3 class="text-lg font-semibold text-textDark flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                                </svg>
-                                What's New
-                            </h3>
-                        </div>
-                        <div class="px-6 py-5">
-                            <ul class="space-y-3">
-                                <li class="flex items-start">
-                                    <svg class="w-5 h-5 text-success flex-shrink-0 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <div>
-                                        <h4 class="font-semibold text-textDark text-sm">Enterprise UI Redesign</h4>
-                                        <p class="text-sm text-secondary">Professional sidebar navigation and modern interface</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <svg class="w-5 h-5 text-success flex-shrink-0 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <div>
-                                        <h4 class="font-semibold text-textDark text-sm">Employee Selection</h4>
-                                        <p class="text-sm text-secondary">Choose which employees to include before processing</p>
-                                    </div>
-                                </li>
-                                <li class="flex items-start">
-                                    <svg class="w-5 h-5 text-success flex-shrink-0 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                    </svg>
-                                    <div>
-                                        <h4 class="font-semibold text-textDark text-sm">Zoho Books Integration</h4>
-                                        <p class="text-sm text-secondary">One-click expense push with automatic duplicate prevention</p>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                </div>
-            </main>
+<body>
+    {menu_html}
+    
+    <div class="home-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Process Payroll</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Upload timesheets and generate professional payroll reports</p>
         </div>
     </div>
-
+    
+    <div class="container container-narrow">
+        <div class="grid grid-cols-1 gap-6" style="grid-template-columns:1fr;">
+            
+            <!-- Upload Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                        Upload Timesheet CSV
+                    </h2>
+                </div>
+                
+                <form id="upload-form" action="/validate" method="post" enctype="multipart/form-data">
+                    <div id="dropzone" class="dropzone">
+                        <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">
+                            Drag & drop your CSV file here
+                        </h3>
+                        <p style="color:var(--color-gray-600);margin-bottom:var(--spacing-4)">
+                            or <span style="color:var(--color-primary);font-weight:var(--font-weight-medium)">click to browse</span>
+                        </p>
+                        <div id="file-note" style="font-size:var(--font-size-sm);color:var(--color-gray-600);font-weight:var(--font-weight-medium)">
+                            No file selected
+                        </div>
+                        <input id="file-input" type="file" name="file" accept=".csv" style="display:none" required>
+                    </div>
+                    
+                    <div style="margin-top:var(--spacing-6);text-align:center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Process Timesheet
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Instructions Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        How It Works
+                    </h2>
+                </div>
+                
+                <div style="display:flex;flex-direction:column;gap:var(--spacing-4)">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div style="flex:1">
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Upload CSV</h4>
+                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Drag & drop or select your timesheet CSV file above</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div style="flex:1">
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Fix Missing Times</h4>
+                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Review and correct any missing Clock In/Out times (if needed)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div style="flex:1">
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Select Employees</h4>
+                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Choose which employees to include in this payroll run</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div style="flex:1">
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Generate Reports</h4>
+                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Process payroll and download Excel reports</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div style="flex:1">
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Push to Zoho</h4>
+                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Optionally sync expense to Zoho Books (automatic duplicate prevention)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info" style="margin-top:var(--spacing-6)">
+                    <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div>
+                        <strong>CSV Format Required:</strong> Person ID, First Name, Last Name, Date, Clock In, Clock Out
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Links Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Quick Links</h2>
+                </div>
+                
+                <div class="grid grid-cols-2" style="gap:var(--spacing-4)">
+                    <a href="/manage_rates" style="text-decoration:none">
+                        <div class="flex items-center gap-4" style="padding:var(--spacing-4);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
+                            <div class="feature-icon">
+                                <svg style="width:24px;height:24px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0">Pay Rates</h4>
+                                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Manage employees</p>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="/reports" style="text-decoration:none">
+                        <div class="flex items-center gap-4" style="padding:var(--spacing-4);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
+                            <div class="feature-icon">
+                                <svg style="width:24px;height:24px" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0">Reports</h4>
+                                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">View & download</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
     <script>
         // Drag & Drop File Upload
         (function() {{
@@ -2087,11 +2104,11 @@ def index():
             const updateNote = (file) => {{
                 if (!file) {{
                     note.textContent = 'No file selected';
-                    note.className = 'text-sm text-secondary font-medium';
+                    note.style.color = 'var(--color-gray-600)';
                     return;
                 }}
-                note.textContent = 'Selected: ' + file.name;
-                note.className = 'text-sm text-success font-semibold';
+                note.textContent = '✓ Selected: ' + file.name;
+                note.style.color = 'var(--color-success)';
             }};
             
             dz.addEventListener('click', () => input.click());
@@ -2101,8 +2118,7 @@ def index():
                 dz.addEventListener(evt, (e) => {{
                     e.preventDefault();
                     e.stopPropagation();
-                    dz.classList.add('border-primary', 'bg-primary/10');
-                    dz.classList.remove('border-gray-300');
+                    dz.classList.add('dragover');
                 }});
             }});
             
@@ -2110,8 +2126,7 @@ def index():
                 dz.addEventListener(evt, (e) => {{
                     e.preventDefault();
                     e.stopPropagation();
-                    dz.classList.remove('border-primary', 'bg-primary/10');
-                    dz.classList.add('border-gray-300');
+                    dz.classList.remove('dragover');
                 }});
             }});
             
@@ -2123,7 +2138,7 @@ def index():
                     dt.items.add(files[0]);
                     input.files = dt.files;
                 }} catch(err) {{
-                    // Fallback
+                    // Fallback for older browsers
                 }}
                 updateNote(files[0]);
             }});
@@ -2131,8 +2146,6 @@ def index():
     </script>
 </body>
 </html>
-
-
     """
     return html
 

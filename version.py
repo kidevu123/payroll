@@ -3,11 +3,28 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.2.0"
-__version_name__ = "Enterprise UI - Navigation System"
+__version__ = "8.3.0"
+__version_name__ = "Enterprise UI - Home Page"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.3.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🎨 UI: Professional Home/Dashboard Page Redesign",
+            "Replaced Tailwind CDN with design system CSS",
+            "Removed sidebar layout for consistent navigation",
+            "Clean gradient header banner",
+            "Professional upload card with drag & drop",
+            "Step-by-step instructions with numbers",
+            "Quick links grid for common actions",
+            "Hover effects on all interactive elements",
+            "Alert component for CSV format info",
+            "Mobile-responsive layout",
+            "JavaScript drag & drop fully functional"
+        ]
+    },
     {
         "version": "8.2.0",
         "date": "2025-11-22",
