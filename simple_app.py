@@ -1140,113 +1140,83 @@ def change_password():
                 app.logger.info(f"Password changed for user: {username}")
                 success = 'Password changed successfully'
 
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Change Password</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-            h1 {{ color: #333; }}
-            .form-container {{
-                max-width: 500px;
-                margin: 0 auto;
-                padding: 20px;
-                background-color: #f8f9fa;
-                border-radius: 5px;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }}
-            .form-group {{
-                margin-bottom: 15px;
-            }}
-            label {{
-                display: block;
-                margin-bottom: 5px;
-                font-weight: bold;
-            }}
-            input[type="password"] {{
-                width: 100%;
-                padding: 10px;
-                border: 1px solid #ddd;
-                border-radius: 3px;
-                box-sizing: border-box;
-            }}
-            .button {{
-                display: inline-block;
-                padding: 10px 15px;
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                cursor: pointer;
-                border-radius: 3px;
-            }}
-            .error {{
-                color: #dc3545;
-                padding: 10px;
-                margin-bottom: 15px;
-                border-radius: 3px;
-                background-color: #f8d7da;
-                border: 1px solid #f5c6cb;
-            }}
-            .success {{
-                color: #28a745;
-                padding: 10px;
-                margin-bottom: 15px;
-                border-radius: 3px;
-                background-color: #d4edda;
-                border: 1px solid #c3e6cb;
-            }}
-            .menu {{
-                background-color: #f8f9fa;
-                padding: 15px;
-                margin-bottom: 20px;
-                border-radius: 5px;
-            }}
-            .menu a {{
-                margin-right: 15px;
-                text-decoration: none;
-                color: #0275d8;
-            }}
-            .menu a:hover {{
-                text-decoration: underline;
-            }}
-            .user-info {{
-                float: right;
-                font-size: 0.9em;
-                color: #6c757d;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>Change Password</h1>
-        {menu_html}
-        <div class="form-container">
-            {('<div class="error">' + escape(error) + '</div>') if error else ''}
-            {('<div class="success">' + escape(success) + '</div>') if success else ''}
-
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Password - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .password-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
+        }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    
+    <div class="password-header">
+        <div class="container container-narrow">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Change Password</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Update your account password</p>
+        </div>
+    </div>
+    
+    <div class="container container-narrow">
+        {('<div class="alert alert-danger">' + escape(error) + '</div>') if error else ''}
+        {('<div class="alert alert-success">' + escape(success) + '</div>') if success else ''}
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    Update Password
+                </h2>
+            </div>
+            
             <form action="/change_password" method="post">
                 <div class="form-group">
-                    <label for="current_password">Current Password:</label>
-                    <input type="password" id="current_password" name="current_password" required>
+                    <label for="current_password" class="form-label form-label-required">Current Password</label>
+                    <input type="password" id="current_password" name="current_password" class="form-input" placeholder="Enter your current password" required autofocus>
                 </div>
 
                 <div class="form-group">
-                    <label for="new_password">New Password:</label>
-                    <input type="password" id="new_password" name="new_password" required>
+                    <label for="new_password" class="form-label form-label-required">New Password</label>
+                    <input type="password" id="new_password" name="new_password" class="form-input" placeholder="Enter your new password" required>
+                    <span class="form-help">Must be at least 8 characters and include both letters and numbers</span>
                 </div>
 
                 <div class="form-group">
-                    <label for="confirm_password">Confirm New Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
+                    <label for="confirm_password" class="form-label form-label-required">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Confirm your new password" required>
                 </div>
 
-                <button type="submit" class="button">Change Password</button>
+                <div style="margin-top:var(--spacing-6);display:flex;gap:var(--spacing-4);justify-content:flex-end">
+                    <a href="/" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Change Password
+                    </button>
+                </div>
             </form>
         </div>
-    </body>
-    </html>
+    </div>
+</body>
+</html>
     """
-    return render_template_string(html, error=error, success=success)
+    return html
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

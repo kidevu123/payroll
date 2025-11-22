@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.5.0"
-__version_name__ = "Enterprise UI - Pay Rates Page"
+__version__ = "8.6.0"
+__version_name__ = "Enterprise UI - Change Password & Progress Update"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.6.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🎨 UI: Professional Change Password Page Redesign",
+            "Replaced old styling with design system CSS",
+            "Clean gradient header banner",
+            "Professional form with validation helpers",
+            "Alert components for success/error messages",
+            "Cancel button to return home",
+            "Password requirements clearly displayed",
+            "Consistent with other redesigned pages"
+        ]
+    },
     {
         "version": "8.5.0",
         "date": "2025-11-22",
