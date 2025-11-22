@@ -5484,8 +5484,7 @@ def reports():
     """Display all generated reports grouped by week"""
     # Get username for menu display
     username = session.get('username', 'Unknown')
-    sidebar = get_enterprise_sidebar(username, 'reports')
-    block = ''
+    menu_html = get_menu_html(username)
 
     # Check if we have cached report data that's still valid (less than 5 minutes old)
     current_time = datetime.now()
@@ -5587,55 +5586,105 @@ def reports():
         }
         report_cache_expiry[cache_key] = current_time + timedelta(minutes=5)
 
+    # Prepare flash messages
+    flashes = get_flashed_messages(with_categories=True)
+    flash_html = ''
+    if flashes:
+        for category, message in flashes:
+            alert_class = 'alert-info'
+            if category == 'success':
+                alert_class = 'alert-success'
+            elif category == 'error':
+                alert_class = 'alert-danger'
+            elif category == 'warning':
+                alert_class = 'alert-warning'
+            flash_html += f'<div class="alert {alert_class}">{escape(message)}</div>'
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports | Payroll</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>tailwind.config = {{{{theme: {{{{extend: {{{{colors: {{{{primary: '#1e40af', secondary: '#64748b', bgLight: '#f8fafc', textDark: '#0f172a', accent: '#0ea5e9', success: '#10b981', danger: '#ef4444'}}}}, fontFamily: {{{{sans: ['Inter', 'system-ui', 'sans-serif']}}}}}}}}}}}}}}</script>
+    <title>Reports - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .reports-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-8) 0;
+            margin-bottom: var(--spacing-8);
+        }}
+        .empty-state {{
+            text-align: center;
+            padding: var(--spacing-12);
+        }}
+        .empty-state-icon {{
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--spacing-4);
+            color: var(--color-gray-400);
+        }}
+    </style>
 </head>
-<body class="bg-bgLight font-sans">
-<div class="flex h-screen overflow-hidden">
-    {sidebar}
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white border-b border-gray-200 px-6 py-4">
-            <h2 class="text-2xl font-bold text-textDark">Reports <span class="text-sm text-secondary font-semibold">v{APP_VERSION}</span></h2>
-            <p class="text-sm text-secondary mt-1">View and download payroll reports</p>
-        </header>
-        <main class="flex-1 overflow-y-auto bg-bgLight px-6 py-8">
-            <div class="max-w-6xl mx-auto">
-                {block}
+<body>
+    {menu_html}
+    
+    <div class="reports-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">Payroll Reports</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">View and download all generated payroll reports</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        {flash_html}
+        
     """
 
     if not reports_by_week:
         html += """
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-                    <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <h3 class="text-lg font-semibold text-textDark mb-2">No Reports Found</h3>
-                    <p class="text-secondary">No payroll reports have been generated yet. Process a timesheet to create reports.</p>
-                </div>
+        <div class="card">
+            <div class="empty-state">
+                <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">No Reports Found</h3>
+                <p style="color:var(--color-gray-600);margin-bottom:var(--spacing-6)">No payroll reports have been generated yet. Process a timesheet to create reports.</p>
+                <a href="/" class="btn btn-primary">Process Payroll</a>
+            </div>
+        </div>
         """
     else:
-        # Render a single compact table for all weeks with modern styling
+        # Render a professional table with all reports
         html += """
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <table class="w-full">
-                        <thead class="bg-gray-50 border-b border-gray-200">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Week</th>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Amount</th>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Created By</th>
-                                <th class="px-6 py-3 text-left text-sm font-semibold text-textDark">Posting Date</th>
-                                <th class="px-6 py-3 text-right text-sm font-semibold text-textDark">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                    </svg>
+                    Generated Reports
+                </h2>
+            </div>
+            
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Week</th>
+                            <th class="text-right">Amount</th>
+                            <th>Created By</th>
+                            <th>Posting Date</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
         """
+        
         for week in sorted_weeks:
             # Format the week date for display as a range and compute posting date (end-of-week + 1)
             try:
@@ -5667,38 +5716,36 @@ def reports():
                 download_filename = admin_entry.get('filename') or ''
 
             html += f"""
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm text-textDark">{week_display}</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-success">{amount_str}</td>
-                                <td class="px-6 py-4 text-sm text-secondary italic">{creator_str}</td>
-                                <td class="px-6 py-4 text-sm text-secondary">{posting_date_display}</td>
-                                <td class="px-6 py-4 text-right">{('<a href="/static/reports/' + download_filename + '" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 inline-block" download>Download</a>') if download_filename else '<span class="text-secondary text-sm">N/A</span>'}</td>
-                            </tr>
+                        <tr>
+                            <td><strong>{week_display}</strong></td>
+                            <td class="text-right"><span style="color:var(--color-success);font-weight:var(--font-weight-semibold)">{amount_str}</span></td>
+                            <td><span class="badge badge-primary">{escape(creator_str)}</span></td>
+                            <td>{posting_date_display}</td>
+                            <td class="text-right">
+            """
+            
+            if download_filename:
+                html += f'<a href="/static/reports/{download_filename}" class="btn btn-primary btn-sm" download><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download</a>'
+            else:
+                html += '<span style="color:var(--color-gray-500);font-size:var(--font-size-sm)">N/A</span>'
+            
+            html += """
+                            </td>
+                        </tr>
             """
 
         html += """
-                        </tbody>
-                    </table>
-                </div>
+                    </tbody>
+                </table>
+            </div>
+        </div>
         """
 
     html += """
-            </div>
-        </main>
     </div>
-</div>
 </body>
 </html>
     """
-
-    # Prepare flash messages block separately to avoid Jinja parsing errors in f-strings
-    flashes = get_flashed_messages(with_categories=True)
-    if flashes:
-        block = '<div class="flash-container">' + ''.join(
-            [f'<div class="flash {c}">{m}</div>' for c, m in flashes]
-        ) + '</div>'
-    else:
-        block = ''
 
     return html
 
