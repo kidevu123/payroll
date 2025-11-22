@@ -945,61 +945,157 @@ def login():
         else:
             error = 'Invalid credentials. Please try again.'
 
-    # Login form
+    # Enterprise Login Page
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
-        <title>Login - Simple Payroll App</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login - Payroll Management System</title>
+        <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+        <link rel="stylesheet" href="/static/design-system.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
-            :root{{ --bg:#f5f7fb; --card:#ffffff; --text:#2d3748; --muted:#6c757d; --primary:#4CAF50; --primary-700:#388e3c; --border:#e6e9f0; }}
-            *{{ box-sizing:border-box; }}
-            body{{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; margin:32px; line-height:1.6; background:var(--bg); color:var(--text); }}
-            h1{{ color:var(--text); margin:0; font-weight:800; }}
-            .login-container{{ max-width:420px; margin:0 auto; padding:22px; background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 10px 24px rgba(17,24,39,.06); }}
-            .form-group{{ margin-bottom:15px; }}
-            label{{ display:block; margin-bottom:6px; font-weight:600; }}
-            input[type="text"], input[type="password"]{{ width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; outline:none; }}
-            input[type="text"]:focus, input[type="password"]:focus{{ border-color:var(--primary-700); box-shadow:0 0 0 3px rgba(76,175,80,.15); }}
-            .button{{ display:inline-block; width:100%; padding:10px 16px; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-700) 100%); color:#fff; border:none; cursor:pointer; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); }}
-            .button:hover{{ transform:translateY(-1px); box-shadow:0 10px 18px rgba(0,0,0,.12); }}
-            .error{{ color:#dc3545; padding:10px; margin-bottom:15px; border-radius:10px; background:#f8d7da; border:1px solid #f5c6cb; }}
-            .app-title{{ text-align:center; margin-bottom:22px; background:linear-gradient(135deg,#e3f2fd 0%, #f1f8e9 100%); padding:14px; border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .app-footer{{ text-align:center; margin-top:32px; padding:16px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 4px 10px rgba(17,24,39,.04); }}
-            .app-footer p{{ margin:4px 0; color:var(--muted); font-size:0.875rem; }}
-            .version-info{{ font-weight:600; color:var(--text); }}
+            body {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+                padding: var(--spacing-6);
+            }}
+            .login-wrapper {{
+                width: 100%;
+                max-width: 420px;
+            }}
+            .login-card {{
+                background: white;
+                border-radius: var(--radius-xl);
+                box-shadow: var(--shadow-xl);
+                padding: var(--spacing-8);
+                border: 1px solid var(--color-gray-200);
+            }}
+            .login-header {{
+                text-align: center;
+                margin-bottom: var(--spacing-8);
+            }}
+            .login-logo {{
+                width: 64px;
+                height: 64px;
+                margin: 0 auto var(--spacing-4);
+                background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+                border-radius: var(--radius-xl);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: var(--shadow-md);
+            }}
+            .login-logo svg {{
+                width: 40px;
+                height: 40px;
+                color: white;
+            }}
+            .login-title {{
+                font-size: var(--font-size-2xl);
+                font-weight: var(--font-weight-bold);
+                color: var(--color-gray-900);
+                margin-bottom: var(--spacing-2);
+            }}
+            .login-subtitle {{
+                font-size: var(--font-size-sm);
+                color: var(--color-gray-600);
+                margin: 0;
+            }}
+            .login-form {{
+                margin-top: var(--spacing-6);
+            }}
+            .form-footer {{
+                margin-top: var(--spacing-6);
+                text-align: center;
+                font-size: var(--font-size-sm);
+                color: var(--color-gray-600);
+            }}
+            .version-badge {{
+                display: inline-block;
+                margin-top: var(--spacing-4);
+                padding: var(--spacing-1) var(--spacing-3);
+                background: var(--color-gray-100);
+                color: var(--color-gray-700);
+                border-radius: var(--radius-full);
+                font-size: var(--font-size-xs);
+                font-weight: var(--font-weight-medium);
+            }}
         </style>
     </head>
     <body>
-        <div class="app-title">
-            <h1>Simple Payroll App <span style="font-size:.6em; color:#6c757d; font-weight:600;">{get_version_display()}</span></h1>
-        </div>
-
-        <div class="login-container">
-            <h2>Login</h2>
-
-            {{% if error %}}
-            <div class="error">{{{{ error }}}}</div>
-            {{% endif %}}
-
-            <form action="{{{{ url_for('login', next=request.args.get('next', '')) }}}}" method="post">
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required autofocus>
+        <div class="login-wrapper">
+            <div class="login-card">
+                <div class="login-header">
+                    <div class="login-logo">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <h1 class="login-title">Payroll Management</h1>
+                    <p class="login-subtitle">Sign in to access your payroll system</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+                {{% if error %}}
+                <div class="alert alert-danger" role="alert">
+                    <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>{{{{ error }}}}</span>
                 </div>
+                {{% endif %}}
 
-                <button type="submit" class="button">Login</button>
-            </form>
-        </div>
-        
-        <div class="app-footer">
-            <p class="version-info">Payroll Management System {get_version_display()}</p>
-            <p>© 2024-2025 | Secure Payroll Processing</p>
+                <form action="{{{{ url_for('login', next=request.args.get('next', '')) }}}}" method="post" class="login-form">
+                    <div class="form-group">
+                        <label for="username" class="form-label">Username</label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            class="form-input" 
+                            placeholder="Enter your username"
+                            required 
+                            autofocus
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input" 
+                            placeholder="Enter your password"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg" style="width:100%">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Sign In
+                    </button>
+                </form>
+
+                <div class="form-footer">
+                    <p>Secure payroll processing for your business</p>
+                    <span class="version-badge">{get_version_display()}</span>
+                </div>
+            </div>
+
+            <div class="text-center mt-6 text-sm text-gray-600">
+                <p>© 2024-2025 Payroll Management System. All rights reserved.</p>
+            </div>
         </div>
     </body>
     </html>
