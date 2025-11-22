@@ -15,6 +15,8 @@ from collections import defaultdict
 import requests
 from bs4 import BeautifulSoup
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 # Selenium imports removed - not supported on PythonAnywhere
 
 # Import centralized version management
@@ -24,6 +26,31 @@ app = Flask(__name__)
 app.secret_key = 'a_very_secret_key'
 # Use centralized version management
 APP_VERSION = get_version()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOGGING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════════
+# Set up application logging for error tracking and debugging
+
+# Create logs directory if it doesn't exist
+LOG_FOLDER = 'logs'
+Path(LOG_FOLDER).mkdir(parents=True, exist_ok=True)
+
+# Configure logging
+log_file = os.path.join(LOG_FOLDER, 'payroll_app.log')
+file_handler = RotatingFileHandler(log_file, maxBytes=10485760, backupCount=5)  # 10MB per file, keep 5 backups
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(file_formatter)
+
+# Add handler to app logger
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+
+app.logger.info(f"Payroll application started - Version {APP_VERSION}")
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -542,20 +569,46 @@ Path(REPORT_FOLDER).mkdir(parents=True, exist_ok=True)
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'password'
 def load_users():
-    """Load users from JSON file"""
+    """Load users from JSON file with error handling"""
     try:
         with open(USERS_FILE, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+            users = json.load(f)
+            app.logger.info(f"Successfully loaded {len(users)} users")
+            return users
+    except FileNotFoundError:
         # Create default user if no users file exists
+        app.logger.warning(f"Users file not found. Creating default admin user.")
         users = {DEFAULT_USERNAME: DEFAULT_PASSWORD}
         save_users(users)
         return users
+    except json.JSONDecodeError as e:
+        app.logger.error(f"Invalid JSON in users file: {e}")
+        # Create fresh users file
+        users = {DEFAULT_USERNAME: DEFAULT_PASSWORD}
+        save_users(users)
+        return users
+    except Exception as e:
+        app.logger.error(f"Unexpected error loading users: {e}")
+        return {DEFAULT_USERNAME: DEFAULT_PASSWORD}
 
 def save_users(users):
-    """Save users to JSON file"""
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=2)
+    """Save users to JSON file with error handling"""
+    try:
+        # Create backup before saving
+        if os.path.exists(USERS_FILE):
+            backup_file = f"{USERS_FILE}.backup"
+            import shutil
+            shutil.copy2(USERS_FILE, backup_file)
+        
+        with open(USERS_FILE, 'w') as f:
+            json.dump(users, f, indent=2)
+        app.logger.info(f"Successfully saved {len(users)} users")
+    except IOError as e:
+        app.logger.error(f"Failed to save users: {e}")
+        raise RuntimeError(f"Could not save users: {str(e)}")
+    except Exception as e:
+        app.logger.error(f"Unexpected error saving users: {e}")
+        raise
 
 # Login required decorator
 def login_required(f):
@@ -568,17 +621,40 @@ def login_required(f):
 
 # Pay rate management functions
 def load_pay_rates():
-    """Load pay rates from JSON file"""
+    """Load pay rates from JSON file with error handling"""
     try:
         with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}  # Return empty dict if file doesn't exist or is invalid
+            rates = json.load(f)
+            app.logger.info(f"Successfully loaded {len(rates)} pay rates")
+            return rates
+    except FileNotFoundError:
+        app.logger.warning(f"Pay rates file not found: {CONFIG_FILE}. Creating new file.")
+        return {}
+    except json.JSONDecodeError as e:
+        app.logger.error(f"Invalid JSON in pay rates file: {e}")
+        return {}
+    except Exception as e:
+        app.logger.error(f"Unexpected error loading pay rates: {e}")
+        return {}
 
 def save_pay_rates(rates):
-    """Save pay rates to JSON file"""
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(rates, f, indent=2)
+    """Save pay rates to JSON file with error handling"""
+    try:
+        # Create backup before saving
+        if os.path.exists(CONFIG_FILE):
+            backup_file = f"{CONFIG_FILE}.backup"
+            import shutil
+            shutil.copy2(CONFIG_FILE, backup_file)
+        
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(rates, f, indent=2)
+        app.logger.info(f"Successfully saved {len(rates)} pay rates")
+    except IOError as e:
+        app.logger.error(f"Failed to save pay rates: {e}")
+        raise RuntimeError(f"Could not save pay rates: {str(e)}")
+    except Exception as e:
+        app.logger.error(f"Unexpected error saving pay rates: {e}")
+        raise
 
 def get_employee_names():
     """Extract employee names from uploaded CSV files (front-end display only)"""
