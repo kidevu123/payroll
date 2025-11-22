@@ -1874,11 +1874,15 @@ def index():
         .dropzone {{
             border: 2px dashed var(--color-gray-300);
             border-radius: var(--radius-lg);
-            padding: var(--spacing-12);
+            padding: var(--spacing-4);
             text-align: center;
             cursor: pointer;
             transition: all var(--transition-base);
             background: var(--color-gray-50);
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }}
         .dropzone:hover {{
             border-color: var(--color-primary);
@@ -1887,24 +1891,43 @@ def index():
         .dropzone.dragover {{
             border-color: var(--color-primary);
             background: var(--color-primary-pale);
-            transform: scale(1.02);
+            transform: scale(1.01);
         }}
         .upload-icon {{
-            width: 64px;
-            height: 64px;
-            margin: 0 auto var(--spacing-4);
+            width: 48px;
+            height: 48px;
+            margin: 0 auto var(--spacing-2);
             color: var(--color-gray-400);
         }}
         .feature-icon {{
-            width: 48px;
-            height: 48px;
+            width: 40px;
+            height: 40px;
             background: var(--color-success-light);
             color: var(--color-success);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+        }}
+        .home-layout {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-4);
+            align-items: start;
+        }}
+        @media (max-width: 1024px) {{
+            .home-layout {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+        .step-item {{
+            padding: var(--spacing-2);
+        }}
+        .step-number {{
+            width: 24px;
+            height: 24px;
+            font-size: var(--font-size-sm);
         }}
     </style>
 </head>
@@ -1913,19 +1936,19 @@ def index():
     
     <div class="home-header">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Process Payroll</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Upload timesheets and generate professional payroll reports</p>
+            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Process Payroll</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Upload timesheets and generate professional payroll reports</p>
         </div>
     </div>
     
-    <div class="container container-narrow">
-        <div class="grid grid-cols-1 gap-4" style="grid-template-columns:1fr;">
+    <div class="container">
+        <div class="home-layout">
             
             <!-- Upload Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+            <div class="card" style="margin-bottom:0">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base)">
+                        <svg style="width:20px;height:20px;display:inline;margin-right:6px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
                         </svg>
                         Upload Timesheet CSV
@@ -1937,21 +1960,21 @@ def index():
                         <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        <h3 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-2)">
-                            Drag & drop your CSV file here
+                        <h3 style="font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">
+                            Drag & drop CSV file here
                         </h3>
-                        <p style="color:var(--color-gray-600);margin-bottom:var(--spacing-4)">
+                        <p style="color:var(--color-gray-600);font-size:var(--font-size-sm);margin-bottom:var(--spacing-2)">
                             or <span style="color:var(--color-primary);font-weight:var(--font-weight-medium)">click to browse</span>
                         </p>
-                        <div id="file-note" style="font-size:var(--font-size-sm);color:var(--color-gray-600);font-weight:var(--font-weight-medium)">
+                        <div id="file-note" style="font-size:var(--font-size-xs);color:var(--color-gray-600);font-weight:var(--font-weight-medium)">
                             No file selected
                         </div>
                         <input id="file-input" type="file" name="file" accept=".csv" style="display:none" required>
                     </div>
                     
                     <div style="margin-top:var(--spacing-3);text-align:center">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                        <button type="submit" class="btn btn-primary">
+                            <svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
                             </svg>
                             Process Timesheet
@@ -1961,106 +1984,102 @@ def index():
             </div>
             
             <!-- Instructions Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">
-                        <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+            <div class="card" style="margin-bottom:0">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base)">
+                        <svg style="width:20px;height:20px;display:inline;margin-right:6px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                         </svg>
                         How It Works
                     </h2>
                 </div>
                 
-                <div style="display:flex;flex-direction:column;gap:var(--spacing-4)">
+                <div style="display:flex;flex-direction:column;gap:var(--spacing-2)">
                     <div class="step-item">
                         <div class="step-number">1</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Upload CSV</h4>
-                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Drag & drop or select your timesheet CSV file above</p>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Upload CSV</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Drag & drop or select CSV file</p>
                         </div>
                     </div>
                     
                     <div class="step-item">
                         <div class="step-number">2</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Fix Missing Times</h4>
-                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Review and correct any missing Clock In/Out times (if needed)</p>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Fix Missing Times</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Review and correct if needed</p>
                         </div>
                     </div>
                     
                     <div class="step-item">
                         <div class="step-number">3</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Select Employees</h4>
-                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Choose which employees to include in this payroll run</p>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Select Employees</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Choose employees to include</p>
                         </div>
                     </div>
                     
                     <div class="step-item">
                         <div class="step-number">4</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Generate Reports</h4>
-                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Process payroll and download Excel reports</p>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Generate Reports</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Process and download Excel</p>
                         </div>
                     </div>
                     
                     <div class="step-item">
                         <div class="step-number">5</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:var(--spacing-1)">Push to Zoho</h4>
-                            <p style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin:0">Optionally sync expense to Zoho Books (automatic duplicate prevention)</p>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Push to Zoho</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Sync expense automatically</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="alert alert-info" style="margin-top:var(--spacing-3)">
-                    <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                <div class="alert alert-info" style="margin-top:var(--spacing-3);padding:var(--spacing-2)">
+                    <svg style="width:16px;height:16px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                     </svg>
-                    <div>
-                        <strong>CSV Format Required:</strong> Person ID, First Name, Last Name, Date, Clock In, Clock Out
+                    <div style="font-size:var(--font-size-xs)">
+                        <strong>CSV Format:</strong> Person ID, First Name, Last Name, Date, Clock In, Clock Out
                     </div>
                 </div>
             </div>
             
-            <!-- Quick Links Card -->
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="card-title">Quick Links</h2>
-                </div>
+        </div>
+        
+        <!-- Quick Links Row -->
+        <div class="card" style="margin-top:var(--spacing-4)">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--spacing-3)">
+                <a href="/manage_rates" style="text-decoration:none">
+                    <div class="flex items-center gap-3" style="padding:var(--spacing-3);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
+                        <div class="feature-icon">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0;font-size:var(--font-size-sm)">Pay Rates</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Manage employees</p>
+                        </div>
+                    </div>
+                </a>
                 
-                <div class="grid grid-cols-2" style="gap:var(--spacing-4)">
-                    <a href="/manage_rates" style="text-decoration:none">
-                        <div class="flex items-center gap-4" style="padding:var(--spacing-4);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
-                            <div class="feature-icon">
-                                <svg style="width:24px;height:24px" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0">Pay Rates</h4>
-                                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Manage employees</p>
-                            </div>
+                <a href="/reports" style="text-decoration:none">
+                    <div class="flex items-center gap-3" style="padding:var(--spacing-3);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
+                        <div class="feature-icon">
+                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                            </svg>
                         </div>
-                    </a>
-                    
-                    <a href="/reports" style="text-decoration:none">
-                        <div class="flex items-center gap-4" style="padding:var(--spacing-4);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
-                            <div class="feature-icon">
-                                <svg style="width:24px;height:24px" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0">Reports</h4>
-                                <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">View & download</p>
-                            </div>
+                        <div>
+                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0;font-size:var(--font-size-sm)">Reports</h4>
+                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">View & download</p>
                         </div>
-                    </a>
-                </div>
+                    </div>
+                </a>
             </div>
-            
         </div>
     </div>
     
@@ -4281,79 +4300,88 @@ def fix_missing_times():
             # Default suggestions if no data
             return '09:00:00' if time_type == 'Clock In' else '17:00:00'
 
-        html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Fix Missing Time Entries</title>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            h1, h2 { color: #333; }
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-            }}
-            th, td {
-                padding: 10px;
-                border: 1px solid #ddd;
-                text-align: left;
-            }
-            th { background-color: #f2f2f2; }
-            .both-missing { background-color: #ffcccc; } /* Light red for both missing */
-            .one-missing { background-color: #ffffcc; } /* Light yellow for one missing */
-            .suggested { color: #666; font-style: italic; font-size: 0.9em; margin-top: 5px; display: block; }
-            .button {
-                display: inline-block;
-                padding: 10px 15px;
-                background-color: #4CAF50;
-                color: white;
-                text-decoration: none;
-                border: none;
-                cursor: pointer;
-                margin-right: 10px;
-            }
-            .info {
-                background-color: #f8f9fa;
-                padding: 15px;
-                border-left: 4px solid #17a2b8;
-                margin-bottom: 20px;
-            }
-            input[type="text"] {
-                width: 100%;
-                padding: 8px;
-                box-sizing: border-box;
-            }
-            .action-buttons {
-                margin-top: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Fix Missing Time Entries</h1>
-
-        <div class="info">
-            <p>Some entries in your timesheet have missing Clock In or Clock Out values. Fill in only the values you want to fix and leave the rest empty, or choose to ignore these entries.</p>
-            <p>Time format should be <strong>HH:MM:SS</strong> (e.g., 09:00:00)</p>
-            <p><strong>Note:</strong> You can leave fields empty if you don't want to fix them - only fill in the times you need to correct.</p>
-            <p><strong>Important:</strong> Both Clock In and Clock Out times are required to calculate hours. Entries with only one time will not appear in the payroll report.</p>
-            <p><strong>Days Off:</strong> If an employee had the day off, leave both fields empty. They won't appear in the payroll report and won't be paid for that day.</p>
+        username = session.get('username', 'Unknown')
+        menu_html = get_menu_html(username)
+        
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Missing Time Entries - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .fix-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
+        }}
+        .both-missing {{ background-color: var(--color-danger-light) !important; }}
+        .one-missing {{ background-color: var(--color-warning-light) !important; }}
+        .suggested {{
+            color: var(--color-gray-600);
+            font-style: italic;
+            font-size: var(--font-size-xs);
+            margin-top: var(--spacing-1);
+            display: block;
+        }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    
+    <div class="fix-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Fix Missing Time Entries</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Fill in missing Clock In/Out times or ignore entries</p>
         </div>
-
-        <div style="margin: 15px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            <strong>Color Legend:</strong>
-            <span style="display: inline-block; width: 20px; height: 15px; background-color: #ffcccc; border: 1px solid #ccc; vertical-align: middle;"></span> Both times missing
-            <span style="margin-left: 20px; display: inline-block; width: 20px; height: 15px; background-color: #ffffcc; border: 1px solid #ccc; vertical-align: middle;"></span> One time missing
+    </div>
+    
+    <div class="container">
+        <div class="alert alert-info">
+            <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <p style="margin-bottom:var(--spacing-2)">Some entries have missing Clock In or Clock Out values. Fill in only the values you want to fix and leave the rest empty, or choose to ignore these entries.</p>
+                <p style="margin-bottom:var(--spacing-2)"><strong>Time format:</strong> HH:MM:SS (e.g., 09:00:00)</p>
+                <p style="margin-bottom:var(--spacing-2)"><strong>Note:</strong> You can leave fields empty if you don't want to fix them - only fill in the times you need to correct.</p>
+                <p style="margin-bottom:0"><strong>Important:</strong> Both Clock In and Clock Out times are required to calculate hours. Entries with only one time will not appear in the payroll report.</p>
+            </div>
+        </div>
+        
+        <div class="card" style="margin-bottom:var(--spacing-3)">
+            <div style="display:flex;gap:var(--spacing-4);align-items:center;flex-wrap:wrap">
+                <strong style="color:var(--color-gray-900)">Color Legend:</strong>
+                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+                    <span style="display:inline-block;width:20px;height:15px;background-color:var(--color-danger-light);border:1px solid var(--color-danger);border-radius:2px"></span>
+                    <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">Both times missing</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+                    <span style="display:inline-block;width:20px;height:15px;background-color:var(--color-warning-light);border:1px solid var(--color-warning);border-radius:2px"></span>
+                    <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">One time missing</span>
+                </div>
+            </div>
         </div>
 
         <form action="/fix_missing_times" method="post">
-            <table>
-                <tr>
-                    <th>Employee</th>
-                    <th>Date</th>
-                    <th>Clock In</th>
-                    <th>Clock Out</th>
-                </tr>
+            <div class="card">
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                            </tr>
+                        </thead>
+                        <tbody>
     """
 
         for record in missing_records:
@@ -4375,33 +4403,39 @@ def fix_missing_times():
                 clock_out_suggestion = f'<span class="suggested">Suggested: {suggested_out}</span>'
 
             html += f"""
-                    <tr class="{row_class}">
-                        <td>{record['name']} (ID: {record['person_id']})</td>
-                        <td>{record['date']}</td>
-                        <td>
-                            <input type="text" name="fix_clockin_{record['index']}" value="{record['clock_in']}"
-                                   placeholder="e.g., 09:00:00">
-                            {clock_in_suggestion}
-                        </td>
-                        <td>
-                            <input type="text" name="fix_clockout_{record['index']}" value="{record['clock_out']}"
-                                   placeholder="e.g., 09:00:00">
-                            {clock_out_suggestion}
-                        </td>
-
-                    </tr>
+                            <tr class="{row_class}">
+                                <td><strong>{escape(record['name'])}</strong><br><span style="font-size:var(--font-size-xs);color:var(--color-gray-600)">ID: {escape(str(record['person_id']))}</span></td>
+                                <td>{escape(str(record['date']))}</td>
+                                <td>
+                                    <input type="text" name="fix_clockin_{record['index']}" value="{escape(str(record['clock_in'])) if record['clock_in'] else ''}" class="form-input" placeholder="e.g., 09:00:00" style="width:100%;margin-bottom:var(--spacing-1)">
+                                    {clock_in_suggestion}
+                                </td>
+                                <td>
+                                    <input type="text" name="fix_clockout_{record['index']}" value="{escape(str(record['clock_out'])) if record['clock_out'] else ''}" class="form-input" placeholder="e.g., 17:00:00" style="width:100%;margin-bottom:var(--spacing-1)">
+                                    {clock_out_suggestion}
+                                </td>
+                            </tr>
             """
 
         html += """
-                </table>
-
-                <div class="action-buttons">
-                    <button type="submit" name="action" value="fix" class="button">Fix and Continue</button>
-                    <button type="submit" name="action" value="ignore" class="button" style="background-color: #f44336;">Ignore Missing Values</button>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top:var(--spacing-4);display:flex;gap:var(--spacing-3);justify-content:flex-end">
+                    <button type="submit" name="action" value="ignore" class="btn btn-secondary">Ignore Missing Values</button>
+                    <button type="submit" name="action" value="fix" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Fix and Continue
+                    </button>
                 </div>
             </form>
-        </body>
-        </html>
+        </div>
+    </div>
+</body>
+</html>
         """
 
         # Return HTML directly (already fully built with f-strings)
@@ -6254,133 +6288,153 @@ def delete_user():
 @login_required
 def fetch_timecard():
     """Fetch timecard data from the NGTeco system"""
+    username = session.get('username', 'Unknown')
+    menu_html = get_menu_html(username)
+    
     if request.method == 'GET':
-        # Show form to enter credentials and date range
-        html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Fetch Timecard Data</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-                h1 { color: #333; }
-                .form-group { margin-bottom: 15px; }
-                label { display: inline-block; width: 150px; font-weight: bold; }
-                input[type="text"], input[type="password"], input[type="date"] {
-                    width: 250px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;
-                }
-                button {
-                    background-color: #4CAF50; color: white; padding: 10px 20px;
-                    border: none; border-radius: 4px; cursor: pointer; font-size: 16px;
-                }
-                button:hover { background-color: #45a049; }
-                .info {
-                    background-color: #f8f9fa; padding: 15px; border-left: 4px solid #17a2b8;
-                    margin-bottom: 20px;
-                }
-                .warning {
-                    background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107;
-                    margin-bottom: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Fetch Timecard Data from NGTeco</h1>
-
-            <div class="info">
-                <p>This will automatically log into the NGTeco timecard system and download the timecard data for the specified date range.</p>
-                <p>The data will be converted to CSV format and processed automatically.</p>
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Timecard - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .fetch-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
+        }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    
+    <div class="fetch-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Fetch Timecard Data from NGTeco</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Automatically download timecard data and convert to CSV</p>
+        </div>
+    </div>
+    
+    <div class="container container-narrow">
+        <div class="alert alert-info">
+            <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <div>
+                <strong>Automatic Processing:</strong> This will log into NGTeco and download timecard data for the specified date range. The data will be converted to CSV format and processed automatically.
             </div>
-
-                         <div class="info" style="background-color: #e8f5e9; border-left-color: #4CAF50;">
-                <p><strong>Choose your method:</strong></p>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Choose Your Method</h2>
             </div>
-
+            
             <form method="post">
                 <div class="form-group">
-                    <label for="method">Method:</label>
-                    <select id="method" name="method" onchange="toggleMethod()" style="padding: 8px; width: 300px;">
+                    <label for="method" class="form-label">Method</label>
+                    <select id="method" name="method" class="form-select" onchange="toggleMethod()">
                         <option value="auto">Direct Login (Recommended)</option>
                         <option value="paste">Copy & Paste Table</option>
                     </select>
                 </div>
 
                 <div id="auto-section">
-                    <div class="info">
-                        <p>This will log into NGTeco directly and fetch your timecard data automatically!</p>
-                        <p style="color: #f57c00;"><strong>Note:</strong> For PythonAnywhere free accounts, you may need to request whitelisting for office.ngteco.com</p>
+                    <div class="alert alert-success" style="margin-bottom:var(--spacing-3)">
+                        <div>
+                            <strong>Direct Login:</strong> This will log into NGTeco directly and fetch your timecard data automatically!
+                            <p style="margin-top:var(--spacing-2);margin-bottom:0;color:var(--color-warning)"><strong>Note:</strong> For PythonAnywhere free accounts, you may need to request whitelisting for office.ngteco.com</p>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="username">NGTeco Username:</label>
-                        <input type="text" id="username" name="username" required>
+                        <label for="username" class="form-label form-label-required">NGTeco Username</label>
+                        <input type="text" id="username" name="username" class="form-input" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="password">NGTeco Password:</label>
-                        <input type="password" id="password" name="password" required>
+                        <label for="password" class="form-label form-label-required">NGTeco Password</label>
+                        <input type="password" id="password" name="password" class="form-input" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="start_date">Start Date:</label>
-                        <input type="date" id="start_date" name="start_date" required>
-                    </div>
+                    <div class="grid grid-cols-2" style="gap:var(--spacing-3)">
+                        <div class="form-group">
+                            <label for="start_date" class="form-label form-label-required">Start Date</label>
+                            <input type="date" id="start_date" name="start_date" class="form-input" required>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="end_date">End Date:</label>
-                        <input type="date" id="end_date" name="end_date" required>
+                        <div class="form-group">
+                            <label for="end_date" class="form-label form-label-required">End Date</label>
+                            <input type="date" id="end_date" name="end_date" class="form-input" required>
+                        </div>
                     </div>
                 </div>
 
                 <div id="paste-section" style="display: none;">
-                    <div class="info">
-                        <ol>
-                            <li>Go to your NGTeco timecard page</li>
-                            <li>Select your date range</li>
-                            <li>Select the entire table</li>
-                            <li>Copy (Ctrl+C) and paste below</li>
-                        </ol>
+                    <div class="alert alert-info" style="margin-bottom:var(--spacing-3)">
+                        <div>
+                            <strong>Copy & Paste Method:</strong>
+                            <ol style="margin-top:var(--spacing-2);margin-bottom:0;padding-left:var(--spacing-4)">
+                                <li>Go to your NGTeco timecard page</li>
+                                <li>Select your date range</li>
+                                <li>Select the entire table</li>
+                                <li>Copy (Ctrl+C) and paste below</li>
+                            </ol>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="table_data">Paste Table Data:</label>
-                        <textarea id="table_data" name="table_data" rows="20" cols="80"
-                                  placeholder="Copy the table from NGTeco and paste it here..."></textarea>
+                        <label for="table_data" class="form-label form-label-required">Paste Table Data</label>
+                        <textarea id="table_data" name="table_data" class="form-textarea" rows="15" placeholder="Copy the table from NGTeco and paste it here..."></textarea>
                     </div>
                 </div>
 
-                <button type="submit">Process Timecard Data</button>
+                <div style="margin-top:var(--spacing-4);text-align:right">
+                    <button type="submit" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
+                        </svg>
+                        Process Timecard Data
+                    </button>
+                </div>
             </form>
+        </div>
+    </div>
+    
+    <script>
+        function toggleMethod() {{
+            var method = document.getElementById('method').value;
+            var autoSection = document.getElementById('auto-section');
+            var pasteSection = document.getElementById('paste-section');
 
-            <script>
-                function toggleMethod() {
-                    var method = document.getElementById('method').value;
-                    var autoSection = document.getElementById('auto-section');
-                    var pasteSection = document.getElementById('paste-section');
-
-                    if (method === 'auto') {
-                        autoSection.style.display = 'block';
-                        pasteSection.style.display = 'none';
-                        // Update required attributes
-                        document.getElementById('username').required = true;
-                        document.getElementById('password').required = true;
-                        document.getElementById('start_date').required = true;
-                        document.getElementById('end_date').required = true;
-                        document.getElementById('table_data').required = false;
-                    } else {
-                        autoSection.style.display = 'none';
-                        pasteSection.style.display = 'block';
-                        // Update required attributes
-                        document.getElementById('username').required = false;
-                        document.getElementById('password').required = false;
-                        document.getElementById('start_date').required = false;
-                        document.getElementById('end_date').required = false;
-                        document.getElementById('table_data').required = true;
-                    }
-                }
-            </script>
-        </body>
-        </html>
+            if (method === 'auto') {{
+                autoSection.style.display = 'block';
+                pasteSection.style.display = 'none';
+                document.getElementById('username').required = true;
+                document.getElementById('password').required = true;
+                document.getElementById('start_date').required = true;
+                document.getElementById('end_date').required = true;
+                document.getElementById('table_data').required = false;
+            }} else {{
+                autoSection.style.display = 'none';
+                pasteSection.style.display = 'block';
+                document.getElementById('username').required = false;
+                document.getElementById('password').required = false;
+                document.getElementById('start_date').required = false;
+                document.getElementById('end_date').required = false;
+                document.getElementById('table_data').required = true;
+            }}
+        }}
+    </script>
+</body>
+</html>
         """
         return html
 
@@ -6637,38 +6691,108 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
-        # Using string concatenation to avoid f-string issues
-        html = """<!DOCTYPE html>
-<html>
-<head><title>Confirm Employees</title></head>
-<body style="font-family: Arial; padding: 20px;">
-    <h1>Confirm Employees for Payroll</h1>
-    <p>Select employees to include:</p>
-    <div id="employee-list"></div>
-    <br>
-    <a href="/" style="padding: 10px 20px; background: #ccc; text-decoration: none; margin-right: 10px;">Cancel</a>
-    <button onclick="processPayroll()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer;">Confirm & Process</button>
+        menu_html = get_menu_html(username)
+        
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Employees - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .confirm-header {{
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
+        }}
+        .employee-item {{
+            padding: var(--spacing-3);
+            margin-bottom: var(--spacing-2);
+            background: var(--color-gray-50);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-3);
+            transition: background var(--transition-fast);
+        }}
+        .employee-item:hover {{
+            background: var(--color-gray-100);
+        }}
+        .employee-item input[type="checkbox"] {{
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    
+    <div class="confirm-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Confirm Employees for Payroll</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Select employees to include in this payroll run</p>
+        </div>
+    </div>
+    
+    <div class="container container-narrow">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Select Employees to Include</h2>
+            </div>
+            
+            <div id="employee-list"></div>
+            
+            <div style="margin-top:var(--spacing-4);display:flex;gap:var(--spacing-3);justify-content:flex-end">
+                <a href="/" class="btn btn-secondary">Cancel</a>
+                <button onclick="processPayroll()" class="btn btn-success">
+                    <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    Confirm & Process
+                </button>
+            </div>
+        </div>
+    </div>
     
     <script>
-        const employees = """ + employees_json + """;
-        function populateEmployees() {
+        const employees = {employees_json};
+        function populateEmployees() {{
             const list = document.getElementById('employee-list');
-            employees.forEach(emp => {
+            employees.forEach(emp => {{
                 const div = document.createElement('div');
-                div.style.padding = '10px';
-                div.style.marginBottom = '5px';
-                div.style.background = '#f0f0f0';
-                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> ' + emp['First Name'] + ' ' + emp['Last Name'] + ' (ID: ' + emp['Person ID'] + ')';
+                div.className = 'employee-item';
+                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> <strong>' + escape(emp['First Name'] + ' ' + emp['Last Name']) + '</strong> <span style="color:var(--color-gray-600);font-size:var(--font-size-sm)">(ID: ' + escape(emp['Person ID']) + ')</span>';
                 list.appendChild(div);
-            });
-        }
-        function processPayroll() {
+            }});
+        }}
+        function escape(str) {{
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }}
+        function processPayroll() {{
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            if (selectedIds.length === 0) {alert('Select at least one employee.'); return;}
-            fetch('/confirm_and_process', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({employee_ids: selectedIds})})
-            .then(response => {if (response.ok) window.location.href = '/process_confirmed'; else alert('Error');});
-        }
+            if (selectedIds.length === 0) {{alert('Select at least one employee.'); return;}}
+            fetch('/process_confirmed', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({{employee_ids: selectedIds}})}})
+            .then(response => {{
+                if (response.ok) {{
+                    window.location.href = '/process_confirmed';
+                }} else {{
+                    alert('Error processing payroll. Please try again.');
+                }}
+            }})
+            .catch(error => {{
+                alert('Network error: ' + error);
+            }});
+        }}
         populateEmployees();
     </script>
 </body>

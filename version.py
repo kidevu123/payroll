@@ -3,11 +3,28 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.8.0"
-__version_name__ = "Compact Layout - Reduced Scrolling"
+__version__ = "8.9.0"
+__version_name__ = "Side-by-Side Layout & Workflow Pages"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.0",
+        "date": "2025-11-22",
+        "changes": [
+            "🎨 UI: Side-by-Side Layout & Workflow Pages Complete",
+            "Home page redesigned - side-by-side layout (no scrolling needed)",
+            "Upload and Instructions cards side-by-side",
+            "Compact step-by-step guide",
+            "Quick links integrated below",
+            "Fetch Timecard page - redesigned with design system",
+            "Fix Missing Times page - professional table design",
+            "Confirm Employees page - modern checkbox list",
+            "All workflow pages now consistent",
+            "All pages use new navigation system",
+            "Removed all Tailwind dependencies from workflow pages"
+        ]
+    },
     {
         "version": "8.8.0",
         "date": "2025-11-22",
