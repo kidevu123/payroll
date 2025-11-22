@@ -1582,11 +1582,12 @@ function saveRate(id) {
     return html
 
 @app.route('/add_rate', methods=['POST'])
+@login_required
 def add_rate():
     """Add a new pay rate"""
     try:
-        emp_id = request.form['emp_id']
-        pay_rate = float(request.form['pay_rate'])
+        emp_id = request.form['employee_id']
+        pay_rate = float(request.form['rate'])
 
         # Validate
         if pay_rate <= 0:
@@ -1625,18 +1626,17 @@ def update_rate(employee_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/delete_rate', methods=['POST'])
-def delete_rate():
+@app.route('/delete_rate/<employee_id>', methods=['POST'])
+@login_required
+def delete_rate(employee_id):
     """Delete a pay rate"""
     try:
-        emp_id = request.form['emp_id']
-
         # Load existing rates
         pay_rates = load_pay_rates()
 
         # Delete rate if exists
-        if emp_id in pay_rates:
-            del pay_rates[emp_id]
+        if employee_id in pay_rates:
+            del pay_rates[employee_id]
 
         # Save updated rates
         save_pay_rates(pay_rates)
@@ -1646,6 +1646,7 @@ def delete_rate():
         return f"Error deleting pay rate: {str(e)}", 400
 
 @app.route('/import_rates', methods=['POST'])
+@login_required
 def import_rates():
     """Import pay rates from CSV"""
     try:
