@@ -5996,5 +5996,353 @@ def process_confirmed():
         return redirect(url_for('success'))
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ERROR HANDLERS
+# ═══════════════════════════════════════════════════════════════════════════════
+# Custom error pages with consistent UI design
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Custom 404 error page - Page not found"""
+    app.logger.warning(f"404 Error: {request.url}")
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>404 - Page Not Found | Payroll System</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            fontFamily: {
+                                sans: ['Inter', 'sans-serif'],
+                            },
+                            colors: {
+                                primary: '#1e40af',
+                                secondary: '#64748b',
+                                accent: '#3b82f6',
+                                textDark: '#1e293b',
+                            }
+                        }
+                    }
+                }
+            </script>
+        </head>
+        <body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center justify-center font-sans">
+            <div class="max-w-2xl mx-auto px-6 py-12 text-center">
+                <div class="bg-white rounded-2xl shadow-2xl p-12">
+                    <!-- 404 Icon -->
+                    <div class="mb-8">
+                        <svg class="w-32 h-32 mx-auto text-blue-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <h1 class="text-6xl font-bold text-primary mb-4">404</h1>
+                    <h2 class="text-2xl font-semibold text-textDark mb-4">Page Not Found</h2>
+                    <p class="text-lg text-secondary mb-8">
+                        The page you're looking for doesn't exist or has been moved.
+                    </p>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/" class="px-8 py-3 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Go Home
+                        </a>
+                        <button onclick="window.history.back()" class="px-8 py-3 bg-white text-primary border-2 border-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-all">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Go Back
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="mt-8 text-sm text-secondary">
+                    Payroll Management System {{ version }}
+                </div>
+            </div>
+        </body>
+        </html>
+    ''', version=get_version_display()), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    """Custom 500 error page - Internal server error"""
+    app.logger.error(f"500 Error: {str(e)}", exc_info=True)
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>500 - Server Error | Payroll System</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            fontFamily: {
+                                sans: ['Inter', 'sans-serif'],
+                            },
+                            colors: {
+                                primary: '#1e40af',
+                                secondary: '#64748b',
+                                accent: '#3b82f6',
+                                textDark: '#1e293b',
+                            }
+                        }
+                    }
+                }
+            </script>
+        </head>
+        <body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center justify-center font-sans">
+            <div class="max-w-2xl mx-auto px-6 py-12 text-center">
+                <div class="bg-white rounded-2xl shadow-2xl p-12">
+                    <!-- Error Icon -->
+                    <div class="mb-8">
+                        <svg class="w-32 h-32 mx-auto text-red-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <h1 class="text-6xl font-bold text-red-600 mb-4">500</h1>
+                    <h2 class="text-2xl font-semibold text-textDark mb-4">Internal Server Error</h2>
+                    <p class="text-lg text-secondary mb-8">
+                        Something went wrong on our end. We've logged the error and will look into it.
+                    </p>
+                    
+                    <!-- Help Text -->
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8 text-left">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-blue-700">
+                                    <strong>What you can do:</strong><br>
+                                    • Try refreshing the page<br>
+                                    • Go back and try again<br>
+                                    • If the problem persists, contact your administrator
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/" class="px-8 py-3 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Go Home
+                        </a>
+                        <button onclick="window.history.back()" class="px-8 py-3 bg-white text-primary border-2 border-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-all">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Go Back
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="mt-8 text-sm text-secondary">
+                    Payroll Management System {{ version }}
+                </div>
+            </div>
+        </body>
+        </html>
+    ''', version=get_version_display()), 500
+
+@app.errorhandler(403)
+def forbidden(e):
+    """Custom 403 error page - Forbidden/Unauthorized access"""
+    app.logger.warning(f"403 Error: {request.url} - User: {session.get('username', 'Anonymous')}")
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>403 - Access Denied | Payroll System</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            fontFamily: {
+                                sans: ['Inter', 'sans-serif'],
+                            },
+                            colors: {
+                                primary: '#1e40af',
+                                secondary: '#64748b',
+                                accent: '#3b82f6',
+                                textDark: '#1e293b',
+                            }
+                        }
+                    }
+                }
+            </script>
+        </head>
+        <body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center justify-center font-sans">
+            <div class="max-w-2xl mx-auto px-6 py-12 text-center">
+                <div class="bg-white rounded-2xl shadow-2xl p-12">
+                    <!-- Lock Icon -->
+                    <div class="mb-8">
+                        <svg class="w-32 h-32 mx-auto text-yellow-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <h1 class="text-6xl font-bold text-yellow-600 mb-4">403</h1>
+                    <h2 class="text-2xl font-semibold text-textDark mb-4">Access Denied</h2>
+                    <p class="text-lg text-secondary mb-8">
+                        You don't have permission to access this resource.
+                    </p>
+                    
+                    <!-- Help Text -->
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 text-left">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    <strong>Possible reasons:</strong><br>
+                                    • You need to log in to access this page<br>
+                                    • Your session may have expired<br>
+                                    • You don't have the required permissions
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/login" class="px-8 py-3 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                            </svg>
+                            Go to Login
+                        </a>
+                        <a href="/" class="px-8 py-3 bg-white text-primary border-2 border-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-all">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Go Home
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="mt-8 text-sm text-secondary">
+                    Payroll Management System {{ version }}
+                </div>
+            </div>
+        </body>
+        </html>
+    ''', version=get_version_display()), 403
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    """Custom 405 error page - Method not allowed"""
+    app.logger.warning(f"405 Error: {request.method} {request.url}")
+    return render_template_string('''
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>405 - Method Not Allowed | Payroll System</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <script>
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            fontFamily: {
+                                sans: ['Inter', 'sans-serif'],
+                            },
+                            colors: {
+                                primary: '#1e40af',
+                                secondary: '#64748b',
+                                accent: '#3b82f6',
+                                textDark: '#1e293b',
+                            }
+                        }
+                    }
+                }
+            </script>
+        </head>
+        <body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen flex items-center justify-center font-sans">
+            <div class="max-w-2xl mx-auto px-6 py-12 text-center">
+                <div class="bg-white rounded-2xl shadow-2xl p-12">
+                    <!-- Error Icon -->
+                    <div class="mb-8">
+                        <svg class="w-32 h-32 mx-auto text-orange-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <h1 class="text-6xl font-bold text-orange-600 mb-4">405</h1>
+                    <h2 class="text-2xl font-semibold text-textDark mb-4">Method Not Allowed</h2>
+                    <p class="text-lg text-secondary mb-8">
+                        The request method is not supported for this resource.
+                    </p>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/" class="px-8 py-3 bg-gradient-to-r from-primary to-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:from-primary/90 hover:to-blue-600 transition-all transform hover:-translate-y-0.5">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            </svg>
+                            Go Home
+                        </a>
+                        <button onclick="window.history.back()" class="px-8 py-3 bg-white text-primary border-2 border-primary font-semibold rounded-lg hover:bg-primary hover:text-white transition-all">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Go Back
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="mt-8 text-sm text-secondary">
+                    Payroll Management System {{ version }}
+                </div>
+            </div>
+        </body>
+        </html>
+    ''', version=get_version_display()), 405
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

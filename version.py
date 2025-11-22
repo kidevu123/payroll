@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.2.2"
-__version_name__ = "Critical Bug Fix - Process Route"
+__version__ = "6.3.0"
+__version_name__ = "User-Friendly Error Pages"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.3.0",
+        "date": "2025-11-22",
+        "changes": [
+            "CODE OPTIMIZATION: Phase 5d - User-Friendly Error Pages",
+            "Added custom 404 error page (Page Not Found)",
+            "Added custom 500 error page (Internal Server Error)",
+            "Added custom 403 error page (Access Denied/Forbidden)",
+            "Added custom 405 error page (Method Not Allowed)",
+            "All error pages match modern enterprise UI design",
+            "Error pages include helpful information and action buttons",
+            "Automatic error logging for all HTTP errors",
+            "Improved user experience during errors"
+        ]
+    },
     {
         "version": "6.2.2",
         "date": "2025-11-22",
