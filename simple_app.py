@@ -1868,9 +1868,8 @@ def compute_daily_hours(row):
                     hours = diff.total_seconds() / 3600
                     return round(hours, 2)
                 except ValueError as e:
-                    # If time parsing fails, return 0
-                    if 'Person ID' in row and row['Person ID'] in [2, 3]:
-                        print(f"  ERROR parsing times: {e}")
+                    # If time parsing fails, log and return 0
+                    app.logger.warning(f"Failed to parse time for Person ID {row.get('Person ID', 'Unknown')}: {e}")
                     return 0.0
 
 
@@ -3338,12 +3337,9 @@ def fix_times():
         # Read the CSV
         df = pd.read_csv(file_path)
 
-        # Debug: Print all form data
-        print("="*50)
-        print("FIX_TIMES ROUTE CALLED")
-        print(f"Form data received: {dict(request.form)}")
-        print(f"CSV file path: {file_path}")
-        print("="*50)
+        # Log form data for debugging
+        app.logger.info(f"fix_times route called - CSV file: {file_path}")
+        app.logger.debug(f"Form data received: {len(request.form)} fields")
 
 
         # Extract clock time fixes from form
@@ -3361,9 +3357,7 @@ def fix_times():
 
                 # Only update if value is not empty
                 if value and value.strip():
-                    # Debug: Check actual date values in the dataframe
-                    print(f"Looking for Person ID: {person_id}, Date: {date}")
-                    print(f"Sample dates in df: {df['Date'].head(5).tolist()}")
+                    app.logger.debug(f"Looking for Person ID: {person_id}, Date: {date}")
 
                     # Try to convert date format if needed
                     # The form might send YYYY-MM-DD but CSV might have MM/DD/YYYY or other format
@@ -3390,7 +3384,7 @@ def fix_times():
 
                                     if row_date_parsed == form_date_parsed:
                                         matching_rows.append(idx)
-                                        print(f"Date match found: {row_date} == {date}")
+                                        app.logger.debug(f"Date match found: {row_date} == {date}")
                                 except Exception as e:
                                     # Method 2: Manual parsing for common formats
                                     try:
@@ -3406,7 +3400,7 @@ def fix_times():
                                                         csv_month.zfill(2) == month.zfill(2) and
                                                         csv_day.zfill(2) == day.zfill(2)):
                                                         matching_rows.append(idx)
-                                                        print(f"Manual date match: {row_date} == {date}")
+                                                        app.logger.debug(f"Manual date match: {row_date} == {date}")
                                     except:
                                         pass
 
@@ -3416,21 +3410,20 @@ def fix_times():
                             df.at[idx, clock_type] = value.strip()
                             after_val = df.at[idx, clock_type]
                             updates_made.append(f"{clock_type} for Person ID {person_id} on {date}: {before_val} -> {after_val}")
-                            print(f"Updated row {idx}: {clock_type} for Person ID {person_id} on {date} from '{before_val}' to '{value.strip()}'")
+                            app.logger.info(f"Updated row {idx}: {clock_type} for Person ID {person_id} on {date} from '{before_val}' to '{value.strip()}'")
                     else:
-                        print(f"WARNING: No matching row found for Person ID {person_id} on {date}")
+                        app.logger.warning(f"No matching row found for Person ID {person_id} on {date}")
 
-        print(f"Total updates made: {len(updates_made)}")
+        app.logger.info(f"Total updates made: {len(updates_made)}")
         for update in updates_made:
-            print(f"  - {update}")
+            app.logger.debug(f"  - {update}")
 
         # Save the updated CSV
         fixed_file_path = os.path.join(UPLOAD_FOLDER, f"fixed_{filename}")
         df.to_csv(fixed_file_path, index=False)
 
-        print(f"Saved fixed file to: {fixed_file_path}")
-        print(f"First few rows after fix:")
-        print(df.head(20))
+        app.logger.info(f"Saved fixed file to: {fixed_file_path}")
+        app.logger.debug(f"First few rows after fix:\n{df.head(20)}")
 
         # Update the session with the fixed file path
         session['uploaded_file'] = fixed_file_path
@@ -4162,11 +4155,11 @@ def print_friendly(report_type):
                                             }
                                             employee_data[id_value]['days'].append(day_data)
                                         except Exception as e:
-                                            print(f"Error processing day row: {e}")
+                                            app.logger.error(f"Error processing day row: {e}")
 
                                         day_row += 1
                         except Exception as e:
-                            print(f"Error processing employee info: {e}")
+                            app.logger.error(f"Error processing employee info: {e}")
 
             # Generate print-friendly HTML by constructing from the collected employee_data
             html = f"""
@@ -5709,7 +5702,7 @@ def parse_ngteco_table(table_data):
                 csv_lines.append(csv_line)
 
             except Exception as e:
-                print(f"Error parsing line: {line} - {str(e)}")
+                app.logger.error(f"Error parsing line: {line} - {str(e)}")
                 continue
 
     return '\n'.join(csv_lines)

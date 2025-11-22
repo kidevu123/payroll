@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "6.3.0"
-__version_name__ = "User-Friendly Error Pages"
+__version__ = "6.3.1"
+__version_name__ = "Code Quality - Debug Cleanup"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "6.3.1",
+        "date": "2025-11-22",
+        "changes": [
+            "CODE OPTIMIZATION: Phase 4d - Standardize Code Quality",
+            "Removed ALL debug print statements (20 instances)",
+            "Replaced print() with proper app.logger calls",
+            "Consistent logging levels: debug, info, warning, error",
+            "All debug output now in centralized log file",
+            "Better production-ready code quality",
+            "NO functionality changes"
+        ]
+    },
     {
         "version": "6.3.0",
         "date": "2025-11-22",
