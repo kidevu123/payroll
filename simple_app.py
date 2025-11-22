@@ -77,9 +77,11 @@ def _ensure_report_metadata(file_path: str, filename: str, meta: dict) -> dict:
             ws = wb.active
             # Creator
             try:
-                if 'AA1' in ws and ws['AA1'].value:
+                # Try AA1 first (where username is stored)
+                if ws['AA1'].value:
                     creator = str(ws['AA1'].value)
-                elif 'A2' in ws and ws['A2'].value and 'Processed by:' in str(ws['A2'].value):
+                # Fallback to A2 if AA1 is empty
+                elif ws['A2'].value and 'Processed by:' in str(ws['A2'].value):
                     creator = str(ws['A2'].value).replace('Processed by:', '').strip()
             except Exception:
                 pass
@@ -4745,7 +4747,7 @@ def reports():
                     from openpyxl import load_workbook
                     wb = load_workbook(file_path, read_only=True, data_only=True)
                     ws = wb.active
-                    if 'A1' in ws and ws['A1'].value:
+                    if ws['A1'].value:
                         report_title = ws['A1'].value
                 except Exception as e:
                     # If we can't read the Excel file, just continue without detailed info
