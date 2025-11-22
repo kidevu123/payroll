@@ -6751,7 +6751,7 @@ def confirm_employees():
             
             <div style="margin-top:var(--spacing-4);display:flex;gap:var(--spacing-3);justify-content:flex-end">
                 <a href="/" class="btn btn-secondary">Cancel</a>
-                <button onclick="processPayroll()" class="btn btn-success">
+                <button id="process-btn" onclick="processPayroll(this)" class="btn btn-success">
                     <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                     </svg>
@@ -6777,20 +6777,45 @@ def confirm_employees():
             div.textContent = str;
             return div.innerHTML;
         }}
-        function processPayroll() {{
+        function processPayroll(button) {{
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            if (selectedIds.length === 0) {{alert('Select at least one employee.'); return;}}
-            fetch('/process_confirmed', {{method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify({{employee_ids: selectedIds}})}})
+            if (selectedIds.length === 0) {{
+                alert('Select at least one employee.');
+                return;
+            }}
+            
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Processing...';
+            
+            fetch('/process_confirmed', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{employee_ids: selectedIds}})
+            }})
             .then(response => {{
                 if (response.ok) {{
-                    window.location.href = '/process_confirmed';
+                    return response.json();
                 }} else {{
-                    alert('Error processing payroll. Please try again.');
+                    return response.json().then(data => {{
+                        throw new Error(data.error || 'Error processing payroll');
+                    }}).catch(() => {{
+                        throw new Error('Error processing payroll. Please try again.');
+                    }});
+                }}
+            }})
+            .then(data => {{
+                if (data.redirect) {{
+                    window.location.href = data.redirect;
+                }} else {{
+                    window.location.href = '/success';
                 }}
             }})
             .catch(error => {{
-                alert('Network error: ' + error);
+                button.disabled = false;
+                button.innerHTML = originalText;
+                alert('Error: ' + (error.message || 'Error processing payroll. Please try again.'));
             }});
         }}
         populateEmployees();
@@ -6814,15 +6839,30 @@ def confirm_and_process():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/process_confirmed')
+@app.route('/process_confirmed', methods=['GET', 'POST'])
 @login_required
 def process_confirmed():
     """Process payroll for confirmed employees only"""
     try:
+        # Handle POST request from confirm_employees page
+        if request.method == 'POST':
+            try:
+                data = request.get_json()
+                employee_ids = data.get('employee_ids', [])
+                if employee_ids:
+                    session['confirmed_employee_ids'] = employee_ids
+                else:
+                    return jsonify({'error': 'No employees selected'}), 400
+            except Exception as e:
+                app.logger.error(f"Error parsing JSON in process_confirmed: {str(e)}")
+                return jsonify({'error': 'Invalid request data'}), 400
+        
         file_path = session.get('uploaded_file')
         confirmed_ids = session.get('confirmed_employee_ids', [])
         
         if not file_path:
+            if request.method == 'POST':
+                return jsonify({'error': 'No file found. Please upload again.'}), 400
             return "No file found. Please upload again.", 400
         
         df = pd.read_csv(file_path)
@@ -6873,10 +6913,20 @@ def process_confirmed():
         session['week'] = week_str
         session.pop('confirmed_employee_ids', None)
         
+        # For POST requests (from JavaScript), return JSON
+        if request.method == 'POST':
+            return jsonify({'status': 'ok', 'redirect': url_for('success')})
+        
         return redirect(url_for('success'))
         
     except Exception as e:
         import traceback
+        app.logger.error(f"Error in process_confirmed: {str(e)}\n{traceback.format_exc()}")
+        
+        # For POST requests, return JSON error
+        if request.method == 'POST':
+            return jsonify({'error': f'Error processing payroll: {str(e)}'}), 500
+        
         txt_filename = "error_report.txt"
         report_path = os.path.join(REPORT_FOLDER, txt_filename)
         with open(report_path, 'w') as f:

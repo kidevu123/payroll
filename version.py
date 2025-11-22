@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.0"
-__version_name__ = "Side-by-Side Layout & Workflow Pages"
+__version__ = "8.9.1"
+__version_name__ = "CRITICAL FIX: Process Confirmed Route"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.1",
+        "date": "2025-11-22",
+        "changes": [
+            "🔴 CRITICAL FIX: Process Confirmed Route",
+            "Fixed /process_confirmed route to accept POST requests",
+            "Route was only accepting GET but JavaScript sends POST",
+            "Now properly handles JSON employee_ids from confirm_employees page",
+            "Stores employee_ids in session before processing",
+            "Returns proper JSON response for AJAX requests",
+            "Improved error handling with detailed error messages",
+            "Button loading state during processing",
+            "Proper redirect handling after successful processing"
+        ]
+    },
     {
         "version": "8.9.0",
         "date": "2025-11-22",
