@@ -2225,22 +2225,22 @@ def manage_rates():
                             <td><strong>{escape(emp['name'])}</strong></td>
                             <td class="text-right">
                                 <span class="rate-display" style="color:var(--color-success);font-weight:var(--font-weight-semibold);font-size:var(--font-size-lg)">${emp['rate']}</span>
-                                <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}">
+                                <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
                             </td>
                             <td class="text-right">
-                                <button onclick="editRate('{escape(emp['id'])}')" class="edit-btn btn btn-primary btn-sm">
+                                <button data-action="edit" data-employee-id="{escape(emp['id'])}" class="edit-btn btn btn-primary btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                                     </svg>
                                     Edit
                                 </button>
-                                <button onclick="saveRate('{escape(emp['id'])}')" class="save-btn hidden btn btn-success btn-sm">
+                                <button data-action="save" data-employee-id="{escape(emp['id'])}" class="save-btn hidden btn btn-success btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                     </svg>
                                     Save
                                 </button>
-                                <button onclick="cancelEdit('{escape(emp['id'])}')" class="cancel-btn hidden btn btn-secondary btn-sm">
+                                <button data-action="cancel" data-employee-id="{escape(emp['id'])}" class="cancel-btn hidden btn btn-secondary btn-sm">
                                     Cancel
                                 </button>
                                 <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {escape(emp['name'])} ({escape(emp['id'])})?');">
@@ -2297,49 +2297,68 @@ def manage_rates():
     </div>
     
     <script>
-        function editRate(id) {{
-            const row = document.getElementById('row-' + id);
-            if (!row) return;
-            row.querySelector('.rate-display').classList.add('hidden');
-            row.querySelector('.rate-edit').classList.remove('hidden');
-            row.querySelector('.edit-btn').classList.add('hidden');
-            row.querySelector('.save-btn').classList.remove('hidden');
-            row.querySelector('.cancel-btn').classList.remove('hidden');
-        }}
-        
-        function cancelEdit(id) {{
-            const row = document.getElementById('row-' + id);
-            if (!row) return;
-            row.querySelector('.rate-display').classList.remove('hidden');
-            row.querySelector('.rate-edit').classList.add('hidden');
-            row.querySelector('.edit-btn').classList.remove('hidden');
-            row.querySelector('.save-btn').classList.add('hidden');
-            row.querySelector('.cancel-btn').classList.add('hidden');
-        }}
-        
-        function saveRate(id) {{
-            const row = document.getElementById('row-' + id);
-            if (!row) return;
-            const newRate = row.querySelector('.rate-edit').value;
-            if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
-                alert('Please enter a valid pay rate');
-                return;
-            }}
-            
-            fetch('/update_rate/' + id, {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{rate: parseFloat(newRate)}})
-            }}).then(response => {{
-                if (response.ok) {{
-                    location.reload();
-                }} else {{
-                    alert('Error updating rate. Please try again.');
+        // Event delegation for edit/save/cancel buttons
+        document.addEventListener('DOMContentLoaded', function() {{
+            document.addEventListener('click', function(e) {{
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                
+                const action = btn.getAttribute('data-action');
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (!employeeId) return;
+                
+                const row = document.getElementById('row-' + employeeId);
+                if (!row) return;
+                
+                if (action === 'edit') {{
+                    row.querySelector('.rate-display').classList.add('hidden');
+                    row.querySelector('.rate-edit').classList.remove('hidden');
+                    row.querySelector('.edit-btn').classList.add('hidden');
+                    row.querySelector('.save-btn').classList.remove('hidden');
+                    row.querySelector('.cancel-btn').classList.remove('hidden');
+                    // Focus the input field
+                    row.querySelector('.rate-edit').focus();
+                }} else if (action === 'cancel') {{
+                    const input = row.querySelector('.rate-edit');
+                    // Reset to original value
+                    const originalRate = input.getAttribute('data-original-value') || input.value;
+                    input.value = originalRate;
+                    row.querySelector('.rate-display').classList.remove('hidden');
+                    row.querySelector('.rate-edit').classList.add('hidden');
+                    row.querySelector('.edit-btn').classList.remove('hidden');
+                    row.querySelector('.save-btn').classList.add('hidden');
+                    row.querySelector('.cancel-btn').classList.add('hidden');
+                }} else if (action === 'save') {{
+                    const newRate = row.querySelector('.rate-edit').value;
+                    if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
+                        alert('Please enter a valid pay rate');
+                        return;
+                    }}
+                    
+                    // Disable button during save
+                    btn.disabled = true;
+                    btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
+                    
+                    fetch('/update_rate/' + employeeId, {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{rate: parseFloat(newRate)}})
+                    }}).then(response => {{
+                        if (response.ok) {{
+                            location.reload();
+                        }} else {{
+                            btn.disabled = false;
+                            btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
+                            alert('Error updating rate. Please try again.');
+                        }}
+                    }}).catch(error => {{
+                        btn.disabled = false;
+                        btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
+                        alert('Network error. Please check your connection.');
+                    }});
                 }}
-            }}).catch(error => {{
-                alert('Network error. Please check your connection.');
             }});
-        }}
+        }});
     </script>
 </body>
 </html>"""
