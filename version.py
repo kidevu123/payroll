@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.3"
-__version_name__ = "CRITICAL FIX: Edit Button on Pay Rates Page"
+__version__ = "8.9.4"
+__version_name__ = "CRITICAL FIX: Edit Button - Direct Event Listeners"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.4",
+        "date": "2025-11-22",
+        "changes": [
+            "🔴 CRITICAL FIX: Edit Button Still Not Working",
+            "Changed from event delegation to direct event listeners",
+            "Each button now has its own click event listener",
+            "Added comprehensive console logging for debugging",
+            "Added error messages to help identify issues",
+            "More reliable button click handling",
+            "Better error reporting in browser console"
+        ]
+    },
     {
         "version": "8.9.3",
         "date": "2025-11-22",

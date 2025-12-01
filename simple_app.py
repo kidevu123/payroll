@@ -2297,78 +2297,124 @@ def manage_rates():
     </div>
     
     <script>
-        // Event delegation for edit/save/cancel buttons
-        document.addEventListener('DOMContentLoaded', function() {{
-            // Use event delegation on the table body to catch all button clicks
-            const tableBody = document.querySelector('table tbody');
-            if (!tableBody) return;
+        // Direct event listeners for edit/save/cancel buttons
+        function editRate(employeeId) {{
+            console.log('editRate called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) {{
+                console.error('Row not found for employee ID:', employeeId);
+                alert('Error: Could not find row for employee ' + employeeId);
+                return;
+            }}
             
-            tableBody.addEventListener('click', function(e) {{
-                // Find the button that was clicked (handles clicks on SVG/icons inside buttons)
-                const btn = e.target.closest('button[data-action]');
-                if (!btn) return;
-                
-                const action = btn.getAttribute('data-action');
+            const rateDisplay = row.querySelector('.rate-display');
+            const rateEdit = row.querySelector('.rate-edit');
+            const editBtn = row.querySelector('.edit-btn');
+            const saveBtn = row.querySelector('.save-btn');
+            const cancelBtn = row.querySelector('.cancel-btn');
+            
+            if (!rateDisplay || !rateEdit || !editBtn || !saveBtn || !cancelBtn) {{
+                console.error('Required elements not found in row');
+                return;
+            }}
+            
+            rateDisplay.classList.add('hidden');
+            rateEdit.classList.remove('hidden');
+            editBtn.classList.add('hidden');
+            saveBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            rateEdit.focus();
+            console.log('Edit mode activated for employee:', employeeId);
+        }}
+        
+        function cancelEdit(employeeId) {{
+            console.log('cancelEdit called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) return;
+            
+            const input = row.querySelector('.rate-edit');
+            const originalRate = input.getAttribute('data-original-value') || input.value;
+            input.value = originalRate;
+            
+            row.querySelector('.rate-display').classList.remove('hidden');
+            row.querySelector('.rate-edit').classList.add('hidden');
+            row.querySelector('.edit-btn').classList.remove('hidden');
+            row.querySelector('.save-btn').classList.add('hidden');
+            row.querySelector('.cancel-btn').classList.add('hidden');
+        }}
+        
+        function saveRate(employeeId) {{
+            console.log('saveRate called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) return;
+            
+            const newRate = row.querySelector('.rate-edit').value;
+            if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
+                alert('Please enter a valid pay rate');
+                return;
+            }}
+            
+            const saveBtn = row.querySelector('.save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
+            
+            fetch('/update_rate/' + employeeId, {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{rate: parseFloat(newRate)}})
+            }}).then(response => {{
+                if (response.ok) {{
+                    location.reload();
+                }} else {{
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
+                    alert('Error updating rate. Please try again.');
+                }}
+            }}).catch(error => {{
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
+                alert('Network error. Please check your connection.');
+            }});
+        }}
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {{
+            console.log('DOMContentLoaded - initializing edit buttons');
+            // Attach event listeners to all edit buttons
+            document.querySelectorAll('button[data-action="edit"]').forEach(function(btn) {{
                 const employeeId = btn.getAttribute('data-employee-id');
-                if (!employeeId) {{
-                    console.error('No employee ID found on button');
-                    return;
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        editRate(employeeId);
+                    }});
+                    console.log('Attached edit listener to button for employee:', employeeId);
                 }}
-                
-                const row = document.getElementById('row-' + employeeId);
-                if (!row) {{
-                    console.error('Row not found for employee ID:', employeeId);
-                    return;
-                }}
-                
-                if (action === 'edit') {{
-                    row.querySelector('.rate-display').classList.add('hidden');
-                    row.querySelector('.rate-edit').classList.remove('hidden');
-                    row.querySelector('.edit-btn').classList.add('hidden');
-                    row.querySelector('.save-btn').classList.remove('hidden');
-                    row.querySelector('.cancel-btn').classList.remove('hidden');
-                    // Focus the input field
-                    row.querySelector('.rate-edit').focus();
-                }} else if (action === 'cancel') {{
-                    const input = row.querySelector('.rate-edit');
-                    // Reset to original value
-                    const originalRate = input.getAttribute('data-original-value') || input.value;
-                    input.value = originalRate;
-                    row.querySelector('.rate-display').classList.remove('hidden');
-                    row.querySelector('.rate-edit').classList.add('hidden');
-                    row.querySelector('.edit-btn').classList.remove('hidden');
-                    row.querySelector('.save-btn').classList.add('hidden');
-                    row.querySelector('.cancel-btn').classList.add('hidden');
-                }} else if (action === 'save') {{
-                    const newRate = row.querySelector('.rate-edit').value;
-                    if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
-                        alert('Please enter a valid pay rate');
-                        return;
-                    }}
-                    
-                    // Disable button during save
-                    btn.disabled = true;
-                    btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
-                    
-                    fetch('/update_rate/' + employeeId, {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify({{rate: parseFloat(newRate)}})
-                    }}).then(response => {{
-                        if (response.ok) {{
-                            location.reload();
-                        }} else {{
-                            btn.disabled = false;
-                            btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
-                            alert('Error updating rate. Please try again.');
-                        }}
-                    }}).catch(error => {{
-                        btn.disabled = false;
-                        btn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
-                        alert('Network error. Please check your connection.');
+            }});
+            
+            // Attach event listeners to all save buttons
+            document.querySelectorAll('button[data-action="save"]').forEach(function(btn) {{
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        saveRate(employeeId);
                     }});
                 }}
             }});
+            
+            // Attach event listeners to all cancel buttons
+            document.querySelectorAll('button[data-action="cancel"]').forEach(function(btn) {{
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        cancelEdit(employeeId);
+                    }});
+                }}
+            }});
+            
+            console.log('All event listeners attached');
         }});
     </script>
 </body>
