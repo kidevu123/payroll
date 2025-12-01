@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.2"
-__version_name__ = "Success Page: Zero-Scroll Compact Layout"
+__version__ = "8.9.3"
+__version_name__ = "CRITICAL FIX: Edit Button on Pay Rates Page"
 __release_date__ = "2025-11-22"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.3",
+        "date": "2025-11-22",
+        "changes": [
+            "🔴 CRITICAL FIX: Edit Button Not Working on Pay Rates Page",
+            "Replaced inline onclick handlers with event delegation",
+            "Used data attributes (data-action, data-employee-id) for reliability",
+            "Added DOMContentLoaded event listener for proper initialization",
+            "Added focus to input field when editing starts",
+            "Store original value for cancel functionality",
+            "Added loading state to save button during API call",
+            "Improved error handling and user feedback",
+            "Edit button now works reliably across all browsers"
+        ]
+    },
     {
         "version": "8.9.2",
         "date": "2025-11-22",

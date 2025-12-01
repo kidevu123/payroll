@@ -2299,16 +2299,27 @@ def manage_rates():
     <script>
         // Event delegation for edit/save/cancel buttons
         document.addEventListener('DOMContentLoaded', function() {{
-            document.addEventListener('click', function(e) {{
-                const btn = e.target.closest('[data-action]');
+            // Use event delegation on the table body to catch all button clicks
+            const tableBody = document.querySelector('table tbody');
+            if (!tableBody) return;
+            
+            tableBody.addEventListener('click', function(e) {{
+                // Find the button that was clicked (handles clicks on SVG/icons inside buttons)
+                const btn = e.target.closest('button[data-action]');
                 if (!btn) return;
                 
                 const action = btn.getAttribute('data-action');
                 const employeeId = btn.getAttribute('data-employee-id');
-                if (!employeeId) return;
+                if (!employeeId) {{
+                    console.error('No employee ID found on button');
+                    return;
+                }}
                 
                 const row = document.getElementById('row-' + employeeId);
-                if (!row) return;
+                if (!row) {{
+                    console.error('Row not found for employee ID:', employeeId);
+                    return;
+                }}
                 
                 if (action === 'edit') {{
                     row.querySelector('.rate-display').classList.add('hidden');
