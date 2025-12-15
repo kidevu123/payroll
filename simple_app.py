@@ -2231,19 +2231,19 @@ def manage_rates():
                                 <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
                             </td>
                             <td class="text-right">
-                                <button data-action="edit" data-employee-id="{escape(emp['id'])}" class="edit-btn btn btn-primary btn-sm">
+                                <button onclick="editRate('{escape(emp['id'])}')" class="edit-btn btn btn-primary btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                                     </svg>
                                     Edit
                                 </button>
-                                <button data-action="save" data-employee-id="{escape(emp['id'])}" class="save-btn hidden btn btn-success btn-sm">
+                                <button onclick="saveRate('{escape(emp['id'])}')" class="save-btn hidden btn btn-success btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                     </svg>
                                     Save
                                 </button>
-                                <button data-action="cancel" data-employee-id="{escape(emp['id'])}" class="cancel-btn hidden btn btn-secondary btn-sm">
+                                <button onclick="cancelEdit('{escape(emp['id'])}')" class="cancel-btn hidden btn btn-secondary btn-sm">
                                     Cancel
                                 </button>
                                 <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {escape(emp['name'])} ({escape(emp['id'])})?');">
@@ -2380,46 +2380,7 @@ def manage_rates():
                 alert('Network error. Please check your connection.');
             }});
         }}
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {{
-            console.log('DOMContentLoaded - initializing edit buttons');
-            // Attach event listeners to all edit buttons
-            document.querySelectorAll('button[data-action="edit"]').forEach(function(btn) {{
-                const employeeId = btn.getAttribute('data-employee-id');
-                if (employeeId) {{
-                    btn.addEventListener('click', function(e) {{
-                        e.preventDefault();
-                        editRate(employeeId);
-                    }});
-                    console.log('Attached edit listener to button for employee:', employeeId);
-                }}
-            }});
-            
-            // Attach event listeners to all save buttons
-            document.querySelectorAll('button[data-action="save"]').forEach(function(btn) {{
-                const employeeId = btn.getAttribute('data-employee-id');
-                if (employeeId) {{
-                    btn.addEventListener('click', function(e) {{
-                        e.preventDefault();
-                        saveRate(employeeId);
-                    }});
-                }}
-            }});
-            
-            // Attach event listeners to all cancel buttons
-            document.querySelectorAll('button[data-action="cancel"]').forEach(function(btn) {{
-                const employeeId = btn.getAttribute('data-employee-id');
-                if (employeeId) {{
-                    btn.addEventListener('click', function(e) {{
-                        e.preventDefault();
-                        cancelEdit(employeeId);
-                    }});
-                }}
-            }});
-            
-            console.log('All event listeners attached');
-        }});
+
     </script>
 </body>
 </html>"""

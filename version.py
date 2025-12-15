@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.5"
-__version_name__ = "Reports Date Range Fix"
+__version__ = "8.9.6"
+__version_name__ = "Pay Rates Edit Button Fix"
 __release_date__ = "2025-12-15"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.6",
+        "date": "2025-12-15",
+        "changes": [
+            "🔧 FIX: Pay Rates Edit button now works with inline onclick handlers",
+            "Replaced event listeners with direct onclick handlers for better compatibility",
+            "Removed DOMContentLoaded dependency"
+        ]
+    },
     {
         "version": "8.9.5",
         "date": "2025-12-15",
