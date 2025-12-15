@@ -2161,6 +2161,9 @@ def manage_rates():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Pay Rates - Payroll Management</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/design-system.css">
@@ -2297,6 +2300,7 @@ def manage_rates():
     </div>
     
     <script>
+        console.log('=== PAY RATES PAGE SCRIPT LOADED - v8.9.5 ===');
         // Direct event listeners for edit/save/cancel buttons
         function editRate(employeeId) {{
             console.log('editRate called with ID:', employeeId);
