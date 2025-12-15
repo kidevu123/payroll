@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.4"
-__version_name__ = "CRITICAL FIX: Edit Button - Direct Event Listeners"
-__release_date__ = "2025-11-22"
+__version__ = "8.9.5"
+__version_name__ = "Reports Date Range Fix"
+__release_date__ = "2025-12-15"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.5",
+        "date": "2025-12-15",
+        "changes": [
+            "🔧 FIX: Reports page now displays actual date ranges from payroll data",
+            "Extract date range from Excel report A1 cell instead of inferring from filename",
+            "Support weekly (Sat-Fri) and semi-monthly (1st-15th, 16th-end) payroll periods",
+            "Calculate posting dates based on actual end date of period",
+            "Display date ranges in human-readable format (e.g., 'Jan 04 – Jan 10, 2025')",
+            "Use cached date ranges from metadata for improved performance",
+            "Maintain backward compatibility with filename-based date extraction"
+        ]
+    },
     {
         "version": "8.9.4",
         "date": "2025-11-22",

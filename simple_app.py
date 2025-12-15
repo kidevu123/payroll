@@ -5767,6 +5767,12 @@ def reports():
                     _save_reports_metadata(meta)
                     creator = rec.get('creator') or 'Unknown'
                     total_amount = rec.get('total_amount')
+                    date_range = rec.get('date_range')
+
+                    # Use the cached date range if available (this is the actual payroll period)
+                    if date_range:
+                        week = date_range
+
 
                     # Title is cheap to read, so we still grab A1
                     from openpyxl import load_workbook
@@ -5914,14 +5920,26 @@ def reports():
         for week in sorted_weeks:
             # Format the week date for display as a range and compute posting date (end-of-week + 1)
             try:
-                week_date = datetime.strptime(week, "%Y-%m-%d")
-                week_end = week_date + timedelta(days=6)
-                week_display = f"{week_date.strftime('%b %d')} – {week_end.strftime('%b %d, %Y')}"
-                posting_date_display = (week_end + timedelta(days=1)).strftime('%b %d, %Y')
+                # Check if week is a date range (e.g., "2025-01-04 to 2025-01-10")
+                if " to " in week:
+                    date_range_match = re.search(r'(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', week)
+                    if date_range_match:
+                        start_date = datetime.strptime(date_range_match.group(1), "%Y-%m-%d")
+                        end_date = datetime.strptime(date_range_match.group(2), "%Y-%m-%d")
+                        week_display = f"{start_date.strftime('%b %d')} – {end_date.strftime('%b %d, %Y')}"
+                        posting_date_display = (end_date + timedelta(days=1)).strftime('%b %d, %Y')
+                    else:
+                        week_display = week
+                        posting_date_display = ''
+                else:
+                    # Fallback: single date format
+                    week_date = datetime.strptime(week, "%Y-%m-%d")
+                    week_end = week_date + timedelta(days=6)
+                    week_display = f"{week_date.strftime('%b %d')} – {week_end.strftime('%b %d, %Y')}"
+                    posting_date_display = (week_end + timedelta(days=1)).strftime('%b %d, %Y')
             except:
                 week_display = week
                 posting_date_display = ''
-
             # Pick one entry per week (prefer Admin Report) for concise display
             entries = reports_by_week.get(week, [])
             admin_entry = None
