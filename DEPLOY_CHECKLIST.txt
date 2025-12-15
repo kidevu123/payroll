@@ -1,0 +1,161 @@
+═══════════════════════════════════════════════════════════════════
+   PYTHONANYWHERE DEPLOYMENT CHECKLIST - v6.0.1
+═══════════════════════════════════════════════════════════════════
+
+BEFORE YOU START
+────────────────
+[ ] Read this entire checklist
+[ ] Have PythonAnywhere login ready
+[ ] Estimated time: 3 minutes
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: PUSH TO GITHUB
+──────────────────────
+[ ] Open terminal on your Mac
+[ ] Run: cd ~/payroll-repo
+[ ] Run: git push origin main
+[ ] Verify: "Everything up-to-date" or successful push message
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 2: GET THE FILES
+─────────────────────
+Choose ONE option:
+
+Option A - From GitHub:
+[ ] Go to: https://github.com/kidevu123/payroll
+[ ] Download version.py (click file → Raw → Save)
+[ ] Download simple_app.py (click file → Raw → Save)
+
+Option B - From Local:
+[ ] Files are in ~/payroll-repo/ on your Mac
+[ ] Locate version.py
+[ ] Locate simple_app.py
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 3: BACKUP CURRENT PRODUCTION (CRITICAL!)
+──────────────────────────────────────────────
+[ ] Login to PythonAnywhere.com
+[ ] Go to "Files" tab
+[ ] Navigate to /home/YOUR_USERNAME/payroll/
+[ ] Click on simple_app.py
+[ ] Click "Download" button
+[ ] Save as: simple_app.py.backup.20251028
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 4: UPLOAD NEW FILES
+────────────────────────
+[ ] Still in /home/YOUR_USERNAME/payroll/ directory
+[ ] Click "Upload a file" button
+[ ] Select version.py from your computer
+[ ] Click Upload
+[ ] Verify "version.py" appears in file list
+[ ] Click "Upload a file" again
+[ ] Select simple_app.py from your computer
+[ ] Click Upload
+[ ] Confirm "Replace" when asked
+[ ] Verify both files are in the directory
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 5: TEST SYNTAX (IMPORTANT!)
+─────────────────────────────────
+[ ] In PythonAnywhere, click "Consoles" tab
+[ ] Click "Bash" to open new console
+[ ] Run: cd /home/YOUR_USERNAME/payroll
+[ ] Run: python3 -m py_compile version.py
+[ ] Verify: No error messages
+[ ] Run: python3 -m py_compile simple_app.py
+[ ] Verify: No error messages
+[ ] If errors: STOP and restore backup!
+[ ] If no errors: Continue!
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 6: RELOAD WEB APP
+──────────────────────
+[ ] Go to "Web" tab in PythonAnywhere
+[ ] Scroll to "Code" section
+[ ] Find the green "Reload" button
+[ ] Click "Reload"
+[ ] Wait for completion (green checkmark appears)
+[ ] Reload completes successfully
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 7: VERIFY DEPLOYMENT
+─────────────────────────
+[ ] Open your app URL in NEW incognito/private window
+[ ] Check login page shows "v6.0.1" badge in header
+[ ] Login with your username/password
+[ ] Login successful
+[ ] Upload a test CSV timesheet
+[ ] Employee selection page appears
+[ ] Page shows modern gradient styling
+[ ] Checkboxes visible for each employee
+[ ] Uncheck one employee to test
+[ ] Click "Confirm & Process"
+[ ] Reports generate successfully
+[ ] Download and check: only selected employees in report
+[ ] Check footer shows "v6.0.1"
+[ ] Test Zoho integration (if you use it)
+
+═══════════════════════════════════════════════════════════════════
+
+STEP 8: PRODUCTION TESTING
+──────────────────────────
+[ ] Process a real payroll with actual data
+[ ] Verify all calculations are correct
+[ ] Check all reports generate properly
+[ ] Verify excluded employees don't appear in reports
+[ ] Confirm Zoho Books posting works (if used)
+[ ] No errors in PythonAnywhere error logs
+
+═══════════════════════════════════════════════════════════════════
+
+IF SOMETHING GOES WRONG - ROLLBACK!
+────────────────────────────────────
+[ ] Go to Files tab in PythonAnywhere
+[ ] Navigate to /home/YOUR_USERNAME/payroll/
+[ ] Delete version.py
+[ ] Upload your backup: simple_app.py.backup.20251028
+[ ] Rename it back to simple_app.py
+[ ] Go to Web tab
+[ ] Click Reload
+[ ] System restored to previous version!
+
+═══════════════════════════════════════════════════════════════════
+
+SUCCESS CRITERIA
+────────────────
+✓ Version badge shows "v6.0.1"
+✓ Employee selection page appears
+✓ Can exclude employees from processing
+✓ Reports only show selected employees
+✓ All calculations are correct
+✓ No errors in logs
+✓ Footer shows version info
+
+═══════════════════════════════════════════════════════════════════
+
+DEPLOYMENT COMPLETE!
+────────────────────
+Date deployed: ______________
+Deployed by: ______________
+Time taken: ______________
+Issues encountered: ______________
+Resolution: ______________
+
+═══════════════════════════════════════════════════════════════════
+
+SUPPORT RESOURCES
+─────────────────
+• DEPLOYMENT_GUIDE.md - Detailed instructions
+• QUICK_START.txt - Quick reference
+• TROUBLESHOOTING section in DEPLOYMENT_GUIDE.md
+• PythonAnywhere error logs - Check for issues
+
+═══════════════════════════════════════════════════════════════════

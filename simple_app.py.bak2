@@ -2161,10 +2161,6 @@ def manage_rates():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <!-- Cache Buster: 1765823691 -->
     <title>Pay Rates - Payroll Management</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="stylesheet" href="/static/design-system.css">
@@ -2232,19 +2228,19 @@ def manage_rates():
                                 <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
                             </td>
                             <td class="text-right">
-                                <button onclick="editRate('{escape(emp['id'])}')" class="edit-btn btn btn-primary btn-sm">
+                                <button data-action="edit" data-employee-id="{escape(emp['id'])}" class="edit-btn btn btn-primary btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                                     </svg>
                                     Edit
                                 </button>
-                                <button onclick="saveRate('{escape(emp['id'])}')" class="save-btn hidden btn btn-success btn-sm">
+                                <button data-action="save" data-employee-id="{escape(emp['id'])}" class="save-btn hidden btn btn-success btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                     </svg>
                                     Save
                                 </button>
-                                <button onclick="cancelEdit('{escape(emp['id'])}')" class="cancel-btn hidden btn btn-secondary btn-sm">
+                                <button data-action="cancel" data-employee-id="{escape(emp['id'])}" class="cancel-btn hidden btn btn-secondary btn-sm">
                                     Cancel
                                 </button>
                                 <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {escape(emp['name'])} ({escape(emp['id'])})?');">
@@ -2301,7 +2297,6 @@ def manage_rates():
     </div>
     
     <script>
-        console.log('=== PAY RATES PAGE SCRIPT LOADED - v8.9.6 - 1765823691 ===');
         // Direct event listeners for edit/save/cancel buttons
         function editRate(employeeId) {{
             console.log('editRate called with ID:', employeeId);
@@ -2381,7 +2376,46 @@ def manage_rates():
                 alert('Network error. Please check your connection.');
             }});
         }}
-
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {{
+            console.log('DOMContentLoaded - initializing edit buttons');
+            // Attach event listeners to all edit buttons
+            document.querySelectorAll('button[data-action="edit"]').forEach(function(btn) {{
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        editRate(employeeId);
+                    }});
+                    console.log('Attached edit listener to button for employee:', employeeId);
+                }}
+            }});
+            
+            // Attach event listeners to all save buttons
+            document.querySelectorAll('button[data-action="save"]').forEach(function(btn) {{
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        saveRate(employeeId);
+                    }});
+                }}
+            }});
+            
+            // Attach event listeners to all cancel buttons
+            document.querySelectorAll('button[data-action="cancel"]').forEach(function(btn) {{
+                const employeeId = btn.getAttribute('data-employee-id');
+                if (employeeId) {{
+                    btn.addEventListener('click', function(e) {{
+                        e.preventDefault();
+                        cancelEdit(employeeId);
+                    }});
+                }}
+            }});
+            
+            console.log('All event listeners attached');
+        }});
     </script>
 </body>
 </html>"""
@@ -5906,6 +5940,9 @@ def reports():
             except:
                 week_display = week
                 posting_date_display = ''
+
+                posting_date_display = ''
+
             # Pick one entry per week (prefer Admin Report) for concise display
             entries = reports_by_week.get(week, [])
             admin_entry = None
