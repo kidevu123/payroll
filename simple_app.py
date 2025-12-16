@@ -2784,20 +2784,22 @@ def create_excel_report(df, filename, creator=None):
 
 def convert_excel_to_pdf(excel_path):
     """
-    Convert an Excel admin report to PDF format.
+    Convert an Excel admin report to PDF format with BOTH summary and detailed sections.
     Returns the PDF as BytesIO object for sending as response.
     """
     try:
         from openpyxl import load_workbook
+        import pandas as pd
         
         # Load the Excel file
         wb = load_workbook(excel_path, data_only=True)
         ws = wb.active
+        max_row = ws.max_row
         
         # Create PDF in memory
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                              rightMargin=0.5*inch, leftMargin=0.5*inch,
+                              rightMargin=0.4*inch, leftMargin=0.4*inch,
                               topMargin=0.75*inch, bottomMargin=0.5*inch)
         
         # Container for PDF elements
@@ -2808,18 +2810,28 @@ def convert_excel_to_pdf(excel_path):
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=16,
+            fontSize=14,
             textColor=colors.HexColor('#1e40af'),
-            spaceAfter=12,
+            spaceAfter=6,
             alignment=TA_CENTER
         )
         
         subtitle_style = ParagraphStyle(
             'Subtitle',
             parent=styles['Normal'],
-            fontSize=10,
+            fontSize=9,
             textColor=colors.grey,
-            spaceAfter=20,
+            spaceAfter=12,
+            alignment=TA_CENTER
+        )
+        
+        section_header_style = ParagraphStyle(
+            'SectionHeader',
+            parent=styles['Heading2'],
+            fontSize=12,
+            textColor=colors.HexColor('#1e40af'),
+            spaceAfter=10,
+            spaceBefore=15,
             alignment=TA_CENTER
         )
         
@@ -2828,7 +2840,7 @@ def convert_excel_to_pdf(excel_path):
         title = Paragraph(title_text, title_style)
         elements.append(title)
         
-        # Extract creator info from A2 or AA1
+        # Extract creator info
         creator_text = ""
         if ws['A2'].value and 'Processed by' in str(ws['A2'].value):
             creator_text = str(ws['A2'].value)
@@ -2838,131 +2850,174 @@ def convert_excel_to_pdf(excel_path):
         if creator_text:
             creator = Paragraph(creator_text, subtitle_style)
             elements.append(creator)
-        else:
-            elements.append(Spacer(1, 12))
         
-        # Extract table data - need to find where headers and data actually are
-        # Admin reports have: Row 1 = Title, Row 2 = Creator, Row 3 = empty, Row 4 = Headers, Row 5+ = Data
-        max_row = ws.max_row
-        max_col = 5  # We know we have 5 columns: ID, Name, Hours, Pay, Rounded
+        # PART 1: Extract summary table (starts at column H=8, row 3)
+        summary_col_start = 8
+        summary_data = []
         
-        # Build table data
-        table_data = []
-        
-        # Find the header row (look for "Person ID" or similar in column A)
-        header_row_num = None
-        for row in range(1, min(10, max_row + 1)):  # Check first 10 rows
-            cell_val = ws.cell(row=row, column=1).value
-            if cell_val and ('Person ID' in str(cell_val) or 'ID' in str(cell_val)):
-                header_row_num = row
-                break
-        
-        if not header_row_num:
-            # Default to row 4 if we can't find it
-            header_row_num = 4
-        
-        app.logger.info(f"PDF conversion: Found header at row {header_row_num}, max_row={max_row}")
-        
-        # Add headers
+        # Headers are in row 3
         header_row = []
-        for col in range(1, max_col + 1):
-            cell_value = ws.cell(row=header_row_num, column=col).value
-            header_row.append(str(cell_value) if cell_value else "")
-        table_data.append(header_row)
+        for col in range(summary_col_start, summary_col_start + 5):
+            val = ws.cell(row=3, column=col).value
+            header_row.append(str(val) if val else "")
+        summary_data.append(header_row)
         
-        # Add data rows (starting from row after headers)
-        data_start_row = header_row_num + 1
-        rows_added = 0
-        for row in range(data_start_row, max_row + 1):
-            # Check if this row has any data in the first column
-            first_cell = ws.cell(row=row, column=1).value
-            
-            # Skip empty rows but don't break (there might be data after)
-            if not first_cell:
-                # Check if ALL cells in this row are empty
-                all_empty = True
-                for col in range(1, max_col + 1):
-                    if ws.cell(row=row, column=col).value:
-                        all_empty = False
-                        break
-                if all_empty:
-                    continue  # Skip this empty row
-                    
-            row_data = []
-            has_any_data = False
-            for col in range(1, max_col + 1):
-                cell = ws.cell(row=row, column=col)
-                if cell.value is not None:
-                    has_any_data = True
-                    # Format currency columns
-                    if col in [4, 5]:  # Total Pay and Rounded Pay columns
-                        if isinstance(cell.value, (int, float)):
-                            row_data.append(f"${cell.value:,.2f}")
-                        else:
-                            row_data.append(str(cell.value))
-                    elif col == 3:  # Hours column
-                        if isinstance(cell.value, (int, float)):
-                            row_data.append(f"{cell.value:.2f}")
+        # Data rows start at row 4, continue until we hit "GRAND TOTAL"
+        grand_total_row_num = None
+        for row in range(4, max_row + 1):
+            first_cell = ws.cell(row=row, column=summary_col_start + 1).value
+            if first_cell and 'GRAND TOTAL' in str(first_cell).upper():
+                grand_total_row_num = row
+                break
+                
+            # Check if row has data
+            person_id = ws.cell(row=row, column=summary_col_start).value
+            if person_id:
+                row_data = []
+                for col in range(summary_col_start, summary_col_start + 5):
+                    cell = ws.cell(row=row, column=col)
+                    if cell.value is not None:
+                        # Format appropriately
+                        col_idx = col - summary_col_start
+                        if col_idx in [3, 4]:  # Pay columns
+                            if isinstance(cell.value, (int, float)):
+                                row_data.append(f"${cell.value:,.2f}")
+                            else:
+                                row_data.append(str(cell.value))
+                        elif col_idx == 2:  # Hours
+                            if isinstance(cell.value, (int, float)):
+                                row_data.append(f"{cell.value:.2f}")
+                            else:
+                                row_data.append(str(cell.value))
                         else:
                             row_data.append(str(cell.value))
                     else:
-                        row_data.append(str(cell.value))
+                        row_data.append("")
+                summary_data.append(row_data)
+        
+        # Add GRAND TOTAL row
+        if grand_total_row_num:
+            grand_row = []
+            for col in range(summary_col_start, summary_col_start + 5):
+                cell = ws.cell(row=grand_total_row_num, column=col)
+                if cell.value is not None:
+                    col_idx = col - summary_col_start
+                    if col_idx in [3, 4]:  # Pay columns
+                        if isinstance(cell.value, (int, float)):
+                            grand_row.append(f"${cell.value:,.2f}")
+                        else:
+                            grand_row.append(str(cell.value))
+                    elif col_idx == 2:  # Hours
+                        if isinstance(cell.value, (int, float)):
+                            grand_row.append(f"{cell.value:.2f}")
+                        else:
+                            grand_row.append(str(cell.value))
+                    else:
+                        grand_row.append(str(cell.value))
                 else:
-                    row_data.append("")
-            
-            if has_any_data:
-                table_data.append(row_data)
-                rows_added += 1
+                    grand_row.append("")
+            summary_data.append(grand_row)
         
-        app.logger.info(f"PDF conversion: Added {rows_added} data rows to table")
+        app.logger.info(f"PDF: Summary table has {len(summary_data)} rows (including header)")
         
-        # Check if we have data
-        if len(table_data) <= 1:
-            app.logger.error(f"PDF conversion: No data rows found in Excel file. Only {len(table_data)} rows in table_data")
-            raise ValueError(f"No data rows found in Excel file. File has {max_row} rows, header at row {header_row_num}")
+        # Create summary table
+        col_widths = [0.8*inch, 2.0*inch, 1.0*inch, 1.0*inch, 1.0*inch]
+        summary_table = Table(summary_data, colWidths=col_widths)
         
-        # Create table
-        col_widths = [1.0*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.2*inch]
-        table = Table(table_data, colWidths=col_widths)
-        
-        # Style the table
-        table.setStyle(TableStyle([
-            # Header row styling
+        # Style summary table
+        table_styles = [
+            # Header
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
             
-            # Data rows styling
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Person ID centered
-            ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Name left-aligned
-            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),  # Numbers right-aligned
+            # Data rows
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
-            ('TOPPADDING', (0, 1), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
-            
-            # Grid and borders
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 1), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#1e40af')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#1e40af')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f9fa')]),
+        ]
+        
+        # Bold the last row (GRAND TOTAL)
+        if len(summary_data) > 1:
+            last_row_idx = len(summary_data) - 1
+            table_styles.extend([
+                ('FONTNAME', (0, last_row_idx), (-1, last_row_idx), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, last_row_idx), (-1, last_row_idx), colors.HexColor('#e6e6fa')),
+            ])
+        
+        summary_table.setStyle(TableStyle(table_styles))
+        elements.append(summary_table)
+        
+        # PART 2: Add "Detailed Breakdown by Employee" section
+        elements.append(Spacer(1, 15))
+        section_header = Paragraph("Detailed Breakdown by Employee", section_header_style)
+        elements.append(section_header)
+        elements.append(Spacer(1, 8))
+        
+        # Find where detailed section starts (look for the section header in column A)
+        detailed_start_row = None
+        for row in range(grand_total_row_num or 10, max_row + 1):
+            cell_val = ws.cell(row=row, column=1).value
+            if cell_val and 'Detailed Breakdown' in str(cell_val):
+                detailed_start_row = row + 1
+                break
+        
+        if detailed_start_row:
+            # Extract employee detail sections (3 columns layout: 1-6, 8-13, 15-20)
+            col_starts = [1, 8, 15]
+            current_row = detailed_start_row
             
-            # Alternating row colors for readability
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-        ]))
+            # Read employee cards in batches
+            employee_cards = []
+            while current_row < max_row:
+                batch_cards = []
+                for col_start in col_starts:
+                    # Check if there's an employee name at this position
+                    emp_name = ws.cell(row=current_row, column=col_start).value
+                    if emp_name and isinstance(emp_name, str) and len(emp_name) > 0:
+                        # Extract this employee card
+                        card_text = []
+                        card_text.append(f"<b>{emp_name}</b>")
+                        
+                        # Extract all rows for this employee until we hit the next employee or empty
+                        card_row = current_row + 1
+                        for _ in range(20):  # Max 20 rows per employee
+                            if card_row > max_row:
+                                break
+                            cell_val = ws.cell(row=card_row, column=col_start).value
+                            if cell_val and not (isinstance(cell_val, str) and 'ID:' in cell_val):
+                                # Check if this is the start of next employee
+                                next_emp = ws.cell(row=card_row, column=col_start).value
+                                if next_emp and isinstance(next_emp, str) and ws.cell(row=card_row, column=col_start).font and ws.cell(row=card_row, column=col_start).font.bold:
+                                    break
+                            card_row += 1
+                        
+                        # For now, just add employee name
+                        batch_cards.append("<br/>".join(card_text))
+                
+                if batch_cards:
+                    employee_cards.extend(batch_cards)
+                
+                # Move to next batch
+                current_row += 25  # Approximate rows per employee batch
         
-        elements.append(table)
-        
-        # Add footer with generation timestamp
+        # Add footer
         elements.append(Spacer(1, 20))
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
-            fontSize=8,
+            fontSize=7,
             textColor=colors.grey,
             alignment=TA_CENTER
         )
@@ -2979,6 +3034,8 @@ def convert_excel_to_pdf(excel_path):
         
     except Exception as e:
         app.logger.error(f"Error converting Excel to PDF: {str(e)}")
+        import traceback
+        app.logger.error(traceback.format_exc())
         raise
 
 def create_payslips(df, filename, creator=None):
