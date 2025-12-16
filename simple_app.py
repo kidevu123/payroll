@@ -2795,6 +2795,7 @@ def convert_excel_to_pdf(excel_path):
         # Load the Excel file
         wb = load_workbook(excel_path, data_only=True)
         ws = wb.active
+        max_row = ws.max_row  # Need this for searching
         
         # Create PDF in memory - LANDSCAPE
         from reportlab.lib.pagesizes import landscape
