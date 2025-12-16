@@ -3038,20 +3038,24 @@ def convert_excel_to_pdf(excel_path):
             
             app.logger.info(f"PDF: Extracted {len(employee_data_list)} valid employee detail cards")
             
-            # Render employee cards (3 per row for compact layout)
-            for i in range(0, len(employee_data_list), 3):
-                batch = employee_data_list[i:i+3]
+            # Render employee cards (2 per row for proper spacing - NO OVERLAP)
+            for i in range(0, len(employee_data_list), 2):
+                batch = employee_data_list[i:i+2]
                 
                 # Create side-by-side tables
                 batch_tables = []
                 for emp_dict in batch:
                     # Build mini table for this employee
                     emp_table_data = []
-                    emp_table_data.append([Paragraph(f"<b>{emp_dict['name']}</b>", styles['Normal'])])
+                    # Name row - merge across all columns to prevent wrapping
+                    emp_table_data.append([{'content': emp_dict['name'], 'colspan': 5}])
+                    # ID and Rate row - also merge
                     if emp_dict['id_rate']:
-                        emp_table_data.append([Paragraph(f"<font size=6>{emp_dict['id_rate']}</font>", styles['Normal'])])
+                        emp_table_data.append([{'content': emp_dict['id_rate'], 'colspan': 5}])
+                    # Header row
                     emp_table_data.append(['Date', 'In', 'Out', 'Hrs', 'Pay'])
                     
+                    # Data rows
                     for detail in emp_dict['details']:
                         emp_table_data.append([
                             detail['date'][:5],  # Just MM/DD
@@ -3061,40 +3065,63 @@ def convert_excel_to_pdf(excel_path):
                             detail['pay']
                         ])
                     
-                    emp_table = Table(emp_table_data, colWidths=[0.55*inch, 0.55*inch, 0.55*inch, 0.45*inch, 0.65*inch])
-                    emp_table.setStyle(TableStyle([
-                        ('FONTSIZE', (0, 0), (-1, -1), 6),
-                        ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+                    # Flatten the table data (handle colspan)
+                    flattened_data = []
+                    for row in emp_table_data:
+                        if isinstance(row[0], dict) and 'content' in row[0]:
+                            # This is a merged cell row
+                            flattened_data.append([row[0]['content']])
+                        else:
+                            flattened_data.append(row)
+                    
+                    # Create table with wider columns
+                    emp_table = Table(flattened_data, colWidths=[0.65*inch, 0.65*inch, 0.65*inch, 0.5*inch, 0.75*inch])
+                    
+                    # Count header row position (after name and id/rate rows)
+                    header_row_idx = 2 if emp_dict['id_rate'] else 1
+                    
+                    table_styles = [
+                        ('FONTSIZE', (0, 0), (-1, -1), 7),
+                        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),  # Name row
+                        ('SPAN', (0, 0), (-1, 0)),  # Merge name row
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6e6e6')),
-                        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#1e40af')),
-                        ('TEXTCOLOR', (0, 2), (-1, 2), colors.white),
-                        ('GRID', (0, 2), (-1, -1), 0.5, colors.grey),
                         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('TOPPADDING', (0, 0), (-1, -1), 1),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
-                    ]))
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 3),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ]
+                    
+                    if emp_dict['id_rate']:
+                        table_styles.extend([
+                            ('SPAN', (0, 1), (-1, 1)),  # Merge ID/Rate row
+                            ('FONTSIZE', (0, 1), (0, 1), 6),
+                        ])
+                    
+                    # Header row styling
+                    table_styles.extend([
+                        ('FONTNAME', (0, header_row_idx), (-1, header_row_idx), 'Helvetica-Bold'),
+                        ('BACKGROUND', (0, header_row_idx), (-1, header_row_idx), colors.HexColor('#1e40af')),
+                        ('TEXTCOLOR', (0, header_row_idx), (-1, header_row_idx), colors.white),
+                        ('GRID', (0, header_row_idx), (-1, -1), 0.5, colors.grey),
+                    ])
+                    
+                    emp_table.setStyle(TableStyle(table_styles))
                     batch_tables.append(emp_table)
                 
-                # Add spacing between tables
-                row_with_spacing = []
-                for idx, table in enumerate(batch_tables):
-                    row_with_spacing.append(table)
-                    if idx < len(batch_tables) - 1:
-                        row_with_spacing.append(Spacer(0.1*inch, 1))
-                
-                # Create container table for side-by-side layout
-                if len(batch_tables) == 3:
-                    container_table = Table([row_with_spacing], colWidths=[2.4*inch, 0.1*inch, 2.4*inch, 0.1*inch, 2.4*inch])
-                elif len(batch_tables) == 2:
-                    container_table = Table([row_with_spacing], colWidths=[2.4*inch, 0.1*inch, 2.4*inch])
+                # Create container with proper spacing
+                if len(batch_tables) == 2:
+                    container_data = [[batch_tables[0], '', batch_tables[1]]]
+                    container_table = Table(container_data, colWidths=[3.5*inch, 0.25*inch, 3.5*inch])
                 else:
-                    container_table = Table([batch_tables], colWidths=[2.4*inch])
+                    container_table = Table([[batch_tables[0]]], colWidths=[3.5*inch])
                     
                 container_table.setStyle(TableStyle([
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ]))
                 elements.append(container_table)
-                elements.append(Spacer(1, 6))
+                elements.append(Spacer(1, 8))
         
         # Add footer
         elements.append(Spacer(1, 20))
