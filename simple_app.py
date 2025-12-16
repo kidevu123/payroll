@@ -112,7 +112,7 @@ def _ensure_report_metadata(file_path: str, filename: str, meta: dict) -> dict:
 
         # Extract minimal info once
         from openpyxl import load_workbook
-        creator, total_amount = 'Unknown', None
+        creator, total_amount, date_range = 'Unknown', None, None
         try:
             wb = load_workbook(file_path, read_only=True, data_only=True)
             ws = wb.active
@@ -124,6 +124,16 @@ def _ensure_report_metadata(file_path: str, filename: str, meta: dict) -> dict:
                 # Fallback to A2 if AA1 is empty
                 elif ws['A2'].value and 'Processed by:' in str(ws['A2'].value):
                     creator = str(ws['A2'].value).replace('Processed by:', '').strip()
+            except Exception:
+                pass
+            # Date Range: Extract from A1 cell (e.g., "Payroll Summary - 2025-01-04 to 2025-01-10")
+            try:
+                if ws['A1'].value:
+                    import re
+                    a1_value = str(ws['A1'].value)
+                    date_range_match = re.search(r'(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', a1_value)
+                    if date_range_match:
+                        date_range = f"{date_range_match.group(1)} to {date_range_match.group(2)}"
             except Exception:
                 pass
             # Amount: search first 30 rows for GRAND TOTAL and pick rightmost numeric

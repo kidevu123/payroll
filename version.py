@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.6"
-__version_name__ = "Pay Rates Edit Button Fix"
+__version__ = "8.9.7"
+__version_name__ = "ACTUAL Date Range Fix"
 __release_date__ = "2025-12-15"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.7",
+        "date": "2025-12-15",
+        "changes": [
+            "🔧 REAL FIX: Date range extraction actually works now",
+            "Fixed _ensure_report_metadata to extract date_range from A1 cell",
+            "Reports page will now show correct date ranges (Dec 01-15, not Dec 01-07)",
+            "Metadata cache will store actual payroll periods from Excel reports"
+        ]
+    },
     {
         "version": "8.9.6",
         "date": "2025-12-15",
