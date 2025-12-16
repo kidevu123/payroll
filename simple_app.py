@@ -2317,127 +2317,120 @@ def manage_rates():
             </form>
         </div>
     </div>
+    """
     
+    # Build JavaScript separately to avoid f-string escaping issues
+    javascript = """
     <script>
-        (function() {{
-            'use strict';
-            console.log('=== PAY RATES SCRIPT v8.13.3 - IMMEDIATE EXECUTION ===');
+        console.log('=== PAY RATES SCRIPT v8.13.4 - FIXED SYNTAX ===');
+        
+        function editRate(employeeId) {
+            console.log('editRate called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) {
+                console.error('Row not found for employee ID:', employeeId);
+                alert('Error: Could not find row for employee ' + employeeId);
+                return;
+            }
             
-            function editRate(employeeId) {{
-                console.log('editRate called with ID:', employeeId);
-                const row = document.getElementById('row-' + employeeId);
-                if (!row) {{
-                    console.error('Row not found for employee ID:', employeeId);
-                    alert('Error: Could not find row for employee ' + employeeId);
-                    return;
-                }}
-                
-                const rateDisplay = row.querySelector('.rate-display');
-                const rateEdit = row.querySelector('.rate-edit');
-                const editBtn = row.querySelector('.edit-btn');
-                const saveBtn = row.querySelector('.save-btn');
-                const cancelBtn = row.querySelector('.cancel-btn');
-                
-                if (!rateDisplay || !rateEdit || !editBtn || !saveBtn || !cancelBtn) {{
-                    console.error('Required elements not found in row');
-                    return;
-                }}
-                
-                rateDisplay.classList.add('hidden');
-                rateEdit.classList.remove('hidden');
-                editBtn.classList.add('hidden');
-                saveBtn.classList.remove('hidden');
-                cancelBtn.classList.remove('hidden');
-                rateEdit.focus();
-                console.log('Edit mode activated for employee:', employeeId);
-            }}
+            const rateDisplay = row.querySelector('.rate-display');
+            const rateEdit = row.querySelector('.rate-edit');
+            const editBtn = row.querySelector('.edit-btn');
+            const saveBtn = row.querySelector('.save-btn');
+            const cancelBtn = row.querySelector('.cancel-btn');
             
-            function cancelEdit(employeeId) {{
-                console.log('cancelEdit called with ID:', employeeId);
-                const row = document.getElementById('row-' + employeeId);
-                if (!row) return;
-                
-                const input = row.querySelector('.rate-edit');
-                const originalRate = input.getAttribute('data-original-value') || input.value;
-                input.value = originalRate;
-                
-                row.querySelector('.rate-display').classList.remove('hidden');
-                row.querySelector('.rate-edit').classList.add('hidden');
-                row.querySelector('.edit-btn').classList.remove('hidden');
-                row.querySelector('.save-btn').classList.add('hidden');
-                row.querySelector('.cancel-btn').classList.add('hidden');
-            }}
+            if (!rateDisplay || !rateEdit || !editBtn || !saveBtn || !cancelBtn) {
+                console.error('Required elements not found in row');
+                return;
+            }
             
-            function saveRate(employeeId) {{
-                console.log('saveRate called with ID:', employeeId);
-                const row = document.getElementById('row-' + employeeId);
-                if (!row) return;
-                
-                const newRate = row.querySelector('.rate-edit').value;
-                if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {{
-                    alert('Please enter a valid pay rate');
-                    return;
-                }}
-                
-                const saveBtn = row.querySelector('.save-btn');
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
-                
-                fetch('/update_rate/' + encodeURIComponent(employeeId), {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{rate: parseFloat(newRate)}})
-                }}).then(response => {{
-                    if (response.ok) {{
-                        location.reload();
-                    }} else {{
-                        saveBtn.disabled = false;
-                        saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
-                        alert('Error updating rate. Please try again.');
-                    }}
-                }}).catch(error => {{
+            rateDisplay.classList.add('hidden');
+            rateEdit.classList.remove('hidden');
+            editBtn.classList.add('hidden');
+            saveBtn.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            rateEdit.focus();
+            console.log('Edit mode activated for employee:', employeeId);
+        }
+        
+        function cancelEdit(employeeId) {
+            console.log('cancelEdit called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) return;
+            
+            const input = row.querySelector('.rate-edit');
+            const originalRate = input.getAttribute('data-original-value') || input.value;
+            input.value = originalRate;
+            
+            row.querySelector('.rate-display').classList.remove('hidden');
+            row.querySelector('.rate-edit').classList.add('hidden');
+            row.querySelector('.edit-btn').classList.remove('hidden');
+            row.querySelector('.save-btn').classList.add('hidden');
+            row.querySelector('.cancel-btn').classList.add('hidden');
+        }
+        
+        function saveRate(employeeId) {
+            console.log('saveRate called with ID:', employeeId);
+            const row = document.getElementById('row-' + employeeId);
+            if (!row) return;
+            
+            const newRate = row.querySelector('.rate-edit').value;
+            if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {
+                alert('Please enter a valid pay rate');
+                return;
+            }
+            
+            const saveBtn = row.querySelector('.save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
+            
+            fetch('/update_rate/' + encodeURIComponent(employeeId), {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({rate: parseFloat(newRate)})
+            }).then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
                     saveBtn.disabled = false;
                     saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
-                    alert('Network error. Please check your connection.');
-                }});
-            }}
-            
-            // Attach event listeners - NO DOMContentLoaded, execute immediately
-            const tableBody = document.querySelector('tbody');
-            if (!tableBody) {{
-                console.error('CRITICAL: Table body not found! Script loaded too early.');
-                // Retry after a tiny delay
-                setTimeout(function() {{
-                    const tb = document.querySelector('tbody');
-                    if (tb) setupListeners(tb);
-                }}, 100);
-            }} else {{
-                setupListeners(tableBody);
-            }}
-            
-            function setupListeners(tbody) {{
-                console.log('Setting up event listeners on tbody...');
-                tbody.addEventListener('click', function(e) {{
-                    const button = e.target.closest('button[data-action]');
-                    if (!button) return;
-                    
-                    const action = button.getAttribute('data-action');
-                    const employeeId = button.getAttribute('data-employee-id');
-                    
-                    console.log('Button clicked! Action:', action, 'Employee:', employeeId);
-                    
-                    if (action === 'edit') {{
-                        editRate(employeeId);
-                    }} else if (action === 'save') {{
-                        saveRate(employeeId);
-                    }} else if (action === 'cancel') {{
-                        cancelEdit(employeeId);
-                    }}
-                }});
-                console.log('✅ Event listeners attached successfully!');
-            }}
-        }})();
-    </script>
+                    alert('Error updating rate. Please try again.');
+                }
+            }).catch(error => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Save';
+                alert('Network error. Please check your connection.');
+            });
+        }
+        
+        // Setup event listeners when script loads
+        const tableBody = document.querySelector('tbody');
+        if (tableBody) {
+            console.log('Setting up event listeners...');
+            tableBody.addEventListener('click', function(e) {
+                const button = e.target.closest('button[data-action]');
+                if (!button) return;
+                
+                const action = button.getAttribute('data-action');
+                const employeeId = button.getAttribute('data-employee-id');
+                
+                console.log('Button clicked! Action:', action, 'Employee:', employeeId);
+                
+                if (action === 'edit') {
+                    editRate(employeeId);
+                } else if (action === 'save') {
+                    saveRate(employeeId);
+                } else if (action === 'cancel') {
+                    cancelEdit(employeeId);
+                }
+            });
+            console.log('✅ Event listeners attached!');
+        } else {
+            console.error('Table body not found!');
+        }
+    </script>"""
+    
+    html += javascript + """
 </body>
 </html>"""
     
