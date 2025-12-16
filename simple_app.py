@@ -324,12 +324,27 @@ def zoho_find_bank_account_id_by_name(company_raw, account_name):
             return str(acc.get('account_id', '') or '')
     return None
 
+def check_missing_pay_rates(df, pay_rates):
+    """Check if any employees are missing pay rates. Returns tuple (has_missing, missing_employees)."""
+    df = df.copy()
+    employee_ids = df['Person ID'].astype(str).unique()
+    missing = [emp_id for emp_id in employee_ids if emp_id not in pay_rates]
+    return (len(missing) > 0, missing)
+
 def compute_grand_totals_for_expense(df):
     """Recompute totals like our reports do, and return (total_hours, total_pay, total_rounded)."""
     pay_rates = load_pay_rates()
+    
+    # Check for missing rates
+    has_missing, missing_ids = check_missing_pay_rates(df, pay_rates)
+    if has_missing:
+        employee_names = get_employee_names()
+        missing_names = [f"{mid} ({employee_names.get(mid, 'Unknown')})" for mid in missing_ids]
+        raise ValueError(f"Cannot process payroll: Missing pay rates for employees: {', '.join(missing_names)}. Please set their rates in Pay Rates page first.")
+    
     df = df.copy()
     df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates)
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
     weekly_totals = df.groupby('Person ID').agg(
         Total_Hours=('Daily Hours', 'sum'),
@@ -6135,6 +6150,42 @@ def download_pdf(filename):
         app.logger.error(traceback.format_exc())
         return f"Error generating PDF: {str(e)}", 500
 
+@app.route('/delete_report/<filename>', methods=['POST'])
+@login_required
+def delete_report(filename):
+    """Delete a report file"""
+    try:
+        # Ensure filename ends with .xlsx
+        if not filename.endswith('.xlsx'):
+            flash('Invalid file type', 'error')
+            return redirect(url_for('reports'))
+        
+        # Security: only allow deleting admin_report files
+        if not filename.startswith('admin_report_'):
+            flash('Invalid report file', 'error')
+            return redirect(url_for('reports'))
+        
+        # Get the Excel file path
+        file_path = os.path.join(REPORT_FOLDER, filename)
+        if not os.path.exists(file_path):
+            flash(f"File not found: {filename}", 'error')
+            return redirect(url_for('reports'))
+        
+        # Delete the file
+        os.remove(file_path)
+        app.logger.info(f"Deleted report: {filename} by {session.get('username', 'unknown')}")
+        
+        # Clear the reports cache
+        report_cache.clear()
+        report_cache_expiry.clear()
+        
+        flash(f"Report deleted successfully", 'success')
+        return redirect(url_for('reports'))
+    except Exception as e:
+        app.logger.error(f"Error deleting report {filename}: {str(e)}")
+        flash(f"Error deleting report: {str(e)}", 'error')
+        return redirect(url_for('reports'))
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REPORTS & DOWNLOADS
@@ -6446,7 +6497,8 @@ def reports():
             """
             
             if download_filename:
-                html += f'<a href="/download_pdf/{download_filename}" class="btn btn-primary btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download PDF</a>'
+                html += f'<a href="/download_pdf/{download_filename}" class="btn btn-primary btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download PDF</a> '
+                html += f'<form method="post" action="/delete_report/{download_filename}" style="display:inline;" onsubmit="return confirm(\'Are you sure you want to delete this report for {escape(week_display)}?\');"><button type="submit" class="btn btn-danger btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg> Delete</button></form>'
             else:
                 html += '<span style="color:var(--color-gray-500);font-size:var(--font-size-sm)">N/A</span>'
             
@@ -7490,7 +7542,24 @@ def process_confirmed():
             session['filtered_file'] = filtered_path
         else:
             session['filtered_file'] = file_path
-        # NO VALIDATION HERE - just process directly
+        
+        # CRITICAL: Check for missing pay rates BEFORE processing
+        pay_rates = load_pay_rates()
+        has_missing, missing_ids = check_missing_pay_rates(df, pay_rates)
+        if has_missing:
+            employee_names = get_employee_names()
+            missing_info = []
+            for mid in missing_ids:
+                emp_name = employee_names.get(mid, 'Unknown')
+                missing_info.append(f"ID {mid} ({emp_name})")
+            error_msg = f"Cannot process payroll: Missing pay rates for {len(missing_ids)} employee(s): {', '.join(missing_info)}. Please go to 'Pay Rates' page and set their rates first."
+            
+            # Return error based on request type
+            if request.method == 'POST':
+                return jsonify({'error': error_msg}), 400
+            flash(error_msg, 'error')
+            return redirect(url_for('home'))
+        
         username = session.get('username', 'Unknown')
         
         is_timesheet = all(col in df.columns for col in ['Person ID', 'First Name', 'Last Name', 'Date'])
