@@ -331,6 +331,93 @@ def check_missing_pay_rates(df, pay_rates):
     missing = [emp_id for emp_id in employee_ids if emp_id not in pay_rates]
     return (len(missing) > 0, missing)
 
+def render_set_pay_rates_page(missing_rates, all_employees):
+    """Render inline pay rate setup page for new employees"""
+    username = session.get('username', 'Unknown')
+    menu_html = get_menu_html(username)
+    
+    # Build the form rows for missing rates
+    rate_rows = ""
+    for emp in missing_rates:
+        rate_rows += f"""
+            <tr>
+                <td><span class="badge badge-primary">{escape(emp['id'])}</span></td>
+                <td><strong>{escape(emp['name'])}</strong></td>
+                <td>
+                    <input type="number" name="rate_{escape(emp['id'])}" step="0.01" min="0" max="10000" class="form-input" placeholder="e.g., 12.50" required style="width: 150px;">
+                </td>
+            </tr>
+        """
+    
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Pay Rates - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .rates-header {{
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+            color: white;
+            padding: var(--spacing-4) 0;
+            margin-bottom: var(--spacing-4);
+        }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    
+    <div class="rates-header">
+        <div class="container">
+            <h1 style="color:white;margin-bottom:var(--spacing-2)">⚠️ New Employees Detected</h1>
+            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Set pay rates for {len(missing_rates)} employee(s) before continuing</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Set Pay Rates for New Employees</h2>
+            </div>
+            
+            <form method="post" action="/save_new_rates">
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Employee Name</th>
+                                <th>Hourly Rate ($/hour)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rate_rows}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="padding:var(--spacing-4);text-align:right;border-top:1px solid var(--color-gray-200);">
+                    <a href="/" class="btn btn-secondary" style="margin-right:var(--spacing-2)">Cancel</a>
+                    <button type="submit" class="btn btn-success">
+                        <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                        Save Rates & Continue
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return html
+
 def compute_grand_totals_for_expense(df):
     """Recompute totals like our reports do, and return (total_hours, total_pay, total_rounded)."""
     pay_rates = load_pay_rates()
@@ -7341,6 +7428,41 @@ def convert_json_to_csv(data):
 
 
 
+@app.route('/save_new_rates', methods=['POST'])
+@login_required
+def save_new_rates():
+    """Save pay rates for new employees and continue to employee confirmation"""
+    try:
+        pay_rates = load_pay_rates()
+        
+        # Extract all rate_ fields from form
+        saved_count = 0
+        for key, value in request.form.items():
+            if key.startswith('rate_'):
+                emp_id = key.replace('rate_', '')
+                try:
+                    rate = float(value)
+                    if 0 <= rate <= 10000:
+                        pay_rates[emp_id] = rate
+                        saved_count += 1
+                except ValueError:
+                    flash(f"Invalid rate for employee {emp_id}", 'error')
+                    return redirect(url_for('confirm_employees'))
+        
+        # Save updated rates
+        save_pay_rates(pay_rates)
+        app.logger.info(f"Saved {saved_count} new pay rates by {session.get('username', 'unknown')}")
+        
+        flash(f"Successfully saved pay rates for {saved_count} employee(s)!", 'success')
+        
+        # Continue to employee confirmation page
+        return redirect(url_for('confirm_employees'))
+        
+    except Exception as e:
+        app.logger.error(f"Error saving new rates: {str(e)}")
+        flash(f"Error saving rates: {str(e)}", 'error')
+        return redirect(url_for('confirm_employees'))
+
 @app.route('/confirm_employees')
 @login_required
 def confirm_employees():
@@ -7356,6 +7478,21 @@ def confirm_employees():
         df = pd.read_csv(file_path)
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
+        
+        # Check for missing pay rates
+        pay_rates = load_pay_rates()
+        missing_rates = []
+        for emp in employees:
+            emp_id = str(emp['id'])
+            if emp_id not in pay_rates:
+                missing_rates.append({
+                    'id': emp_id,
+                    'name': emp['name']
+                })
+        
+        # If there are missing rates, show the rate setup page instead
+        if missing_rates:
+            return render_set_pay_rates_page(missing_rates, employees)
         
         menu_html = get_menu_html(username)
         
@@ -7542,23 +7679,6 @@ def process_confirmed():
             session['filtered_file'] = filtered_path
         else:
             session['filtered_file'] = file_path
-        
-        # CRITICAL: Check for missing pay rates BEFORE processing
-        pay_rates = load_pay_rates()
-        has_missing, missing_ids = check_missing_pay_rates(df, pay_rates)
-        if has_missing:
-            employee_names = get_employee_names()
-            missing_info = []
-            for mid in missing_ids:
-                emp_name = employee_names.get(mid, 'Unknown')
-                missing_info.append(f"ID {mid} ({emp_name})")
-            error_msg = f"Cannot process payroll: Missing pay rates for {len(missing_ids)} employee(s): {', '.join(missing_info)}. Please go to 'Pay Rates' page and set their rates first."
-            
-            # Return error based on request type
-            if request.method == 'POST':
-                return jsonify({'error': error_msg}), 400
-            flash(error_msg, 'error')
-            return redirect(url_for('home'))
         
         username = session.get('username', 'Unknown')
         

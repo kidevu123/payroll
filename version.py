@@ -3,11 +3,37 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.13.4"
-__version_name__ = "Edit Button - Syntax Error Fixed"
+__version__ = "8.15.0"
+__version_name__ = "Inline Pay Rate Setup"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.15.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✨ NEW: Inline pay rate setup for new employees!",
+            "When CSV uploaded with new employees, shows form to set rates immediately",
+            "No more redirecting to Pay Rates page and coming back",
+            "Orange warning page: 'New Employees Detected' with inline form",
+            "Set rates, click 'Save Rates & Continue', proceeds to employee confirmation",
+            "Rates saved to pay_rates.json automatically",
+            "Smooth one-flow experience for processing new employees"
+        ]
+    },
+    {
+        "version": "8.14.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✨ NEW: Delete button on Reports page with confirmation",
+            "🔧 CRITICAL FIX: No more silent $15/hour defaults",
+            "App now stops processing and shows error when employees don't have pay rates",
+            "Forces you to set the correct pay rate before processing payroll",
+            "Error message shows which employees are missing rates",
+            "Deleted reports are removed from disk and cache is cleared",
+            "Security: Only admin_report_* files can be deleted"
+        ]
+    },
     {
         "version": "8.13.4",
         "date": "2025-12-16",
