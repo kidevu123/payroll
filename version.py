@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.10.3"
-__version_name__ = "Landscape PDF - One Page"
+__version__ = "8.11.0"
+__version_name__ = "Ultra-Compact One Page PDF"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.11.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✅ TRUE ONE-PAGE PDF: Ultra-compact layout with NO wasted space",
+            "3-column employee layout (was 2-column)",
+            "Smaller fonts: 6pt for employee data, 7-8pt for summary",
+            "Minimal padding: 1-2px throughout",
+            "Minimal spacing: 2-4px between sections",
+            "Compact summary table: narrower columns",
+            "All 6 employees + summary fit on ONE landscape page",
+            "Professional, dense layout with maximum information density"
+        ]
+    },
     {
         "version": "8.10.3",
         "date": "2025-12-16",
