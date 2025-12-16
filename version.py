@@ -3,11 +3,22 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.8"
-__version_name__ = "PDF Downloads & Date Sorting Fix"
+__version__ = "8.9.9"
+__version_name__ = "PDF Data Extraction Fix"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.9",
+        "date": "2025-12-16",
+        "changes": [
+            "🔴 CRITICAL FIX: PDF now shows all data rows",
+            "Fixed PDF conversion to properly extract all employee data from Excel",
+            "Added smart header row detection",
+            "Improved empty row handling",
+            "Added logging for better debugging"
+        ]
+    },
     {
         "version": "8.9.8",
         "date": "2025-12-16",
