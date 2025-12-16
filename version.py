@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.10.0"
-__version_name__ = "Complete PDF Reports"
+__version__ = "8.10.1"
+__version_name__ = "One-Page PDF Fix"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.10.1",
+        "date": "2025-12-16",
+        "changes": [
+            "🔴 CRITICAL FIX: PDF now fits on ONE page",
+            "Fixed broken employee card extraction (was picking up 'Date', 'Total:', etc.)",
+            "Only extracts valid employee names from summary table",
+            "Validates data rows contain actual dates (must have '/')",
+            "3-column layout instead of 2-column for compact display",
+            "Reduced font size to 6pt and tightened padding",
+            "Eliminated junk/empty cards",
+            "Clean, professional one-page PDF output"
+        ]
+    },
     {
         "version": "8.10.0",
         "date": "2025-12-16",
