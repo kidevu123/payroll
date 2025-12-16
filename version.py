@@ -3,11 +3,22 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.13.0"
-__version_name__ = "PDF Everywhere"
+__version__ = "8.13.1"
+__version_name__ = "Edit Button Fix"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.13.1",
+        "date": "2025-12-16",
+        "changes": [
+            "🔧 CRITICAL FIX: Pay Rates Edit button now works",
+            "Fixed JavaScript string escaping for employee IDs with special characters",
+            "Edit, Save, and Cancel buttons now properly handle IDs with quotes, apostrophes, etc.",
+            "Delete confirmation also properly escaped",
+            "All onclick handlers now use JavaScript-safe strings"
+        ]
+    },
     {
         "version": "8.13.0",
         "date": "2025-12-16",
