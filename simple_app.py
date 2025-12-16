@@ -2808,32 +2808,32 @@ def convert_excel_to_pdf(excel_path):
         elements = []
         styles = getSampleStyleSheet()
         
-        # Create custom styles - COMPACT
+        # Create custom styles - ULTRA COMPACT
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=12,
+            fontSize=10,
             textColor=colors.HexColor('#1e40af'),
-            spaceAfter=3,
+            spaceAfter=2,
             alignment=TA_CENTER
         )
         
         subtitle_style = ParagraphStyle(
             'Subtitle',
             parent=styles['Normal'],
-            fontSize=8,
+            fontSize=7,
             textColor=colors.grey,
-            spaceAfter=6,
+            spaceAfter=3,
             alignment=TA_CENTER
         )
         
         section_header_style = ParagraphStyle(
             'SectionHeader',
             parent=styles['Heading2'],
-            fontSize=10,
+            fontSize=8,
             textColor=colors.HexColor('#1e40af'),
-            spaceAfter=4,
-            spaceBefore=6,
+            spaceAfter=2,
+            spaceBefore=3,
             alignment=TA_CENTER
         )
         
@@ -2917,8 +2917,8 @@ def convert_excel_to_pdf(excel_path):
         
         app.logger.info(f"PDF: Summary table has {len(summary_data)} rows (including header)")
         
-        # Create summary table - COMPACT
-        col_widths = [0.6*inch, 1.8*inch, 0.9*inch, 0.9*inch, 1.0*inch]
+        # Create summary table - ULTRA COMPACT
+        col_widths = [0.4*inch, 1.5*inch, 0.7*inch, 0.8*inch, 0.8*inch]
         summary_table = Table(summary_data, colWidths=col_widths)
         
         # Style summary table
@@ -2928,18 +2928,18 @@ def convert_excel_to_pdf(excel_path):
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
-            ('TOPPADDING', (0, 0), (-1, 0), 4),
+            ('FONTSIZE', (0, 0), (-1, 0), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 2),
+            ('TOPPADDING', (0, 0), (-1, 0), 2),
             
             # Data rows
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 7),
+            ('FONTSIZE', (0, 1), (-1, -1), 6),
             ('ALIGN', (0, 1), (0, -1), 'CENTER'),
             ('ALIGN', (1, 1), (1, -1), 'LEFT'),
             ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
-            ('TOPPADDING', (0, 1), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+            ('TOPPADDING', (0, 1), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 1),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#1e40af')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f9fa')]),
@@ -2974,10 +2974,10 @@ def convert_excel_to_pdf(excel_path):
                 break
         
         if detailed_start_row and detailed_start_row < max_row and valid_employee_names:
-            elements.append(Spacer(1, 4))  # Minimal spacing
+            elements.append(Spacer(1, 2))  # Ultra minimal
             section_header = Paragraph("Detailed Breakdown by Employee", section_header_style)
             elements.append(section_header)
-            elements.append(Spacer(1, 3))  # Minimal spacing
+            elements.append(Spacer(1, 2))  # Ultra minimal
             
             # The detailed section has 3 columns: starting at col 1, 8, and 15
             col_starts = [1, 8, 15]
@@ -3035,9 +3035,9 @@ def convert_excel_to_pdf(excel_path):
             
             app.logger.info(f"PDF: Extracted {len(employee_data_list)} valid employee detail cards")
             
-            # Render employee cards (3 per row - COMPACT)
-            for i in range(0, len(employee_data_list), 3):
-                batch = employee_data_list[i:i+3]
+            # Render employee cards (4 per row - ULTRA COMPACT)
+            for i in range(0, len(employee_data_list), 4):
+                batch = employee_data_list[i:i+4]
                 
                 # Create side-by-side tables
                 batch_tables = []
@@ -3071,21 +3071,21 @@ def convert_excel_to_pdf(excel_path):
                         else:
                             flattened_data.append(row)
                     
-                    # Create table with compact columns for 3-column layout
-                    emp_table = Table(flattened_data, colWidths=[0.55*inch, 0.5*inch, 0.5*inch, 0.4*inch, 0.6*inch])
+                    # Create table with ultra-compact columns for 4-column layout
+                    emp_table = Table(flattened_data, colWidths=[0.45*inch, 0.4*inch, 0.4*inch, 0.3*inch, 0.5*inch])
                     
                     # Count header row position (after name and id/rate rows)
                     header_row_idx = 2 if emp_dict['id_rate'] else 1
                     
                     table_styles = [
-                        ('FONTSIZE', (0, 0), (-1, -1), 6),
+                        ('FONTSIZE', (0, 0), (-1, -1), 5),  # Smaller font
                         ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),  # Name row
                         ('SPAN', (0, 0), (-1, 0)),  # Merge name row
                         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6e6e6')),
                         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('TOPPADDING', (0, 0), (-1, -1), 2),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                        ('TOPPADDING', (0, 0), (-1, -1), 1),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
                         ('LEFTPADDING', (0, 0), (-1, -1), 1),
                         ('RIGHTPADDING', (0, 0), (-1, -1), 1),
                     ]
@@ -3107,32 +3107,34 @@ def convert_excel_to_pdf(excel_path):
                     emp_table.setStyle(TableStyle(table_styles))
                     batch_tables.append(emp_table)
                 
-                # Create container with 3-column layout
+                # Create container with 4-column layout
                 row_with_spacing = []
                 for idx, table in enumerate(batch_tables):
                     row_with_spacing.append(table)
                     if idx < len(batch_tables) - 1:
                         row_with_spacing.append('')  # Spacer column
                 
-                if len(batch_tables) == 3:
-                    container_table = Table([row_with_spacing], colWidths=[2.9*inch, 0.2*inch, 2.9*inch, 0.2*inch, 2.9*inch])
+                if len(batch_tables) == 4:
+                    container_table = Table([row_with_spacing], colWidths=[2.25*inch, 0.1*inch, 2.25*inch, 0.1*inch, 2.25*inch, 0.1*inch, 2.25*inch])
+                elif len(batch_tables) == 3:
+                    container_table = Table([row_with_spacing], colWidths=[2.25*inch, 0.1*inch, 2.25*inch, 0.1*inch, 2.25*inch])
                 elif len(batch_tables) == 2:
-                    container_table = Table([row_with_spacing], colWidths=[2.9*inch, 0.2*inch, 2.9*inch])
+                    container_table = Table([row_with_spacing], colWidths=[2.25*inch, 0.1*inch, 2.25*inch])
                 else:
-                    container_table = Table([[batch_tables[0]]], colWidths=[2.9*inch])
+                    container_table = Table([[batch_tables[0]]], colWidths=[2.25*inch])
                     
                 container_table.setStyle(TableStyle([
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ]))
                 elements.append(container_table)
-                elements.append(Spacer(1, 2))  # Minimal spacing
+                elements.append(Spacer(1, 1))  # Ultra minimal spacing
         
         # Add footer - minimal spacing
-        elements.append(Spacer(1, 6))
+        elements.append(Spacer(1, 3))
         footer_style = ParagraphStyle(
             'Footer',
             parent=styles['Normal'],
-            fontSize=6,
+            fontSize=5,
             textColor=colors.grey,
             alignment=TA_CENTER
         )
