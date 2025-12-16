@@ -157,6 +157,7 @@ def _ensure_report_metadata(file_path: str, filename: str, meta: dict) -> dict:
             'mtime': mtime,
             'creator': creator,
             'total_amount': total_amount,
+            'date_range': date_range,
         }
         meta[filename] = rec
         return rec
