@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.12.0"
-__version_name__ = "Extreme Density - 13+ Employees"
+__version__ = "8.13.0"
+__version_name__ = "PDF Everywhere"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.13.0",
+        "date": "2025-12-16",
+        "changes": [
+            "📄 PDF EVERYWHERE: Download & Zoho now use PDF",
+            "Admin Report Download button now generates PDF (not Excel)",
+            "Zoho Books expense attachment is now PDF (not Excel)",
+            "PDF generated on-the-fly when downloading",
+            "PDF generated and attached to Zoho, then cleaned up",
+            "Print button still opens Excel for internal use",
+            "Excel files still generated for backend/processing",
+            "Clean, professional PDF format for external use"
+        ]
+    },
     {
         "version": "8.12.0",
         "date": "2025-12-16",
