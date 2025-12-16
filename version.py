@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.15.0"
-__version_name__ = "Inline Pay Rate Setup"
+__version__ = "8.16.0"
+__version_name__ = "Delete Reports + Inline Pay Rates"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.16.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✨ NEW: Delete button on Reports page!",
+            "Red delete button next to each Download PDF button",
+            "Confirmation dialog before deleting",
+            "Deletes Excel file from disk and clears cache",
+            "Security: Only admin_report_* files can be deleted",
+            "Shows success/error message after deletion"
+        ]
+    },
     {
         "version": "8.15.0",
         "date": "2025-12-16",
