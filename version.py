@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.10.1"
-__version_name__ = "One-Page PDF Fix"
+__version__ = "8.10.2"
+__version_name__ = "PDF Layout Fix - No Overlaps"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.10.2",
+        "date": "2025-12-16",
+        "changes": [
+            "🔴 CRITICAL FIX: Fixed overlapping text and wrapped names",
+            "Changed to 2-column layout (was 3-column, too cramped)",
+            "Wider columns: 0.65-0.75 inch per cell",
+            "Employee names now span full width (no wrapping)",
+            "ID/Rate info also spans full width",
+            "Font size increased to 7pt (was 6pt)",
+            "Proper spacing between columns (0.25 inch)",
+            "Clean layout with no text overlap"
+        ]
+    },
     {
         "version": "8.10.1",
         "date": "2025-12-16",
