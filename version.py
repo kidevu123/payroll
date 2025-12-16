@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.7"
-__version_name__ = "ACTUAL Date Range Fix"
-__release_date__ = "2025-12-15"
+__version__ = "8.9.8"
+__version_name__ = "PDF Downloads & Date Sorting Fix"
+__release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.9.8",
+        "date": "2025-12-16",
+        "changes": [
+            "📄 FEATURE: PDF report downloads instead of Excel",
+            "Added reportlab library for PDF generation",
+            "Created PDF conversion function for admin reports",
+            "Added /download_pdf/<filename> route for on-demand PDF generation",
+            "🔧 FIX: Reports now sorted by actual payroll period date",
+            "Sorting uses end_date from payroll period (not file creation time)",
+            "Reports display in true chronological order of processing"
+        ]
+    },
     {
         "version": "8.9.7",
         "date": "2025-12-15",

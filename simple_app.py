@@ -19,6 +19,13 @@ from bs4 import BeautifulSoup
 import time
 import logging
 from logging.handlers import RotatingFileHandler
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from io import BytesIO
 # Selenium imports removed - not supported on PythonAnywhere
 
 # Import centralized version management
@@ -2774,6 +2781,167 @@ def create_excel_report(df, filename, creator=None):
     report_path = os.path.join(REPORT_FOLDER, filename)
     wb.save(report_path)
     return report_path
+
+def convert_excel_to_pdf(excel_path):
+    """
+    Convert an Excel admin report to PDF format.
+    Returns the PDF as BytesIO object for sending as response.
+    """
+    try:
+        from openpyxl import load_workbook
+        
+        # Load the Excel file
+        wb = load_workbook(excel_path, data_only=True)
+        ws = wb.active
+        
+        # Create PDF in memory
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                              rightMargin=0.5*inch, leftMargin=0.5*inch,
+                              topMargin=0.75*inch, bottomMargin=0.5*inch)
+        
+        # Container for PDF elements
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Create custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            textColor=colors.HexColor('#1e40af'),
+            spaceAfter=12,
+            alignment=TA_CENTER
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'Subtitle',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.grey,
+            spaceAfter=20,
+            alignment=TA_CENTER
+        )
+        
+        # Extract title from A1
+        title_text = str(ws['A1'].value) if ws['A1'].value else "Payroll Report"
+        title = Paragraph(title_text, title_style)
+        elements.append(title)
+        
+        # Extract creator info from A2 or AA1
+        creator_text = ""
+        if ws['A2'].value and 'Processed by' in str(ws['A2'].value):
+            creator_text = str(ws['A2'].value)
+        elif ws['AA1'].value:
+            creator_text = f"Processed by: {ws['AA1'].value}"
+        
+        if creator_text:
+            creator = Paragraph(creator_text, subtitle_style)
+            elements.append(creator)
+        else:
+            elements.append(Spacer(1, 12))
+        
+        # Extract table data starting from row 4 (headers)
+        # Find the actual data range
+        max_row = ws.max_row
+        max_col = 5  # We know we have 5 columns: ID, Name, Hours, Pay, Rounded
+        
+        # Build table data
+        table_data = []
+        
+        # Add headers (row 4)
+        header_row = []
+        for col in range(1, max_col + 1):
+            cell_value = ws.cell(row=4, column=col).value
+            header_row.append(str(cell_value) if cell_value else "")
+        table_data.append(header_row)
+        
+        # Add data rows (starting from row 5)
+        for row in range(5, max_row + 1):
+            # Check if row has data
+            if not ws.cell(row=row, column=1).value:
+                break
+                
+            row_data = []
+            for col in range(1, max_col + 1):
+                cell = ws.cell(row=row, column=col)
+                if cell.value is not None:
+                    # Format currency columns
+                    if col in [4, 5]:  # Total Pay and Rounded Pay columns
+                        if isinstance(cell.value, (int, float)):
+                            row_data.append(f"${cell.value:,.2f}")
+                        else:
+                            row_data.append(str(cell.value))
+                    elif col == 3:  # Hours column
+                        if isinstance(cell.value, (int, float)):
+                            row_data.append(f"{cell.value:.2f}")
+                        else:
+                            row_data.append(str(cell.value))
+                    else:
+                        row_data.append(str(cell.value))
+                else:
+                    row_data.append("")
+            table_data.append(row_data)
+        
+        # Create table
+        col_widths = [1.0*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.2*inch]
+        table = Table(table_data, colWidths=col_widths)
+        
+        # Style the table
+        table.setStyle(TableStyle([
+            # Header row styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e40af')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            
+            # Data rows styling
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Person ID centered
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Name left-aligned
+            ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),  # Numbers right-aligned
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+            
+            # Grid and borders
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('BOX', (0, 0), (-1, -1), 1.5, colors.HexColor('#1e40af')),
+            
+            # Alternating row colors for readability
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+        ]))
+        
+        elements.append(table)
+        
+        # Add footer with generation timestamp
+        elements.append(Spacer(1, 20))
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey,
+            alignment=TA_CENTER
+        )
+        footer_text = f"Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+        footer = Paragraph(footer_text, footer_style)
+        elements.append(footer)
+        
+        # Build PDF
+        doc.build(elements)
+        
+        # Get PDF data
+        buffer.seek(0)
+        return buffer
+        
+    except Exception as e:
+        app.logger.error(f"Error converting Excel to PDF: {str(e)}")
+        raise
 
 def create_payslips(df, filename, creator=None):
     """Create individual payslips in Excel format"""
@@ -5675,6 +5843,38 @@ def download(report_type):
     except Exception as e:
         return f"Error downloading file: {str(e)}", 500
 
+@app.route('/download_pdf/<filename>')
+def download_pdf(filename):
+    """Download an Excel report as PDF"""
+    try:
+        # Ensure filename ends with .xlsx
+        if not filename.endswith('.xlsx'):
+            return "Invalid file type", 400
+        
+        # Get the Excel file path
+        file_path = os.path.join(REPORT_FOLDER, filename)
+        if not os.path.exists(file_path):
+            return f"File not found: {filename}", 404
+        
+        # Convert to PDF
+        pdf_buffer = convert_excel_to_pdf(file_path)
+        
+        # Generate PDF filename
+        pdf_filename = filename.replace('.xlsx', '.pdf')
+        
+        # Send PDF file
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=pdf_filename,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        app.logger.error(f"Error generating PDF: {str(e)}")
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return f"Error generating PDF: {str(e)}", 500
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REPORTS & DOWNLOADS
@@ -5763,6 +5963,24 @@ def reports():
 
             # Get file creation time
             creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
+            
+            # Extract end date from date range for proper sorting
+            sort_date = creation_time  # Default to creation time
+            try:
+                if " to " in week:
+                    # Extract end date from range like "2025-01-04 to 2025-01-10"
+                    date_parts = week.split(" to ")
+                    if len(date_parts) == 2:
+                        sort_date = datetime.strptime(date_parts[1].strip(), "%Y-%m-%d")
+                elif week != "Unknown":
+                    # Single date format
+                    try:
+                        sort_date = datetime.strptime(week, "%Y-%m-%d")
+                    except:
+                        pass
+            except Exception as e:
+                app.logger.warning(f"Could not parse date from week '{week}': {e}")
+                # Fall back to creation_time
 
             report_files.append({
                 'filename': filename,
@@ -5772,11 +5990,12 @@ def reports():
                 'total_amount': total_amount,
                 'creator': creator,
                 'created': creation_time,
+                'sort_date': sort_date,  # Use this for sorting
                 'size': os.path.getsize(file_path)
             })
 
-        # Sort by creation time (newest first)
-        report_files.sort(key=lambda x: x['created'], reverse=True)
+        # Sort by actual payroll period end date (newest first)
+        report_files.sort(key=lambda x: x['sort_date'], reverse=True)
 
         # Group by week
         reports_by_week = {}
@@ -5785,8 +6004,29 @@ def reports():
                 reports_by_week[report['week']] = []
             reports_by_week[report['week']].append(report)
 
-        # Sort weeks chronologically (newest first)
-        sorted_weeks = sorted(reports_by_week.keys(), reverse=True)
+        # Sort weeks chronologically by extracting end date (newest first)
+        def extract_sort_date_from_week(week_str):
+            """Extract end date from week string for sorting"""
+            try:
+                if " to " in week_str:
+                    # Extract end date from range
+                    date_parts = week_str.split(" to ")
+                    if len(date_parts) == 2:
+                        return datetime.strptime(date_parts[1].strip(), "%Y-%m-%d")
+                elif week_str != "Unknown":
+                    # Single date
+                    try:
+                        return datetime.strptime(week_str, "%Y-%m-%d")
+                    except:
+                        pass
+            except:
+                pass
+            # Return minimum date for unknown/unparseable weeks (sorts to bottom)
+            return datetime.min
+        
+        sorted_weeks = sorted(reports_by_week.keys(), 
+                            key=extract_sort_date_from_week, 
+                            reverse=True)
 
         # Cache the results for 5 minutes
         report_cache[cache_key] = {
@@ -5946,7 +6186,7 @@ def reports():
             """
             
             if download_filename:
-                html += f'<a href="/static/reports/{download_filename}" class="btn btn-primary btn-sm" download><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download</a>'
+                html += f'<a href="/download_pdf/{download_filename}" class="btn btn-primary btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download PDF</a>'
             else:
                 html += '<span style="color:var(--color-gray-500);font-size:var(--font-size-sm)">N/A</span>'
             
