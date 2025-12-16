@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.11.0"
-__version_name__ = "Ultra-Compact One Page PDF"
+__version__ = "8.12.0"
+__version_name__ = "Extreme Density - 13+ Employees"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.12.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✅ FITS 13+ EMPLOYEES ON ONE PAGE!",
+            "4 employees per row (was 3) = maximum horizontal density",
+            "5pt font for employee cards (was 6pt)",
+            "6pt font for summary table (was 7pt)",
+            "Ultra-narrow columns: 2.25 inch per employee card",
+            "Minimal padding: 1px everywhere",
+            "Minimal spacing: 1-2px between rows",
+            "Tested with 13 employees - all fit on one landscape page",
+            "Extreme information density while maintaining readability"
+        ]
+    },
     {
         "version": "8.11.0",
         "date": "2025-12-16",
