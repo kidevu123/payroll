@@ -6027,7 +6027,7 @@ def print_friendly(report_type):
 
 @app.route('/download/<report_type>')
 def download(report_type):
-    """Download a report file"""
+    """Download a report file - admin report downloads as PDF"""
     try:
         if report_type == 'summary':
             filename = session.get('reports', {}).get('summary', '')
@@ -6038,7 +6038,25 @@ def download(report_type):
         elif report_type == 'combined_no_sig':
             filename = session.get('reports', {}).get('combined_no_sig', '')
         elif report_type == 'admin':
+            # Admin report downloads as PDF
             filename = session.get('reports', {}).get('admin', '')
+            if not filename:
+                return "No report found", 404
+            
+            file_path = os.path.join(REPORT_FOLDER, filename)
+            if not os.path.exists(file_path):
+                return f"File not found: {filename}", 404
+            
+            # Convert to PDF on-the-fly
+            pdf_buffer = convert_excel_to_pdf(file_path)
+            pdf_filename = filename.replace('.xlsx', '.pdf')
+            
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=pdf_filename,
+                mimetype='application/pdf'
+            )
         elif report_type == 'payslips_sheet':
             filename = session.get('reports', {}).get('payslips_sheet', '')
         else:
@@ -6616,11 +6634,29 @@ def zoho_create_expense_route():
         )
         _set_existing_expense(company, week, expense_id)
 
-        # Attach admin report as receipt
+        # Attach admin report as PDF receipt
         admin_file = os.path.join(REPORT_FOLDER, reports['admin'])
         if os.path.exists(admin_file):
             try:
-                zoho_attach_receipt(company, expense_id, admin_file)
+                # Convert Excel to PDF
+                pdf_buffer = convert_excel_to_pdf(admin_file)
+                
+                # Save PDF temporarily for attachment
+                pdf_filename = reports['admin'].replace('.xlsx', '.pdf')
+                pdf_temp_path = os.path.join(REPORT_FOLDER, pdf_filename)
+                
+                with open(pdf_temp_path, 'wb') as f:
+                    f.write(pdf_buffer.read())
+                
+                # Attach PDF to Zoho
+                zoho_attach_receipt(company, expense_id, pdf_temp_path)
+                
+                # Clean up temporary PDF
+                try:
+                    os.remove(pdf_temp_path)
+                except:
+                    pass  # Don't fail if cleanup fails
+                    
             except Exception as e:
                 # Don't fail entire request if attachment fails; report message instead
                 flash(f"Expense created but failed to attach report: {str(e)}", 'warning')
