@@ -2796,11 +2796,12 @@ def convert_excel_to_pdf(excel_path):
         ws = wb.active
         max_row = ws.max_row
         
-        # Create PDF in memory
+        # Create PDF in memory - LANDSCAPE for better layout
+        from reportlab.lib.pagesizes import landscape
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                              rightMargin=0.4*inch, leftMargin=0.4*inch,
-                              topMargin=0.75*inch, bottomMargin=0.5*inch)
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
+                              rightMargin=0.5*inch, leftMargin=0.5*inch,
+                              topMargin=0.5*inch, bottomMargin=0.4*inch)
         
         # Container for PDF elements
         elements = []
@@ -2977,10 +2978,10 @@ def convert_excel_to_pdf(excel_path):
                 break
         
         if detailed_start_row and detailed_start_row < max_row and valid_employee_names:
-            elements.append(Spacer(1, 10))
+            elements.append(Spacer(1, 6))  # Reduced for landscape
             section_header = Paragraph("Detailed Breakdown by Employee", section_header_style)
             elements.append(section_header)
-            elements.append(Spacer(1, 6))
+            elements.append(Spacer(1, 4))  # Reduced for landscape
             
             # The detailed section has 3 columns: starting at col 1, 8, and 15
             col_starts = [1, 8, 15]
@@ -3074,8 +3075,8 @@ def convert_excel_to_pdf(excel_path):
                         else:
                             flattened_data.append(row)
                     
-                    # Create table with wider columns
-                    emp_table = Table(flattened_data, colWidths=[0.65*inch, 0.65*inch, 0.65*inch, 0.5*inch, 0.75*inch])
+                    # Create table with wider columns (landscape gives us more space)
+                    emp_table = Table(flattened_data, colWidths=[0.75*inch, 0.7*inch, 0.7*inch, 0.55*inch, 0.8*inch])
                     
                     # Count header row position (after name and id/rate rows)
                     header_row_idx = 2 if emp_dict['id_rate'] else 1
@@ -3110,18 +3111,18 @@ def convert_excel_to_pdf(excel_path):
                     emp_table.setStyle(TableStyle(table_styles))
                     batch_tables.append(emp_table)
                 
-                # Create container with proper spacing
+                # Create container with proper spacing (landscape = more width available)
                 if len(batch_tables) == 2:
                     container_data = [[batch_tables[0], '', batch_tables[1]]]
-                    container_table = Table(container_data, colWidths=[3.5*inch, 0.25*inch, 3.5*inch])
+                    container_table = Table(container_data, colWidths=[4.75*inch, 0.5*inch, 4.75*inch])
                 else:
-                    container_table = Table([[batch_tables[0]]], colWidths=[3.5*inch])
+                    container_table = Table([[batch_tables[0]]], colWidths=[4.75*inch])
                     
                 container_table.setStyle(TableStyle([
                     ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ]))
                 elements.append(container_table)
-                elements.append(Spacer(1, 8))
+                elements.append(Spacer(1, 4))  # Reduced spacing in landscape
         
         # Add footer
         elements.append(Spacer(1, 20))
