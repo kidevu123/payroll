@@ -2841,31 +2841,59 @@ def convert_excel_to_pdf(excel_path):
         else:
             elements.append(Spacer(1, 12))
         
-        # Extract table data starting from row 4 (headers)
-        # Find the actual data range
+        # Extract table data - need to find where headers and data actually are
+        # Admin reports have: Row 1 = Title, Row 2 = Creator, Row 3 = empty, Row 4 = Headers, Row 5+ = Data
         max_row = ws.max_row
         max_col = 5  # We know we have 5 columns: ID, Name, Hours, Pay, Rounded
         
         # Build table data
         table_data = []
         
-        # Add headers (row 4)
+        # Find the header row (look for "Person ID" or similar in column A)
+        header_row_num = None
+        for row in range(1, min(10, max_row + 1)):  # Check first 10 rows
+            cell_val = ws.cell(row=row, column=1).value
+            if cell_val and ('Person ID' in str(cell_val) or 'ID' in str(cell_val)):
+                header_row_num = row
+                break
+        
+        if not header_row_num:
+            # Default to row 4 if we can't find it
+            header_row_num = 4
+        
+        app.logger.info(f"PDF conversion: Found header at row {header_row_num}, max_row={max_row}")
+        
+        # Add headers
         header_row = []
         for col in range(1, max_col + 1):
-            cell_value = ws.cell(row=4, column=col).value
+            cell_value = ws.cell(row=header_row_num, column=col).value
             header_row.append(str(cell_value) if cell_value else "")
         table_data.append(header_row)
         
-        # Add data rows (starting from row 5)
-        for row in range(5, max_row + 1):
-            # Check if row has data
-            if not ws.cell(row=row, column=1).value:
-                break
-                
+        # Add data rows (starting from row after headers)
+        data_start_row = header_row_num + 1
+        rows_added = 0
+        for row in range(data_start_row, max_row + 1):
+            # Check if this row has any data in the first column
+            first_cell = ws.cell(row=row, column=1).value
+            
+            # Skip empty rows but don't break (there might be data after)
+            if not first_cell:
+                # Check if ALL cells in this row are empty
+                all_empty = True
+                for col in range(1, max_col + 1):
+                    if ws.cell(row=row, column=col).value:
+                        all_empty = False
+                        break
+                if all_empty:
+                    continue  # Skip this empty row
+                    
             row_data = []
+            has_any_data = False
             for col in range(1, max_col + 1):
                 cell = ws.cell(row=row, column=col)
                 if cell.value is not None:
+                    has_any_data = True
                     # Format currency columns
                     if col in [4, 5]:  # Total Pay and Rounded Pay columns
                         if isinstance(cell.value, (int, float)):
@@ -2881,7 +2909,17 @@ def convert_excel_to_pdf(excel_path):
                         row_data.append(str(cell.value))
                 else:
                     row_data.append("")
-            table_data.append(row_data)
+            
+            if has_any_data:
+                table_data.append(row_data)
+                rows_added += 1
+        
+        app.logger.info(f"PDF conversion: Added {rows_added} data rows to table")
+        
+        # Check if we have data
+        if len(table_data) <= 1:
+            app.logger.error(f"PDF conversion: No data rows found in Excel file. Only {len(table_data)} rows in table_data")
+            raise ValueError(f"No data rows found in Excel file. File has {max_row} rows, header at row {header_row_num}")
         
         # Create table
         col_widths = [1.0*inch, 2.2*inch, 1.2*inch, 1.2*inch, 1.2*inch]
