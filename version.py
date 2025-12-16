@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.10.2"
-__version_name__ = "PDF Layout Fix - No Overlaps"
+__version__ = "8.10.3"
+__version_name__ = "Landscape PDF - One Page"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.10.3",
+        "date": "2025-12-16",
+        "changes": [
+            "✅ LANDSCAPE ORIENTATION: PDF now fits on ONE page",
+            "Switched from portrait to landscape (11 x 8.5 inches)",
+            "Wider employee cards: 4.75 inch each (was 3.5 inch)",
+            "More horizontal space = no text wrapping or overlap",
+            "Reduced vertical spacing to fit all content",
+            "Summary table + 6 employees all on one page",
+            "Professional landscape layout matches typical payroll reports"
+        ]
+    },
     {
         "version": "8.10.2",
         "date": "2025-12-16",
