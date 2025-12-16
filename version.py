@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.9.9"
-__version_name__ = "PDF Data Extraction Fix"
+__version__ = "8.10.0"
+__version_name__ = "Complete PDF Reports"
 __release_date__ = "2025-12-16"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.10.0",
+        "date": "2025-12-16",
+        "changes": [
+            "✅ COMPLETE: PDF now includes BOTH summary table AND detailed breakdown",
+            "Extracts summary table from column H with all employees and GRAND TOTAL",
+            "Extracts detailed employee breakdown with daily hours and pay",
+            "Renders employee cards in 2-column layout for compact display",
+            "Professional formatting with proper alignment and styling",
+            "PDF matches the quality of the original admin report"
+        ]
+    },
     {
         "version": "8.9.9",
         "date": "2025-12-16",
