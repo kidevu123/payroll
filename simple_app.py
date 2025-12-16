@@ -2959,58 +2959,122 @@ def convert_excel_to_pdf(excel_path):
         summary_table.setStyle(TableStyle(table_styles))
         elements.append(summary_table)
         
-        # PART 2: Add "Detailed Breakdown by Employee" section
-        elements.append(Spacer(1, 15))
-        section_header = Paragraph("Detailed Breakdown by Employee", section_header_style)
-        elements.append(section_header)
-        elements.append(Spacer(1, 8))
-        
-        # Find where detailed section starts (look for the section header in column A)
+        # PART 2: Extract "Detailed Breakdown by Employee" section  
+        # Find where detailed section starts
         detailed_start_row = None
-        for row in range(grand_total_row_num or 10, max_row + 1):
+        for row in range((grand_total_row_num or 10), min(max_row + 1, (grand_total_row_num or 10) + 10)):
             cell_val = ws.cell(row=row, column=1).value
             if cell_val and 'Detailed Breakdown' in str(cell_val):
                 detailed_start_row = row + 1
                 break
         
-        if detailed_start_row:
-            # Extract employee detail sections (3 columns layout: 1-6, 8-13, 15-20)
-            col_starts = [1, 8, 15]
-            current_row = detailed_start_row
+        if detailed_start_row and detailed_start_row < max_row:
+            elements.append(Spacer(1, 12))
+            section_header = Paragraph("Detailed Breakdown by Employee", section_header_style)
+            elements.append(section_header)
+            elements.append(Spacer(1, 6))
             
-            # Read employee cards in batches
-            employee_cards = []
-            while current_row < max_row:
-                batch_cards = []
+            # The detailed section has 3 columns: starting at col 1, 8, and 15
+            col_starts = [1, 8, 15]
+            
+            # Extract all employee cards
+            employee_data_list = []
+            current_scan_row = detailed_start_row
+            
+            # Scan through rows looking for employee names (bold cells in columns 1, 8, or 15)
+            while current_scan_row <= max_row:
                 for col_start in col_starts:
-                    # Check if there's an employee name at this position
-                    emp_name = ws.cell(row=current_row, column=col_start).value
-                    if emp_name and isinstance(emp_name, str) and len(emp_name) > 0:
-                        # Extract this employee card
-                        card_text = []
-                        card_text.append(f"<b>{emp_name}</b>")
-                        
-                        # Extract all rows for this employee until we hit the next employee or empty
-                        card_row = current_row + 1
-                        for _ in range(20):  # Max 20 rows per employee
-                            if card_row > max_row:
-                                break
-                            cell_val = ws.cell(row=card_row, column=col_start).value
-                            if cell_val and not (isinstance(cell_val, str) and 'ID:' in cell_val):
-                                # Check if this is the start of next employee
-                                next_emp = ws.cell(row=card_row, column=col_start).value
-                                if next_emp and isinstance(next_emp, str) and ws.cell(row=card_row, column=col_start).font and ws.cell(row=card_row, column=col_start).font.bold:
+                    cell = ws.cell(row=current_scan_row, column=col_start)
+                    # Check if this looks like an employee name (has bold font)
+                    if cell.value and cell.font and cell.font.bold:
+                        emp_name = str(cell.value).strip()
+                        if len(emp_name) > 2 and emp_name != "Detailed Breakdown by Employee":
+                            # Found an employee! Extract their data
+                            emp_dict = {'name': emp_name, 'details': []}
+                            
+                            # Next row has ID and Rate
+                            id_row = current_scan_row + 1
+                            id_cell = ws.cell(row=id_row, column=col_start).value
+                            if id_cell:
+                                emp_dict['id_rate'] = str(id_cell)
+                            
+                            # Skip to table data (Date, In, Out, Hours, Pay)
+                            data_start = id_row + 2  # Skip header row
+                            for data_row in range(data_start, min(data_start + 15, max_row + 1)):
+                                date_val = ws.cell(row=data_row, column=col_start).value
+                                if not date_val:
                                     break
-                            card_row += 1
-                        
-                        # For now, just add employee name
-                        batch_cards.append("<br/>".join(card_text))
+                                if 'Total:' in str(date_val) or 'Rounded Pay:' in str(date_val):
+                                    break
+                                    
+                                # Extract row data
+                                in_val = ws.cell(row=data_row, column=col_start + 1).value
+                                out_val = ws.cell(row=data_row, column=col_start + 2).value
+                                hours_val = ws.cell(row=data_row, column=col_start + 3).value
+                                pay_val = ws.cell(row=data_row, column=col_start + 4).value
+                                
+                                emp_dict['details'].append({
+                                    'date': str(date_val) if date_val else '',
+                                    'in': str(in_val) if in_val else '',
+                                    'out': str(out_val) if out_val else '',
+                                    'hours': f"{hours_val:.2f}" if isinstance(hours_val, (int, float)) else str(hours_val) if hours_val else '',
+                                    'pay': f"${pay_val:.2f}" if isinstance(pay_val, (int, float)) else str(pay_val) if pay_val else ''
+                                })
+                            
+                            if emp_dict['details']:  # Only add if we found data
+                                employee_data_list.append(emp_dict)
                 
-                if batch_cards:
-                    employee_cards.extend(batch_cards)
+                current_scan_row += 1
+            
+            app.logger.info(f"PDF: Extracted {len(employee_data_list)} employee detail cards")
+            
+            # Render employee cards (2 per row to fit on page)
+            for i in range(0, len(employee_data_list), 2):
+                batch = employee_data_list[i:i+2]
                 
-                # Move to next batch
-                current_row += 25  # Approximate rows per employee batch
+                # Create side-by-side tables
+                batch_tables = []
+                for emp_dict in batch:
+                    # Build mini table for this employee
+                    emp_table_data = []
+                    emp_table_data.append([Paragraph(f"<b>{emp_dict['name']}</b>", styles['Normal'])])
+                    emp_table_data.append([Paragraph(f"<font size=7>{emp_dict.get('id_rate', '')}</font>", styles['Normal'])])
+                    emp_table_data.append(['Date', 'In', 'Out', 'Hrs', 'Pay'])
+                    
+                    for detail in emp_dict['details']:
+                        emp_table_data.append([
+                            detail['date'][:5] if len(detail['date']) > 5 else detail['date'],  # Shorten date
+                            detail['in'][:5] if len(detail['in']) > 5 else detail['in'],
+                            detail['out'][:5] if len(detail['out']) > 5 else detail['out'],
+                            detail['hours'],
+                            detail['pay']
+                        ])
+                    
+                    emp_table = Table(emp_table_data, colWidths=[0.7*inch, 0.7*inch, 0.7*inch, 0.5*inch, 0.7*inch])
+                    emp_table.setStyle(TableStyle([
+                        ('FONTSIZE', (0, 0), (-1, -1), 7),
+                        ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e6e6e6')),
+                        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#1e40af')),
+                        ('TEXTCOLOR', (0, 2), (-1, 2), colors.white),
+                        ('GRID', (0, 2), (-1, -1), 0.5, colors.grey),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 2),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ]))
+                    batch_tables.append(emp_table)
+                
+                # Add padding between tables
+                if len(batch_tables) == 2:
+                    batch_tables.insert(1, Spacer(0.2*inch, 1))
+                
+                # Create container table for side-by-side layout
+                container_table = Table([batch_tables], colWidths=[3.4*inch, 0.2*inch, 3.4*inch] if len(batch_tables) == 3 else [3.4*inch])
+                container_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ]))
+                elements.append(container_table)
+                elements.append(Spacer(1, 8))
         
         # Add footer
         elements.append(Spacer(1, 20))
