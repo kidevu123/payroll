@@ -2241,10 +2241,6 @@ def manage_rates():
 """
     
     for emp in employees:
-        # Properly escape JavaScript strings by replacing quotes and backslashes
-        js_safe_id = emp['id'].replace('\\', '\\\\').replace("'", "\\'")
-        js_safe_name = emp['name'].replace('\\', '\\\\').replace("'", "\\'")
-        
         html += f"""
                         <tr id="row-{escape(emp['id'])}">
                             <td><span class="badge badge-primary">{escape(emp['id'])}</span></td>
@@ -2254,22 +2250,22 @@ def manage_rates():
                                 <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
                             </td>
                             <td class="text-right">
-                                <button onclick="editRate('{js_safe_id}')" class="edit-btn btn btn-primary btn-sm">
+                                <button data-action="edit" data-employee-id="{escape(emp['id'])}" class="edit-btn btn btn-primary btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                                     </svg>
                                     Edit
                                 </button>
-                                <button onclick="saveRate('{js_safe_id}')" class="save-btn hidden btn btn-success btn-sm">
+                                <button data-action="save" data-employee-id="{escape(emp['id'])}" class="save-btn hidden btn btn-success btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                     </svg>
                                     Save
                                 </button>
-                                <button onclick="cancelEdit('{js_safe_id}')" class="cancel-btn hidden btn btn-secondary btn-sm">
+                                <button data-action="cancel" data-employee-id="{escape(emp['id'])}" class="cancel-btn hidden btn btn-secondary btn-sm">
                                     Cancel
                                 </button>
-                                <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {js_safe_name} ({js_safe_id})?');">
+                                <form method="post" action="/delete_rate/{escape(emp['id'])}" style="display:inline;" onsubmit="return confirm('Delete rate for {escape(emp['name'])} ({escape(emp['id'])})?');">
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -2323,8 +2319,40 @@ def manage_rates():
     </div>
     
     <script>
-        console.log('=== PAY RATES PAGE SCRIPT LOADED - v8.9.6 - 1765823691 ===');
-        // Direct event listeners for edit/save/cancel buttons
+        console.log('=== PAY RATES PAGE SCRIPT LOADED - v8.13.2 - FIXED ===');
+        
+        // Event delegation for all buttons with data-action
+        document.addEventListener('DOMContentLoaded', function() {{
+            console.log('DOM loaded, setting up event listeners');
+            
+            // Use event delegation on the table body
+            const tableBody = document.querySelector('tbody');
+            if (!tableBody) {{
+                console.error('Table body not found!');
+                return;
+            }}
+            
+            tableBody.addEventListener('click', function(e) {{
+                const button = e.target.closest('button[data-action]');
+                if (!button) return;
+                
+                const action = button.getAttribute('data-action');
+                const employeeId = button.getAttribute('data-employee-id');
+                
+                console.log('Button clicked:', action, 'for employee:', employeeId);
+                
+                if (action === 'edit') {{
+                    editRate(employeeId);
+                }} else if (action === 'save') {{
+                    saveRate(employeeId);
+                }} else if (action === 'cancel') {{
+                    cancelEdit(employeeId);
+                }}
+            }});
+            
+            console.log('Event listeners attached successfully');
+        }});
+        
         function editRate(employeeId) {{
             console.log('editRate called with ID:', employeeId);
             const row = document.getElementById('row-' + employeeId);
@@ -2385,7 +2413,7 @@ def manage_rates():
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Saving...';
             
-            fetch('/update_rate/' + employeeId, {{
+            fetch('/update_rate/' + encodeURIComponent(employeeId), {{
                 method: 'POST',
                 headers: {{'Content-Type': 'application/json'}},
                 body: JSON.stringify({{rate: parseFloat(newRate)}})
