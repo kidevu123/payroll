@@ -2784,7 +2784,8 @@ def create_excel_report(df, filename, creator=None):
 
 def convert_excel_to_pdf(excel_path):
     """
-    Convert an Excel admin report to PDF format with BOTH summary and detailed sections.
+    Convert an Excel admin report to PDF with CUSTOM DESIGNED LAYOUT.
+    Extract raw data and create clean, professional PDF from scratch.
     Returns the PDF as BytesIO object for sending as response.
     """
     try:
@@ -2794,14 +2795,13 @@ def convert_excel_to_pdf(excel_path):
         # Load the Excel file
         wb = load_workbook(excel_path, data_only=True)
         ws = wb.active
-        max_row = ws.max_row
         
-        # Create PDF in memory - LANDSCAPE for better layout
+        # Create PDF in memory - LANDSCAPE
         from reportlab.lib.pagesizes import landscape
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), 
-                              rightMargin=0.5*inch, leftMargin=0.5*inch,
-                              topMargin=0.5*inch, bottomMargin=0.4*inch)
+                              rightMargin=0.4*inch, leftMargin=0.4*inch,
+                              topMargin=0.4*inch, bottomMargin=0.3*inch)
         
         # Container for PDF elements
         elements = []
@@ -2836,20 +2836,15 @@ def convert_excel_to_pdf(excel_path):
             alignment=TA_CENTER
         )
         
-        # Extract title from A1
+        # Extract basic info
         title_text = str(ws['A1'].value) if ws['A1'].value else "Payroll Report"
+        creator_name = str(ws['AA1'].value) if ws['AA1'].value else "Unknown"
+        
+        # Add title
         title = Paragraph(title_text, title_style)
         elements.append(title)
-        
-        # Extract creator info
-        creator_text = ""
-        if ws['A2'].value and 'Processed by' in str(ws['A2'].value):
-            creator_text = str(ws['A2'].value)
-        elif ws['AA1'].value:
-            creator_text = f"Processed by: {ws['AA1'].value}"
-        
-        if creator_text:
-            creator = Paragraph(creator_text, subtitle_style)
+        if creator_name != "Unknown":
+            creator = Paragraph(f"Processed by: {creator_name}", subtitle_style)
             elements.append(creator)
         
         # PART 1: Extract summary table (starts at column H=8, row 3)
