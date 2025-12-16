@@ -7483,11 +7483,12 @@ def confirm_employees():
         pay_rates = load_pay_rates()
         missing_rates = []
         for emp in employees:
-            emp_id = str(emp['id'])
+            emp_id = str(emp['Person ID'])
             if emp_id not in pay_rates:
+                emp_name = f"{emp.get('First Name', '')} {emp.get('Last Name', '')}".strip()
                 missing_rates.append({
                     'id': emp_id,
-                    'name': emp['name']
+                    'name': emp_name or 'Unknown'
                 })
         
         # If there are missing rates, show the rate setup page instead
