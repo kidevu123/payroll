@@ -5666,24 +5666,44 @@ def print_friendly(report_type):
 
             # Extract summary data - this contains all employees
             employee_data = {}  # Track all employees by ID
+            shift_total_rows = []  # Track shift total rows
             if summary_start_col:
                 current_row = 4
                 while True:
                     cell_value = ws.cell(row=current_row, column=summary_start_col).value
-                    if cell_value is None or ws.cell(row=current_row, column=summary_start_col+1).value == "GRAND TOTAL":
+                    name_cell = ws.cell(row=current_row, column=summary_start_col+1).value
+                    
+                    # Check if we hit grand total
+                    if name_cell == "GRAND TOTAL":
+                        break
+                    
+                    # Check if this is a shift total row (contains "Shift Total")
+                    if name_cell and isinstance(name_cell, str) and "Shift Total" in name_cell:
+                        # This is a shift total row
+                        row_data = []
+                        for col in range(summary_start_col, summary_start_col+6):  # 6 columns including shift
+                            row_data.append(ws.cell(row=current_row, column=col).value)
+                        shift_total_rows.append(row_data)
+                        current_row += 1
+                        continue
+                    
+                    # Stop if empty row
+                    if cell_value is None:
                         break
 
-                    # Collect data from summary row
+                    # Collect data from summary row (regular employee)
                     person_id = cell_value
-                    name = ws.cell(row=current_row, column=summary_start_col+1).value
-                    hours = ws.cell(row=current_row, column=summary_start_col+2).value
-                    pay = ws.cell(row=current_row, column=summary_start_col+3).value
-                    rounded_pay = ws.cell(row=current_row, column=summary_start_col+4).value
+                    name = name_cell
+                    shift = ws.cell(row=current_row, column=summary_start_col+2).value
+                    hours = ws.cell(row=current_row, column=summary_start_col+3).value
+                    pay = ws.cell(row=current_row, column=summary_start_col+4).value
+                    rounded_pay = ws.cell(row=current_row, column=summary_start_col+5).value
 
                     # Store the employee summary data for later use
                     employee_data[str(person_id)] = {
                         'id': person_id,
                         'name': name,
+                        'shift': shift,
                         'total_hours': hours,
                         'total_pay': pay,
                         'rounded_pay': rounded_pay,
@@ -5693,7 +5713,7 @@ def print_friendly(report_type):
 
                     # Add to the summary data list as well
                     row_data = []
-                    for col in range(summary_start_col, summary_start_col+5):
+                    for col in range(summary_start_col, summary_start_col+6):  # 6 columns including shift
                         row_data.append(ws.cell(row=current_row, column=col).value)
 
                     summary_data.append(row_data)
@@ -5702,7 +5722,7 @@ def print_friendly(report_type):
                 # Check for grand total row
                 if ws.cell(row=current_row, column=summary_start_col+1).value == "GRAND TOTAL":
                     grand_total_row = []
-                    for col in range(summary_start_col, summary_start_col+5):
+                    for col in range(summary_start_col, summary_start_col+6):  # 6 columns including shift
                         grand_total_row.append(ws.cell(row=current_row, column=col).value)
 
             # Find all employee breakdown sections by looking for employee names and collecting their details
@@ -5853,11 +5873,29 @@ def print_friendly(report_type):
             for row in summary_data:
                 html += "<tr>"
                 for i, cell in enumerate(row):
-                    # Format monetary values
+                    # Format monetary values (columns 3,4,5 are hours/pay/rounded pay)
                     if i >= 3 and isinstance(cell, (int, float)):
                         html += f'<td class="text-right">${cell:.2f}</td>'
                     else:
                         html += f"<td>{cell}</td>"
+                html += "</tr>"
+            
+            # Add shift total rows if found (with italics and bold)
+            for shift_row in shift_total_rows:
+                html += '<tr style="font-style:italic;">'
+                for i, cell in enumerate(shift_row):
+                    if i == 0:
+                        html += "<td></td>"  # Empty first column
+                    elif i == 1:
+                        # Shift total label
+                        html += f"<td><strong><em>{cell}</em></strong></td>"
+                    elif i == 2:
+                        html += "<td></td>"  # Empty shift column for totals
+                    # Format monetary values (columns 3,4,5)
+                    elif i >= 3 and isinstance(cell, (int, float)):
+                        html += f'<td class="text-right"><strong><em>${cell:.2f}</em></strong></td>'
+                    else:
+                        html += f"<td><strong><em>{cell}</em></strong></td>"
                 html += "</tr>"
 
             # Add grand total row if found
@@ -5868,7 +5906,7 @@ def print_friendly(report_type):
                         html += "<td></td>"
                     elif i == 1:
                         html += f"<td><strong>{cell}</strong></td>"
-                    # Format monetary values
+                    # Format monetary values (columns 3,4,5)
                     elif i >= 3 and isinstance(cell, (int, float)):
                         html += f'<td class="text-right"><strong>${cell:.2f}</strong></td>'
                     else:
