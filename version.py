@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.7"
-__version_name__ = "Day/Night Shift - Fixed and Working"
+__version__ = "8.17.8"
+__version_name__ = "PDF Rounded Total Fix"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.8",
+        "date": "2026-01-10",
+        "changes": [
+            "🐛 CRITICAL PDF BUGFIX: Rounded Pay now in PDF reports!",
+            "PDF was missing 6th column (Rounded Pay) - FIXED",
+            "PDF now extracts all 6 columns: ID, Name, Shift, Hours, Pay, Rounded Pay",
+            "Shift total rows (Day/Night/Both) now included in PDF",
+            "Shift totals styled with italic+bold formatting",
+            "Column widths adjusted for 6-column layout",
+            "Column index references updated for correct formatting",
+            "PDF reports now match Excel and HTML reports exactly",
+            "Zoho Books now receives correct rounded totals"
+        ]
+    },
     {
         "version": "8.17.7",
         "date": "2026-01-10",

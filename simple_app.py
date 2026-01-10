@@ -3233,9 +3233,9 @@ def convert_excel_to_pdf(excel_path):
         summary_col_start = 8
         summary_data = []
         
-        # Headers are in row 3
+        # Headers are in row 3 - NOW INCLUDING ROUNDED PAY (6 columns)
         header_row = []
-        for col in range(summary_col_start, summary_col_start + 5):
+        for col in range(summary_col_start, summary_col_start + 6):
             val = ws.cell(row=3, column=col).value
             header_row.append(str(val) if val else "")
         summary_data.append(header_row)
@@ -3252,17 +3252,17 @@ def convert_excel_to_pdf(excel_path):
             person_id = ws.cell(row=row, column=summary_col_start).value
             if person_id:
                 row_data = []
-                for col in range(summary_col_start, summary_col_start + 5):
+                for col in range(summary_col_start, summary_col_start + 6):
                     cell = ws.cell(row=row, column=col)
                     if cell.value is not None:
                         # Format appropriately
                         col_idx = col - summary_col_start
-                        if col_idx in [3, 4]:  # Pay columns
+                        if col_idx in [4, 5]:  # Pay columns (Total Pay and Rounded Pay)
                             if isinstance(cell.value, (int, float)):
                                 row_data.append(f"${cell.value:,.2f}")
                             else:
                                 row_data.append(str(cell.value))
-                        elif col_idx == 2:  # Hours
+                        elif col_idx == 3:  # Hours
                             if isinstance(cell.value, (int, float)):
                                 row_data.append(f"{cell.value:.2f}")
                             else:
@@ -3273,19 +3273,54 @@ def convert_excel_to_pdf(excel_path):
                         row_data.append("")
                 summary_data.append(row_data)
         
+        # Add shift total rows (Day Shift Total, Night Shift Total, Both Shifts Total)
+        shift_total_row_indices = []
+        if grand_total_row_num:
+            # Search backward from grand_total_row_num to find shift total rows
+            for row in range(grand_total_row_num - 1, 3, -1):
+                name_cell = ws.cell(row=row, column=summary_col_start + 1).value
+                if name_cell and ('Shift Total' in str(name_cell) or 'Shifts Total' in str(name_cell)):
+                    shift_total_row_indices.append(row)
+            
+            # Reverse to get them in correct order (Day -> Night -> Both)
+            shift_total_row_indices.reverse()
+            
+            # Add shift total rows
+            for shift_row_num in shift_total_row_indices:
+                shift_row = []
+                for col in range(summary_col_start, summary_col_start + 6):
+                    cell = ws.cell(row=shift_row_num, column=col)
+                    if cell.value is not None:
+                        col_idx = col - summary_col_start
+                        if col_idx in [4, 5]:  # Pay columns (Total Pay and Rounded Pay)
+                            if isinstance(cell.value, (int, float)):
+                                shift_row.append(f"${cell.value:,.2f}")
+                            else:
+                                shift_row.append(str(cell.value))
+                        elif col_idx == 3:  # Hours
+                            if isinstance(cell.value, (int, float)):
+                                shift_row.append(f"{cell.value:.2f}")
+                            else:
+                                shift_row.append(str(cell.value))
+                        else:
+                            shift_row.append(str(cell.value))
+                    else:
+                        shift_row.append("")
+                summary_data.append(shift_row)
+        
         # Add GRAND TOTAL row
         if grand_total_row_num:
             grand_row = []
-            for col in range(summary_col_start, summary_col_start + 5):
+            for col in range(summary_col_start, summary_col_start + 6):
                 cell = ws.cell(row=grand_total_row_num, column=col)
                 if cell.value is not None:
                     col_idx = col - summary_col_start
-                    if col_idx in [3, 4]:  # Pay columns
+                    if col_idx in [4, 5]:  # Pay columns (Total Pay and Rounded Pay)
                         if isinstance(cell.value, (int, float)):
                             grand_row.append(f"${cell.value:,.2f}")
                         else:
                             grand_row.append(str(cell.value))
-                    elif col_idx == 2:  # Hours
+                    elif col_idx == 3:  # Hours
                         if isinstance(cell.value, (int, float)):
                             grand_row.append(f"{cell.value:.2f}")
                         else:
@@ -3298,8 +3333,8 @@ def convert_excel_to_pdf(excel_path):
         
         app.logger.info(f"PDF: Summary table has {len(summary_data)} rows (including header)")
         
-        # Create summary table - ULTRA COMPACT
-        col_widths = [0.4*inch, 1.5*inch, 0.7*inch, 0.8*inch, 0.8*inch]
+        # Create summary table - ULTRA COMPACT (6 columns now)
+        col_widths = [0.4*inch, 1.3*inch, 0.6*inch, 0.7*inch, 0.8*inch, 0.8*inch]
         summary_table = Table(summary_data, colWidths=col_widths)
         
         # Style summary table
@@ -3326,9 +3361,19 @@ def convert_excel_to_pdf(excel_path):
             ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f9fa')]),
         ]
         
-        # Bold the last row (GRAND TOTAL)
+        # Style shift total rows (italic + bold) - these are the rows before the last row
         if len(summary_data) > 1:
             last_row_idx = len(summary_data) - 1
+            # Shift total rows are the ones before GRAND TOTAL that contain "Shift Total"
+            num_shift_rows = len(shift_total_row_indices) if grand_total_row_num else 0
+            for i in range(num_shift_rows):
+                shift_row_idx = last_row_idx - num_shift_rows + i
+                table_styles.extend([
+                    ('FONTNAME', (0, shift_row_idx), (-1, shift_row_idx), 'Helvetica-BoldOblique'),
+                    ('BACKGROUND', (0, shift_row_idx), (-1, shift_row_idx), colors.HexColor('#fffacd')),
+                ])
+            
+            # Bold the last row (GRAND TOTAL)
             table_styles.extend([
                 ('FONTNAME', (0, last_row_idx), (-1, last_row_idx), 'Helvetica-Bold'),
                 ('BACKGROUND', (0, last_row_idx), (-1, last_row_idx), colors.HexColor('#e6e6fa')),
