@@ -7795,7 +7795,6 @@ def confirm_employees():
         
         df = pd.read_csv(file_path)
         employees = get_unique_employees_from_df(df)
-        employees_json = json.dumps(employees)
         
         # Check for missing pay rates and add shift info to employees
         pay_rates = load_pay_rates()
@@ -7811,6 +7810,9 @@ def confirm_employees():
             else:
                 # Add shift type to employee data
                 emp['shift_type'] = get_employee_shift_type(pay_rates, emp_id)
+        
+        # Create JSON AFTER adding shift types
+        employees_json = json.dumps(employees)
         
         # If there are missing rates, show the rate setup page instead
         if missing_rates:
