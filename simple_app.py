@@ -3994,6 +3994,23 @@ def create_consolidated_admin_report(df, filename, creator=None):
     grand_total_hours = weekly_totals['Total_Hours'].sum().round(2)
     grand_total_pay = weekly_totals['Weekly_Total'].sum().round(2)
     grand_total_rounded = weekly_totals['Rounded_Weekly'].sum()
+    
+    # Calculate shift totals
+    day_shift_data = weekly_totals[weekly_totals['Shift_Type'] == 'day']
+    night_shift_data = weekly_totals[weekly_totals['Shift_Type'] == 'night']
+    both_shift_data = weekly_totals[weekly_totals['Shift_Type'] == 'both']
+    
+    day_hours = day_shift_data['Total_Hours'].sum().round(2) if len(day_shift_data) > 0 else 0
+    day_pay = day_shift_data['Weekly_Total'].sum().round(2) if len(day_shift_data) > 0 else 0
+    day_rounded = day_shift_data['Rounded_Weekly'].sum() if len(day_shift_data) > 0 else 0
+    
+    night_hours = night_shift_data['Total_Hours'].sum().round(2) if len(night_shift_data) > 0 else 0
+    night_pay = night_shift_data['Weekly_Total'].sum().round(2) if len(night_shift_data) > 0 else 0
+    night_rounded = night_shift_data['Rounded_Weekly'].sum() if len(night_shift_data) > 0 else 0
+    
+    both_hours = both_shift_data['Total_Hours'].sum().round(2) if len(both_shift_data) > 0 else 0
+    both_pay = both_shift_data['Weekly_Total'].sum().round(2) if len(both_shift_data) > 0 else 0
+    both_rounded = both_shift_data['Rounded_Weekly'].sum() if len(both_shift_data) > 0 else 0
 
     # Define minimal borders
     header_border = Border(bottom=Side(style='thin', color='000000'))
@@ -4014,17 +4031,61 @@ def create_consolidated_admin_report(df, filename, creator=None):
 
     # Add summary data rows
     for i, (_, row) in enumerate(weekly_totals.iterrows(), 4):
+        # Add emoji based on shift type
+        shift_emoji = "☀️" if row['Shift_Type'] == 'day' else ("🌙" if row['Shift_Type'] == 'night' else "☀️🌙")
+        
         ws.cell(row=i, column=summary_col_start).value = row['Person ID']
-        ws.cell(row=i, column=summary_col_start+1).value = f"{row['First_Name']} {row['Last_Name']}"
+        ws.cell(row=i, column=summary_col_start+1).value = f"{shift_emoji} {row['First_Name']} {row['Last_Name']}"
         ws.cell(row=i, column=summary_col_start+2).value = row['Shift_Type'].capitalize()
         ws.cell(row=i, column=summary_col_start+3).value = round(row['Total_Hours'], 2)
         ws.cell(row=i, column=summary_col_start+4).value = round(row['Weekly_Total'], 2)
         ws.cell(row=i, column=summary_col_start+5).value = row['Rounded_Weekly']
 
-    # Add grand total row after employee rows with a light top border
+    # Add shift subtotal rows before grand total
+    shift_total_start_row = ws.max_row + 1
+    
+    # Add day shift total if there are day shift employees
+    if len(day_shift_data) > 0:
+        day_row = ws.max_row + 1
+        for col in range(summary_col_start, summary_col_start+6):
+            ws.cell(row=day_row, column=col).border = top_border
+        ws.cell(row=day_row, column=summary_col_start+1).value = "☀️ Day Shift Total"
+        ws.cell(row=day_row, column=summary_col_start+1).font = Font(bold=True, italic=True)
+        ws.cell(row=day_row, column=summary_col_start+3).value = day_hours
+        ws.cell(row=day_row, column=summary_col_start+3).font = Font(bold=True, italic=True)
+        ws.cell(row=day_row, column=summary_col_start+4).value = day_pay
+        ws.cell(row=day_row, column=summary_col_start+4).font = Font(bold=True, italic=True)
+        ws.cell(row=day_row, column=summary_col_start+5).value = day_rounded
+        ws.cell(row=day_row, column=summary_col_start+5).font = Font(bold=True, italic=True)
+    
+    # Add night shift total if there are night shift employees
+    if len(night_shift_data) > 0:
+        night_row = ws.max_row + 1
+        ws.cell(row=night_row, column=summary_col_start+1).value = "🌙 Night Shift Total"
+        ws.cell(row=night_row, column=summary_col_start+1).font = Font(bold=True, italic=True)
+        ws.cell(row=night_row, column=summary_col_start+3).value = night_hours
+        ws.cell(row=night_row, column=summary_col_start+3).font = Font(bold=True, italic=True)
+        ws.cell(row=night_row, column=summary_col_start+4).value = night_pay
+        ws.cell(row=night_row, column=summary_col_start+4).font = Font(bold=True, italic=True)
+        ws.cell(row=night_row, column=summary_col_start+5).value = night_rounded
+        ws.cell(row=night_row, column=summary_col_start+5).font = Font(bold=True, italic=True)
+    
+    # Add both shift total if there are both shift employees
+    if len(both_shift_data) > 0:
+        both_row = ws.max_row + 1
+        ws.cell(row=both_row, column=summary_col_start+1).value = "☀️🌙 Both Shifts Total"
+        ws.cell(row=both_row, column=summary_col_start+1).font = Font(bold=True, italic=True)
+        ws.cell(row=both_row, column=summary_col_start+3).value = both_hours
+        ws.cell(row=both_row, column=summary_col_start+3).font = Font(bold=True, italic=True)
+        ws.cell(row=both_row, column=summary_col_start+4).value = both_pay
+        ws.cell(row=both_row, column=summary_col_start+4).font = Font(bold=True, italic=True)
+        ws.cell(row=both_row, column=summary_col_start+5).value = both_rounded
+        ws.cell(row=both_row, column=summary_col_start+5).font = Font(bold=True, italic=True)
+    
+    # Add grand total row after shift totals with a stronger top border
     grand_total_row = ws.max_row + 1
     for col in range(summary_col_start, summary_col_start+6):
-        ws.cell(row=grand_total_row, column=col).border = top_border
+        ws.cell(row=grand_total_row, column=col).border = Border(top=Side(style='thin', color='000000'))
 
     ws.cell(row=grand_total_row, column=summary_col_start).value = ""
     ws.cell(row=grand_total_row, column=summary_col_start+1).value = "GRAND TOTAL"
@@ -4071,9 +4132,12 @@ def create_consolidated_admin_report(df, filename, creator=None):
                 col_start = col3_start
 
             emp_id = emp_data['Person ID']
-            emp_name = f"{emp_data['First_Name']} {emp_data['Last_Name']}"
+            shift_type_raw = emp_data['Shift_Type']
+            # Add emoji based on shift type
+            shift_emoji = "☀️" if shift_type_raw == 'day' else ("🌙" if shift_type_raw == 'night' else "☀️🌙")
+            emp_name = f"{shift_emoji} {emp_data['First_Name']} {emp_data['Last_Name']}"
             rate = emp_data['Rate']
-            shift_type = emp_data['Shift_Type'].capitalize()
+            shift_type = shift_type_raw.capitalize()
 
             # Current row for this employee section
             emp_row = row_start

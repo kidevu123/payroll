@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.1"
-__version_name__ = "Day/Night Shift Support + Filtering"
+__version__ = "8.17.2"
+__version_name__ = "Day/Night Shift Support + Filtering + Report Totals"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.2",
+        "date": "2026-01-10",
+        "changes": [
+            "✨ NEW: Shift Totals in Reports!",
+            "Reports now show separate totals for Day Shift vs Night Shift",
+            "☀️ emoji for day shift employees, 🌙 for night shift",
+            "Shift subtotals displayed before Grand Total",
+            "Emojis appear next to employee names in summary and detailed sections",
+            "Zero changes to report layout - only additions",
+            "Easy visual identification of shift type throughout report"
+        ]
+    },
     {
         "version": "8.17.1",
         "date": "2026-01-10",
