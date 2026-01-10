@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.5"
-__version_name__ = "Day/Night Shift - Fully Working"
+__version__ = "8.17.6"
+__version_name__ = "Day/Night Shift - Complete with Print View"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.6",
+        "date": "2026-01-10",
+        "changes": [
+            "✨ FEATURE: Shift totals now in HTML print view!",
+            "Print view now shows ☀️ Day Shift Total and 🌙 Night Shift Total",
+            "Totals appear between employee list and GRAND TOTAL",
+            "Displayed in italics and bold for easy identification",
+            "Perfect for printing and sending to accounting",
+            "Browser preview now matches Excel file structure"
+        ]
+    },
     {
         "version": "8.17.5",
         "date": "2026-01-10",
