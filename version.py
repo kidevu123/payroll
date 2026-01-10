@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.6"
-__version_name__ = "Day/Night Shift - Complete with Print View"
+__version__ = "8.17.7"
+__version_name__ = "Day/Night Shift - Fixed and Working"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.7",
+        "date": "2026-01-10",
+        "changes": [
+            "🐛 CRITICAL BUGFIX: Fixed column alignment in HTML report!",
+            "Shift totals were showing in completely wrong columns - FIXED",
+            "Hours column now shows values without dollar sign (correct!)",
+            "Pay columns properly formatted with dollar signs",
+            "Rounded Pay shows whole numbers only",
+            "All 6 columns properly aligned (Person ID, Name, Shift, Hours, Pay, Rounded)",
+            "Added light background to shift total rows",
+            "Stronger border above GRAND TOTAL for clarity"
+        ]
+    },
     {
         "version": "8.17.6",
         "date": "2026-01-10",
