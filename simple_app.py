@@ -3576,7 +3576,8 @@ def create_payslips(df, filename, creator=None):
 
     # Process data
     df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+    df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+    df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
 
     # Calculate totals per employee
@@ -3585,7 +3586,8 @@ def create_payslips(df, filename, creator=None):
         Pay=('Daily Pay', 'sum'),
         First=('First Name', 'first'),
         Last=('Last Name', 'first'),
-        Rate=('Hourly Rate', 'first')
+        Rate=('Hourly Rate', 'first'),
+        Shift_Type=('Shift Type', 'first')
     ).reset_index()
 
     # Add payslips for each employee
@@ -3689,7 +3691,8 @@ def create_combined_report(df, filename):
 
     # Process data
     df['Daily Hours'] = df['Total Work Time(h)'].apply(parse_work_hours)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+    df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+    df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
 
     # Calculate weekly totals per employee
@@ -3698,7 +3701,8 @@ def create_combined_report(df, filename):
         Weekly_Total=('Daily Pay', 'sum'),
         First_Name=('First Name', 'first'),
         Last_Name=('Last Name', 'first'),
-        Rate=('Hourly Rate', 'first')
+        Rate=('Hourly Rate', 'first'),
+        Shift_Type=('Shift Type', 'first')
     ).reset_index()
 
     # Apply rounding
@@ -4304,7 +4308,8 @@ def create_consolidated_payslips(df, filename, creator=None):
 
     # Process data
     df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+    df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+    df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
 
     # Calculate weekly totals per employee
@@ -4313,7 +4318,8 @@ def create_consolidated_payslips(df, filename, creator=None):
         Weekly_Total=('Daily Pay', 'sum'),
         First_Name=('First Name', 'first'),
         Last_Name=('Last Name', 'first'),
-        Rate=('Hourly Rate', 'first')
+        Rate=('Hourly Rate', 'first'),
+        Shift_Type=('Shift Type', 'first')
     ).reset_index()
 
     # Apply rounding
