@@ -72,4 +72,5 @@ instance/
 # User data and sessions
 users.json
 pay_rates.json
-session_data/
+session_data/pay_rates.json
+users.json
