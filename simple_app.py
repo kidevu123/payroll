@@ -2450,14 +2450,24 @@ def manage_rates():
     
     <div class="container">
         <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--spacing-3)">
+                <h2 class="card-title" style="margin:0">
                     <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
                     </svg>
                     Current Pay Rates
                 </h2>
+                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+                    <label for="shift-filter" style="font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm)">Filter by Shift:</label>
+                    <select id="shift-filter" class="form-input" style="width:auto;min-width:150px" onchange="filterByShift()">
+                        <option value="all">All Shifts</option>
+                        <option value="day">Day Shift Only</option>
+                        <option value="night">Night Shift Only</option>
+                        <option value="both">Both Shifts Only</option>
+                    </select>
+                    <span id="filter-count" style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-left:var(--spacing-2)"></span>
+                </div>
             </div>
             
             <div class="table-wrapper">
@@ -2699,6 +2709,48 @@ def manage_rates():
         } else {
             console.error('Table body not found!');
         }
+        
+        // Shift Filter Function
+        function filterByShift() {
+            const filterValue = document.getElementById('shift-filter').value;
+            const rows = document.querySelectorAll('tbody tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const shiftBadge = row.querySelector('.shift-display .badge');
+                if (!shiftBadge) {
+                    row.style.display = '';
+                    visibleCount++;
+                    return;
+                }
+                
+                const shiftText = shiftBadge.textContent.trim().toLowerCase();
+                
+                if (filterValue === 'all') {
+                    row.style.display = '';
+                    visibleCount++;
+                } else if (shiftText === filterValue) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Update counter
+            const filterCount = document.getElementById('filter-count');
+            if (filterValue === 'all') {
+                filterCount.textContent = `Showing all ${visibleCount} employees`;
+            } else {
+                const shiftName = filterValue.charAt(0).toUpperCase() + filterValue.slice(1);
+                filterCount.textContent = `Showing ${visibleCount} ${shiftName} shift employee${visibleCount !== 1 ? 's' : ''}`;
+            }
+        }
+        
+        // Initialize filter count on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            filterByShift();
+        });
     </script>"""
     
     html += javascript + """
@@ -7681,7 +7733,7 @@ def confirm_employees():
         employees = get_unique_employees_from_df(df)
         employees_json = json.dumps(employees)
         
-        # Check for missing pay rates
+        # Check for missing pay rates and add shift info to employees
         pay_rates = load_pay_rates()
         missing_rates = []
         for emp in employees:
@@ -7692,6 +7744,9 @@ def confirm_employees():
                     'id': emp_id,
                     'name': emp_name or 'Unknown'
                 })
+            else:
+                # Add shift type to employee data
+                emp['shift_type'] = get_employee_shift_type(pay_rates, emp_id)
         
         # If there are missing rates, show the rate setup page instead
         if missing_rates:
@@ -7753,6 +7808,22 @@ def confirm_employees():
                 <h2 class="card-title">Select Employees to Include</h2>
             </div>
             
+            <div style="padding:var(--spacing-3);background:var(--color-blue-50);border-bottom:1px solid var(--color-gray-200);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--spacing-3)">
+                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+                    <label for="shift-filter-confirm" style="font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm)">Filter by Shift:</label>
+                    <select id="shift-filter-confirm" class="form-input" style="width:auto;min-width:150px" onchange="filterEmployeesByShift()">
+                        <option value="all">All Shifts</option>
+                        <option value="day">Day Shift Only</option>
+                        <option value="night">Night Shift Only</option>
+                        <option value="both">Both Shifts Only</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:var(--spacing-2)">
+                    <button onclick="selectAllVisible()" class="btn btn-sm btn-secondary">Select All Visible</button>
+                    <button onclick="deselectAllVisible()" class="btn btn-sm btn-secondary">Deselect All Visible</button>
+                </div>
+            </div>
+            
             <div id="employee-list"></div>
             
             <div style="margin-top:var(--spacing-4);display:flex;gap:var(--spacing-3);justify-content:flex-end">
@@ -7771,10 +7842,23 @@ def confirm_employees():
         const employees = {employees_json};
         function populateEmployees() {{
             const list = document.getElementById('employee-list');
+            list.innerHTML = '';
             employees.forEach(emp => {{
                 const div = document.createElement('div');
                 div.className = 'employee-item';
-                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> <strong>' + escape(emp['First Name'] + ' ' + emp['Last Name']) + '</strong> <span style="color:var(--color-gray-600);font-size:var(--font-size-sm)">(ID: ' + escape(emp['Person ID']) + ')</span>';
+                div.setAttribute('data-shift', emp.shift_type || 'day');
+                
+                // Determine badge color based on shift
+                let badgeClass = 'badge-secondary';
+                if (emp.shift_type === 'night') {{
+                    badgeClass = 'badge-warning';
+                }} else if (emp.shift_type === 'both') {{
+                    badgeClass = 'badge-info';
+                }}
+                
+                const shiftBadge = '<span class="badge ' + badgeClass + '" style="margin-left:var(--spacing-2)">' + escape((emp.shift_type || 'day').charAt(0).toUpperCase() + (emp.shift_type || 'day').slice(1)) + '</span>';
+                
+                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> <strong>' + escape(emp['First Name'] + ' ' + emp['Last Name']) + '</strong> <span style="color:var(--color-gray-600);font-size:var(--font-size-sm)">(ID: ' + escape(emp['Person ID']) + ')</span>' + shiftBadge;
                 list.appendChild(div);
             }});
         }}
@@ -7782,6 +7866,46 @@ def confirm_employees():
             const div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        }}
+        
+        function filterEmployeesByShift() {{
+            const filterValue = document.getElementById('shift-filter-confirm').value;
+            const items = document.querySelectorAll('.employee-item');
+            let visibleCount = 0;
+            
+            items.forEach(item => {{
+                const shiftType = item.getAttribute('data-shift') || 'day';
+                
+                if (filterValue === 'all') {{
+                    item.style.display = 'flex';
+                    visibleCount++;
+                }} else if (shiftType === filterValue) {{
+                    item.style.display = 'flex';
+                    visibleCount++;
+                }} else {{
+                    item.style.display = 'none';
+                }}
+            }});
+        }}
+        
+        function selectAllVisible() {{
+            const items = document.querySelectorAll('.employee-item');
+            items.forEach(item => {{
+                if (item.style.display !== 'none') {{
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    if (checkbox) checkbox.checked = true;
+                }}
+            }});
+        }}
+        
+        function deselectAllVisible() {{
+            const items = document.querySelectorAll('.employee-item');
+            items.forEach(item => {{
+                if (item.style.display !== 'none') {{
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    if (checkbox) checkbox.checked = false;
+                }}
+            }});
         }}
         function processPayroll(button) {{
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');

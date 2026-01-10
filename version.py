@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.0"
-__version_name__ = "Day/Night Shift Support"
+__version__ = "8.17.1"
+__version_name__ = "Day/Night Shift Support + Filtering"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.1",
+        "date": "2026-01-10",
+        "changes": [
+            "✨ NEW: Shift Filtering!",
+            "Pay Rates page: Filter dropdown to show Day/Night/Both shift employees",
+            "Real-time counter shows how many employees match filter",
+            "Employee Confirmation page: Filter employees by shift before processing",
+            "Quick select buttons: 'Select All Visible' and 'Deselect All Visible'",
+            "Shift badges shown on employee confirmation (color-coded)",
+            "100% client-side filtering - no impact on existing functionality"
+        ]
+    },
     {
         "version": "8.17.0",
         "date": "2026-01-10",
