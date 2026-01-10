@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.4"
-__version_name__ = "Day/Night Shift - Visually Enhanced"
+__version__ = "8.17.5"
+__version_name__ = "Day/Night Shift - Fully Working"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.5",
+        "date": "2026-01-10",
+        "changes": [
+            "🐛 CRITICAL BUGFIX: Payroll processing now works!",
+            "Fixed TypeError: unsupported operand type(s) for *: 'float' and 'dict'",
+            "Updated all report generation functions to use get_employee_rate() helper",
+            "Fixed create_payslips, create_excel_report, and create_combined_report",
+            "Added Shift_Type to all dataframe aggregations",
+            "All payroll processing now compatible with new rate structure"
+        ]
+    },
     {
         "version": "8.17.4",
         "date": "2026-01-10",
