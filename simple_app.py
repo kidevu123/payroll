@@ -7914,15 +7914,26 @@ def confirm_employees():
                 div.className = 'employee-item';
                 div.setAttribute('data-shift', emp.shift_type || 'day');
                 
-                // Determine badge color based on shift
+                // Determine badge style and emoji based on shift
                 let badgeClass = 'badge-secondary';
+                let shiftEmoji = '☀️';
+                let shiftLabel = 'Day Shift';
+                
                 if (emp.shift_type === 'night') {{
                     badgeClass = 'badge-warning';
+                    shiftEmoji = '🌙';
+                    shiftLabel = 'Night Shift';
                 }} else if (emp.shift_type === 'both') {{
                     badgeClass = 'badge-info';
+                    shiftEmoji = '☀️🌙';
+                    shiftLabel = 'Both Shifts';
+                }} else {{
+                    badgeClass = 'badge-secondary';
+                    shiftEmoji = '☀️';
+                    shiftLabel = 'Day Shift';
                 }}
                 
-                const shiftBadge = '<span class="badge ' + badgeClass + '" style="margin-left:var(--spacing-2)">' + escape((emp.shift_type || 'day').charAt(0).toUpperCase() + (emp.shift_type || 'day').slice(1)) + '</span>';
+                const shiftBadge = '<span class="badge ' + badgeClass + '" style="margin-left:var(--spacing-2);font-size:var(--font-size-sm)">' + shiftEmoji + ' ' + shiftLabel + '</span>';
                 
                 div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> <strong>' + escape(emp['First Name'] + ' ' + emp['Last Name']) + '</strong> <span style="color:var(--color-gray-600);font-size:var(--font-size-sm)">(ID: ' + escape(emp['Person ID']) + ')</span>' + shiftBadge;
                 list.appendChild(div);
