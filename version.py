@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.3"
-__version_name__ = "Day/Night Shift - Complete with Bugfix"
+__version__ = "8.17.4"
+__version_name__ = "Day/Night Shift - Visually Enhanced"
 __release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.4",
+        "date": "2026-01-10",
+        "changes": [
+            "🎨 VISUAL: Beautiful shift badges with emojis!",
+            "☀️ Day Shift - now shows with sun emoji",
+            "🌙 Night Shift - now shows with moon emoji",
+            "☀️🌙 Both Shifts - shows both emojis",
+            "Changed from 'Day'/'Night' to 'Day Shift'/'Night Shift'",
+            "Much more visually pleasing and easier to identify"
+        ]
+    },
     {
         "version": "8.17.3",
         "date": "2026-01-10",
