@@ -5657,8 +5657,8 @@ def print_friendly(report_type):
                     cell_value = ws.cell(row=row, column=col).value
                     if cell_value == "Person ID":
                         summary_start_col = col
-                        # Extract headers
-                        for h_col in range(col, col+5):
+                        # Extract headers (6 columns: Person ID, Name, Shift, Hours, Pay, Rounded)
+                        for h_col in range(col, col+6):
                             summary_headers.append(ws.cell(row=row, column=h_col).value)
                         break
                 if summary_start_col:
@@ -5873,42 +5873,97 @@ def print_friendly(report_type):
             for row in summary_data:
                 html += "<tr>"
                 for i, cell in enumerate(row):
-                    # Format monetary values (columns 3,4,5 are hours/pay/rounded pay)
-                    if i >= 3 and isinstance(cell, (int, float)):
-                        html += f'<td class="text-right">${cell:.2f}</td>'
+                    if i == 0 or i == 1 or i == 2:
+                        # Person ID, Employee Name, Shift - left aligned
+                        html += f"<td>{cell}</td>"
+                    elif i == 3:
+                        # Total Hours - right aligned, no dollar sign
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right">{cell:.2f}</td>'
+                        else:
+                            html += f'<td class="text-right">{cell}</td>'
+                    elif i == 4:
+                        # Total Pay - right aligned, with dollar sign
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right">${cell:.2f}</td>'
+                        else:
+                            html += f'<td class="text-right">{cell}</td>'
+                    elif i == 5:
+                        # Rounded Pay - right aligned, with dollar sign, no decimals
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right">${cell:.0f}</td>'
+                        else:
+                            html += f'<td class="text-right">{cell}</td>'
                     else:
                         html += f"<td>{cell}</td>"
                 html += "</tr>"
             
             # Add shift total rows if found (with italics and bold)
             for shift_row in shift_total_rows:
-                html += '<tr style="font-style:italic;">'
+                html += '<tr style="font-style:italic;background-color:#f9f9f9;">'
                 for i, cell in enumerate(shift_row):
                     if i == 0:
-                        html += "<td></td>"  # Empty first column
+                        # Person ID column - empty for totals
+                        html += "<td></td>"
                     elif i == 1:
-                        # Shift total label
+                        # Employee Name column - has "Day Shift Total" or "Night Shift Total"
                         html += f"<td><strong><em>{cell}</em></strong></td>"
                     elif i == 2:
-                        html += "<td></td>"  # Empty shift column for totals
-                    # Format monetary values (columns 3,4,5)
-                    elif i >= 3 and isinstance(cell, (int, float)):
-                        html += f'<td class="text-right"><strong><em>${cell:.2f}</em></strong></td>'
+                        # Shift column - empty for totals
+                        html += "<td></td>"
+                    elif i == 3:
+                        # Total Hours column
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong><em>{cell:.2f}</em></strong></td>'
+                        else:
+                            html += f"<td class='text-right'><strong><em>{cell}</em></strong></td>"
+                    elif i == 4:
+                        # Total Pay column
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong><em>${cell:.2f}</em></strong></td>'
+                        else:
+                            html += f"<td class='text-right'><strong><em>{cell}</em></strong></td>"
+                    elif i == 5:
+                        # Rounded Pay column
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong><em>${cell:.0f}</em></strong></td>'
+                        else:
+                            html += f"<td class='text-right'><strong><em>{cell}</em></strong></td>"
                     else:
-                        html += f"<td><strong><em>{cell}</em></strong></td>"
+                        html += f"<td>{cell}</td>"
                 html += "</tr>"
 
             # Add grand total row if found
             if grand_total_row:
-                html += '<tr class="total-row">'
+                html += '<tr class="total-row" style="border-top:2px solid #333;">'
                 for i, cell in enumerate(grand_total_row):
                     if i == 0:
+                        # Person ID column - empty
                         html += "<td></td>"
                     elif i == 1:
+                        # Employee Name column - "GRAND TOTAL"
                         html += f"<td><strong>{cell}</strong></td>"
-                    # Format monetary values (columns 3,4,5)
-                    elif i >= 3 and isinstance(cell, (int, float)):
-                        html += f'<td class="text-right"><strong>${cell:.2f}</strong></td>'
+                    elif i == 2:
+                        # Shift column - empty
+                        html += "<td></td>"
+                    elif i == 3:
+                        # Total Hours - right aligned, no dollar sign
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong>{cell:.2f}</strong></td>'
+                        else:
+                            html += f'<td class="text-right"><strong>{cell}</strong></td>'
+                    elif i == 4:
+                        # Total Pay - right aligned, with dollar sign
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong>${cell:.2f}</strong></td>'
+                        else:
+                            html += f'<td class="text-right"><strong>{cell}</strong></td>'
+                    elif i == 5:
+                        # Rounded Pay - right aligned, with dollar sign, no decimals
+                        if isinstance(cell, (int, float)):
+                            html += f'<td class="text-right"><strong>${cell:.0f}</strong></td>'
+                        else:
+                            html += f'<td class="text-right"><strong>{cell}</strong></td>'
                     else:
                         html += f"<td><strong>{cell}</strong></td>"
                 html += "</tr>"
