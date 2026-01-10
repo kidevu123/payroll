@@ -1,12 +1,17 @@
 {
-  "rates": {
-    "John Doe": {
-      "regular": 25.00,
-      "overtime": 37.50
-    },
-    "Jane Smith": {
-      "regular": 20.00,
-      "overtime": 30.00
-    }
+  "EMP001": {
+    "rate": 25.00,
+    "shift_type": "day",
+    "name": "John Doe"
+  },
+  "EMP002": {
+    "rate": 20.00,
+    "shift_type": "night",
+    "name": "Jane Smith"
+  },
+  "EMP003": {
+    "rate": 22.50,
+    "shift_type": "both",
+    "name": "Bob Johnson"
   }
 }

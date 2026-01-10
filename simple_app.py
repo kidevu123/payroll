@@ -431,7 +431,8 @@ def compute_grand_totals_for_expense(df):
     
     df = df.copy()
     df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates)
+    df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+    df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
     weekly_totals = df.groupby('Person ID').agg(
         Total_Hours=('Daily Hours', 'sum'),
@@ -599,7 +600,8 @@ def build_admin_summary_text_from_csv(file_path: str, start_str: str, end_str: s
             else:
                 # Fallback from Clock In/Out
                 df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-        df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+        df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+        df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
         df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
         weekly_totals = df.groupby('Person ID').agg(
             Total_Hours=('Daily Hours', 'sum'),
@@ -940,7 +942,16 @@ def login_required(f):
 
 # Pay rate management functions
 def load_pay_rates():
-    """Load pay rates from JSON file with caching to reduce file I/O"""
+    """Load pay rates from JSON file with caching to reduce file I/O
+    
+    Returns dict with structure:
+    {
+        "EMP001": {"rate": 25.00, "shift_type": "day", "name": "John Doe"},
+        ...
+    }
+    
+    Provides backward compatibility for old format (simple emp_id: rate mapping)
+    """
     global pay_rates_cache, pay_rates_cache_time
     
     # Check if cache is valid
@@ -955,6 +966,44 @@ def load_pay_rates():
     try:
         with open(CONFIG_FILE, 'r') as f:
             rates = json.load(f)
+            
+            # Migrate old format to new format if needed
+            migrated = False
+            for emp_id, value in list(rates.items()):
+                # Old format: emp_id: numeric_rate
+                if isinstance(value, (int, float)):
+                    rates[emp_id] = {
+                        "rate": float(value),
+                        "shift_type": "day",  # Default to day shift
+                        "name": ""
+                    }
+                    migrated = True
+                # New format but missing fields
+                elif isinstance(value, dict):
+                    if "rate" not in value:
+                        # Very old format with "regular" and "overtime"
+                        if "regular" in value:
+                            rates[emp_id] = {
+                                "rate": float(value.get("regular", 15.0)),
+                                "shift_type": "day",
+                                "name": value.get("name", "")
+                            }
+                            migrated = True
+                    else:
+                        # Ensure all required fields exist
+                        if "shift_type" not in value:
+                            rates[emp_id]["shift_type"] = "day"
+                            migrated = True
+                        if "name" not in value:
+                            rates[emp_id]["name"] = ""
+                            migrated = True
+            
+            # Save migrated data back to file
+            if migrated:
+                app.logger.info(f"Migrated pay rates to new format with shift_type support")
+                with open(CONFIG_FILE, 'w') as f_out:
+                    json.dump(rates, f_out, indent=2)
+            
             app.logger.info(f"Successfully loaded {len(rates)} pay rates from disk")
             # Update cache
             pay_rates_cache = rates
@@ -994,6 +1043,69 @@ def save_pay_rates(rates):
     except Exception as e:
         app.logger.error(f"Unexpected error saving pay rates: {e}")
         raise
+
+def get_employee_rate(pay_rates, emp_id):
+    """Extract hourly rate from pay rates structure
+    
+    Args:
+        pay_rates: dict of pay rates
+        emp_id: employee ID
+    
+    Returns:
+        float: hourly rate, or 15.0 as default
+    """
+    if emp_id not in pay_rates:
+        return 15.0
+    
+    rate_data = pay_rates[emp_id]
+    if isinstance(rate_data, dict):
+        return float(rate_data.get("rate", 15.0))
+    elif isinstance(rate_data, (int, float)):
+        return float(rate_data)
+    else:
+        return 15.0
+
+def get_employee_shift_type(pay_rates, emp_id):
+    """Extract shift type from pay rates structure
+    
+    Args:
+        pay_rates: dict of pay rates
+        emp_id: employee ID
+    
+    Returns:
+        str: shift type ("day", "night", or "both"), defaults to "day"
+    """
+    if emp_id not in pay_rates:
+        return "day"
+    
+    rate_data = pay_rates[emp_id]
+    if isinstance(rate_data, dict):
+        shift = rate_data.get("shift_type", "day")
+        # Validate shift type
+        if shift not in ["day", "night", "both"]:
+            return "day"
+        return shift
+    else:
+        return "day"
+
+def get_employee_name_from_rates(pay_rates, emp_id):
+    """Extract employee name from pay rates structure
+    
+    Args:
+        pay_rates: dict of pay rates
+        emp_id: employee ID
+    
+    Returns:
+        str: employee name from rates, or empty string
+    """
+    if emp_id not in pay_rates:
+        return ""
+    
+    rate_data = pay_rates[emp_id]
+    if isinstance(rate_data, dict):
+        return rate_data.get("name", "")
+    else:
+        return ""
 
 def get_employee_names():
     """Extract employee names from uploaded CSV files (front-end display only)"""
@@ -2273,7 +2385,22 @@ def manage_rates():
     
     pay_rates = load_pay_rates()
     employee_names = get_employee_names()  # Get employee names for display
-    employees = [{'id': emp_id, 'rate': rate, 'name': employee_names.get(emp_id, 'Unknown')} for emp_id, rate in pay_rates.items()]
+    employees = []
+    for emp_id, rate_data in pay_rates.items():
+        if isinstance(rate_data, dict):
+            emp_rate = rate_data.get('rate', 15.0)
+            emp_shift = rate_data.get('shift_type', 'day')
+            emp_name = rate_data.get('name', '') or employee_names.get(emp_id, 'Unknown')
+        else:
+            emp_rate = float(rate_data) if isinstance(rate_data, (int, float)) else 15.0
+            emp_shift = 'day'
+            emp_name = employee_names.get(emp_id, 'Unknown')
+        employees.append({
+            'id': emp_id,
+            'rate': emp_rate,
+            'shift_type': emp_shift,
+            'name': emp_name
+        })
     employees.sort(key=lambda x: x['id'])
 
     html = f"""<!DOCTYPE html>
@@ -2299,10 +2426,14 @@ def manage_rates():
             margin-bottom: var(--spacing-4);
         }}
         .rate-display.hidden, .rate-edit.hidden, 
+        .shift-display.hidden, .shift-edit.hidden,
         .edit-btn.hidden, .save-btn.hidden, .cancel-btn.hidden {{
             display: none !important;
         }}
         .rate-edit {{
+            width: 120px;
+        }}
+        .shift-edit {{
             width: 120px;
         }}
     </style>
@@ -2335,6 +2466,7 @@ def manage_rates():
                         <tr>
                             <th>Employee ID</th>
                             <th>Employee Name</th>
+                            <th>Shift Type</th>
                             <th class="text-right">Pay Rate ($/hour)</th>
                             <th class="text-right">Actions</th>
                         </tr>
@@ -2343,10 +2475,21 @@ def manage_rates():
 """
     
     for emp in employees:
+        shift_badge_color = 'badge-warning' if emp['shift_type'] == 'night' else ('badge-info' if emp['shift_type'] == 'both' else 'badge-secondary')
         html += f"""
                         <tr id="row-{escape(emp['id'])}">
                             <td><span class="badge badge-primary">{escape(emp['id'])}</span></td>
                             <td><strong>{escape(emp['name'])}</strong></td>
+                            <td>
+                                <span class="shift-display">
+                                    <span class="badge {shift_badge_color}">{escape(emp['shift_type'].capitalize())}</span>
+                                </span>
+                                <select class="shift-edit hidden form-input" style="width:120px" data-original-value="{escape(emp['shift_type'])}">
+                                    <option value="day" {'selected' if emp['shift_type'] == 'day' else ''}>Day</option>
+                                    <option value="night" {'selected' if emp['shift_type'] == 'night' else ''}>Night</option>
+                                    <option value="both" {'selected' if emp['shift_type'] == 'both' else ''}>Both</option>
+                                </select>
+                            </td>
                             <td class="text-right">
                                 <span class="rate-display" style="color:var(--color-success);font-weight:var(--font-weight-semibold);font-size:var(--font-size-lg)">${emp['rate']}</span>
                                 <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
@@ -2395,7 +2538,7 @@ def manage_rates():
                 </h2>
             </div>
             
-            <form method="post" action="/add_rate" class="grid grid-cols-2" style="gap:var(--spacing-4);align-items:end">
+            <form method="post" action="/add_rate" class="grid grid-cols-3" style="gap:var(--spacing-4);align-items:end">
                 <div class="form-group">
                     <label for="employee_id" class="form-label form-label-required">Employee ID</label>
                     <input type="text" id="employee_id" name="employee_id" class="form-input" placeholder="e.g., EMP001" required>
@@ -2406,6 +2549,16 @@ def manage_rates():
                     <label for="rate" class="form-label form-label-required">Pay Rate ($/hour)</label>
                     <input type="number" id="rate" name="rate" step="0.01" min="0" max="10000" class="form-input" placeholder="e.g., 25.00" required>
                     <span class="form-help">Between $0.00 and $10,000.00</span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="shift_type" class="form-label form-label-required">Shift Type</label>
+                    <select id="shift_type" name="shift_type" class="form-input" required>
+                        <option value="day">Day Shift</option>
+                        <option value="night">Night Shift</option>
+                        <option value="both">Both Shifts</option>
+                    </select>
+                    <span class="form-help">Employee's work shift</span>
                 </div>
                 
                 <div style="grid-column:1/-1;text-align:right">
@@ -2437,17 +2590,21 @@ def manage_rates():
             
             const rateDisplay = row.querySelector('.rate-display');
             const rateEdit = row.querySelector('.rate-edit');
+            const shiftDisplay = row.querySelector('.shift-display');
+            const shiftEdit = row.querySelector('.shift-edit');
             const editBtn = row.querySelector('.edit-btn');
             const saveBtn = row.querySelector('.save-btn');
             const cancelBtn = row.querySelector('.cancel-btn');
             
-            if (!rateDisplay || !rateEdit || !editBtn || !saveBtn || !cancelBtn) {
+            if (!rateDisplay || !rateEdit || !shiftDisplay || !shiftEdit || !editBtn || !saveBtn || !cancelBtn) {
                 console.error('Required elements not found in row');
                 return;
             }
             
             rateDisplay.classList.add('hidden');
             rateEdit.classList.remove('hidden');
+            shiftDisplay.classList.add('hidden');
+            shiftEdit.classList.remove('hidden');
             editBtn.classList.add('hidden');
             saveBtn.classList.remove('hidden');
             cancelBtn.classList.remove('hidden');
@@ -2460,12 +2617,17 @@ def manage_rates():
             const row = document.getElementById('row-' + employeeId);
             if (!row) return;
             
-            const input = row.querySelector('.rate-edit');
-            const originalRate = input.getAttribute('data-original-value') || input.value;
-            input.value = originalRate;
+            const rateInput = row.querySelector('.rate-edit');
+            const shiftInput = row.querySelector('.shift-edit');
+            const originalRate = rateInput.getAttribute('data-original-value') || rateInput.value;
+            const originalShift = shiftInput.getAttribute('data-original-value') || shiftInput.value;
+            rateInput.value = originalRate;
+            shiftInput.value = originalShift;
             
             row.querySelector('.rate-display').classList.remove('hidden');
             row.querySelector('.rate-edit').classList.add('hidden');
+            row.querySelector('.shift-display').classList.remove('hidden');
+            row.querySelector('.shift-edit').classList.add('hidden');
             row.querySelector('.edit-btn').classList.remove('hidden');
             row.querySelector('.save-btn').classList.add('hidden');
             row.querySelector('.cancel-btn').classList.add('hidden');
@@ -2477,8 +2639,15 @@ def manage_rates():
             if (!row) return;
             
             const newRate = row.querySelector('.rate-edit').value;
+            const newShift = row.querySelector('.shift-edit').value;
+            
             if (!newRate || isNaN(newRate) || parseFloat(newRate) < 0) {
                 alert('Please enter a valid pay rate');
+                return;
+            }
+            
+            if (!newShift || !['day', 'night', 'both'].includes(newShift)) {
+                alert('Please select a valid shift type');
                 return;
             }
             
@@ -2489,7 +2658,7 @@ def manage_rates():
             fetch('/update_rate/' + encodeURIComponent(employeeId), {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({rate: parseFloat(newRate)})
+                body: JSON.stringify({rate: parseFloat(newRate), shift_type: newShift})
             }).then(response => {
                 if (response.ok) {
                     location.reload();
@@ -2545,6 +2714,7 @@ def add_rate():
     try:
         emp_id = request.form.get('employee_id', '').strip()
         rate_str = request.form.get('rate', '').strip()
+        shift_type = request.form.get('shift_type', 'day').strip()
 
         # Validate employee ID
         if not emp_id:
@@ -2557,16 +2727,24 @@ def add_rate():
         valid, error, pay_rate = validate_pay_rate(rate_str)
         if not valid:
             return error, 400
+        
+        # Validate shift type
+        if shift_type not in ['day', 'night', 'both']:
+            shift_type = 'day'
 
         # Load existing rates
         pay_rates = load_pay_rates()
 
-        # Add new rate
-        pay_rates[emp_id] = pay_rate
+        # Add new rate with shift type
+        pay_rates[emp_id] = {
+            "rate": pay_rate,
+            "shift_type": shift_type,
+            "name": ""
+        }
 
         # Save updated rates
         save_pay_rates(pay_rates)
-        app.logger.info(f"Pay rate added for employee {emp_id}: ${pay_rate}")
+        app.logger.info(f"Pay rate added for employee {emp_id}: ${pay_rate}, shift: {shift_type}")
 
         return redirect(url_for('manage_rates'))
     except Exception as e:
@@ -2577,22 +2755,39 @@ def add_rate():
 @app.route('/update_rate/<employee_id>', methods=['POST'])
 @login_required
 def update_rate(employee_id):
-    """Update employee pay rate with validation"""
+    """Update employee pay rate and shift type with validation"""
     try:
         data = request.get_json()
         rate_value = data.get('rate', '')
+        shift_type = data.get('shift_type', 'day')
         
         # Validate pay rate
         valid, error, new_rate = validate_pay_rate(rate_value)
         if not valid:
             return jsonify({'error': error}), 400
         
-        pay_rates = load_pay_rates()
-        pay_rates[employee_id] = new_rate
-        save_pay_rates(pay_rates)
-        app.logger.info(f"Pay rate updated for employee {employee_id}: ${new_rate}")
+        # Validate shift type
+        if shift_type not in ['day', 'night', 'both']:
+            shift_type = 'day'
         
-        return jsonify({'status': 'ok', 'rate': new_rate}), 200
+        pay_rates = load_pay_rates()
+        
+        # Get existing name if available
+        existing_name = ""
+        if employee_id in pay_rates and isinstance(pay_rates[employee_id], dict):
+            existing_name = pay_rates[employee_id].get('name', '')
+        
+        # Update with new structure
+        pay_rates[employee_id] = {
+            "rate": new_rate,
+            "shift_type": shift_type,
+            "name": existing_name
+        }
+        
+        save_pay_rates(pay_rates)
+        app.logger.info(f"Pay rate updated for employee {employee_id}: ${new_rate}, shift: {shift_type}")
+        
+        return jsonify({'status': 'ok', 'rate': new_rate, 'shift_type': shift_type}), 200
     except Exception as e:
         app.logger.error(f"Error updating pay rate for {employee_id}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -2833,8 +3028,9 @@ def create_excel_report(df, filename, creator=None):
         # Calculate daily hours
         df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
 
-        # Assign pay rates - use stored rates or default
-        df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+        # Assign pay rates and shift types
+        df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+        df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
 
         # Calculate daily pay
         df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
@@ -2845,7 +3041,8 @@ def create_excel_report(df, filename, creator=None):
             Weekly_Total=('Daily Pay', 'sum'),
             First_Name=('First Name', 'first'),
             Last_Name=('Last Name', 'first'),
-            Rate=('Hourly Rate', 'first')
+            Rate=('Hourly Rate', 'first'),
+            Shift_Type=('Shift Type', 'first')
         ).reset_index()
 
         # Apply rounding
@@ -3722,7 +3919,8 @@ def create_consolidated_admin_report(df, filename, creator=None):
 
     # Process data
     df['Daily Hours'] = df.apply(compute_daily_hours, axis=1)
-    df['Hourly Rate'] = df['Person ID'].astype(str).map(pay_rates).fillna(15.0)
+    df['Hourly Rate'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+    df['Shift Type'] = df['Person ID'].astype(str).apply(lambda emp_id: get_employee_shift_type(pay_rates, emp_id))
     df['Daily Pay'] = (df['Daily Hours'] * df['Hourly Rate']).round(2)
 
     # Calculate weekly totals per employee
@@ -3731,7 +3929,8 @@ def create_consolidated_admin_report(df, filename, creator=None):
         Weekly_Total=('Daily Pay', 'sum'),
         First_Name=('First Name', 'first'),
         Last_Name=('Last Name', 'first'),
-        Rate=('Hourly Rate', 'first')
+        Rate=('Hourly Rate', 'first'),
+        Shift_Type=('Shift Type', 'first')
     ).reset_index()
 
     # Apply rounding
@@ -3752,7 +3951,7 @@ def create_consolidated_admin_report(df, filename, creator=None):
     summary_col_start = 8  # Center it better by moving to column H
 
     # Add column headers in row 3
-    headers = ["Person ID", "Employee Name", "Total Hours", "Total Pay", "Rounded Pay"]
+    headers = ["Person ID", "Employee Name", "Shift", "Total Hours", "Total Pay", "Rounded Pay"]
     for col, header in enumerate(headers):
         cell = ws.cell(row=3, column=summary_col_start + col)
         cell.value = header
@@ -3765,24 +3964,26 @@ def create_consolidated_admin_report(df, filename, creator=None):
     for i, (_, row) in enumerate(weekly_totals.iterrows(), 4):
         ws.cell(row=i, column=summary_col_start).value = row['Person ID']
         ws.cell(row=i, column=summary_col_start+1).value = f"{row['First_Name']} {row['Last_Name']}"
-        ws.cell(row=i, column=summary_col_start+2).value = round(row['Total_Hours'], 2)
-        ws.cell(row=i, column=summary_col_start+3).value = round(row['Weekly_Total'], 2)
-        ws.cell(row=i, column=summary_col_start+4).value = row['Rounded_Weekly']
+        ws.cell(row=i, column=summary_col_start+2).value = row['Shift_Type'].capitalize()
+        ws.cell(row=i, column=summary_col_start+3).value = round(row['Total_Hours'], 2)
+        ws.cell(row=i, column=summary_col_start+4).value = round(row['Weekly_Total'], 2)
+        ws.cell(row=i, column=summary_col_start+5).value = row['Rounded_Weekly']
 
     # Add grand total row after employee rows with a light top border
     grand_total_row = ws.max_row + 1
-    for col in range(summary_col_start, summary_col_start+5):
+    for col in range(summary_col_start, summary_col_start+6):
         ws.cell(row=grand_total_row, column=col).border = top_border
 
     ws.cell(row=grand_total_row, column=summary_col_start).value = ""
     ws.cell(row=grand_total_row, column=summary_col_start+1).value = "GRAND TOTAL"
     ws.cell(row=grand_total_row, column=summary_col_start+1).font = Font(bold=True)
-    ws.cell(row=grand_total_row, column=summary_col_start+2).value = grand_total_hours
-    ws.cell(row=grand_total_row, column=summary_col_start+2).font = Font(bold=True)
-    ws.cell(row=grand_total_row, column=summary_col_start+3).value = grand_total_pay
+    ws.cell(row=grand_total_row, column=summary_col_start+2).value = ""  # No shift for grand total
+    ws.cell(row=grand_total_row, column=summary_col_start+3).value = grand_total_hours
     ws.cell(row=grand_total_row, column=summary_col_start+3).font = Font(bold=True)
-    ws.cell(row=grand_total_row, column=summary_col_start+4).value = grand_total_rounded
+    ws.cell(row=grand_total_row, column=summary_col_start+4).value = grand_total_pay
     ws.cell(row=grand_total_row, column=summary_col_start+4).font = Font(bold=True)
+    ws.cell(row=grand_total_row, column=summary_col_start+5).value = grand_total_rounded
+    ws.cell(row=grand_total_row, column=summary_col_start+5).font = Font(bold=True)
 
     # Add a header for detailed section with less spacing
     current_row = grand_total_row + 2
@@ -3820,6 +4021,7 @@ def create_consolidated_admin_report(df, filename, creator=None):
             emp_id = emp_data['Person ID']
             emp_name = f"{emp_data['First_Name']} {emp_data['Last_Name']}"
             rate = emp_data['Rate']
+            shift_type = emp_data['Shift_Type'].capitalize()
 
             # Current row for this employee section
             emp_row = row_start
@@ -3831,8 +4033,8 @@ def create_consolidated_admin_report(df, filename, creator=None):
             ws.cell(row=emp_row, column=col_start).fill = PatternFill(start_color="E6E6E6", fill_type="solid")
             emp_row += 1
 
-            # ID and rate info
-            ws.cell(row=emp_row, column=col_start).value = f"ID: {emp_id} | Rate: ${rate:.2f}"
+            # ID, rate, and shift info
+            ws.cell(row=emp_row, column=col_start).value = f"ID: {emp_id} | Rate: ${rate:.2f} | Shift: {shift_type}"
             ws.merge_cells(f'{get_column_letter(col_start)}{emp_row}:{get_column_letter(col_start+col_width-1)}{emp_row}')
             emp_row += 1
 
@@ -3904,16 +4106,16 @@ def create_consolidated_admin_report(df, filename, creator=None):
 
     # Format monetary values in the summary section
     for r in range(4, grand_total_row + 1):
-        # Format pay columns
-        ws.cell(row=r, column=summary_col_start+3).number_format = '"$"#,##0.00'
-        ws.cell(row=r, column=summary_col_start+4).number_format = '"$"#,##0'
+        # Format pay columns (shifted by 1 due to new Shift column)
+        ws.cell(row=r, column=summary_col_start+4).number_format = '"$"#,##0.00'
+        ws.cell(row=r, column=summary_col_start+5).number_format = '"$"#,##0'
         # Format hours column
-        ws.cell(row=r, column=summary_col_start+2).number_format = '#,##0.00'
+        ws.cell(row=r, column=summary_col_start+3).number_format = '#,##0.00'
 
     # Format grand total row
-    ws.cell(row=grand_total_row, column=summary_col_start+2).number_format = '#,##0.00'
-    ws.cell(row=grand_total_row, column=summary_col_start+3).number_format = '"$"#,##0.00'
-    ws.cell(row=grand_total_row, column=summary_col_start+4).number_format = '"$"#,##0'
+    ws.cell(row=grand_total_row, column=summary_col_start+3).number_format = '#,##0.00'
+    ws.cell(row=grand_total_row, column=summary_col_start+4).number_format = '"$"#,##0.00'
+    ws.cell(row=grand_total_row, column=summary_col_start+5).number_format = '"$"#,##0'
 
     # Set optimized column widths
     ws.column_dimensions['A'].width = 10  # First column

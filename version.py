@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.16.0"
-__version_name__ = "Delete Reports + Inline Pay Rates"
-__release_date__ = "2025-12-16"
+__version__ = "8.17.0"
+__version_name__ = "Day/Night Shift Support"
+__release_date__ = "2026-01-10"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.0",
+        "date": "2026-01-10",
+        "changes": [
+            "✨ NEW: Day/Night Shift Support!",
+            "Added shift_type field to employee pay rates (day, night, both)",
+            "Pay Rates page now displays and edits shift type",
+            "Reports include Shift Type column in summary tables",
+            "Employee detail cards show shift information",
+            "Automatic migration of old pay rates format",
+            "Backward compatible with existing data",
+            "Updated pay_rates.json.template with shift examples",
+            "UI filters and badges for shift types"
+        ]
+    },
     {
         "version": "8.16.0",
         "date": "2025-12-16",
