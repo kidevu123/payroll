@@ -7046,8 +7046,11 @@ def reports():
             """
             
             if download_filename:
+                _z_svg = '<svg style="width:15px;height:15px;vertical-align:middle;margin-right:3px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg>'
                 html += f'<a href="/download_pdf/{download_filename}" class="btn btn-primary btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg> Download PDF</a> '
-                html += f'<form method="post" action="/delete_report/{download_filename}" style="display:inline;" onsubmit="return confirm(\'Are you sure you want to delete this report for {escape(week_display)}?\');"><button type="submit" class="btn btn-danger btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg> Delete</button></form>'
+                html += f'<form class="zoho-saved-form" method="post" action="/zoho/push_saved_report" style="display:inline;margin-left:4px"><input type="hidden" name="filename" value="{escape(download_filename)}"><input type="hidden" name="company" value="haute"><button type="submit" class="btn btn-success btn-sm" title="Post to Zoho Books — Haute Brands">{_z_svg}Push to Haute</button></form> '
+                html += f'<form class="zoho-saved-form" method="post" action="/zoho/push_saved_report" style="display:inline;margin-left:2px"><input type="hidden" name="filename" value="{escape(download_filename)}"><input type="hidden" name="company" value="boomin"><button type="submit" class="btn btn-sm" style="background:#7c3aed;color:#fff;border:1px solid #6d28d9;border-radius:6px;padding:6px 12px;font-size:var(--font-size-sm);cursor:pointer;font-weight:500" title="Post to Zoho Books — Boomin Brands">{_z_svg}Push to Boomin</button></form> '
+                html += f'<form method="post" action="/delete_report/{download_filename}" style="display:inline;margin-left:2px" onsubmit="return confirm(\'Are you sure you want to delete this report for {escape(week_display)}?\');"><button type="submit" class="btn btn-danger btn-sm"><svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg> Delete</button></form>'
             else:
                 html += '<span style="color:var(--color-gray-500);font-size:var(--font-size-sm)">N/A</span>'
             
@@ -7059,6 +7062,38 @@ def reports():
         html += """
                     </tbody>
                 </table>
+                <script>
+                (function(){
+                    document.querySelectorAll('form.zoho-saved-form').forEach(function(form){
+                        form.addEventListener('submit', async function(ev){
+                            ev.preventDefault();
+                            var data = new FormData(form);
+                            data.append('ajax', '1');
+                            var btn = form.querySelector('button[type="submit"]');
+                            var orig = btn ? btn.innerHTML : '';
+                            if (btn) { btn.disabled = true; btn.innerHTML = 'Pushing…'; }
+                            try {
+                                var res = await fetch(form.action, { method: 'POST', body: data, headers: {'X-Requested-With': 'XMLHttpRequest'} });
+                                var payload = null;
+                                try { payload = await res.clone().json(); } catch(e) { payload = null; }
+                                var text = '';
+                                try { text = await res.text(); } catch(e) {}
+                                if (payload && payload.status === 'ok') {
+                                    alert(payload.duplicate ? ('Already exists in Zoho. ID: ' + payload.expense_id) : ('Expense created! ID: ' + payload.expense_id));
+                                } else if (payload && payload.message) {
+                                    alert(payload.message);
+                                } else {
+                                    alert('Zoho response: ' + (text || res.status));
+                                }
+                            } catch(err) {
+                                alert('Error: ' + err);
+                            } finally {
+                                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+                            }
+                        });
+                    });
+                })();
+                </script>
             </div>
         </div>
         """
@@ -7300,6 +7335,142 @@ def zoho_create_expense_route():
     except Exception as e:
         import traceback
         return f"Error creating Zoho expense: {str(e)}<br><pre>{traceback.format_exc()}</pre>", 500
+
+
+@app.route('/zoho/push_saved_report', methods=['POST'])
+@login_required
+def zoho_push_saved_report_route():
+    """Push a saved admin report from disk to Zoho Books (Reports page)."""
+
+    def _ajax():
+        return (request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or request.form.get('ajax') == '1')
+
+    def _err(msg, code=400):
+        if _ajax():
+            return jsonify({'status': 'error', 'message': msg}), code
+        flash(msg, 'error')
+        return redirect(url_for('reports'))
+
+    try:
+        company = request.form.get('company', 'haute')
+        filename = (request.form.get('filename') or '').strip()
+        if not filename.endswith('.xlsx') or not filename.startswith('admin_report_'):
+            return _err('Invalid report file.')
+        if filename != os.path.basename(filename):
+            return _err('Invalid report file.')
+        admin_path = os.path.join(REPORT_FOLDER, filename)
+        if not os.path.exists(admin_path):
+            return _err('Report file not found on server.')
+
+        meta = _load_reports_metadata()
+        rec = _ensure_report_metadata(admin_path, filename, meta)
+        _save_reports_metadata(meta)
+
+        start_str = end_str = None
+        dr = rec.get('date_range')
+        if dr:
+            m = re.search(r'(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})', str(dr))
+            if m:
+                start_str, end_str = m.group(1), m.group(2)
+        if not start_str or not end_str:
+            m = re.search(r'admin_report_(\d{4}-\d{2}-\d{2})\.xlsx$', filename)
+            if m:
+                d0 = datetime.strptime(m.group(1), '%Y-%m-%d').date()
+                start_str = m.group(1)
+                end_str = (d0 + timedelta(days=6)).strftime('%Y-%m-%d')
+        if not start_str or not end_str:
+            return _err('Could not determine payroll period from filename.')
+
+        week_key = start_str
+        reference_number = f"PAYROLL-{start_str}_to_{end_str}"
+
+        existing = _get_existing_expense(company, week_key)
+        if existing:
+            if zoho_get_expense(company, existing):
+                if _ajax():
+                    return jsonify({'status': 'ok', 'expense_id': existing, 'duplicate': True})
+                return f"<script>alert('Already exists in Zoho. ID: {existing}');</script>", 200
+            _clear_existing_expense(company, week_key)
+
+        existing_by_ref = zoho_find_expense_by_reference(company, reference_number)
+        if existing_by_ref:
+            _set_existing_expense(company, week_key, existing_by_ref)
+            if _ajax():
+                return jsonify({'status': 'ok', 'expense_id': existing_by_ref, 'duplicate': True})
+            return f"<script>alert('Already exists in Zoho. ID: {existing_by_ref}');</script>", 200
+
+        # Extract grand total from the saved Excel file
+        amount = None
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(admin_path, data_only=True, read_only=True)
+            ws = wb.active
+            for r in range(3, min(ws.max_row, 40) + 1):
+                row_text = ''.join(str(ws.cell(row=r, column=c).value or '')
+                                   for c in range(1, min(ws.max_column, 20)))
+                if 'GRAND TOTAL' in row_text.upper():
+                    for c in range(min(ws.max_column, 20), 1, -1):
+                        v = ws.cell(row=r, column=c).value
+                        if isinstance(v, (int, float)) and v > 0:
+                            amount = round(float(v), 2)
+                            break
+                    if amount is not None:
+                        break
+        except Exception:
+            pass
+
+        if amount is None and rec.get('total_amount') is not None:
+            amount = round(float(rec['total_amount']), 2)
+        if amount is None:
+            return _err('Could not determine payroll total from this report.')
+
+        end_dt = datetime.strptime(end_str, '%Y-%m-%d').date()
+        post_date = (end_dt + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        base_desc = (f"Weekly payroll expense for {start_str} to {end_str} "
+                     f"created by {session.get('username', 'Unknown')}")
+        csv_path = session.get('filtered_file') or session.get('uploaded_file')
+        auto_notes = build_admin_summary_text_from_csv(csv_path, start_str, end_str)
+        final_desc = _compose_zoho_description(base_desc, auto_notes, '')
+
+        expense_id = zoho_create_expense(
+            company,
+            date_str=post_date,
+            amount=amount,
+            description=final_desc,
+            reference_number=reference_number,
+            paid_through_account_name=None,
+        )
+        _set_existing_expense(company, week_key, expense_id)
+
+        # Attach PDF receipt (same as success-page flow)
+        if os.path.exists(admin_path):
+            try:
+                pdf_buffer = convert_excel_to_pdf(admin_path)
+                pdf_tmp = os.path.join(REPORT_FOLDER, filename.replace('.xlsx', '_receipt.pdf'))
+                with open(pdf_tmp, 'wb') as f:
+                    f.write(pdf_buffer.read())
+                zoho_attach_receipt(company, expense_id, pdf_tmp)
+                try:
+                    os.remove(pdf_tmp)
+                except Exception:
+                    pass
+            except Exception as e:
+                app.logger.warning(f"Expense created but receipt attach failed: {e}")
+
+        if _ajax():
+            return jsonify({'status': 'ok', 'expense_id': expense_id})
+        return f"<script>alert('Expense created! ID: {expense_id}'); history.back();</script>", 200
+
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        app.logger.error(tb)
+        if _ajax():
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+        return f"Error pushing to Zoho: {e}<br><pre>{tb}</pre>", 500
+
 
 # Add user management feature
 @app.route('/manage_users')

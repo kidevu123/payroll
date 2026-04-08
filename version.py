@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.8"
-__version_name__ = "PDF Rounded Total Fix"
-__release_date__ = "2026-01-10"
+__version__ = "8.17.9"
+__version_name__ = "Reports Push to Haute / Boomin"
+__release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.9",
+        "date": "2026-04-08",
+        "changes": [
+            "Reports page: Push to Haute (green) and Push to Boomin (violet) buttons added to every report row",
+            "New POST /zoho/push_saved_report route reads saved admin Excel, creates Zoho expense, attaches PDF receipt",
+            "AJAX submit with alerts; duplicate prevention reuses existing zoho_find_expense_by_reference"
+        ]
+    },
     {
         "version": "8.17.8",
         "date": "2026-01-10",
