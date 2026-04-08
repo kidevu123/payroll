@@ -362,21 +362,22 @@ def render_set_pay_rates_page(missing_rates, all_employees):
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .rates-header {{
-            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .newrates-hero {{
+            background: linear-gradient(135deg, #78350f 0%, #d97706 60%, #f59e0b 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
+        .newrates-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .newrates-hero p  {{ color:rgba(255,255,255,0.85); font-size:15px; margin:0; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="rates-header">
+    <div class="newrates-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">⚠️ New Employees Detected</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Set pay rates for {len(missing_rates)} employee(s) before continuing</p>
+            <h1>New Employees Detected</h1>
+            <p>Set pay rates for {len(missing_rates)} employee(s) before continuing</p>
         </div>
     </div>
     
@@ -1294,73 +1295,40 @@ def login():
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
         <style>
             body {{
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                display: flex; align-items: center; justify-content: center;
                 min-height: 100vh;
-                background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-                padding: var(--spacing-3);
+                background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1e40af 100%);
+                padding: 24px;
             }}
-            .login-wrapper {{
-                width: 100%;
-                max-width: 420px;
-            }}
+            .login-wrapper {{ width: 100%; max-width: 400px; }}
             .login-card {{
                 background: white;
-                border-radius: var(--radius-xl);
-                box-shadow: var(--shadow-xl);
-                padding: var(--spacing-4);
-                border: 1px solid var(--color-gray-200);
+                border-radius: 20px;
+                box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+                padding: 40px 36px 32px;
             }}
-            .login-header {{
-                text-align: center;
-                margin-bottom: var(--spacing-4);
-            }}
+            .login-header {{ text-align:center; margin-bottom:28px; }}
             .login-logo {{
-                width: 64px;
-                height: 64px;
-                margin: 0 auto var(--spacing-4);
-                background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
-                border-radius: var(--radius-xl);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: var(--shadow-md);
+                width: 72px; height: 72px;
+                margin: 0 auto 20px;
+                background: linear-gradient(135deg, #1e40af, #3b82f6);
+                border-radius: 18px;
+                display: flex; align-items: center; justify-content: center;
+                box-shadow: 0 8px 24px rgba(30,64,175,0.4);
             }}
-            .login-logo svg {{
-                width: 40px;
-                height: 40px;
-                color: white;
-            }}
-            .login-title {{
-                font-size: var(--font-size-2xl);
-                font-weight: var(--font-weight-bold);
-                color: var(--color-gray-900);
-                margin-bottom: var(--spacing-2);
-            }}
-            .login-subtitle {{
-                font-size: var(--font-size-sm);
-                color: var(--color-gray-600);
-                margin: 0;
-            }}
-            .login-form {{
-                margin-top: var(--spacing-3);
-            }}
-            .form-footer {{
-                margin-top: var(--spacing-3);
-                text-align: center;
-                font-size: var(--font-size-sm);
-                color: var(--color-gray-600);
-            }}
+            .login-logo svg {{ width: 42px; height: 42px; color: white; }}
+            .login-title {{ font-size: 24px; font-weight: 800; color: #111827; margin-bottom: 6px; }}
+            .login-subtitle {{ font-size: 14px; color: #6b7280; margin: 0; }}
+            .login-form {{ margin-top: 24px; }}
+            .form-footer {{ margin-top:20px; text-align:center; font-size:13px; color:#9ca3af; }}
             .version-badge {{
-                display: inline-block;
-                margin-top: var(--spacing-4);
-                padding: var(--spacing-1) var(--spacing-3);
-                background: var(--color-gray-100);
-                color: var(--color-gray-700);
-                border-radius: var(--radius-full);
-                font-size: var(--font-size-xs);
-                font-weight: var(--font-weight-medium);
+                display:inline-block; margin-top:12px;
+                padding:4px 12px; background:#f3f4f6; color:#6b7280;
+                border-radius:999px; font-size:11px; font-weight:600;
+            }}
+            .login-copyright {{
+                text-align:center; margin-top:20px;
+                font-size:12px; color:rgba(255,255,255,0.35);
             }}
         </style>
     </head>
@@ -1427,8 +1395,8 @@ def login():
                 </div>
             </div>
 
-            <div class="text-center mt-6 text-sm text-gray-600">
-                <p>© 2024-2025 Payroll Management System. All rights reserved.</p>
+            <div class="login-copyright">
+                &copy; 2025 Payroll Management System
             </div>
         </div>
     </body>
@@ -1486,21 +1454,22 @@ def change_password():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .password-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .password-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
+        .password-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .password-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="password-header">
+    <div class="password-hero">
         <div class="container container-narrow">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Change Password</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Update your account password</p>
+            <h1>Change Password</h1>
+            <p>Update your account password</p>
         </div>
     </div>
     
@@ -2183,101 +2152,72 @@ def index():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .home-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .home-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 60%, #3b82f6 100%);
+            padding: 48px 0 40px;
+            margin-bottom: 32px;
+            position: relative; overflow: hidden;
         }}
+        .home-hero h1 {{ color:white; font-size:32px; font-weight:800; margin-bottom:10px; letter-spacing:-0.5px; }}
+        .home-hero p  {{ color:rgba(255,255,255,0.82); font-size:16px; margin:0; }}
         .step-number {{
-            width: 32px;
-            height: 32px;
-            background: var(--color-primary-pale);
-            color: var(--color-primary);
-            border-radius: var(--radius-full);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: var(--font-weight-bold);
-            flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white; font-size: 12px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(30,64,175,0.3);
         }}
         .step-item {{
-            display: flex;
-            gap: var(--spacing-4);
-            padding: var(--spacing-4);
-            border-radius: var(--radius-md);
-            transition: background var(--transition-fast);
+            display: flex; gap: 14px; padding: 10px 12px;
+            border-radius: 10px; transition: background 0.15s;
         }}
-        .step-item:hover {{
-            background: var(--color-gray-50);
-        }}
+        .step-item:hover {{ background: #e8eef5; }}
         .dropzone {{
-            border: 2px dashed var(--color-gray-300);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-4);
+            border: 2px dashed #c7d2fe;
+            border-radius: 16px;
+            padding: 36px 24px;
             text-align: center;
             cursor: pointer;
-            transition: all var(--transition-base);
-            background: var(--color-gray-50);
-            min-height: 180px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            transition: all 0.2s;
+            background: #f5f8ff;
+            min-height: 200px;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
         }}
-        .dropzone:hover {{
-            border-color: var(--color-primary);
-            background: var(--color-primary-pale);
-        }}
-        .dropzone.dragover {{
-            border-color: var(--color-primary);
-            background: var(--color-primary-pale);
+        .dropzone:hover, .dropzone.dragover {{
+            border-color: #3b82f6;
+            background: #eff6ff;
             transform: scale(1.01);
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
         }}
-        .upload-icon {{
-            width: 48px;
-            height: 48px;
-            margin: 0 auto var(--spacing-2);
-            color: var(--color-gray-400);
-        }}
-        .feature-icon {{
-            width: 40px;
-            height: 40px;
-            background: var(--color-success-light);
-            color: var(--color-success);
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }}
+        .upload-icon {{ width:52px; height:52px; margin:0 auto 14px; color:#93c5fd; }}
         .home-layout {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-4);
-            align-items: start;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 24px; align-items: start;
         }}
-        @media (max-width: 1024px) {{
-            .home-layout {{
-                grid-template-columns: 1fr;
-            }}
+        @media (max-width: 1024px) {{ .home-layout {{ grid-template-columns: 1fr; }} }}
+        .quick-tile {{
+            display: flex; align-items: center; gap: 14px;
+            padding: 18px 20px; border-radius: 14px;
+            background: white; border: 1px solid rgba(0,0,0,0.07);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            text-decoration: none; color: inherit; transition: all 0.18s;
         }}
-        .step-item {{
-            padding: var(--spacing-2);
-        }}
-        .step-number {{
-            width: 24px;
-            height: 24px;
-            font-size: var(--font-size-sm);
+        .quick-tile:hover {{ transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.10); border-color:#bfdbfe; }}
+        .quick-tile-icon {{
+            width:44px; height:44px; border-radius:12px;
+            display:flex; align-items:center; justify-content:center; flex-shrink:0;
         }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="home-header">
+    <div class="home-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Process Payroll</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Upload timesheets and generate professional payroll reports</p>
+            <h1>Process Payroll</h1>
+            <p>Upload a timesheet CSV and generate professional reports in seconds</p>
         </div>
     </div>
     
@@ -2389,37 +2329,27 @@ def index():
         </div>
         
         <!-- Quick Links Row -->
-        <div class="card" style="margin-top:var(--spacing-4)">
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--spacing-3)">
-                <a href="/manage_rates" style="text-decoration:none">
-                    <div class="flex items-center gap-3" style="padding:var(--spacing-3);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
-                        <div class="feature-icon">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0;font-size:var(--font-size-sm)">Pay Rates</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Manage employees</p>
-                        </div>
-                    </div>
-                </a>
-                
-                <a href="/reports" style="text-decoration:none">
-                    <div class="flex items-center gap-3" style="padding:var(--spacing-3);background:var(--color-gray-50);border-radius:var(--radius-md);transition:all var(--transition-fast)">
-                        <div class="feature-icon">
-                            <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin:0;font-size:var(--font-size-sm)">Reports</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">View & download</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
+        <div style="margin-top:8px">
+          <p style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af;margin-bottom:12px">Quick Access</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <a href="/manage_rates" class="quick-tile">
+              <div class="quick-tile-icon" style="background:#dbeafe">
+                <svg style="width:22px;height:22px;color:#1e40af" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div><div style="font-weight:700;font-size:14px;color:#111827">Pay Rates</div><div style="font-size:12px;color:#9ca3af">Manage hourly rates</div></div>
+            </a>
+            <a href="/reports" class="quick-tile">
+              <div class="quick-tile-icon" style="background:#d1fae5">
+                <svg style="width:22px;height:22px;color:#059669" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <div><div style="font-weight:700;font-size:14px;color:#111827">Reports</div><div style="font-size:12px;color:#9ca3af">View &amp; download</div></div>
+            </a>
+          </div>
         </div>
     </div>
     
@@ -2527,32 +2457,29 @@ def manage_rates():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .rates-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .rates-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
-        .rate-display.hidden, .rate-edit.hidden, 
+        .rates-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .rates-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
+        .rate-display.hidden, .rate-edit.hidden,
         .shift-display.hidden, .shift-edit.hidden,
         .edit-btn.hidden, .save-btn.hidden, .cancel-btn.hidden {{
             display: none !important;
         }}
-        .rate-edit {{
-            width: 120px;
-        }}
-        .shift-edit {{
-            width: 120px;
-        }}
+        .rate-edit {{ width: 120px; }}
+        .shift-edit {{ width: 120px; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="rates-header">
+    <div class="rates-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Employee Pay Rates</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Manage hourly rates for all employees</p>
+            <h1>Employee Pay Rates</h1>
+            <p>Manage hourly rates and shift types for all employees</p>
         </div>
     </div>
     
@@ -5360,14 +5287,15 @@ def fix_missing_times():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .fix-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .fix-hero {{
+            background: linear-gradient(135deg, #78350f 0%, #d97706 60%, #f59e0b 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
-        .both-missing {{ background-color: var(--color-danger-light) !important; }}
-        .one-missing {{ background-color: var(--color-warning-light) !important; }}
+        .fix-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .fix-hero p  {{ color:rgba(255,255,255,0.85); font-size:15px; margin:0; }}
+        .both-missing {{ background-color: #fee2e2 !important; }}
+        .one-missing  {{ background-color: #fef9c3 !important; }}
         .suggested {{
             color: var(--color-gray-600);
             font-style: italic;
@@ -5380,10 +5308,10 @@ def fix_missing_times():
 <body>
     {menu_html}
     
-    <div class="fix-header">
+    <div class="fix-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Fix Missing Time Entries</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Fill in missing Clock In/Out times or ignore entries</p>
+            <h1>Fix Missing Time Entries</h1>
+            <p>Fill in missing clock times below, or ignore to continue without them</p>
         </div>
     </div>
     
@@ -5522,58 +5450,46 @@ def success():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .success-header {{
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            color: white;
-            padding: var(--spacing-3) 0;
-            margin-bottom: var(--spacing-3);
+        body {{ background: #f0f4f8; }}
+        .success-hero {{
+            background: linear-gradient(135deg, #064e3b 0%, #059669 60%, #10b981 100%);
+            padding: 44px 0 36px; margin-bottom: 32px;
+            position: relative; overflow: hidden;
         }}
-        .success-banner {{
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            border: 2px solid var(--color-success);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-3);
-            text-align: center;
-            margin-bottom: var(--spacing-3);
-        }}
-        .success-icon {{
-            font-size: 32px;
-            color: var(--color-success);
-            margin-bottom: var(--spacing-1);
+        .check-ring {{
+            width: 72px; height: 72px; border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            border: 3px solid rgba(255,255,255,0.5); flex-shrink: 0;
         }}
         .success-layout {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-3);
-            align-items: start;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 24px; align-items: start;
         }}
-        @media (max-width: 1024px) {{
-            .success-layout {{
-                grid-template-columns: 1fr;
-            }}
-        }}
+        @media (max-width: 1024px) {{ .success-layout {{ grid-template-columns: 1fr; }} }}
         .report-item {{
-            padding: var(--spacing-2);
-            margin-bottom: var(--spacing-2);
-            border-bottom: 1px solid var(--color-gray-200);
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
         }}
-        .report-item:last-child {{
-            border-bottom: none;
-            margin-bottom: 0;
-        }}
+        .report-item:last-child {{ border-bottom: none; padding-bottom: 0; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="success-header">
+    <div class="success-hero">
         <div class="container">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-                <div>
-                    <h1 style="color:white;margin-bottom:0;font-size:var(--font-size-xl)">Payroll Complete</h1>
-                    <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Week: {week}</p>
+            <div style="display:flex;align-items:center;gap:24px">
+                <div class="check-ring">
+                    <svg width="36" height="36" fill="white" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
                 </div>
-                <div style="font-size:48px;color:rgba(255,255,255,0.9)">✓</div>
+                <div>
+                    <div style="font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.65);margin-bottom:6px">Payroll Complete</div>
+                    <h1 style="color:white;font-size:26px;font-weight:800;margin:0 0 4px;letter-spacing:-0.3px">{week}</h1>
+                    <p style="color:rgba(255,255,255,0.8);margin:0;font-size:14px">Reports generated &amp; ready to download</p>
+                </div>
             </div>
         </div>
     </div>
@@ -7032,31 +6948,24 @@ def reports():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .reports-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .reports-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
-        .empty-state {{
-            text-align: center;
-            padding: var(--spacing-4);
-        }}
-        .empty-state-icon {{
-            width: 48px;
-            height: 48px;
-            margin: 0 auto var(--spacing-2);
-            color: var(--color-gray-400);
-        }}
+        .reports-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .reports-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
+        .empty-state {{ text-align:center; padding:64px 24px; }}
+        .empty-state-icon {{ width:56px; height:56px; margin:0 auto 16px; color:#d1d5db; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="reports-header">
+    <div class="reports-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Payroll Reports</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">View and download all generated payroll reports</p>
+            <h1>Payroll Reports</h1>
+            <p>View, download, and push reports to Zoho Books</p>
         </div>
     </div>
     
@@ -7743,12 +7652,12 @@ def temp_workers():
         "  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700"
         "&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n"
         + menu_html +
-        "\n<div style=\"background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);"
-        "color:white;padding:var(--spacing-4) 0;margin-bottom:var(--spacing-4)\">\n"
+        "\n<div style=\"background:linear-gradient(135deg,#0f172a 0%,#1e40af 70%,#3b82f6 100%);"
+        "padding:42px 0 34px;margin-bottom:32px\">\n"
         "  <div class=\"container\">\n"
-        "    <h1 style=\"color:white;margin-bottom:var(--spacing-1)\">Temp Workers</h1>\n"
-        "    <p style=\"color:rgba(255,255,255,0.9);margin:0;font-size:var(--font-size-lg)\">\n"
-        "      Add ad-hoc employee hours — automatically merged into weekly payroll</p>\n"
+        "    <h1 style=\"color:white;font-size:28px;font-weight:800;margin-bottom:6px\">Temp Workers</h1>\n"
+        "    <p style=\"color:rgba(255,255,255,0.82);margin:0;font-size:15px\">\n"
+        "      Add ad-hoc employee hours \u2014 automatically merged into weekly payroll</p>\n"
         "  </div>\n</div>\n"
         "<div class=\"container\">\n"
         + flash_html +
@@ -7928,21 +7837,22 @@ def manage_users():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .users-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .users-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
+        .users-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .users-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="users-header">
+    <div class="users-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-2)">Manage Users</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-lg);margin:0">Add and remove system users</p>
+            <h1>Manage Users</h1>
+            <p>Add and remove system users</p>
         </div>
     </div>
     
@@ -8122,21 +8032,22 @@ def fetch_timecard():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .fetch-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
+        body {{ background: #f0f4f8; }}
+        .fetch-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 42px 0 34px; margin-bottom: 32px;
         }}
+        .fetch-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .fetch-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
     </style>
 </head>
 <body>
     {menu_html}
     
-    <div class="fetch-header">
+    <div class="fetch-hero">
         <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Fetch Timecard Data from NGTeco</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Automatically download timecard data and convert to CSV</p>
+            <h1>Fetch Timecard Data</h1>
+            <p>Automatically download timecard data from NGTeco and convert to CSV</p>
         </div>
     </div>
     

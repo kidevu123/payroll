@@ -3,11 +3,26 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.0.0"
-__version_name__ = "v9 Enterprise UI \u2014 Card-grid employee selector"
+__version__ = "9.1.0"
+__version_name__ = "v9.1 — Full-site enterprise UI overhaul"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.1.0",
+        "date": "2026-04-08",
+        "changes": [
+            "MAJOR: Global v9 design language applied to all pages",
+            "design-system.css: page bg #f0f4f8, 16px card radius, dark table headers, gradient buttons",
+            "Login page: dramatic dark-to-blue gradient background, larger card with deeper shadow",
+            "Home page: dark gradient hero, animated dropzone, icon quick-access tiles",
+            "Success page: deep green gradient hero with check-ring badge",
+            "All pages now share consistent #f0f4f8 page background via CSS",
+            "Tables: dark navy header, striped even rows, hover highlight",
+            "Buttons: gradient variants with box-shadows and lift-on-hover",
+            "Form inputs: 10px border-radius, improved focus ring"
+        ]
+    },
     {
         "version": "9.0.0",
         "date": "2026-04-08",

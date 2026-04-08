@@ -626,3 +626,193 @@ a:hover {
   }
 }
 
+
+/* ============================================================================
+   v9 DESIGN UPGRADES — enhanced visual language applied globally
+   ============================================================================ */
+
+/* ── Page background ── */
+body {
+  background-color: #f0f4f8;
+}
+
+/* ── Card ── */
+.card {
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.card:hover {
+  box-shadow: 0 4px 28px rgba(0,0,0,0.10);
+}
+.card-header {
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* ── Table ── */
+.table-wrapper {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.table thead {
+  background: #1e3a5f;
+  border-bottom: none;
+}
+.table th {
+  color: rgba(255,255,255,0.92);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 13px 16px;
+  font-weight: 600;
+}
+.table td {
+  padding: 13px 16px;
+}
+.table tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+.table tbody tr:hover {
+  background-color: #eff6ff !important;
+}
+
+/* ── Buttons ── */
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  box-shadow: 0 2px 8px rgba(30,64,175,0.28);
+  color: white;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  box-shadow: 0 4px 16px rgba(30,64,175,0.38);
+  transform: translateY(-1px);
+  color: white;
+}
+.btn-success {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 2px 8px rgba(5,150,105,0.28);
+}
+.btn-success:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(5,150,105,0.38);
+  transform: translateY(-1px);
+}
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  box-shadow: 0 2px 8px rgba(220,38,38,0.22);
+}
+.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  box-shadow: 0 4px 14px rgba(220,38,38,0.32);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background: white;
+  border: 1.5px solid #d1d5db;
+  color: #374151;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+/* ── Inputs ── */
+.form-input,
+.form-select,
+.form-textarea {
+  border-radius: 10px;
+  border: 1.5px solid #d1d5db;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.14);
+}
+
+/* ── Alerts ── */
+.alert {
+  border-radius: 12px;
+}
+
+/* ── Badges ── */
+.badge {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* ── Page hero ── */
+.page-hero {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: white;
+  padding: 40px 0 32px;
+  margin-bottom: 32px;
+}
+.page-hero h1 {
+  color: white;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.page-hero p {
+  color: rgba(255,255,255,0.88);
+  font-size: 16px;
+  margin: 0;
+}
+
+/* ── Stat cards ── */
+.stat-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+  border: 1px solid rgba(0,0,0,0.06);
+  flex: 1;
+}
+.stat-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: #1e40af;
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+}
+
+/* ── Navbar ── */
+.navbar {
+  background: #0f172a;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+}
+
+/* ── Spin animation referenced in JS ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+  .page-hero { padding: 24px 0; }
+  .page-hero h1 { font-size: 22px; }
+}
