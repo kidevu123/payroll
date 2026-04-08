@@ -74,6 +74,7 @@ app.logger.info(f"Payroll application started - Version {APP_VERSION}")
 UPLOAD_FOLDER = 'uploads'
 REPORT_FOLDER = 'static/reports'
 CONFIG_FILE = 'pay_rates.json'
+TEMP_WORKERS_FILE = 'temp_workers.json'
 USERS_FILE = 'users.json'
 DATABASE = 'payroll.db'
 PAY_RATES_FILE = 'pay_rates.csv'
@@ -1044,6 +1045,107 @@ def save_pay_rates(rates):
         app.logger.error(f"Unexpected error saving pay rates: {e}")
         raise
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEMP WORKERS – storage helpers + CSV injection
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def load_temp_workers():
+    """Load temp_workers.json; returns default structure on any error."""
+    try:
+        if os.path.exists(TEMP_WORKERS_FILE):
+            with open(TEMP_WORKERS_FILE, 'r') as _f:
+                data = json.load(_f)
+            data.setdefault('workers', {})
+            data.setdefault('entries', [])
+            data.setdefault('next_id', 1)
+            return data
+    except Exception as _e:
+        app.logger.warning(f"load_temp_workers: {_e}")
+    return {'workers': {}, 'entries': [], 'next_id': 1}
+
+
+def save_temp_workers(data):
+    """Persist temp_workers.json."""
+    try:
+        with open(TEMP_WORKERS_FILE, 'w') as _f:
+            json.dump(data, _f, indent=2)
+    except Exception as _e:
+        app.logger.error(f"save_temp_workers: {_e}")
+        raise RuntimeError(f"Could not save temp workers: {_e}")
+
+
+def _ensure_temp_worker(data, first_name, last_name, rate):
+    """Return (person_id, data) – create TEMP_XXX entry if it does not exist."""
+    fn = first_name.strip()
+    ln = last_name.strip()
+    for pid, info in data['workers'].items():
+        if (info.get('first_name', '').upper() == fn.upper() and
+                info.get('last_name',  '').upper() == ln.upper()):
+            info['rate'] = float(rate)   # update rate in case it changed
+            return pid, data
+    new_pid = f"TEMP_{data['next_id']:03d}"
+    data['next_id'] += 1
+    data['workers'][new_pid] = {
+        'first_name': fn,
+        'last_name':  ln,
+        'rate':       float(rate),
+        'shift_type': 'Both',
+    }
+    return new_pid, data
+
+
+def inject_temp_entries(df, file_path):
+    """Append temp-worker rows whose date falls within df's date range.
+
+    Overwrites file_path with the merged CSV so all subsequent routes
+    (process, confirm, etc.) see the combined data.  Returns merged df.
+    """
+    try:
+        data = load_temp_workers()
+        if not data['entries']:
+            return df
+        try:
+            dates_s  = pd.to_datetime(df['Date'], errors='coerce').dropna()
+            if dates_s.empty:
+                return df
+            min_date = dates_s.min().date()
+            max_date = dates_s.max().date()
+        except Exception:
+            return df
+
+        rows = []
+        for entry in data['entries']:
+            try:
+                ed = datetime.strptime(entry['date'], '%Y-%m-%d').date()
+            except Exception:
+                continue
+            if not (min_date <= ed <= max_date):
+                continue
+            worker = data['workers'].get(entry['person_id'], {})
+            row = {col: '' for col in df.columns}
+            row['Person ID']  = entry['person_id']
+            row['First Name'] = worker.get('first_name', 'Temp')
+            row['Last Name']  = worker.get('last_name',  'Worker')
+            row['Date']       = entry['date']
+            row['Clock In']   = entry.get('clock_in',  '')
+            row['Clock Out']  = entry.get('clock_out', '')
+            if 'Total Work Time(h)' in row:
+                row['Total Work Time(h)'] = ''
+            rows.append(row)
+
+        if not rows:
+            return df
+
+        merged = pd.concat([df, pd.DataFrame(rows, columns=df.columns)], ignore_index=True)
+        merged.to_csv(file_path, index=False)
+        app.logger.info(f"inject_temp_entries: merged {len(rows)} temp row(s) into {file_path}")
+        return merged
+    except Exception as _e:
+        app.logger.warning(f"inject_temp_entries (non-fatal): {_e}")
+        return df
+
+
 def get_employee_rate(pay_rates, emp_id):
     """Extract hourly rate from pay rates structure
     
@@ -1708,6 +1810,12 @@ def get_menu_html(username):
                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
                         </svg>
                         <span>Reports</span>
+                    </a>
+                    <a href="/temp_workers" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z"/>
+                        </svg>
+                        <span>Temp Workers</span>
                     </a>
                     {admin_link}
                 </div>
@@ -4612,6 +4720,9 @@ def validate():
         # Read CSV
         df = pd.read_csv(file_path)
 
+        # Inject any temp worker entries for this date range (non-destructive if none)
+        df = inject_temp_entries(df, file_path)
+
         # Check if this looks like a timesheet
         is_timesheet = all(col in df.columns for col in
                           ['Person ID', 'First Name', 'Last Name', 'Date', 'Clock In', 'Clock Out'])
@@ -7470,6 +7581,327 @@ def zoho_push_saved_report_route():
         if _ajax():
             return jsonify({'status': 'error', 'message': str(e)}), 500
         return f"Error pushing to Zoho: {e}<br><pre>{tb}</pre>", 500
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEMP WORKERS ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route('/temp_workers')
+@login_required
+def temp_workers():
+    """Manage temporary / ad-hoc worker time entries."""
+    username   = session.get('username', 'Unknown')
+    menu_html  = get_menu_html(username)
+    data       = load_temp_workers()
+    flashes    = get_flashed_messages(with_categories=True)
+    flash_html = ''
+    for cat, msg in flashes:
+        cls = {'success': 'alert-success', 'error': 'alert-danger',
+               'warning': 'alert-warning'}.get(cat, 'alert-info')
+        flash_html += f'<div class="alert {cls}">{escape(msg)}</div>'
+
+    from collections import defaultdict
+    weeks = defaultdict(list)
+    for entry in sorted(data['entries'], key=lambda e: e['date'], reverse=True):
+        worker    = data['workers'].get(entry['person_id'], {})
+        full_name = f"{worker.get('first_name','?')} {worker.get('last_name','?')}"
+        try:
+            d          = datetime.strptime(entry['date'], '%Y-%m-%d').date()
+            week_start = d - timedelta(days=d.weekday())
+            week_key   = week_start.strftime('%Y-%m-%d')
+            week_label = (week_start.strftime('%b %d') + ' – ' +
+                          (week_start + timedelta(days=6)).strftime('%b %d, %Y'))
+        except Exception:
+            week_key   = entry['date']
+            week_label = entry['date']
+        ci = entry.get('clock_in',  '')[:5]
+        co = entry.get('clock_out', '')[:5]
+        try:
+            t_in  = datetime.strptime(entry.get('clock_in',  ''), '%H:%M:%S')
+            t_out = datetime.strptime(entry.get('clock_out', ''), '%H:%M:%S')
+            diff  = t_out - t_in
+            if diff.total_seconds() < 0:
+                diff += timedelta(days=1)
+            hrs  = diff.total_seconds() / 3600
+            rate = worker.get('rate', 0)
+            pay  = '$' + f'{hrs * rate:.2f}'
+            hrs_str = f'{hrs:.2f}h'
+        except Exception:
+            pay     = '—'
+            hrs_str = '—'
+        weeks[week_key].append({
+            'entry_id':  entry['entry_id'],
+            'name':      full_name,
+            'date':      entry['date'],
+            'clock_in':  ci,
+            'clock_out': co,
+            'hours':     hrs_str,
+            'rate':      '$' + f"{worker.get('rate', 0):.2f}",
+            'pay':       pay,
+            'week_label': week_label,
+            'notes':     entry.get('notes', ''),
+        })
+
+    _trash = ('<svg style="width:14px;height:14px" fill="currentColor" viewBox="0 0 20 20">'
+              '<path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10'
+              'a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z'
+              'M7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00'
+              '-1-1z" clip-rule="evenodd"/></svg>')
+    _cal  = ('<svg style="width:14px;height:14px;vertical-align:middle;margin-right:4px" '
+             'fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a1 1 '
+             '0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3'
+             'a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" '
+             'clip-rule="evenodd"/></svg>')
+
+    rows_html = ''
+    for wk in sorted(weeks.keys(), reverse=True):
+        wk_entries = weeks[wk]
+        rows_html += (
+            '<tr style="background:var(--color-gray-50)">'
+            '<td colspan="8" style="padding:var(--spacing-2) var(--spacing-3);'
+            'font-weight:var(--font-weight-semibold);font-size:var(--font-size-sm);'
+            'color:var(--color-gray-700);border-bottom:1px solid var(--color-gray-200)">'
+            + _cal + escape(wk_entries[0]['week_label']) + '</td></tr>'
+        )
+        for e in wk_entries:
+            conf = 'Delete entry for ' + e['name'] + ' on ' + e['date'] + '?'
+            rows_html += (
+                '<tr>'
+                '<td>' + escape(e['name'])      + '</td>'
+                '<td>' + escape(e['date'])      + '</td>'
+                '<td>' + escape(e['clock_in'])  + '</td>'
+                '<td>' + escape(e['clock_out']) + '</td>'
+                '<td>' + escape(e['hours'])     + '</td>'
+                '<td>' + escape(e['rate'])      + '/hr</td>'
+                '<td style="color:var(--color-success);font-weight:var(--font-weight-semibold)">'
+                + escape(e['pay']) + '</td>'
+                '<td class="text-right">'
+                '<form method="post" action="/temp_workers/delete/' + escape(e['entry_id']) + '" '
+                'style="display:inline" onsubmit="return confirm('' + conf + '')">'
+                '<button type="submit" class="btn btn-danger btn-sm">'
+                + _trash + ' Delete</button></form></td></tr>'
+            )
+
+    if rows_html:
+        table_section = (
+            '<div class="card" style="margin-top:var(--spacing-4)">'
+            '<div class="card-header"><h2 class="card-title">Scheduled Temp Entries</h2></div>'
+            '<div class="table-wrapper"><table class="table"><thead><tr>'
+            '<th>Name</th><th>Date</th><th>Clock In</th><th>Clock Out</th>'
+            '<th>Hours</th><th>Rate</th><th>Est. Pay</th>'
+            '<th class="text-right">Action</th>'
+            '</tr></thead><tbody>' + rows_html + '</tbody></table></div></div>'
+        )
+    else:
+        table_section = (
+            '<div class="card" style="margin-top:var(--spacing-4)">'
+            '<div style="padding:var(--spacing-4);text-align:center">'
+            '<p style="color:var(--color-gray-600)">No temp worker entries yet. '
+            'Use the form above to add one.</p></div></div>'
+        )
+
+    existing_sel = ''
+    if data['workers']:
+        opts = ''.join(
+            '<option value="' + pid + '" '
+            'data-first="' + escape(w['first_name']) + '" '
+            'data-last="'  + escape(w['last_name'])  + '" '
+            'data-rate="'  + str(w['rate'])          + '">'
+            + escape(w['first_name']) + ' ' + escape(w['last_name'])
+            + ' ($' + f"{w['rate']:.2f}" + '/hr)</option>'
+            for pid, w in data['workers'].items()
+        )
+        existing_sel = (
+            '<div style="margin-bottom:var(--spacing-3)">'
+            '<label style="display:block;font-weight:var(--font-weight-medium);'
+            'margin-bottom:4px;font-size:var(--font-size-sm)">Quick-select existing temp worker</label>'
+            '<select id="existingWorker" onchange="prefillWorker(this)" class="form-select" '
+            'style="max-width:340px"><option value="">— New person —</option>'
+            + opts + '</select></div>'
+        )
+
+    _add_svg  = ('<svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px" '
+                 'fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 '
+                 '100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 '
+                 '0 100-2h-2V7z" clip-rule="evenodd"/></svg>')
+    _info_svg = ('<svg style="width:18px;height:18px;flex-shrink:0;margin-top:2px" '
+                 'fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 '
+                 '11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 '
+                 '1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>')
+
+    html = (
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
+        "  <meta charset=\"UTF-8\">\n"
+        "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+        "  <title>Temp Workers - Payroll Management</title>\n"
+        "  <link rel=\"icon\" type=\"image/svg+xml\" href=\"/static/favicon.svg\">\n"
+        "  <link rel=\"stylesheet\" href=\"/static/design-system.css\">\n"
+        "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
+        "  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n"
+        "  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700"
+        "&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n"
+        + menu_html +
+        "\n<div style=\"background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);"
+        "color:white;padding:var(--spacing-4) 0;margin-bottom:var(--spacing-4)\">\n"
+        "  <div class=\"container\">\n"
+        "    <h1 style=\"color:white;margin-bottom:var(--spacing-1)\">Temp Workers</h1>\n"
+        "    <p style=\"color:rgba(255,255,255,0.9);margin:0;font-size:var(--font-size-lg)\">\n"
+        "      Add ad-hoc employee hours — automatically merged into weekly payroll</p>\n"
+        "  </div>\n</div>\n"
+        "<div class=\"container\">\n"
+        + flash_html +
+        "  <div class=\"alert alert-info\" style=\"margin-bottom:var(--spacing-3);"
+        "display:flex;align-items:flex-start;gap:8px\">"
+        + _info_svg +
+        "  <span>Temp worker entries are <strong>automatically merged</strong> into the "
+        "weekly payroll when you upload a timesheet CSV whose dates overlap. "
+        "No extra steps needed.</span></div>\n"
+        "  <div class=\"card\">\n"
+        "    <div class=\"card-header\"><h2 class=\"card-title\">Add Temp Worker Entry</h2></div>\n"
+        "    <div style=\"padding:var(--spacing-4)\">\n"
+        + existing_sel +
+        "      <form method=\"post\" action=\"/temp_workers/add\">\n"
+        "        <div style=\"display:grid;grid-template-columns:1fr 1fr;"
+        "gap:var(--spacing-3);margin-bottom:var(--spacing-3)\">\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">First Name *</label>\n"
+        "            <input type=\"text\" name=\"first_name\" id=\"inp_first\" required "
+        "class=\"form-input\" placeholder=\"John\">\n          </div>\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Last Name *</label>\n"
+        "            <input type=\"text\" name=\"last_name\" id=\"inp_last\" required "
+        "class=\"form-input\" placeholder=\"Smith\">\n          </div>\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Date *</label>\n"
+        "            <input type=\"date\" name=\"date\" required class=\"form-input\">\n"
+        "          </div>\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Hourly Rate ($) *</label>\n"
+        "            <input type=\"number\" name=\"rate\" id=\"inp_rate\" required "
+        "min=\"0\" step=\"0.01\" class=\"form-input\" placeholder=\"18.00\">\n"
+        "          </div>\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Clock In *</label>\n"
+        "            <input type=\"time\" name=\"clock_in\" required class=\"form-input\">\n"
+        "          </div>\n"
+        "          <div>\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Clock Out *</label>\n"
+        "            <input type=\"time\" name=\"clock_out\" required class=\"form-input\">\n"
+        "          </div>\n"
+        "          <div style=\"grid-column:span 2\">\n"
+        "            <label style=\"display:block;font-weight:var(--font-weight-medium);"
+        "margin-bottom:4px;font-size:var(--font-size-sm)\">Notes (optional)</label>\n"
+        "            <input type=\"text\" name=\"notes\" class=\"form-input\" "
+        "placeholder=\"e.g. Covered for sick employee\">\n          </div>\n"
+        "        </div>\n"
+        "        <button type=\"submit\" class=\"btn btn-primary\">"
+        + _add_svg + "Add Entry</button>\n"
+        "      </form>\n    </div>\n  </div>\n"
+        + table_section +
+        "\n</div>\n"
+        "<script>\n"
+        "function prefillWorker(sel) {\n"
+        "  var opt = sel.options[sel.selectedIndex];\n"
+        "  if (!opt.value) return;\n"
+        "  var f = document.getElementById('inp_first');\n"
+        "  var l = document.getElementById('inp_last');\n"
+        "  var r = document.getElementById('inp_rate');\n"
+        "  if (f) f.value = opt.dataset.first || '';\n"
+        "  if (l) l.value = opt.dataset.last  || '';\n"
+        "  if (r) r.value = opt.dataset.rate  || '';\n"
+        "}\n</script>\n</body>\n</html>"
+    )
+    return html
+
+
+@app.route('/temp_workers/add', methods=['POST'])
+@login_required
+def temp_workers_add():
+    """Save a new temp worker time entry."""
+    try:
+        first_name = request.form.get('first_name', '').strip()
+        last_name  = request.form.get('last_name',  '').strip()
+        date_str   = request.form.get('date', '').strip()
+        clock_in   = request.form.get('clock_in',  '').strip()
+        clock_out  = request.form.get('clock_out', '').strip()
+        rate_str   = request.form.get('rate', '').strip()
+        notes      = request.form.get('notes', '').strip()
+
+        if not all([first_name, last_name, date_str, clock_in, clock_out, rate_str]):
+            flash('All required fields must be filled.', 'error')
+            return redirect(url_for('temp_workers'))
+        try:
+            datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            flash('Invalid date format.', 'error')
+            return redirect(url_for('temp_workers'))
+
+        def _hhmmss(t):
+            t = t.strip()
+            return t + ':00' if len(t) == 5 else t
+
+        try:
+            rate = float(rate_str)
+            if rate < 0:
+                raise ValueError()
+        except ValueError:
+            flash('Invalid hourly rate.', 'error')
+            return redirect(url_for('temp_workers'))
+
+        import uuid
+        data      = load_temp_workers()
+        person_id, data = _ensure_temp_worker(data, first_name, last_name, rate)
+        entry = {
+            'entry_id':  str(uuid.uuid4())[:8],
+            'person_id': person_id,
+            'date':      date_str,
+            'clock_in':  _hhmmss(clock_in),
+            'clock_out': _hhmmss(clock_out),
+            'notes':     notes,
+        }
+        data['entries'].append(entry)
+        save_temp_workers(data)
+
+        # Sync rate to pay_rates.json so the main pipeline can find it
+        pay_rates = load_pay_rates()
+        pay_rates[person_id] = {
+            'rate':       rate,
+            'shift_type': data['workers'][person_id].get('shift_type', 'Both'),
+            'name':       first_name + ' ' + last_name,
+        }
+        save_pay_rates(pay_rates)
+
+        flash('Entry added for ' + first_name + ' ' + last_name + ' on ' + date_str + '.', 'success')
+    except Exception as _e:
+        app.logger.error(f"temp_workers_add error: {_e}")
+        flash('Error adding entry: ' + str(_e), 'error')
+    return redirect(url_for('temp_workers'))
+
+
+@app.route('/temp_workers/delete/<entry_id>', methods=['POST'])
+@login_required
+def temp_workers_delete(entry_id):
+    """Delete a single temp worker time entry."""
+    try:
+        data   = load_temp_workers()
+        before = len(data['entries'])
+        data['entries'] = [e for e in data['entries'] if e['entry_id'] != entry_id]
+        if len(data['entries']) < before:
+            save_temp_workers(data)
+            flash('Entry deleted.', 'success')
+        else:
+            flash('Entry not found.', 'error')
+    except Exception as _e:
+        flash('Error: ' + str(_e), 'error')
+    return redirect(url_for('temp_workers'))
 
 
 # Add user management feature

@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.9"
-__version_name__ = "Reports Push to Haute / Boomin"
+__version__ = "8.17.10"
+__version_name__ = "Temp Workers feature"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "8.17.10",
+        "date": "2026-04-08",
+        "changes": [
+            "New Temp Workers page: add ad-hoc employee hours (name, date, clock-in/out, rate)",
+            "Temp entries auto-merged into weekly payroll when a matching CSV is uploaded",
+            "Temp worker rates synced to pay_rates.json so existing pipeline works unchanged",
+            "Temp Workers link added to main navigation bar"
+        ]
+    },
     {
         "version": "8.17.9",
         "date": "2026-04-08",
