@@ -8570,210 +8570,434 @@ def confirm_employees():
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Confirm Employees - Payroll Management</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/design-system.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        .confirm-header {{
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            padding: var(--spacing-4) 0;
-            margin-bottom: var(--spacing-4);
-        }}
-        .employee-item {{
-            padding: var(--spacing-3);
-            margin-bottom: var(--spacing-2);
-            background: var(--color-gray-50);
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-3);
-            transition: background var(--transition-fast);
-        }}
-        .employee-item:hover {{
-            background: var(--color-gray-100);
-        }}
-        .employee-item input[type="checkbox"] {{
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm Employees - Payroll Management</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/design-system.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ── Layout ── */
+    body {{ background: #f0f4f8; }}
+
+    /* ── Step progress bar ── */
+    .steps-bar {{
+      background: #1e3a5f;
+      padding: 14px 0;
+    }}
+    .steps-inner {{
+      max-width: 860px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; gap: 0;
+    }}
+    .step {{
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.45);
+      flex: 1;
+    }}
+    .step.done   {{ color: rgba(255,255,255,0.75); }}
+    .step.active {{ color: #fff; font-weight: 700; }}
+    .step-num {{
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+      background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+    }}
+    .step.done   .step-num {{ background: #22c55e; border-color: #22c55e; color: #fff; }}
+    .step.active .step-num {{ background: #3b82f6; border-color: #3b82f6; color: #fff; }}
+    .step-divider {{
+      flex: 0 0 28px; height: 1px; background: rgba(255,255,255,0.15);
+      margin: 0 4px;
+    }}
+
+    /* ── Page hero ── */
+    .page-hero {{
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      padding: 36px 0 28px;
+    }}
+    .page-hero h1 {{ color: #fff; margin: 0 0 6px; font-size: 26px; font-weight: 700; }}
+    .page-hero p  {{ color: rgba(255,255,255,0.85); margin: 0; font-size: 15px; }}
+
+    /* ── Filter pills ── */
+    .filter-pill {{
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1.5px solid #d1d5db; background: #fff;
+      font-size: 13px; font-weight: 500; color: #374151;
+      cursor: pointer; transition: all 0.15s; user-select: none;
+    }}
+    .filter-pill:hover {{ border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }}
+    .filter-pill.active {{
+      background: #1d4ed8; border-color: #1d4ed8; color: #fff;
+    }}
+
+    /* ── Employee card grid ── */
+    .emp-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 14px;
+      padding: 20px;
+    }}
+    .emp-card {{
+      position: relative;
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 20px 16px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s cubic-bezier(.4,0,.2,1);
+      user-select: none;
+    }}
+    .emp-card:hover {{
+      border-color: #93c5fd;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.12);
+      transform: translateY(-2px);
+    }}
+    .emp-card.selected {{
+      border-color: #2563eb;
+      background: linear-gradient(145deg, #eff6ff, #fff);
+      box-shadow: 0 4px 20px rgba(37,99,235,0.18);
+    }}
+    .emp-card.deselected {{
+      opacity: 0.5;
+      border-color: #e5e7eb;
+      background: #f9fafb;
+    }}
+    .emp-card.deselected:hover {{ opacity: 0.75; }}
+
+    /* ── Checkmark ── */
+    .check-ring {{
+      position: absolute; top: 11px; right: 11px;
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid #d1d5db; background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.18s;
+    }}
+    .emp-card.selected .check-ring {{
+      background: #2563eb; border-color: #2563eb;
+    }}
+    .check-ring svg {{ opacity: 0; transition: opacity 0.15s; }}
+    .emp-card.selected .check-ring svg {{ opacity: 1; }}
+
+    /* ── Avatar ── */
+    .emp-avatar {{
+      width: 58px; height: 58px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: #fff;
+      margin: 0 auto 12px; letter-spacing: 0.5px;
+    }}
+    .avatar-day   {{ background: linear-gradient(135deg,#f59e0b,#f97316); }}
+    .avatar-night {{ background: linear-gradient(135deg,#6366f1,#8b5cf6); }}
+    .avatar-both  {{ background: linear-gradient(135deg,#0ea5e9,#6366f1); }}
+
+    /* ── Name / ID ── */
+    .emp-name {{
+      font-size: 14px; font-weight: 700; color: #111827;
+      margin-bottom: 3px; line-height: 1.3;
+    }}
+    .emp-id {{
+      font-size: 11px; color: #9ca3af; margin-bottom: 10px; font-weight: 500;
+    }}
+
+    /* ── Shift badge ── */
+    .shift-badge {{
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+    }}
+    .badge-day   {{ background: #fef3c7; color: #92400e; }}
+    .badge-night {{ background: #ede9fe; color: #5b21b6; }}
+    .badge-both  {{ background: #dbeafe; color: #1e40af; }}
+
+    /* ── Bottom action bar ── */
+    .action-bar {{
+      position: sticky; bottom: 0;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid #e5e7eb;
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; z-index: 100;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.08);
+    }}
+    .selection-stat {{
+      display: flex; align-items: center; gap: 12px;
+    }}
+    .stat-pill {{
+      background: #f3f4f6; border-radius: 999px;
+      padding: 6px 14px; font-size: 13px; font-weight: 600; color: #374151;
+    }}
+    .stat-pill span {{ color: #2563eb; }}
+
+    /* ── Process button ── */
+    .process-btn {{
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border-radius: 10px;
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: #fff; font-size: 15px; font-weight: 700;
+      border: none; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(34,197,94,0.35);
+      transition: all 0.18s;
+    }}
+    .process-btn:hover:not(:disabled) {{
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(34,197,94,0.45);
+    }}
+    .process-btn:disabled {{
+      opacity: 0.7; cursor: not-allowed; transform: none;
+    }}
+    .cancel-link {{
+      color: #6b7280; font-size: 14px; font-weight: 500;
+      text-decoration: none;
+      padding: 10px 16px; border-radius: 8px;
+      border: 1.5px solid #d1d5db; background: #fff;
+      transition: all 0.15s;
+    }}
+    .cancel-link:hover {{ border-color: #9ca3af; color: #374151; }}
+
+    /* ── Toolbar ── */
+    .toolbar {{
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      border-bottom: 1px solid #e5e7eb; background: #fff;
+    }}
+    .quick-btns {{ display: flex; gap: 8px; }}
+    .quick-btn {{
+      font-size: 12px; font-weight: 600; color: #6b7280;
+      background: none; border: 1.5px solid #e5e7eb;
+      border-radius: 6px; padding: 5px 12px; cursor: pointer;
+      transition: all 0.15s;
+    }}
+    .quick-btn:hover {{ border-color: #9ca3af; color: #374151; }}
+
+    @media (max-width: 600px) {{
+      .emp-grid {{ grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 14px; }}
+      .action-bar {{ flex-direction: column; align-items: stretch; }}
+      .process-btn {{ width: 100%; justify-content: center; }}
+    }}
+  </style>
 </head>
 <body>
-    {menu_html}
-    
-    <div class="confirm-header">
-        <div class="container">
-            <h1 style="color:white;margin-bottom:var(--spacing-1);font-size:var(--font-size-2xl)">Confirm Employees for Payroll</h1>
-            <p style="color:rgba(255,255,255,0.9);font-size:var(--font-size-sm);margin:0">Select employees to include in this payroll run</p>
-        </div>
+{menu_html}
+
+<!-- Step progress -->
+<div class="steps-bar">
+  <div class="steps-inner">
+    <div class="step done">
+      <div class="step-num">
+        <svg width="13" height="13" fill="white" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      Upload
     </div>
-    
-    <div class="container container-narrow">
-        <div class="card">
-            <div class="card-header">
-                <h2 class="card-title">Select Employees to Include</h2>
-            </div>
-            
-            <div style="padding:var(--spacing-3);background:var(--color-blue-50);border-bottom:1px solid var(--color-gray-200);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--spacing-3)">
-                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
-                    <label for="shift-filter-confirm" style="font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm)">Filter by Shift:</label>
-                    <select id="shift-filter-confirm" class="form-input" style="width:auto;min-width:150px" onchange="filterEmployeesByShift()">
-                        <option value="all">All Shifts</option>
-                        <option value="day">Day Shift Only</option>
-                        <option value="night">Night Shift Only</option>
-                        <option value="both">Both Shifts Only</option>
-                    </select>
-                </div>
-                <div style="display:flex;gap:var(--spacing-2)">
-                    <button onclick="selectAllVisible()" class="btn btn-sm btn-secondary">Select All Visible</button>
-                    <button onclick="deselectAllVisible()" class="btn btn-sm btn-secondary">Deselect All Visible</button>
-                </div>
-            </div>
-            
-            <div id="employee-list"></div>
-            
-            <div style="margin-top:var(--spacing-4);display:flex;gap:var(--spacing-3);justify-content:flex-end">
-                <a href="/" class="btn btn-secondary">Cancel</a>
-                <button id="process-btn" onclick="processPayroll(this)" class="btn btn-success">
-                    <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                    </svg>
-                    Confirm & Process
-                </button>
-            </div>
-        </div>
+    <div class="step-divider"></div>
+    <div class="step done">
+      <div class="step-num">
+        <svg width="13" height="13" fill="white" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+      Validate
     </div>
-    
-    <script>
-        const employees = {employees_json};
-        function populateEmployees() {{
-            const list = document.getElementById('employee-list');
-            list.innerHTML = '';
-            employees.forEach(emp => {{
-                const div = document.createElement('div');
-                div.className = 'employee-item';
-                div.setAttribute('data-shift', emp.shift_type || 'day');
-                
-                // Determine badge style and emoji based on shift
-                let badgeClass = 'badge-secondary';
-                let shiftEmoji = '☀️';
-                let shiftLabel = 'Day Shift';
-                
-                if (emp.shift_type === 'night') {{
-                    badgeClass = 'badge-warning';
-                    shiftEmoji = '🌙';
-                    shiftLabel = 'Night Shift';
-                }} else if (emp.shift_type === 'both') {{
-                    badgeClass = 'badge-info';
-                    shiftEmoji = '☀️🌙';
-                    shiftLabel = 'Both Shifts';
-                }} else {{
-                    badgeClass = 'badge-secondary';
-                    shiftEmoji = '☀️';
-                    shiftLabel = 'Day Shift';
-                }}
-                
-                const shiftBadge = '<span class="badge ' + badgeClass + '" style="margin-left:var(--spacing-2);font-size:var(--font-size-sm)">' + shiftEmoji + ' ' + shiftLabel + '</span>';
-                
-                div.innerHTML = '<input type="checkbox" value="' + emp['Person ID'] + '" checked> <strong>' + escape(emp['First Name'] + ' ' + emp['Last Name']) + '</strong> <span style="color:var(--color-gray-600);font-size:var(--font-size-sm)">(ID: ' + escape(emp['Person ID']) + ')</span>' + shiftBadge;
-                list.appendChild(div);
-            }});
-        }}
-        function escape(str) {{
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }}
-        
-        function filterEmployeesByShift() {{
-            const filterValue = document.getElementById('shift-filter-confirm').value;
-            const items = document.querySelectorAll('.employee-item');
-            let visibleCount = 0;
-            
-            items.forEach(item => {{
-                const shiftType = item.getAttribute('data-shift') || 'day';
-                
-                if (filterValue === 'all') {{
-                    item.style.display = 'flex';
-                    visibleCount++;
-                }} else if (shiftType === filterValue) {{
-                    item.style.display = 'flex';
-                    visibleCount++;
-                }} else {{
-                    item.style.display = 'none';
-                }}
-            }});
-        }}
-        
-        function selectAllVisible() {{
-            const items = document.querySelectorAll('.employee-item');
-            items.forEach(item => {{
-                if (item.style.display !== 'none') {{
-                    const checkbox = item.querySelector('input[type="checkbox"]');
-                    if (checkbox) checkbox.checked = true;
-                }}
-            }});
-        }}
-        
-        function deselectAllVisible() {{
-            const items = document.querySelectorAll('.employee-item');
-            items.forEach(item => {{
-                if (item.style.display !== 'none') {{
-                    const checkbox = item.querySelector('input[type="checkbox"]');
-                    if (checkbox) checkbox.checked = false;
-                }}
-            }});
-        }}
-        function processPayroll(button) {{
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            if (selectedIds.length === 0) {{
-                alert('Select at least one employee.');
-                return;
-            }}
-            
-            const originalText = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/></svg> Processing...';
-            
-            fetch('/process_confirmed', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{employee_ids: selectedIds}})
-            }})
-            .then(response => {{
-                if (response.ok) {{
-                    return response.json();
-                }} else {{
-                    return response.json().then(data => {{
-                        throw new Error(data.error || 'Error processing payroll');
-                    }}).catch(() => {{
-                        throw new Error('Error processing payroll. Please try again.');
-                    }});
-                }}
-            }})
-            .then(data => {{
-                if (data.redirect) {{
-                    window.location.href = data.redirect;
-                }} else {{
-                    window.location.href = '/success';
-                }}
-            }})
-            .catch(error => {{
-                button.disabled = false;
-                button.innerHTML = originalText;
-                alert('Error: ' + (error.message || 'Error processing payroll. Please try again.'));
-            }});
-        }}
-        populateEmployees();
-    </script>
+    <div class="step-divider"></div>
+    <div class="step active">
+      <div class="step-num">3</div>
+      Select Employees
+    </div>
+    <div class="step-divider"></div>
+    <div class="step">
+      <div class="step-num">4</div>
+      Generate Reports
+    </div>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="page-hero">
+  <div class="container">
+    <h1>Who's in this payroll run?</h1>
+    <p>Click employees to include or exclude them &mdash; all are selected by default</p>
+  </div>
+</div>
+
+<!-- Main card -->
+<div class="container" style="max-width:920px;padding:24px 16px 120px">
+  <div style="background:#fff;border-radius:16px;box-shadow:0 2px 20px rgba(0,0,0,0.08);overflow:hidden">
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:#6b7280;margin-right:4px">Filter:</span>
+        <button class="filter-pill active" id="pill-all"   onclick="filterShift('all')">All</button>
+        <button class="filter-pill"        id="pill-day"   onclick="filterShift('day')">&#9728; Day</button>
+        <button class="filter-pill"        id="pill-night" onclick="filterShift('night')">&#9790; Night</button>
+        <button class="filter-pill"        id="pill-both"  onclick="filterShift('both')">&#9728;&#9790; Both</button>
+      </div>
+      <div class="quick-btns">
+        <button class="quick-btn" onclick="selectAllVisible()">Select All</button>
+        <button class="quick-btn" onclick="deselectAllVisible()">Deselect All</button>
+      </div>
+    </div>
+
+    <!-- Employee grid (populated by JS) -->
+    <div class="emp-grid" id="employee-grid"></div>
+
+  </div>
+</div>
+
+<!-- Sticky action bar -->
+<div class="action-bar">
+  <div class="selection-stat">
+    <div class="stat-pill"><span id="sel-count">0</span> of <span id="total-count">0</span> selected</div>
+    <div style="font-size:13px;color:#9ca3af" id="filter-label"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="/" class="cancel-link">Cancel</a>
+    <button id="process-btn" class="process-btn" onclick="processPayroll(this)">
+      <svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+      Process Payroll
+    </button>
+  </div>
+</div>
+
+<script>
+const employees = {employees_json};
+let currentFilter = 'all';
+
+function getInitials(first, last) {{
+  return ((first||'').charAt(0) + (last||'').charAt(0)).toUpperCase();
+}}
+
+function renderCards() {{
+  const grid = document.getElementById('employee-grid');
+  grid.innerHTML = '';
+  employees.forEach(emp => {{
+    const shift = (emp.shift_type || 'day').toLowerCase();
+    const isDay   = shift === 'day';
+    const isNight = shift === 'night';
+    const isBoth  = shift === 'both';
+
+    const avatarClass = isNight ? 'avatar-night' : isBoth ? 'avatar-both' : 'avatar-day';
+    const badgeClass  = isNight ? 'badge-night'  : isBoth ? 'badge-both'  : 'badge-day';
+    const shiftLabel  = isNight ? '&#9790; Night' : isBoth ? '&#9728;&#9790; Both' : '&#9728; Day';
+
+    const initials = getInitials(emp['First Name'], emp['Last Name']);
+    const fullName = esc(emp['First Name'] + ' ' + emp['Last Name']);
+    const pid      = esc(String(emp['Person ID']));
+
+    const card = document.createElement('div');
+    card.className = 'emp-card selected';
+    card.setAttribute('data-shift', shift);
+    card.setAttribute('data-pid',   String(emp['Person ID']));
+    card.onclick = function() {{ toggleCard(this); }};
+
+    card.innerHTML =
+      '<div class="check-ring">' +
+        '<svg width="12" height="12" fill="white" viewBox="0 0 20 20">' +
+          '<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>' +
+        '</svg>' +
+      '</div>' +
+      '<div class="emp-avatar ' + avatarClass + '">' + initials + '</div>' +
+      '<div class="emp-name">' + fullName + '</div>' +
+      '<div class="emp-id">ID: ' + pid + '</div>' +
+      '<span class="shift-badge ' + badgeClass + '">' + shiftLabel + '</span>';
+
+    grid.appendChild(card);
+  }});
+  updateCount();
+}}
+
+function esc(str) {{
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}}
+
+function toggleCard(card) {{
+  card.classList.toggle('selected');
+  card.classList.toggle('deselected');
+  updateCount();
+}}
+
+function filterShift(f) {{
+  currentFilter = f;
+  ['all','day','night','both'].forEach(p => {{
+    document.getElementById('pill-' + p).classList.toggle('active', p === f);
+  }});
+  document.querySelectorAll('.emp-card').forEach(card => {{
+    const s = card.getAttribute('data-shift');
+    card.style.display = (f === 'all' || s === f) ? '' : 'none';
+  }});
+  const lbl = document.getElementById('filter-label');
+  lbl.textContent = f === 'all' ? '' : ('Showing ' + f + ' shift only');
+  updateCount();
+}}
+
+function selectAllVisible() {{
+  document.querySelectorAll('.emp-card').forEach(card => {{
+    if (card.style.display !== 'none') {{
+      card.classList.add('selected');
+      card.classList.remove('deselected');
+    }}
+  }});
+  updateCount();
+}}
+
+function deselectAllVisible() {{
+  document.querySelectorAll('.emp-card').forEach(card => {{
+    if (card.style.display !== 'none') {{
+      card.classList.remove('selected');
+      card.classList.add('deselected');
+    }}
+  }});
+  updateCount();
+}}
+
+function updateCount() {{
+  const all      = document.querySelectorAll('.emp-card');
+  const selected = document.querySelectorAll('.emp-card.selected');
+  document.getElementById('sel-count').textContent   = selected.length;
+  document.getElementById('total-count').textContent = all.length;
+}}
+
+function processPayroll(button) {{
+  const selected = Array.from(document.querySelectorAll('.emp-card.selected'))
+                        .map(c => c.getAttribute('data-pid'));
+  if (selected.length === 0) {{
+    alert('Please select at least one employee to continue.');
+    return;
+  }}
+  button.disabled = true;
+  button.innerHTML =
+    '<svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20" style="animation:spin 1s linear infinite">' +
+      '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>' +
+    '</svg> Processing\u2026';
+
+  fetch('/process_confirmed', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{employee_ids: selected}})
+  }})
+  .then(r => r.ok ? r.json() : r.json().then(d => {{ throw new Error(d.error || 'Error'); }}))
+  .then(data => {{ window.location.href = data.redirect || '/success'; }})
+  .catch(err => {{
+    button.disabled = false;
+    button.innerHTML =
+      '<svg width="18" height="18" fill="currentColor" viewBox="0 0 20 20">' +
+        '<path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>' +
+      '</svg> Process Payroll';
+    alert('Error: ' + (err.message || 'Please try again.'));
+  }});
+}}
+
+renderCards();
+</script>
 </body>
 </html>"""
         

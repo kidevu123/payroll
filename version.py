@@ -3,11 +3,25 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "8.17.10"
-__version_name__ = "Temp Workers feature"
+__version__ = "9.0.0"
+__version_name__ = "v9 Enterprise UI \u2014 Card-grid employee selector"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.0.0",
+        "date": "2026-04-08",
+        "changes": [
+            "MAJOR: v9 Enterprise UI overhaul",
+            "Confirm Employees page fully redesigned with card-grid layout",
+            "Clickable employee cards with avatar initials, color-coded by shift type",
+            "Sticky bottom action bar with live selection counter",
+            "Filter pills (All / Day / Night / Both) replace old dropdown",
+            "4-step progress indicator at top of page",
+            "Smooth card selection animations, hover lift effects",
+            "Responsive grid: auto-fills from 2 to 5 columns depending on screen"
+        ]
+    },
     {
         "version": "8.17.10",
         "date": "2026-04-08",
