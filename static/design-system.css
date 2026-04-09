@@ -756,20 +756,21 @@ body {
 
 /* ── Page hero ── */
 .page-hero {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
   color: white;
-  padding: 40px 0 32px;
+  padding: 42px 0 34px;
   margin-bottom: 32px;
 }
 .page-hero h1 {
   color: white;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 8px;
+  letter-spacing: -0.3px;
 }
 .page-hero p {
-  color: rgba(255,255,255,0.88);
-  font-size: 16px;
+  color: rgba(255,255,255,0.82);
+  font-size: 15px;
   margin: 0;
 }
 
@@ -807,6 +808,33 @@ body {
 .navbar {
   background: #0f172a;
   box-shadow: 0 2px 16px rgba(0,0,0,0.25);
+}
+
+/* ── Filter pills ── */
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.filter-pill:hover {
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+.filter-pill.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
 }
 
 /* ── Spin animation referenced in JS ── */

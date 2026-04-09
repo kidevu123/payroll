@@ -2274,55 +2274,51 @@ def index():
                     </h2>
                 </div>
                 
-                <div style="display:flex;flex-direction:column;gap:var(--spacing-2)">
+                <div style="display:flex;flex-direction:column;gap:0">
                     <div class="step-item">
                         <div class="step-number">1</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Upload CSV</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Drag & drop or select CSV file</p>
+                            <div style="font-weight:600;color:#111827;font-size:13px">Upload CSV</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px">Drag & drop your timesheet file</div>
                         </div>
                     </div>
-                    
+                    <div style="width:1px;height:12px;background:#e5e7eb;margin:0 0 0 15px"></div>
                     <div class="step-item">
                         <div class="step-number">2</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Fix Missing Times</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Review and correct if needed</p>
+                            <div style="font-weight:600;color:#111827;font-size:13px">Fix Missing Times</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px">Review and correct if needed</div>
                         </div>
                     </div>
-                    
+                    <div style="width:1px;height:12px;background:#e5e7eb;margin:0 0 0 15px"></div>
                     <div class="step-item">
                         <div class="step-number">3</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Select Employees</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Choose employees to include</p>
+                            <div style="font-weight:600;color:#111827;font-size:13px">Select Employees</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px">Choose who to include in payroll</div>
                         </div>
                     </div>
-                    
+                    <div style="width:1px;height:12px;background:#e5e7eb;margin:0 0 0 15px"></div>
                     <div class="step-item">
                         <div class="step-number">4</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Generate Reports</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Process and download Excel</p>
+                            <div style="font-weight:600;color:#111827;font-size:13px">Generate Reports</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px">Download Excel payroll files</div>
                         </div>
                     </div>
-                    
+                    <div style="width:1px;height:12px;background:#e5e7eb;margin:0 0 0 15px"></div>
                     <div class="step-item">
-                        <div class="step-number">5</div>
+                        <div class="step-number" style="background:linear-gradient(135deg,#059669,#10b981)">5</div>
                         <div style="flex:1">
-                            <h4 style="font-weight:var(--font-weight-semibold);color:var(--color-gray-900);margin-bottom:0;font-size:var(--font-size-sm)">Push to Zoho</h4>
-                            <p style="font-size:var(--font-size-xs);color:var(--color-gray-600);margin:0">Sync expense automatically</p>
+                            <div style="font-weight:600;color:#111827;font-size:13px">Push to Zoho</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:1px">Sync expense automatically</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="alert alert-info" style="margin-top:var(--spacing-3);padding:var(--spacing-2)">
-                    <svg style="width:16px;height:16px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                    </svg>
-                    <div style="font-size:var(--font-size-xs)">
-                        <strong>CSV Format:</strong> Person ID, First Name, Last Name, Date, Clock In, Clock Out
-                    </div>
+                <div style="margin-top:14px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e5e7eb">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#9ca3af;margin-bottom:4px">Required CSV columns</div>
+                    <code style="font-size:11px;color:#374151">Person ID · First Name · Last Name · Date · Clock In · Clock Out</code>
                 </div>
             </div>
             
@@ -2492,16 +2488,19 @@ def manage_rates():
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
                     </svg>
                     Current Pay Rates
+                    <span id="filter-count" style="font-size:var(--font-size-sm);font-weight:400;color:var(--color-gray-500);margin-left:8px"></span>
                 </h2>
-                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
-                    <label for="shift-filter" style="font-weight:var(--font-weight-semibold);color:var(--color-gray-700);font-size:var(--font-size-sm)">Filter by Shift:</label>
-                    <select id="shift-filter" class="form-input" style="width:auto;min-width:150px" onchange="filterByShift()">
-                        <option value="all">All Shifts</option>
-                        <option value="day">Day Shift Only</option>
-                        <option value="night">Night Shift Only</option>
-                        <option value="both">Both Shifts Only</option>
-                    </select>
-                    <span id="filter-count" style="font-size:var(--font-size-sm);color:var(--color-gray-600);margin-left:var(--spacing-2)"></span>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <button type="button" class="filter-pill active" data-shift="all" onclick="filterByShiftPill(this,'all')">All Shifts</button>
+                    <button type="button" class="filter-pill" data-shift="day" onclick="filterByShiftPill(this,'day')">
+                        <svg style="width:13px;height:13px" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+                        Day
+                    </button>
+                    <button type="button" class="filter-pill" data-shift="night" onclick="filterByShiftPill(this,'night')">
+                        <svg style="width:13px;height:13px" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+                        Night
+                    </button>
+                    <button type="button" class="filter-pill" data-shift="both" onclick="filterByShiftPill(this,'both')">Both</button>
                 </div>
             </div>
             
@@ -2746,40 +2745,31 @@ def manage_rates():
         }
         
         // Shift Filter Function
-        function filterByShift() {
-            const filterValue = document.getElementById('shift-filter').value;
+        function filterByShiftPill(btn, filterValue) {
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
             const rows = document.querySelectorAll('tbody tr');
             let visibleCount = 0;
-            
             rows.forEach(row => {
                 const shiftBadge = row.querySelector('.shift-display .badge');
-                if (!shiftBadge) {
-                    row.style.display = '';
-                    visibleCount++;
-                    return;
-                }
-                
+                if (!shiftBadge) { row.style.display = ''; visibleCount++; return; }
                 const shiftText = shiftBadge.textContent.trim().toLowerCase();
-                
-                if (filterValue === 'all') {
-                    row.style.display = '';
-                    visibleCount++;
-                } else if (shiftText === filterValue) {
-                    row.style.display = '';
-                    visibleCount++;
+                if (filterValue === 'all' || shiftText === filterValue) {
+                    row.style.display = ''; visibleCount++;
                 } else {
                     row.style.display = 'none';
                 }
             });
-            
-            // Update counter
             const filterCount = document.getElementById('filter-count');
-            if (filterValue === 'all') {
-                filterCount.textContent = `Showing all ${visibleCount} employees`;
-            } else {
-                const shiftName = filterValue.charAt(0).toUpperCase() + filterValue.slice(1);
-                filterCount.textContent = `Showing ${visibleCount} ${shiftName} shift employee${visibleCount !== 1 ? 's' : ''}`;
+            if (filterCount) {
+                filterCount.textContent = filterValue === 'all'
+                    ? `${visibleCount} employees`
+                    : `${visibleCount} ${filterValue} shift`;
             }
+        }
+        function filterByShift() {
+            const sel = document.getElementById('shift-filter');
+            if (sel) filterByShiftPill({classList:{remove:()=>{},add:()=>{}}}, sel.value);
         }
         
         // Initialize filter count on page load
@@ -5328,16 +5318,16 @@ def fix_missing_times():
             </div>
         </div>
         
-        <div class="card" style="margin-bottom:var(--spacing-3)">
-            <div style="display:flex;gap:var(--spacing-4);align-items:center;flex-wrap:wrap">
-                <strong style="color:var(--color-gray-900)">Color Legend:</strong>
-                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
-                    <span style="display:inline-block;width:20px;height:15px;background-color:var(--color-danger-light);border:1px solid var(--color-danger);border-radius:2px"></span>
-                    <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">Both times missing</span>
+        <div class="card" style="margin-bottom:16px;padding:14px 20px">
+            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#9ca3af">Legend</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="display:inline-block;width:24px;height:16px;background-color:#fee2e2;border:1.5px solid #fca5a5;border-radius:4px"></span>
+                    <span style="font-size:13px;font-weight:500;color:#374151">Both times missing</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:var(--spacing-2)">
-                    <span style="display:inline-block;width:20px;height:15px;background-color:var(--color-warning-light);border:1px solid var(--color-warning);border-radius:2px"></span>
-                    <span style="font-size:var(--font-size-sm);color:var(--color-gray-700)">One time missing</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="display:inline-block;width:24px;height:16px;background-color:#fef9c3;border:1.5px solid #fde047;border-radius:4px"></span>
+                    <span style="font-size:13px;font-weight:500;color:#374151">One time missing</span>
                 </div>
             </div>
         </div>
@@ -5563,9 +5553,9 @@ def success():
             </div>
             
             <!-- Zoho Books Integration -->
-            <div class="card" style="margin-bottom:0;background:linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);border-color:var(--color-primary)">
-                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2)">
-                    <h2 class="card-title" style="font-size:var(--font-size-base)">
+            <div class="card" style="margin-bottom:0;background:linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%);border:none">
+                <div class="card-header" style="padding-bottom:var(--spacing-2);margin-bottom:var(--spacing-2);border-bottom:1px solid rgba(255,255,255,0.12)">
+                    <h2 class="card-title" style="font-size:var(--font-size-base);color:#fff">
                         <svg style="width:20px;height:20px;display:inline;margin-right:6px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
                         </svg>
@@ -5573,12 +5563,12 @@ def success():
                     </h2>
                 </div>
                 
-                <p style="font-size:var(--font-size-xs);color:var(--color-gray-700);margin-bottom:var(--spacing-3)">Automatically create an expense and attach the admin report</p>
+                <p style="font-size:var(--font-size-xs);color:rgba(255,255,255,0.75);margin-bottom:var(--spacing-3)">Automatically create an expense and attach the admin report</p>
                 
                 <form id="zoho-expense-form" action="/zoho/create_expense" method="post">
                     <div class="form-group" style="margin-bottom:var(--spacing-2)">
-                        <label for="company" class="form-label" style="font-size:var(--font-size-xs)">Company</label>
-                        <select id="company" name="company" class="form-select" style="padding:var(--spacing-2)">
+                        <label for="company" class="form-label" style="font-size:var(--font-size-xs);color:rgba(255,255,255,0.8)">Company</label>
+                        <select id="company" name="company" class="form-select" style="padding:var(--spacing-2);background:#1e3a8a;color:#fff;border-color:rgba(255,255,255,0.2)">
                             <option value="haute">Haute Brands</option>
                             <option value="boomin">Boomin Brands</option>
                         </select>
@@ -5586,11 +5576,11 @@ def success():
                     <input type="hidden" name="week" value="{week}">
 
                     <div class="form-group" style="margin-bottom:var(--spacing-3)">
-                        <label for="custom_desc" class="form-label" style="font-size:var(--font-size-xs)">Notes (optional)</label>
-                        <input type="text" id="custom_desc" name="custom_desc" class="form-input" style="padding:var(--spacing-2)" placeholder="Optional notes...">
+                        <label for="custom_desc" class="form-label" style="font-size:var(--font-size-xs);color:rgba(255,255,255,0.8)">Notes (optional)</label>
+                        <input type="text" id="custom_desc" name="custom_desc" class="form-input" style="padding:var(--spacing-2);background:#1e3a8a;color:#fff;border-color:rgba(255,255,255,0.2)" placeholder="Optional notes...">
                     </div>
                     
-                    <button type="submit" class="btn btn-success btn-sm" style="width:100%">
+                    <button type="submit" class="btn btn-success btn-sm" style="width:100%;background:linear-gradient(135deg,#059669,#10b981)">
                         <svg style="width:18px;height:18px" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
                         </svg>
@@ -8524,11 +8514,11 @@ def confirm_employees():
 
     /* ── Page hero ── */
     .page-hero {{
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-      padding: 36px 0 28px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+      padding: 42px 0 34px;
     }}
-    .page-hero h1 {{ color: #fff; margin: 0 0 6px; font-size: 26px; font-weight: 700; }}
-    .page-hero p  {{ color: rgba(255,255,255,0.85); margin: 0; font-size: 15px; }}
+    .page-hero h1 {{ color: #fff; margin: 0 0 6px; font-size: 28px; font-weight: 800; letter-spacing:-0.3px; }}
+    .page-hero p  {{ color: rgba(255,255,255,0.82); margin: 0; font-size: 15px; }}
 
     /* ── Filter pills ── */
     .filter-pill {{

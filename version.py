@@ -3,11 +3,24 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.1.0"
-__version_name__ = "v9.1 — Full-site enterprise UI overhaul"
+__version__ = "9.2.0"
+__version_name__ = "v9.2 — UI polish pass: heroes, pills, Zoho card"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.2.0",
+        "date": "2026-04-08",
+        "changes": [
+            "confirm_employees: hero upgraded from flat blue to dark navy gradient",
+            "design-system.css: .page-hero now uses dark navy gradient globally",
+            "design-system.css: .filter-pill added as global utility component",
+            "Pay Rates page: shift filter replaced with modern filter pills",
+            "Success page: Zoho Books card redesigned with dark navy gradient",
+            "Home page: How It Works steps now have connecting lines, CSV format note improved",
+            "Fix Missing Times: color legend swatches now match actual row highlight colors"
+        ]
+    },
     {
         "version": "9.1.0",
         "date": "2026-04-08",
