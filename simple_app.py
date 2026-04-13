@@ -7719,6 +7719,17 @@ def temp_workers():
         "  if (r) r.value = opt.dataset.rate  || '';\n"
         "}\n</script>\n</body>\n</html>"
     )
+    # Debug: log the dynamic sections so we can diagnose HTML issues
+    app.logger.info("=== TEMP_WORKERS DEBUG ===")
+    app.logger.info(f"existing_sel repr: {repr(existing_sel[:300])}")
+    app.logger.info(f"rows_html repr: {repr(rows_html[:500])}")
+    app.logger.info(f"html total len: {len(html)}, type: {type(html)}")
+    # Find any dangerous sequences in the final html
+    for danger in ['</script', '</style', '<plaintext', '<textarea']:
+        idx = html.lower().find(danger)
+        while idx != -1:
+            app.logger.info(f"FOUND '{danger}' at pos {idx}: ...{repr(html[max(0,idx-30):idx+40])}...")
+            idx = html.lower().find(danger, idx+1)
     from flask import Response as _R
     return _R(html, status=200, content_type='text/html; charset=utf-8')
 
