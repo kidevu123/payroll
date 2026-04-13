@@ -3,8 +3,8 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.3.0"
-__version_name__ = "v9.3 — Temp Workers rendering fix (explicit Content-Type)"
+__version__ = "9.3.1"
+__version_name__ = "v9.3.1 — Temp Workers debug logging (rendering diagnosis)"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
