@@ -7565,7 +7565,7 @@ def temp_workers():
             + _cal + escape(wk_entries[0]['week_label']) + '</td></tr>'
         )
         for e in wk_entries:
-            safe_conf = 'Delete entry for ' + e['name'].replace("'", "\\'") + ' on ' + e['date'] + '?'
+            confirm_msg = escape('Delete entry for ' + e['name'] + ' on ' + e['date'] + '?')
             rows_html += (
                 '<tr>'
                 '<td>' + escape(e['name'])      + '</td>'
@@ -7578,7 +7578,8 @@ def temp_workers():
                 + escape(e['pay']) + '</td>'
                 '<td class="text-right">'
                 '<form method="post" action="/temp_workers/delete/' + escape(e['entry_id']) + '" '
-                "style=\"display:inline\" onsubmit=\"return confirm('" + safe_conf + "')\">"
+                'style="display:inline" data-msg="' + str(confirm_msg) + '" '
+                'onsubmit="return confirm(this.dataset.msg)">'
                 '<button type="submit" class="btn btn-danger btn-sm">'
                 + _trash + ' Delete</button></form></td></tr>'
             )
