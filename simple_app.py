@@ -7605,7 +7605,7 @@ def temp_workers():
     existing_sel = ''
     if data['workers']:
         opts = ''.join(
-            '<option value="' + pid + '" '
+            '<option value="' + escape(pid) + '" '
             'data-first="' + escape(w['first_name']) + '" '
             'data-last="'  + escape(w['last_name'])  + '" '
             'data-rate="'  + str(w['rate'])          + '">'
@@ -7719,7 +7719,8 @@ def temp_workers():
         "  if (r) r.value = opt.dataset.rate  || '';\n"
         "}\n</script>\n</body>\n</html>"
     )
-    return html
+    from flask import Response as _R
+    return _R(html, status=200, content_type='text/html; charset=utf-8')
 
 
 @app.route('/temp_workers/add', methods=['POST'])
