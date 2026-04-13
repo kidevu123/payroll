@@ -7554,6 +7554,9 @@ def temp_workers():
              'a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" '
              'clip-rule="evenodd"/></svg>')
 
+    # se() = str(escape()) — avoids Markup.__radd__ double-escaping HTML tag literals
+    se = lambda s: str(escape(str(s)))
+
     rows_html = ''
     for wk in sorted(weeks.keys(), reverse=True):
         wk_entries = weeks[wk]
@@ -7562,23 +7565,23 @@ def temp_workers():
             '<td colspan="8" style="padding:var(--spacing-2) var(--spacing-3);'
             'font-weight:var(--font-weight-semibold);font-size:var(--font-size-sm);'
             'color:var(--color-gray-700);border-bottom:1px solid var(--color-gray-200)">'
-            + _cal + escape(wk_entries[0]['week_label']) + '</td></tr>'
+            + _cal + se(wk_entries[0]['week_label']) + '</td></tr>'
         )
         for e in wk_entries:
-            confirm_msg = escape('Delete entry for ' + e['name'] + ' on ' + e['date'] + '?')
+            confirm_msg = se('Delete entry for ' + e['name'] + ' on ' + e['date'] + '?')
             rows_html += (
                 '<tr>'
-                '<td>' + escape(e['name'])      + '</td>'
-                '<td>' + escape(e['date'])      + '</td>'
-                '<td>' + escape(e['clock_in'])  + '</td>'
-                '<td>' + escape(e['clock_out']) + '</td>'
-                '<td>' + escape(e['hours'])     + '</td>'
-                '<td>' + escape(e['rate'])      + '/hr</td>'
+                '<td>' + se(e['name'])      + '</td>'
+                '<td>' + se(e['date'])      + '</td>'
+                '<td>' + se(e['clock_in'])  + '</td>'
+                '<td>' + se(e['clock_out']) + '</td>'
+                '<td>' + se(e['hours'])     + '</td>'
+                '<td>' + se(e['rate'])      + '/hr</td>'
                 '<td style="color:var(--color-success);font-weight:var(--font-weight-semibold)">'
-                + escape(e['pay']) + '</td>'
+                + se(e['pay']) + '</td>'
                 '<td class="text-right">'
-                '<form method="post" action="/temp_workers/delete/' + escape(e['entry_id']) + '" '
-                'style="display:inline" data-msg="' + str(confirm_msg) + '" '
+                '<form method="post" action="/temp_workers/delete/' + se(e['entry_id']) + '" '
+                'style="display:inline" data-msg="' + confirm_msg + '" '
                 'onsubmit="return confirm(this.dataset.msg)">'
                 '<button type="submit" class="btn btn-danger btn-sm">'
                 + _trash + ' Delete</button></form></td></tr>'
@@ -7605,11 +7608,11 @@ def temp_workers():
     existing_sel = ''
     if data['workers']:
         opts = ''.join(
-            '<option value="' + escape(pid) + '" '
-            'data-first="' + escape(w['first_name']) + '" '
-            'data-last="'  + escape(w['last_name'])  + '" '
-            'data-rate="'  + str(w['rate'])          + '">'
-            + escape(w['first_name']) + ' ' + escape(w['last_name'])
+            '<option value="' + se(pid) + '" '
+            'data-first="' + se(w['first_name']) + '" '
+            'data-last="'  + se(w['last_name'])  + '" '
+            'data-rate="'  + str(w['rate'])       + '">'
+            + se(w['first_name']) + ' ' + se(w['last_name'])
             + ' ($' + f"{w['rate']:.2f}" + '/hr)</option>'
             for pid, w in data['workers'].items()
         )
@@ -7719,19 +7722,8 @@ def temp_workers():
         "  if (r) r.value = opt.dataset.rate  || '';\n"
         "}\n</script>\n</body>\n</html>"
     )
-    # Debug: log the dynamic sections so we can diagnose HTML issues
-    app.logger.info("=== TEMP_WORKERS DEBUG ===")
-    app.logger.info(f"existing_sel repr: {repr(existing_sel[:300])}")
-    app.logger.info(f"rows_html repr: {repr(rows_html[:500])}")
-    app.logger.info(f"html total len: {len(html)}, type: {type(html)}")
-    # Find any dangerous sequences in the final html
-    for danger in ['</script', '</style', '<plaintext', '<textarea']:
-        idx = html.lower().find(danger)
-        while idx != -1:
-            app.logger.info(f"FOUND '{danger}' at pos {idx}: ...{repr(html[max(0,idx-30):idx+40])}...")
-            idx = html.lower().find(danger, idx+1)
     from flask import Response as _R
-    return _R(html, status=200, content_type='text/html; charset=utf-8')
+    return _R(str(html), status=200, content_type='text/html; charset=utf-8')
 
 
 @app.route('/temp_workers/add', methods=['POST'])

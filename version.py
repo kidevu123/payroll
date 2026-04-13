@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.3.1"
-__version_name__ = "v9.3.1 — Temp Workers debug logging (rendering diagnosis)"
+__version__ = "9.4.0"
+__version_name__ = "v9.4 — Temp Workers FIXED: str(escape()) prevents Markup double-escaping"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.4.0",
+        "date": "2026-04-13",
+        "changes": [
+            "CRITICAL FIX: Temp Workers page now renders correctly with entries",
+            "Root cause: markupsafe.Markup.__radd__ was double-escaping HTML tag literals",
+            "When escape(x) result (Markup) was used in string concatenation, Python called",
+            "Markup.__radd__ which HTML-escaped the surrounding <td> <tr> etc tags into &lt;td&gt;",
+            "Fix: se = lambda s: str(escape(s)) — converts Markup back to plain str before concat",
+            "All escape() calls in rows_html and existing_sel now use se() instead"
+        ]
+    },
     {
         "version": "9.3.0",
         "date": "2026-04-08",
