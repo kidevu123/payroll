@@ -3621,8 +3621,9 @@ def create_payslips(df, filename, creator=None):
 
     # Get week range for header
     try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
+        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        start_date = _dates.min().strftime('%Y-%m-%d')
+        end_date = _dates.max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -3744,8 +3745,9 @@ def create_combined_report(df, filename):
 
     # Get week range for header
     try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
+        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        start_date = _dates.min().strftime('%Y-%m-%d')
+        end_date = _dates.max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -4012,8 +4014,9 @@ def create_consolidated_admin_report(df, filename, creator=None):
 
     # Get week range for header
     try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
+        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        start_date = _dates.min().strftime('%Y-%m-%d')
+        end_date = _dates.max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -4353,8 +4356,9 @@ def create_consolidated_payslips(df, filename, creator=None):
 
     # Get week range for header
     try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
+        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        start_date = _dates.min().strftime('%Y-%m-%d')
+        end_date = _dates.max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"

@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.4.0"
-__version_name__ = "v9.4 — Temp Workers FIXED: str(escape()) prevents Markup double-escaping"
+__version__ = "9.4.1"
+__version_name__ = "v9.4.1 — Fix payroll date range showing Current Period with temp workers"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.4.1",
+        "date": "2026-04-13",
+        "changes": [
+            "FIX: Payroll report header now shows correct date range instead of 'Current Period'",
+            "Root cause: temp worker Date column is YYYY-MM-DD but CSV dates are MM/DD/YYYY",
+            "Mixed formats caused pd.to_datetime() to throw, falling back to 'Current Period'",
+            "Fix: added errors='coerce' + dropna() to all 4 date_range calculations in Excel generators"
+        ]
+    },
     {
         "version": "9.4.0",
         "date": "2026-04-13",
