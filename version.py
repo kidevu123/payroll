@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.2.0"
-__version_name__ = "v9.2 — UI polish pass: heroes, pills, Zoho card"
+__version__ = "9.3.0"
+__version_name__ = "v9.3 — Temp Workers rendering fix (explicit Content-Type)"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.3.0",
+        "date": "2026-04-08",
+        "changes": [
+            "CRITICAL FIX: Temp Workers page no longer renders as raw HTML text",
+            "Explicitly set Content-Type: text/html on temp_workers response to prevent WSGI proxy stripping the header",
+            "Escaped person_id in <option value> attribute (was the only unescaped dynamic value on that page)",
+            "Independent agent code review used to verify root cause before patching"
+        ]
+    },
     {
         "version": "9.2.0",
         "date": "2026-04-08",
