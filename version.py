@@ -3,11 +3,23 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.4.1"
-__version_name__ = "v9.4.1 — Fix payroll date range showing Current Period with temp workers"
+__version__ = "9.4.2"
+__version_name__ = "v9.4.2 — Zoho expense date + reference match payroll CSV"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.4.2",
+        "date": "2026-04-21",
+        "changes": [
+            "FIX: Zoho expense REFERENCE and posting DATE now match actual payroll dates",
+            "Root cause: compute_week_range_strings / compute_expense_date_from_data used",
+            "pd.to_datetime(df['Date']) without errors='coerce'; mixed YYYY-MM-DD + MM/DD failed",
+            "and fell back to the success-page week field (wrong week vs CSV)",
+            "Fix: _session_timesheet_date_series() reads filtered_file or uploaded_file with",
+            "errors='coerce' + dropna(); process_confirmed week_str uses same pattern"
+        ]
+    },
     {
         "version": "9.4.1",
         "date": "2026-04-13",

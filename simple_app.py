@@ -448,51 +448,53 @@ def compute_grand_totals_for_expense(df):
     total_rounded = int(weekly_totals['Rounded_Weekly'].sum()) if len(weekly_totals) else 0
     return total_hours, total_pay, total_rounded
 
+
+def _session_timesheet_date_series():
+    """Datetime series from the payroll CSV in session (filtered run preferred).
+
+    Uses errors='coerce' so mixed formats (MM/DD/YYYY from ADP + YYYY-MM-DD from
+    temp workers) still parse; avoids Zoho reference / posting date falling back
+    to the HTML form's ``week`` field (often wrong).
+    """
+    path = session.get('filtered_file') or session.get('uploaded_file')
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        df = pd.read_csv(path)
+        if 'Date' not in df.columns:
+            return None
+        s = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        return s if len(s) else None
+    except Exception:
+        return None
+
+
 def compute_expense_date_from_data(week_str: str) -> str:
     """Compute expense posting date as end-of-week + 1 day.
-    Preference: use the uploaded CSV's max(Date) + 1. Fallback: parse week_str and add 7 days.
+    Preference: max(Date) from payroll CSV + 1. Fallback: parse week_str + 7 days.
     Returns YYYY-MM-DD string.
     """
-    try:
-        uploaded_file = session.get('uploaded_file')
-        if uploaded_file and os.path.exists(uploaded_file):
-            df = pd.read_csv(uploaded_file)
-            if 'Date' in df.columns:
-                try:
-                    df['Date'] = pd.to_datetime(df['Date'])
-                    post_date = (df['Date'].max() + pd.Timedelta(days=1)).date()
-                    return post_date.strftime('%Y-%m-%d')
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    s = _session_timesheet_date_series()
+    if s is not None:
+        post_date = (s.max() + pd.Timedelta(days=1)).date()
+        return post_date.strftime('%Y-%m-%d')
 
-    # Fallback: week_str (usually min date) + 7 days
     try:
         base = pd.to_datetime(week_str).date()
         return (base + timedelta(days=7)).strftime('%Y-%m-%d')
     except Exception:
-        # Last resort: today's date
         return datetime.now().strftime('%Y-%m-%d')
+
 
 def compute_week_range_strings(week_str: str):
     """Return (start_date_str, end_date_str) for the current run.
-    Prefers actual min/max from uploaded CSV; falls back to week_str .. week_str+6.
+    Prefers min/max from payroll CSV; falls back to week_str .. week_str+6.
     """
-    try:
-        uploaded_file = session.get('uploaded_file')
-        if uploaded_file and os.path.exists(uploaded_file):
-            df = pd.read_csv(uploaded_file)
-            if 'Date' in df.columns:
-                try:
-                    df['Date'] = pd.to_datetime(df['Date'])
-                    start = df['Date'].min().date()
-                    end = df['Date'].max().date()
-                    return start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')
-                except Exception:
-                    pass
-    except Exception:
-        pass
+    s = _session_timesheet_date_series()
+    if s is not None:
+        start = s.min().date()
+        end = s.max().date()
+        return start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')
 
     try:
         base = pd.to_datetime(week_str).date()
@@ -3621,9 +3623,8 @@ def create_payslips(df, filename, creator=None):
 
     # Get week range for header
     try:
-        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
-        start_date = _dates.min().strftime('%Y-%m-%d')
-        end_date = _dates.max().strftime('%Y-%m-%d')
+        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
+        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -3745,9 +3746,8 @@ def create_combined_report(df, filename):
 
     # Get week range for header
     try:
-        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
-        start_date = _dates.min().strftime('%Y-%m-%d')
-        end_date = _dates.max().strftime('%Y-%m-%d')
+        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
+        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -4014,9 +4014,8 @@ def create_consolidated_admin_report(df, filename, creator=None):
 
     # Get week range for header
     try:
-        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
-        start_date = _dates.min().strftime('%Y-%m-%d')
-        end_date = _dates.max().strftime('%Y-%m-%d')
+        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
+        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -4356,9 +4355,8 @@ def create_consolidated_payslips(df, filename, creator=None):
 
     # Get week range for header
     try:
-        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
-        start_date = _dates.min().strftime('%Y-%m-%d')
-        end_date = _dates.max().strftime('%Y-%m-%d')
+        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
+        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
         date_range = f"{start_date} to {end_date}"
     except:
         date_range = "Current Period"
@@ -8971,9 +8969,11 @@ def process_confirmed():
         
         if is_timesheet:
             try:
-                df['Date'] = pd.to_datetime(df['Date'])
-                week_str = df['Date'].min().strftime('%Y-%m-%d')
-            except:
+                _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+                if _dates.empty:
+                    raise ValueError('no valid dates')
+                week_str = _dates.min().strftime('%Y-%m-%d')
+            except Exception:
                 week_str = datetime.now().strftime('%Y-%m-%d')
         else:
             week_str = datetime.now().strftime('%Y-%m-%d')
