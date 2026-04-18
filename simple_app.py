@@ -469,6 +469,25 @@ def _session_timesheet_date_series():
         return None
 
 
+def _date_range_for_report_header(df) -> str:
+    """Build 'YYYY-MM-DD to YYYY-MM-DD' for Excel A1 / print view titles.
+
+    Uses errors='coerce' so temp-worker ISO dates mix with CSV MM/DD dates
+    without falling back to 'Current Period'.
+    """
+    try:
+        if df is None or 'Date' not in getattr(df, 'columns', []):
+            return 'Current Period'
+        _dates = pd.to_datetime(df['Date'], errors='coerce').dropna()
+        if _dates.empty:
+            return 'Current Period'
+        return (
+            f"{_dates.min().strftime('%Y-%m-%d')} to {_dates.max().strftime('%Y-%m-%d')}"
+        )
+    except Exception:
+        return 'Current Period'
+
+
 def compute_expense_date_from_data(week_str: str) -> str:
     """Compute expense posting date as end-of-week + 1 day.
     Preference: max(Date) from payroll CSV + 1. Fallback: parse week_str + 7 days.
@@ -3621,13 +3640,8 @@ def create_payslips(df, filename, creator=None):
     # Disable grid lines through sheet properties to prevent Numbers from showing them
     ws.sheet_properties.showGridLines = False
 
-    # Get week range for header
-    try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
-        date_range = f"{start_date} to {end_date}"
-    except:
-        date_range = "Current Period"
+    # Get week range for header (coerce mixed date formats)
+    date_range = _date_range_for_report_header(df)
 
     # Add header
     ws['A1'] = f"Employee Payslips - {date_range}"
@@ -3744,13 +3758,8 @@ def create_combined_report(df, filename):
     ws_summary = wb.active
     ws_summary.title = "Payroll Summary"
 
-    # Get week range for header
-    try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
-        date_range = f"{start_date} to {end_date}"
-    except:
-        date_range = "Current Period"
+    # Get week range for header (coerce mixed date formats)
+    date_range = _date_range_for_report_header(df)
 
     # Add header
     ws_summary['A1'] = f"Payroll Summary - {date_range}"
@@ -4012,13 +4021,8 @@ def create_consolidated_admin_report(df, filename, creator=None):
     # Disable grid lines through sheet properties to prevent Numbers from showing them
     ws.sheet_properties.showGridLines = False
 
-    # Get week range for header
-    try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
-        date_range = f"{start_date} to {end_date}"
-    except:
-        date_range = "Current Period"
+    # Get week range for header (coerce mixed date formats)
+    date_range = _date_range_for_report_header(df)
 
     # Add header
     ws['A1'] = f"Payroll Summary - {date_range}"
@@ -4353,13 +4357,8 @@ def create_consolidated_payslips(df, filename, creator=None):
     # Disable grid lines through sheet properties to prevent Numbers from showing them
     ws.sheet_properties.showGridLines = False
 
-    # Get week range for header
-    try:
-        start_date = pd.to_datetime(df['Date']).min().strftime('%Y-%m-%d')
-        end_date = pd.to_datetime(df['Date']).max().strftime('%Y-%m-%d')
-        date_range = f"{start_date} to {end_date}"
-    except:
-        date_range = "Current Period"
+    # Get week range for header (coerce mixed date formats)
+    date_range = _date_range_for_report_header(df)
 
     # Add title
     ws['A1'] = f"Employee Payslips - {date_range}"

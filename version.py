@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.4.2"
-__version_name__ = "v9.4.2 — Zoho expense date + reference match payroll CSV"
+__version__ = "9.4.3"
+__version_name__ = "v9.4.3 — Excel/print title: date range vs Current Period"
 __release_date__ = "2026-04-08"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.4.3",
+        "date": "2026-04-21",
+        "changes": [
+            "FIX: Admin / print report title shows real dates instead of 'Current Period'",
+            "create_combined_report etc. still used pd.to_datetime(df['Date']) without coerce",
+            "Mixed ISO + MM/DD dates threw and hit except → 'Current Period' in Excel A1",
+            "Added _date_range_for_report_header(df) with errors='coerce' + dropna()"
+        ]
+    },
     {
         "version": "9.4.2",
         "date": "2026-04-21",
