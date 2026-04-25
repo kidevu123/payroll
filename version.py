@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.6"
-__version_name__ = "v9.5.6 — Schedule page size: robust ant-pagination; pre-fill from /etc/payroll/ngteco_prefill.env"
+__version__ = "9.5.7"
+__version_name__ = "v9.5.7 — NGTeco page size: click option in Ant Design portal dropdown"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.7",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: page-size select options render in a body portal (.ant-select-dropdown), not under",
+            "pagination — wait for last visible dropdown, click 50 via title/option filter/get_by_text.",
+            "Also listbox role, force-click on trigger, scroll_into_view. Fixes stuck at ~40% on schedule."
+        ]
+    },
     {
         "version": "9.5.6",
         "date": "2026-04-25",

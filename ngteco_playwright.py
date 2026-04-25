@@ -217,9 +217,61 @@ def _login(page, email: str, password: str, dbg: Path) -> None:
     )
 
 
+def _ant_select_choose_n_in_open_overlay(page, n: str) -> bool:
+    """
+    Ant Design mounts the options list in a body-level portal (e.g. .ant-select-dropdown),
+    not as a child of the pagination control.
+    """
+    page.wait_for_timeout(250)
+    # Accessible listbox (some builds)
+    try:
+        lbx = page.get_by_role("listbox")
+        if lbx.count():
+            lbx.last.wait_for(state="visible", timeout=6000)
+            t = lbx.get_by_text(n, exact=True)
+            if t.count():
+                t.first.scroll_into_view_if_needed()
+                t.first.click()
+                return True
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
+    # Class-based portal — usually the *last* dropdown is the one we just opened
+    for sel in (
+        ".ant-select-dropdown:not(.ant-select-hidden)",
+        "div.rc-select-dropdown",
+    ):
+        d = page.locator(sel)
+        if d.count() == 0:
+            continue
+        last = d.last
+        try:
+            last.wait_for(state="visible", timeout=8000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+        for click_target in (
+            last.locator(f"div[title='{n}']"),
+            last.locator(".ant-select-item-option, .ant-select-item").filter(
+                has_text=re.compile(rf"^\s*{re.escape(n)}\s*$")
+            ),
+            last.get_by_text(n, exact=True),
+        ):
+            try:
+                c = click_target.first
+                if c.count() == 0:
+                    continue
+                c.wait_for(state="visible", timeout=5000)
+                c.scroll_into_view_if_needed()
+                c.click()
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    return False
+
+
 def _set_records_per_page(page, n: str, dbg: Path) -> None:
     """
-    Ant Design pagination "page size" — label text varies by locale / NGTeco version.
+    Ant Design pagination "page size" — open the footer select, then pick *n* in the portal
+    overlay (not inside the pagination node).
     """
     page.wait_for_timeout(400)
     try:
@@ -240,7 +292,7 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
         re.compile(r"条\s*/\s*页"),
     ):
         try:
-            page.get_by_text(pat).first.wait_for(state="visible", timeout=12_000)
+            page.get_by_text(pat).first.wait_for(state="visible", timeout=10_000)
             break
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             continue
@@ -252,58 +304,47 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
             return
         except PlaywrightError:
             pass
-    pag_root = page.locator(
-        ".ant-pagination, .ant-table-pagination, div[class*='Pagination']"
-    )
-    for block_idx in range(min(pag_root.count(), 3)):
-        root = pag_root.nth(block_idx)
-        for css in (
-            ".ant-pagination-options .ant-select",
-            ".ant-pagination-options-size-changer .ant-select",
-            "li .ant-select",
-            ".ant-select",
+
+    def _all_trigger_locators() -> list:
+        out: list = []
+        for item in (
+            page.locator(".ant-pagination-options-size-changer .ant-select-selector").first,
+            page.locator(".ant-pagination-options .ant-select-selector").first,
+            page.locator(".ant-pagination .ant-select-selector").first,
+            page.locator(".ant-table-pagination .ant-select-selector").first,
         ):
-            try:
-                c = root.locator(css).first
-                if c.count() == 0 or not c.is_visible():
-                    continue
-                c.click()
-                page.wait_for_timeout(400)
-                for pick in (
-                    page.locator(f"div.ant-select-item-option:has-text('{n}')").first,
-                    page.get_by_role("option", name=n),
-                    page.get_by_text(n, exact=True).first,
-                ):
-                    try:
-                        if pick.count() == 0:
-                            continue
-                        pick.first.wait_for(state="visible", timeout=8_000)
-                        pick.first.click()
-                        page.wait_for_timeout(600)
-                        return
-                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                        continue
-            except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                continue
-    # Any pagination-area select (up to 8); pick first that opens 50/10/20 options
-    pool = page.locator(".ant-pagination .ant-select, .ant-table-pagination .ant-select")
-    for i in range(min(pool.count(), 8)):
+            if item.count():
+                out.append(item)
+        pool = page.locator(
+            ".ant-pagination-options .ant-select, .ant-pagination-options-size-changer .ant-select, "
+            ".ant-pagination .ant-select, .ant-table-pagination .ant-select"
+        )
+        for i in range(min(pool.count(), 10)):
+            out.append(pool.nth(i))
+        return out
+
+    for trig in _all_trigger_locators():
         try:
-            c = pool.nth(i)
-            if not c.is_visible():
+            if trig.count() == 0 or not trig.is_visible():
                 continue
-            c.click()
-            page.wait_for_timeout(450)
-            for pick in (
-                page.locator(f"div.rc-virtual-list [title='{n}'], .ant-select-item:has-text('{n}')").first,
-                page.get_by_text(n, exact=True),
-            ):
-                if pick.count() and pick.first.is_visible():
-                    pick.first.click()
-                    page.wait_for_timeout(600)
-                    return
+            try:
+                trig.scroll_into_view_if_needed()
+            except Exception:
+                pass
+            try:
+                trig.click(timeout=12_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                trig.click(force=True, timeout=12_000)
+            page.wait_for_timeout(400)
+            if _ant_select_choose_n_in_open_overlay(page, n):
+                page.wait_for_timeout(600)
+                return
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            continue
+            pass
+        try:
+            page.keyboard.press("Escape")
+        except Exception:
+            pass
     try:
         page.screenshot(path=str(dbg / "ngteco_records_per_page.png"), full_page=True)
     except Exception:
