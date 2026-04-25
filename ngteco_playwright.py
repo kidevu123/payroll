@@ -656,16 +656,19 @@ def _click_pie_chart_near_search(page, dbg: Path) -> None:
     search.wait_for(state="visible", timeout=30000)
     row = search.locator("xpath=ancestor::*[self::div or self::header or self::section][1]")
     for c in (
+        # NGTeco: pie icon — distinct path prefix in toolbar SVG
+        page.locator('button:has(svg path[d^="M484.15"]):not([disabled])').first,
         row.locator("button").filter(has=page.locator("svg")).first,
         page.locator("button[title*='chart' i], button[aria-label*='chart' i]").first,
         page.get_by_role("button").filter(has=page.locator("svg")).nth(1),
     ):
         try:
             if c.count() and c.is_visible():
+                c.scroll_into_view_if_needed()
                 c.click()
                 page.wait_for_timeout(1500)
                 return
-        except PlaywrightError:
+        except (PlaywrightError, PlaywrightTimeoutError):
             pass
     shot = dbg / "ngteco_pie_hunt.png"
     page.screenshot(path=str(shot), full_page=True)
@@ -729,6 +732,15 @@ def _timecard_set_date_range(
             return _timecard_fill_text_pair(s, e, start_s, end_s)
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             pass
+
+    # MUI: readonly tel with placeholder mm/dd/yyyy (typical on NGTeco timecard)
+    tel_mui = page.locator(
+        "input.MuiOutlinedInput-input[placeholder*=\"mm\" i][type=\"tel\"], "
+        "input[placeholder=\"mm/dd/yyyy\" i], input[placeholder*=\"dd/yyyy\" i]"
+    )
+    if tel_mui.count() >= 2:
+        if _timecard_fill_text_pair(tel_mui.nth(0), tel_mui.nth(1), start_s, end_s):
+            return True
 
     for selector in (
         "div.ant-picker-input input",
@@ -862,12 +874,64 @@ def _timecard_set_date_range(
     return False
 
 
+def _timecard_optional_refresh_or_apply(page) -> None:
+    """
+    Many NGTeco timecard UIs have no 'Refresh' after setting dates; do not block on it.
+    Try common action buttons, then no-op.
+    """
+    for pat in (
+        re.compile(r"^Refresh$", re.I),
+        re.compile(r"Query|Search|Apply|Load|Run|Update|Generate", re.I),
+    ):
+        try:
+            b = page.get_by_role("button", name=pat)
+            if b.count():
+                b.first.scroll_into_view_if_needed()
+                b.first.click(timeout=5_000)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=90_000)
+                except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                    pass
+                page.wait_for_timeout(500)
+                return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+    for sel in (
+        "button[aria-label*='Refresh' i]",
+        "button[aria-label*='Search' i]",
+        "button[aria-label*='Query' i]",
+    ):
+        loc = page.locator(sel)
+        if loc.count():
+            try:
+                loc.first.click(timeout=4_000)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=90_000)
+                except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                    pass
+                page.wait_for_timeout(500)
+                return
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+
+
 def _timecard_download(
     page, out_path: Path, d_start: date, d_end: date, dbg: Path
 ) -> None:
     page.goto(TIMECARD_URL, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=120000)
     page.wait_for_timeout(1000)
+    try:
+        tc = page.get_by_text("Timecard Management", exact=True)
+        if tc.count():
+            tc.first.click(timeout=8_000)
+            page.wait_for_timeout(500)
+            try:
+                page.wait_for_load_state("networkidle", timeout=60_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
     start_s, end_s = _fmt_us(d_start), _fmt_us(d_end)
     filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
     if not filled:
@@ -884,18 +948,31 @@ def _timecard_download(
             f"for the start/end input fields. Underlying: {shot}"
         )
     page.wait_for_timeout(500)
-    page.get_by_role("button", name=re.compile(r"Refresh", re.I)).first.click()
-    page.wait_for_load_state("networkidle", timeout=120000)
-    page.wait_for_timeout(1000)
+    _timecard_optional_refresh_or_apply(page)
+    page.wait_for_timeout(800)
     with page.expect_download(timeout=180000) as dl:
-        d_btn = page.get_by_text("Download", exact=False).first
-        d_btn.wait_for(state="visible", timeout=30000)
-        d_btn.click()
-        page.wait_for_timeout(300)
-        csv_item = page.get_by_text("csv", exact=True).or_(
-            page.get_by_text("csv with tz", exact=True)
-        )
-        csv_item.first.wait_for(state="visible", timeout=10000)
+        d_btn = page.get_by_role("button", name=re.compile(r"^Download$", re.I))
+        if d_btn.count() == 0:
+            d_btn = page.locator("button[aria-label=\"Download\"]")
+        if d_btn.count() == 0:
+            d_btn = page.get_by_text("Download", exact=False)
+        d_btn.first.wait_for(state="visible", timeout=30_000)
+        d_btn.first.scroll_into_view_if_needed()
+        try:
+            d_btn.first.click(timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            d_btn.first.click(timeout=12_000, force=True)
+        page.wait_for_timeout(500)
+        csv_item = page.get_by_role("menuitem", name=re.compile(r"^csv$", re.I))
+        if csv_item.count() == 0:
+            csv_item = page.get_by_role("menuitem", name=re.compile(r"csv with tz", re.I))
+        if csv_item.count() == 0:
+            csv_item = page.locator("li[role=menuitem]").filter(has_text=re.compile(r"^csv($|\s)"))
+        if csv_item.count() == 0:
+            csv_item = page.get_by_text("csv", exact=True)
+        if csv_item.count() == 0:
+            csv_item = page.get_by_text("csv with tz", exact=True)
+        csv_item.first.wait_for(state="visible", timeout=10_000)
         csv_item.first.click()
     dl.value.save_as(str(out_path))
 
