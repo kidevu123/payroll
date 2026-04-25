@@ -915,6 +915,115 @@ def _timecard_optional_refresh_or_apply(page) -> None:
                 continue
 
 
+def _ngteco_js_click_csv_menuitem(page) -> bool:
+    """
+    Click a *visible* li[role=menuitem] whose text is plain 'csv' (or 'csv with tz').
+    Many menuitems in the tree are display:none; .first in Playwright matches hidden ones.
+    """
+    try:
+        return bool(
+            page.evaluate(
+                """
+                () => {
+                    const norm = (s) => (s || "").replace(/\\s+/g, " ").trim().toLowerCase();
+                    const items = document.querySelectorAll('li[role="menuitem"]');
+                    let plain = null, tz = null;
+                    for (const el of items) {
+                        const st = getComputedStyle(el);
+                        if (st.display === "none" || st.visibility === "hidden" ||
+                            parseFloat(st.opacity) < 0.01) { continue; }
+                        const r = el.getBoundingClientRect();
+                        if (r.width < 1 || r.height < 1) { continue; }
+                        if (r.top > window.innerHeight + 10 || r.bottom < -10) { continue; }
+                        const t = norm(el.textContent);
+                        if (t === "csv") { plain = el; break; }
+                        if (t.includes("csv") && t.includes("tz")) { tz = tz || el; }
+                    }
+                    const e = plain || tz;
+                    if (!e) { return false; }
+                    e.scrollIntoView({ block: "center", inline: "center" });
+                    const o = { bubbles: true, cancelable: true, view: window };
+                    e.dispatchEvent(new PointerEvent("pointerdown", o));
+                    e.dispatchEvent(new PointerEvent("pointerup", o));
+                    e.dispatchEvent(new MouseEvent("click", o));
+                    if (typeof e.click === "function") e.click();
+                    return true;
+                }
+                """
+            )
+        )
+    except Exception:
+        return False
+
+
+def _ngteco_playwright_click_csv_menuitem(page) -> bool:
+    for name_rx in (re.compile(r"^csv$", re.I), re.compile(r"csv with tz", re.I)):
+        try:
+            items = page.get_by_role("menuitem", name=name_rx)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+        for i in range(min(items.count(), 50)):
+            it = items.nth(i)
+            try:
+                if it.is_visible():
+                    it.scroll_into_view_if_needed()
+                    it.click(timeout=4_000, force=True)
+                    return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    for container in (
+        "div.MuiMenu-paper",
+        "div.MuiPopover-paper",
+        "ul[role=menu]",
+    ):
+        c = page.locator(container).last
+        if c.count() == 0:
+            continue
+        for rx in (re.compile(r"^\s*csv\s*$", re.I), re.compile(r"csv with tz", re.I)):
+            row = c.locator("li[role=menuitem], [role=menuitem]").filter(has_text=rx)
+            if row.count() == 0:
+                continue
+            try:
+                row.first.scroll_into_view_if_needed()
+                row.first.click(timeout=4_000, force=True)
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    return False
+
+
+def _ngteco_open_download_and_choose_csv(page, d_btn, dbg: Path) -> None:
+    """
+    Open the Download popover and click the csv line. Retries with Escape + force
+    re-open once. Never use get_by_text('csv').last — it matches hidden nav nodes.
+    """
+    for attempt in (1, 2):
+        d_btn.first.wait_for(state="visible", timeout=30_000)
+        d_btn.first.scroll_into_view_if_needed()
+        try:
+            d_btn.first.click(timeout=12_000, force=attempt == 2)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            d_btn.first.click(timeout=12_000, force=True)
+        page.wait_for_timeout(500)
+        if _ngteco_js_click_csv_menuitem(page):
+            return
+        if _ngteco_playwright_click_csv_menuitem(page):
+            return
+        try:
+            page.keyboard.press("Escape")
+        except Exception:
+            pass
+        page.wait_for_timeout(300)
+    try:
+        page.screenshot(path=str(dbg / "ngteco_csv_menu.png"), full_page=True)
+    except Exception:
+        pass
+    raise RuntimeError(
+        "Could not open or click the Timecard 'csv' export in the Download menu — see "
+        f"{dbg / 'ngteco_csv_menu.png'}"
+    )
+
+
 def _timecard_download(
     page, out_path: Path, d_start: date, d_end: date, dbg: Path
 ) -> None:
@@ -956,53 +1065,7 @@ def _timecard_download(
             d_btn = page.locator("button[aria-label=\"Download\"]")
         if d_btn.count() == 0:
             d_btn = page.get_by_text("Download", exact=False)
-        d_btn.first.wait_for(state="visible", timeout=30_000)
-        d_btn.first.scroll_into_view_if_needed()
-        try:
-            d_btn.first.click(timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            d_btn.first.click(timeout=12_000, force=True)
-        # MUI: many [role=menuitem] exist in the DOM (side nav, closed menus) but are
-        # display:none. Do not use .first — wait for a *visible* csv row or the open ul.
-        page.wait_for_timeout(400)
-        def _click_visible_menuitem_csv() -> bool:
-            for name_rx in (re.compile(r"^csv$", re.I), re.compile(r"csv with tz", re.I)):
-                try:
-                    items = page.get_by_role("menuitem", name=name_rx)
-                except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                    continue
-                n = min(items.count(), 40)
-                for i in range(n):
-                    it = items.nth(i)
-                    try:
-                        if it.is_visible():
-                            it.scroll_into_view_if_needed()
-                            it.click(timeout=6_000)
-                            return True
-                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                        continue
-            return False
-
-        if not _click_visible_menuitem_csv():
-            # Last opened popover list is often the download menu
-            ulm = page.locator("ul[role=menu]").last
-            try:
-                ulm.wait_for(state="visible", timeout=10_000)
-            except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                pass
-            for rx in (re.compile(r"^\s*csv\s*$", re.I), re.compile(r"csv with tz", re.I)):
-                row = ulm.locator("li[role=menuitem]").filter(has_text=rx)
-                if row.count():
-                    try:
-                        row.first.scroll_into_view_if_needed()
-                        row.first.click(timeout=6_000, force=True)
-                        break
-                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-                        continue
-            else:
-                page.get_by_text("csv", exact=True).last.click(
-                    timeout=8_000, force=True
-                )
+        _ngteco_open_download_and_choose_csv(page, d_btn, dbg)
     dl.value.save_as(str(out_path))
 
 
