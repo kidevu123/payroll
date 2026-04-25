@@ -3,11 +3,19 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.3"
-__version_name__ = "v9.5.3 — Fix async fetch + progress URLs behind NPM subpath"
+__version__ = "9.5.4"
+__version_name__ = "v9.5.4 — Fix 500 on async fetch: pass Flask app, not _get_current_object"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.4",
+        "date": "2026-04-25",
+        "changes": [
+            "FIX: NGTeco async job thread used app._get_current_object() (only exists on current_app",
+            "proxy) — caused AttributeError and HTTP 500. Pass the app instance directly."
+        ]
+    },
     {
         "version": "9.5.3",
         "date": "2026-04-25",

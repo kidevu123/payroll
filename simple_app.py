@@ -8575,7 +8575,7 @@ def fetch_timecard():
         t = threading.Thread(
             target=_ngteco_fetch_job_worker,
             args=(
-                app._get_current_object(),
+                app,
                 job_id,
                 ngu,
                 ngp,
