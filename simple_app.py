@@ -8342,15 +8342,51 @@ def fetch_timecard():
     """Fetch timecard data from the NGTeco system"""
     username = session.get('username', 'Unknown')
     menu_html = get_menu_html(username)
-    # Pre-fill NGTeco fields from env (self-host only: set in /etc/payroll/payroll.env; do not commit)
-    _nf_email = (
-        os.environ.get("NGTECO_FORM_EMAIL")
-        or os.environ.get("NGTECO_DEFAULT_EMAIL")
-        or ""
-    ).strip()
-    _nf_pass = os.environ.get("NGTECO_FORM_PASSWORD") or os.environ.get(
-        "NGTECO_DEFAULT_PASSWORD", ""
-    )
+    # Pre-fill NGTeco fields: include same keys in /etc/payroll/payroll.env (systemd EnvironmentFile),
+    # or put them in /etc/payroll/ngteco_prefill.env (chmod 640, root:payroll).
+    def _read_ngteco_prefill() -> tuple[str, str]:
+        e = (
+            (os.environ.get("NGTECO_FORM_EMAIL") or "").strip()
+            or (os.environ.get("NGTECO_DEFAULT_EMAIL") or "").strip()
+            or (os.environ.get("NGTECO_EMAIL") or "").strip()
+        )
+        p = (
+            os.environ.get("NGTECO_FORM_PASSWORD")
+            or os.environ.get("NGTECO_DEFAULT_PASSWORD")
+            or os.environ.get("NGTECO_PASSWORD")
+            or ""
+        )
+        pfill = "/etc/payroll/ngteco_prefill.env"
+        if not os.path.isfile(pfill):
+            return e, p
+        try:
+            with open(pfill, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, _, v = line.partition("=")
+                    k, v = k.strip(), v.strip().strip("'\"")
+                    lk = k.lower()
+                    if lk in (
+                        "ngteco_form_email",
+                        "ngteco_default_email",
+                        "ngteco_email",
+                        "email",
+                    ):
+                        e = e or v
+                    if lk in (
+                        "ngteco_form_password",
+                        "ngteco_default_password",
+                        "ngteco_password",
+                        "password",
+                    ):
+                        p = p or v
+        except OSError:
+            pass
+        return e, p
+
+    _nf_email, _nf_pass = _read_ngteco_prefill()
     _nf_uval = f' value="{escape(_nf_email)}"' if _nf_email else ""
     _nf_pval = f' value="{escape(_nf_pass)}"' if _nf_pass else ""
     

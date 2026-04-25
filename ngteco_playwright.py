@@ -217,33 +217,101 @@ def _login(page, email: str, password: str, dbg: Path) -> None:
     )
 
 
-def _set_records_per_page(page, n: str) -> None:
-    page.get_by_text(re.compile(r"records per page", re.I)).first.wait_for(
-        state="visible", timeout=60000
-    )
-    combo = page.get_by_label(re.compile(r"records per page", re.I))
+def _set_records_per_page(page, n: str, dbg: Path) -> None:
+    """
+    Ant Design pagination "page size" — label text varies by locale / NGTeco version.
+    """
+    page.wait_for_timeout(400)
+    try:
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    except Exception:
+        pass
+    page.wait_for_timeout(500)
+    try:
+        page.locator(
+            ".ant-pagination, .ant-table-pagination, .ant-table-wrapper .ant-pagination"
+        ).first.wait_for(state="visible", timeout=120_000)
+    except (PlaywrightTimeoutError, PlaywrightError):
+        pass
+    for pat in (
+        re.compile(r"records per page", re.I),
+        re.compile(r"per page", re.I),
+        re.compile(r"page size", re.I),
+        re.compile(r"条\s*/\s*页"),
+    ):
+        try:
+            page.get_by_text(pat).first.wait_for(state="visible", timeout=12_000)
+            break
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+    combo = page.get_by_label(re.compile(r"records per page|per page|page size", re.I))
     if combo.count():
         try:
-            combo.select_option(label=n)
+            combo.first.select_option(label=n)
+            page.wait_for_timeout(600)
             return
         except PlaywrightError:
             pass
-    for sel in (
-        page.locator(".ant-pagination-options .ant-select").first,
-        page.locator("div.ant-select").filter(has_text=re.compile(r"^(10|20|30|50|100)$")).first,
-    ):
-        if sel.count() and sel.is_visible():
-            sel.click()
-            page.wait_for_timeout(200)
-            pick = page.locator(
-                f".ant-select-item-option:has-text('{n}'), [role='option']:has-text('{n}')"
-            ).first
-            if pick.count():
-                pick.click()
-            else:
-                page.get_by_text(n, exact=True).last.click()
-            return
-    raise RuntimeError("Could not set NGTeco records per page (footer dropdown)")
+    pag_root = page.locator(
+        ".ant-pagination, .ant-table-pagination, div[class*='Pagination']"
+    )
+    for block_idx in range(min(pag_root.count(), 3)):
+        root = pag_root.nth(block_idx)
+        for css in (
+            ".ant-pagination-options .ant-select",
+            ".ant-pagination-options-size-changer .ant-select",
+            "li .ant-select",
+            ".ant-select",
+        ):
+            try:
+                c = root.locator(css).first
+                if c.count() == 0 or not c.is_visible():
+                    continue
+                c.click()
+                page.wait_for_timeout(400)
+                for pick in (
+                    page.locator(f"div.ant-select-item-option:has-text('{n}')").first,
+                    page.get_by_role("option", name=n),
+                    page.get_by_text(n, exact=True).first,
+                ):
+                    try:
+                        if pick.count() == 0:
+                            continue
+                        pick.first.wait_for(state="visible", timeout=8_000)
+                        pick.first.click()
+                        page.wait_for_timeout(600)
+                        return
+                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                        continue
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    # Any pagination-area select (up to 8); pick first that opens 50/10/20 options
+    pool = page.locator(".ant-pagination .ant-select, .ant-table-pagination .ant-select")
+    for i in range(min(pool.count(), 8)):
+        try:
+            c = pool.nth(i)
+            if not c.is_visible():
+                continue
+            c.click()
+            page.wait_for_timeout(450)
+            for pick in (
+                page.locator(f"div.rc-virtual-list [title='{n}'], .ant-select-item:has-text('{n}')").first,
+                page.get_by_text(n, exact=True),
+            ):
+                if pick.count() and pick.first.is_visible():
+                    pick.first.click()
+                    page.wait_for_timeout(600)
+                    return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+    try:
+        page.screenshot(path=str(dbg / "ngteco_records_per_page.png"), full_page=True)
+    except Exception:
+        pass
+    raise RuntimeError(
+        "Could not set NGTeco records per page (footer dropdown) — see "
+        f"{dbg / 'ngteco_records_per_page.png'}"
+    )
 
 
 def _select_all_table(page) -> None:
@@ -277,7 +345,7 @@ def _click_pie_chart_near_search(page, dbg: Path) -> None:
 def _shift_schedule_flow(page, dbg: Path) -> None:
     page.goto(SCHEDULE_URL, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=120000)
-    _set_records_per_page(page, "50")
+    _set_records_per_page(page, "50", dbg)
     page.wait_for_timeout(500)
     _select_all_table(page)
     _click_pie_chart_near_search(page, dbg)

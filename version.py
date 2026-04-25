@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.5"
-__version_name__ = "v9.5.5 — NGTeco login: resilient Playwright; optional env pre-fill for form"
+__version__ = "9.5.6"
+__version_name__ = "v9.5.6 — Schedule page size: robust ant-pagination; pre-fill from /etc/payroll/ngteco_prefill.env"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.6",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: _set_records_per_page rewritten (scroll, locale hints, more Ant pagination selectors,",
+            "option role, screenshot on failure). Credentials: more env aliases + optional /etc/payroll/",
+            "ngteco_prefill.env so Gunicorn always loads them; payroll.env is often missed by users."
+        ]
+    },
     {
         "version": "9.5.5",
         "date": "2026-04-25",
