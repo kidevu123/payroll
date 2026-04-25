@@ -10,6 +10,7 @@ Set Gunicorn (or your WSGI server) to a long timeout (e.g. 300s) for /fetch_time
 
 from __future__ import annotations
 
+import os
 import re
 import tempfile
 from collections.abc import Callable
@@ -508,11 +509,139 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
     )
 
 
-def _select_all_table(page) -> None:
-    header_cb = page.locator("thead input[type=checkbox], th input[type=checkbox]").first
-    header_cb.wait_for(state="visible", timeout=30000)
-    if not header_cb.is_checked():
-        header_cb.check()
+def _select_all_table(page, dbg: Path) -> None:
+    """
+    Check the 'select all rows' / header checkbox. NGTeco uses MUI, not a plain
+    <table>; the input may be visibility:hidden (PrivateSwitchBase) and not
+    under thead/th, so we try several MUI and role-based paths and use force
+    when the native input is not 'visible' to Playwright.
+    """
+    custom = (os.environ.get("NGTECO_SELECT_ALL_SELECTOR") or "").strip()
+    if custom:
+        try:
+            c = page.locator(custom)
+            if c.count():
+                c.first.wait_for(state="attached", timeout=8_000)
+                c.first.scroll_into_view_if_needed()
+                c.first.check(timeout=20_000, force=True)
+                return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    page.wait_for_timeout(800)
+    for container in (
+        ".MuiDataGrid-main",
+        ".MuiDataGrid-root",
+        ".MuiTableContainer-root",
+        "[role='grid']",
+        "table",
+    ):
+        c = page.locator(container)
+        if c.count() == 0:
+            continue
+        try:
+            c.first.wait_for(state="visible", timeout=20_000)
+            break
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+
+    selector_groups: list[tuple[str, ...]] = [
+        (
+            "thead th input[type=checkbox], thead input[type=checkbox], th input[type=checkbox]",
+        ),
+        (
+            ".MuiTableHead-root th input[type=checkbox], "
+            ".MuiTableHead-root th .MuiCheckbox-root input, "
+            ".MuiTableHead-root .MuiCheckbox-root input, "
+            ".MuiTableHead-root .PrivateSwitchBase-input, "
+            ".MuiTableHead input[type=checkbox]",
+        ),
+        (
+            ".MuiDataGrid-columnHeaderCheckbox input[type=checkbox], "
+            ".MuiDataGrid-columnHeaderCheckbox .MuiCheckbox-root input, "
+            ".MuiDataGrid-columnHeader--checkbox input",
+        ),
+        (
+            "[role=columnheader] input[type=checkbox], "
+        ),
+        (
+            "input[aria-label*='select all' i][type=checkbox], "
+            "input[aria-label*='all' i][type=checkbox], "
+            "input[title*='select all' i][type=checkbox]",
+        ),
+    ]
+    for group in selector_groups:
+        for sel in group:
+            s = sel.strip()
+            if not s:
+                continue
+            loc = page.locator(s)
+            if loc.count() == 0:
+                continue
+            box = loc.first
+            try:
+                box.wait_for(state="attached", timeout=5_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+            try:
+                box.scroll_into_view_if_needed()
+            except Exception:
+                pass
+            for force in (False, True):
+                try:
+                    if box.is_checked():
+                        return
+                    box.check(timeout=20_000, force=force)
+                    return
+                except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                    continue
+
+    for label_re in (
+        re.compile(r"select\s*all", re.I),
+        re.compile(r"all\s*rows", re.I),
+    ):
+        try:
+            c = page.get_by_role("checkbox", name=label_re)
+            if c.count():
+                c.first.check(timeout=20_000, force=True)
+                return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        try:
+            c = page.get_by_label(label_re)
+            if c.count():
+                c.first.check(timeout=20_000, force=True)
+                return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+
+    for click_wrapped in (
+        page.locator(".MuiDataGrid-columnHeaderCheckbox .MuiButtonBase-root").first,
+        page.locator(".MuiDataGrid-columnHeaderCheckbox .MuiCheckbox-root").first,
+        page.locator(".MuiTableHead-root th .MuiCheckbox-root, .MuiTableHead .MuiCheckbox-root").first,
+    ):
+        if click_wrapped.count() == 0:
+            continue
+        try:
+            try:
+                click_wrapped.wait_for(state="visible", timeout=10_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                click_wrapped.wait_for(state="attached", timeout=5_000)
+            click_wrapped.scroll_into_view_if_needed()
+            click_wrapped.click(timeout=12_000, force=True)
+            page.wait_for_timeout(200)
+            return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+
+    try:
+        page.screenshot(path=str(dbg / "ngteco_select_all_hunt.png"), full_page=True)
+    except Exception:
+        pass
+    raise RuntimeError(
+        "Could not find the NGTeco table header 'select all' checkbox — see "
+        f"{dbg / 'ngteco_select_all_hunt.png'}. If your grid uses a custom layout, "
+        "open DevTools on that checkbox, copy a CSS path or data-testid, and share it."
+    )
 
 
 def _click_pie_chart_near_search(page, dbg: Path) -> None:
@@ -541,7 +670,7 @@ def _shift_schedule_flow(page, dbg: Path) -> None:
     page.wait_for_load_state("networkidle", timeout=120000)
     _set_records_per_page(page, "50", dbg)
     page.wait_for_timeout(500)
-    _select_all_table(page)
+    _select_all_table(page, dbg)
     _click_pie_chart_near_search(page, dbg)
     page.wait_for_timeout(3000)
 

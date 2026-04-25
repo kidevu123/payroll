@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.8"
-__version_name__ = "v9.5.8 — NGTeco: MUI TablePagination rows-per-page (data-value) + ant fallback"
+__version__ = "9.5.9"
+__version_name__ = "v9.5.9 — NGTeco: MUI 'select all' (header checkbox) + optional NGTECO_SELECT_ALL_SELECTOR"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.9",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: _select_all_table targets MUI TableHead/DataGrid header checkboxes (PrivateSwitchBase,",
+            "columnHeaderCheckbox) with force; optional env NGTECO_SELECT_ALL_SELECTOR. Screenshot on failure:",
+            "ngteco_select_all_hunt.png."
+        ]
+    },
     {
         "version": "9.5.8",
         "date": "2026-04-25",
