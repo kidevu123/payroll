@@ -8342,6 +8342,17 @@ def fetch_timecard():
     """Fetch timecard data from the NGTeco system"""
     username = session.get('username', 'Unknown')
     menu_html = get_menu_html(username)
+    # Pre-fill NGTeco fields from env (self-host only: set in /etc/payroll/payroll.env; do not commit)
+    _nf_email = (
+        os.environ.get("NGTECO_FORM_EMAIL")
+        or os.environ.get("NGTECO_DEFAULT_EMAIL")
+        or ""
+    ).strip()
+    _nf_pass = os.environ.get("NGTECO_FORM_PASSWORD") or os.environ.get(
+        "NGTECO_DEFAULT_PASSWORD", ""
+    )
+    _nf_uval = f' value="{escape(_nf_email)}"' if _nf_email else ""
+    _nf_pval = f' value="{escape(_nf_pass)}"' if _nf_pass else ""
     
     if request.method == 'GET':
         flash_html = ""
@@ -8422,12 +8433,12 @@ def fetch_timecard():
 
                     <div class="form-group">
                         <label for="username" class="form-label form-label-required">NGTeco Username</label>
-                        <input type="text" id="username" name="username" class="form-input" required>
+                        <input type="text" id="username" name="username" class="form-input" required{_nf_uval}>
                     </div>
 
                     <div class="form-group">
                         <label for="password" class="form-label form-label-required">NGTeco Password</label>
-                        <input type="password" id="password" name="password" class="form-input" required>
+                        <input type="password" id="password" name="password" class="form-input" required{_nf_pval}>
                     </div>
 
                     <div class="grid grid-cols-2" style="gap:var(--spacing-3)">

@@ -52,22 +52,168 @@ def _check_terms(page) -> None:
     raise RuntimeError("Could not find the NGTeco terms/privacy checkbox — update ngteco_playwright._check_terms")
 
 
-def _login(page, email: str, password: str) -> None:
-    page.goto(LOGIN_URL, wait_until="domcontentloaded")
-    page.wait_for_timeout(800)
-    email_box = page.locator('input[type="email"], input[name="email" i], input[autocomplete="username"]').first
-    email_box.wait_for(state="visible", timeout=90000)
-    email_box.fill(email)
-    pw = page.locator('input[type="password"]').first
-    pw.wait_for(state="visible", timeout=15000)
-    pw.fill(password)
+def _login(page, email: str, password: str, dbg: Path) -> None:
+    """
+    NGTeco login. The site is built with Ant Design / can change; we try many strategies.
+    On failure, screenshots are written to dbg (e.g. ngteco_login_email_hunt.png).
+    """
+    page.set_default_timeout(120_000)
+    page.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=120_000)
+    page.wait_for_timeout(1200)
+    try:
+        page.wait_for_load_state("networkidle", timeout=30_000)
+    except (PlaywrightTimeoutError, PlaywrightError):
+        pass
+    # Optional debug
+    try:
+        page.screenshot(path=str(dbg / "ngteco_login_step1.png"), full_page=True)
+    except Exception:
+        pass
+
+    def _try_fill_user(_root) -> bool:
+        """Return True if we found and filled a user/email field in _root (page or Frame)."""
+        # Role / label (Ant Design, etc.)
+        for getter in (
+            lambda: _root.get_by_role(
+                "textbox", name=re.compile(r"e-?mail|user|account|log\s*in|phone|name", re.I)
+            ),
+            lambda: _root.get_by_label(re.compile(r"e-?mail|user|account|log\s*in|mail|phone", re.I)),
+        ):
+            try:
+                loc = getter()
+                n = loc.count() if loc else 0
+                if n and loc.first.is_visible():
+                    loc.first.clear()
+                    loc.first.fill(email, timeout=20_000)
+                    return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+        # Attribute-based (most common in SPAs; order matters: specific before generic)
+        user_selectors: tuple[str, ...] = (
+            "input[type=\"email\"]",
+            "input[autocomplete=\"email\" i]",
+            "input[autocomplete=\"username\" i]",
+            "input[autocomplete=\"off\" i]",
+            "input[name=\"email\" i]",
+            "input[name*=\"email\" i]",
+            "input[name*=\"userName\" i]",
+            "input[name*=\"username\" i]",
+            "input[name*=\"user\" i]",
+            "input[placeholder*=\"@\"]",
+            "input[placeholder*=\"email\" i]",
+            "input[placeholder*=\"user\" i]",
+            "input[placeholder*=\"log\" i]",
+            "#userName",
+            "#username",
+            "#email",
+            "#login_email",
+            "input#normal_login_email",
+            "input#normal_login_username",
+            "input.ant-input",
+            "input[class*=\"ant-input\"]",
+            "div.ant-pro-form input[type=\"text\"]:first-of-type",
+        )
+        for sel in user_selectors:
+            try:
+                loc = _root.locator(sel).first
+                if loc.count() == 0:
+                    continue
+                if not loc.is_visible():
+                    loc.wait_for(state="visible", timeout=10_000)
+                loc.clear()
+                loc.fill(email, timeout=15_000)
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+        # First visible text field in a form (last resort, after others failed)
+        try:
+            f = _root.locator("form").first
+            if f.count():
+                t = f.locator("input[type=\"text\"], input:not([type])").first
+                if t.count() and t.is_enabled():
+                    t.wait_for(state="visible", timeout=5_000)
+                    t.clear()
+                    t.fill(email, timeout=15_000)
+                    return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        return False
+
+    def _try_fill_password(_root) -> bool:
+        for getter in (
+            lambda: _root.get_by_label(re.compile(r"pass", re.I)),
+        ):
+            try:
+                loc = getter()
+                if loc.count() and loc.first.is_visible():
+                    loc.first.clear()
+                    loc.first.fill(password, timeout=20_000)
+                    return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+        for sel in (
+            "input[type=\"password\"]",
+            "input[autocomplete=\"current-password\" i]",
+        ):
+            try:
+                p = _root.locator(sel).first
+                if p.count():
+                    p.wait_for(state="visible", timeout=15_000)
+                    p.clear()
+                    p.fill(password, timeout=15_000)
+                    return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+        return False
+
+    # Main frame, then iframes (login sometimes embedded in a frame)
+    _roots: list = [page]
+    _roots.extend(f for f in page.frames if f != page.main_frame)
+    email_ok = False
+    for root in _roots:
+        if _try_fill_user(root):
+            email_ok = True
+            break
+    if not email_ok:
+        try:
+            page.screenshot(path=str(dbg / "ngteco_login_email_hunt.png"), full_page=True)
+        except Exception:
+            pass
+        raise RuntimeError(
+            "Could not find a visible NGTeco email/user field — site layout may have changed, "
+            "or the page is blocked for headless browsers. See screenshot "
+            f"{dbg / 'ngteco_login_email_hunt.png'}"
+        )
+    pwd_ok = False
+    for root in _roots:
+        if _try_fill_password(root):
+            pwd_ok = True
+            break
+    if not pwd_ok:
+        try:
+            page.screenshot(path=str(dbg / "ngteco_login_password_hunt.png"), full_page=True)
+        except Exception:
+            pass
+        raise RuntimeError(
+            "Could not find the password field on NGTeco login. "
+            f"See {dbg / 'ngteco_login_password_hunt.png'}"
+        )
+
     _check_terms(page)
-    login_btn = page.get_by_role("button", name=re.compile(r"^\s*Login\s*$", re.I))
+    login_btn = page.get_by_role("button", name=re.compile(r"^\s*(Login|Sign\s*in|Log\s*in)\s*$", re.I))
     if login_btn.count() == 0:
-        login_btn = page.locator("button:has-text('Login')").first
-    login_btn.click()
+        login_btn = page.get_by_role("button", name=re.compile(r"Login|Sign in", re.I))
+    if login_btn.count() == 0:
+        login_btn = page.locator("button:has-text('Login'), input[type=submit], button[type=submit]")
+    if login_btn.count() == 0:
+        try:
+            page.screenshot(path=str(dbg / "ngteco_login_no_button.png"), full_page=True)
+        except Exception:
+            pass
+        raise RuntimeError("Could not find the Login button")
+    login_btn.first.click()
     page.wait_for_function(
-        "() => !String(window.location.href).includes('user/login')", timeout=120000
+        "() => !String(window.location.href).includes('user/login')", timeout=120_000
     )
 
 
@@ -237,7 +383,7 @@ def fetch_ngteco_csv(
         page = context.new_page()
         try:
             _report("Opening NGTeco login…", 12)
-            _login(page, email, password)
+            _login(page, email, password, dbg)
             _report("Signed in; running Shift & schedule…", 40)
             _shift_schedule_flow(page, dbg)
             _report("Loading Timecard and date range…", 68)

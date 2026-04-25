@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.4"
-__version_name__ = "v9.5.4 — Fix 500 on async fetch: pass Flask app, not _get_current_object"
+__version__ = "9.5.5"
+__version_name__ = "v9.5.5 — NGTeco login: resilient Playwright; optional env pre-fill for form"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.5",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: expanded login field detection (roles, labels, ant-input, iframes, more selectors) +",
+            "debug PNGs. Fetch Timecard form can pre-fill from NGTECO_FORM_EMAIL / NGTECO_FORM_PASSWORD (",
+            "or …_DEFAULT_*) in payroll.env only — not stored in the repo. env.example updated."
+        ]
+    },
     {
         "version": "9.5.4",
         "date": "2026-04-25",
