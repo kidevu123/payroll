@@ -268,10 +268,153 @@ def _ant_select_choose_n_in_open_overlay(page, n: str) -> bool:
     return False
 
 
+def _mui_table_pagination_native_select(page, n: str) -> bool:
+    """MUI: some builds use a real <select> in TablePagination."""
+    for loc in (
+        page.locator(".MuiTablePagination-root select.MuiTablePagination-select"),
+        page.locator(".MuiTablePagination-root select"),
+        page.locator("select.MuiTablePagination-select"),
+    ):
+        if loc.count() == 0:
+            continue
+        s = loc.first
+        try:
+            if not s.is_visible():
+                s.wait_for(state="visible", timeout=8000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+        try:
+            s.select_option(value=n, timeout=12_000)
+            return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+    return False
+
+
+def _mui_click_pagination_page_size_option(page, n: str) -> bool:
+    """
+    MUI TablePagination: open menu is ul[role=listbox] with
+    li.MuiTablePagination-menuItem[data-value=…] (not Ant Design).
+    Use force=True — sticky footers or bars may intercept the hit target.
+    """
+    escaped = n.strip()
+    selectors = (
+        f'li.MuiTablePagination-menuItem[data-value="{escaped}"]',
+        f'ul[role="listbox"] li[data-value="{escaped}"]',
+        f'[role="listbox"] [role="option"][data-value="{escaped}"]',
+    )
+    for sel in selectors:
+        loc = page.locator(sel)
+        cnt = min(loc.count(), 6)
+        for i in range(cnt):
+            o = loc.nth(i)
+            try:
+                o.wait_for(state="visible", timeout=5000)
+                o.scroll_into_view_if_needed()
+                o.click(timeout=10_000, force=True)
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    # Last visible listbox (the menu we just opened is usually last)
+    try:
+        lbx = page.get_by_role("listbox")
+        if lbx.count():
+            lbx.last.wait_for(state="visible", timeout=5000)
+            o = lbx.last.locator(f'[data-value="{escaped}"]')
+            if o.count():
+                o.first.scroll_into_view_if_needed()
+                o.first.click(timeout=10_000, force=True)
+                return True
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
+    # Click via DOM when something blocks pointer events
+    try:
+        did = page.evaluate(
+            """
+            (v) => {
+            const s = String(v);
+            const d = document;
+            const direct = d.querySelector(
+              'li.MuiTablePagination-menuItem[data-value="' + s + '"]'
+            );
+            if (direct) {
+              direct.scrollIntoView({ block: 'center' });
+              direct.click();
+              return true;
+            }
+            const boxes = d.querySelectorAll('[role="listbox"]');
+            for (let i = boxes.length - 1; i >= 0; i--) {
+              const o = boxes[i].querySelector('[data-value="' + s + '"]');
+              if (o) { o.scrollIntoView({ block: 'center' }); o.click(); return true; }
+            }
+            return false;
+        }
+        """,
+            escaped,
+        )
+        if did:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _mui_table_pagination_open_size_menu_and_choose(page, n: str) -> bool:
+    """MUI: click the page-size control inside .MuiTablePagination-root, then pick *n*."""
+    roots = page.locator(".MuiTablePagination-root")
+    if roots.count() == 0:
+        return False
+    root = roots.first
+    if not root.is_visible():
+        try:
+            root.wait_for(state="visible", timeout=15_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            return False
+    triggers: list = []
+    for tr_sel in (
+        "div[role='combobox']",
+        ".MuiTablePagination-select .MuiSelect-select",
+        ".MuiTablePagination-select",
+        ".MuiInputBase-root.MuiTablePagination-select",
+    ):
+        t = root.locator(tr_sel)
+        for i in range(min(t.count(), 4)):
+            triggers.append(t.nth(i))
+    for tr in triggers:
+        if tr.count() == 0:
+            continue
+        if not tr.is_visible():
+            try:
+                tr.wait_for(state="visible", timeout=3000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+        for _attempt in (1, 2):
+            try:
+                tr.scroll_into_view_if_needed()
+                if _attempt == 1:
+                    tr.click(timeout=10_000)
+                else:
+                    tr.click(timeout=10_000, force=True)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+            page.wait_for_timeout(350)
+            if _mui_click_pagination_page_size_option(page, n):
+                return True
+            try:
+                page.keyboard.press("Escape")
+            except Exception:
+                pass
+    return False
+
+
 def _set_records_per_page(page, n: str, dbg: Path) -> None:
     """
-    Ant Design pagination "page size" — open the footer select, then pick *n* in the portal
-    overlay (not inside the pagination node).
+    Set footer "rows per page" to *n*.
+
+    NGTeco schedule uses MUI TablePagination: listbox is
+    li.MuiTablePagination-menuItem[data-value=…] in a popover, not under Ant
+    .ant-select-dropdown. Some themes still use Ant; we try MUI first, then
+    the Ant / native fallbacks.
     """
     page.wait_for_timeout(400)
     try:
@@ -281,7 +424,8 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
     page.wait_for_timeout(500)
     try:
         page.locator(
-            ".ant-pagination, .ant-table-pagination, .ant-table-wrapper .ant-pagination"
+            ".MuiTablePagination-root, .ant-pagination, .ant-table-pagination, "
+            ".ant-table-wrapper .ant-pagination"
         ).first.wait_for(state="visible", timeout=120_000)
     except (PlaywrightTimeoutError, PlaywrightError):
         pass
@@ -296,7 +440,9 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
             break
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             continue
-    combo = page.get_by_label(re.compile(r"records per page|per page|page size", re.I))
+    combo = page.get_by_label(
+        re.compile(r"no\.\s*of\s*records|records per page|per page|page size", re.I)
+    )
     if combo.count():
         try:
             combo.first.select_option(label=n)
@@ -304,6 +450,13 @@ def _set_records_per_page(page, n: str, dbg: Path) -> None:
             return
         except PlaywrightError:
             pass
+
+    if _mui_table_pagination_native_select(page, n):
+        page.wait_for_timeout(600)
+        return
+    if _mui_table_pagination_open_size_menu_and_choose(page, n):
+        page.wait_for_timeout(600)
+        return
 
     def _all_trigger_locators() -> list:
         out: list = []

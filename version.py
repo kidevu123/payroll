@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.7"
-__version_name__ = "v9.5.7 — NGTeco page size: click option in Ant Design portal dropdown"
+__version__ = "9.5.8"
+__version_name__ = "v9.5.8 — NGTeco: MUI TablePagination rows-per-page (data-value) + ant fallback"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.8",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: schedule table uses Material UI, not Ant — open .MuiTablePagination-root, pick",
+            "50 via li.MuiTablePagination-menuItem[data-value=50], force click + JS when overlays block.",
+            "Native <select> path when present. Ant portal logic kept as secondary."
+        ]
+    },
     {
         "version": "9.5.7",
         "date": "2026-04-25",
