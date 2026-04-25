@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.2"
-__version_name__ = "v9.5.2 — Fetch Timecard: live progress bar + async Playwright job"
+__version__ = "9.5.3"
+__version_name__ = "v9.5.3 — Fix async fetch + progress URLs behind NPM subpath"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.3",
+        "date": "2026-04-25",
+        "changes": [
+            "FIX: Fetch Timecard async POST and waiting page work when the app is under a public path (e.g.",
+            "NPM /apps/payroll/): form posts to the current page URL, client builds /waiting/{job_id} from it,",
+            "progress/complete polling paths derived from location. Added _payroll_path() for redirects when",
+            "PAYROLL_URL_PREFIX is set. Avoids 'Unexpected response' (HTML/404 instead of JSON 202)."
+        ]
+    },
     {
         "version": "9.5.2",
         "date": "2026-04-25",

@@ -75,6 +75,19 @@ _pfx = (os.environ.get("PAYROLL_URL_PREFIX") or "").strip()
 if _pfx:
     app.wsgi_app = _StripPayrollPrefix(app.wsgi_app, _pfx)
 
+
+def _payroll_path(endpoint, **values):
+    """
+    url_for with PAYROLL_URL_PREFIX when the app is served under a path (NPM, subfolder).
+    Use for redirects; link hrefs in HTML are often best as relative/resolved in the browser.
+    """
+    p = (os.environ.get("PAYROLL_URL_PREFIX") or "").rstrip("/")
+    u = url_for(endpoint, **values)
+    if p and u.startswith("/"):
+        return p + u
+    return u
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # LOGGING CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -8166,8 +8179,6 @@ def fetch_timecard_waiting_page(job_id: str):
     if job.get("owner") != session.get("username"):
         return "Access denied", 403
     menu_html = get_menu_html(session.get("username", "Unknown"))
-    complete_url = url_for("fetch_timecard_job_done", job_id=job_id)
-    progress_url = url_for("fetch_timecard_job_progress", job_id=job_id)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8223,14 +8234,25 @@ def fetch_timecard_waiting_page(job_id: str):
             </div>
             <p id="errBox" style="display:none;margin-top:14px;padding:10px 12px;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;font-size:14px"></p>
             <p style="margin-top:16px;font-size:13px;color:#64748b">Do not refresh. You can return to
-                <a href="{url_for('fetch_timecard')}">Fetch Timecard</a> if something goes wrong.
+                <a id="ftBackLink" href="#">Fetch Timecard</a> if something goes wrong.
             </p>
         </div>
     </div>
     <script>
         (function() {{
-            var completeUrl = {json.dumps(complete_url)};
-            var progressUrl = {json.dumps(progress_url)};
+            var pth = location.pathname;
+            var progressUrl = pth.indexOf('/waiting/') >= 0
+                ? pth.replace('/waiting/', '/progress/')
+                : pth;
+            var completeUrl = pth.indexOf('/waiting/') >= 0
+                ? pth.replace('/waiting/', '/complete/')
+                : pth;
+            (function() {{
+                var a = document.getElementById('ftBackLink');
+                if (a) {{
+                    a.href = location.origin + pth.replace(/\\/waiting\\/[^/]+$/, '');
+                }}
+            }})();
             var fill = document.getElementById('pfill');
             var stepLine = document.getElementById('stepLine');
             var pctLine = document.getElementById('pctLine');
@@ -8245,7 +8267,7 @@ def fetch_timecard_waiting_page(job_id: str):
             }}
             function tick() {{
                 if (stopped) return;
-                fetch(progressUrl, {{ headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
+                fetch(location.origin + progressUrl, {{ headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
                     .then(function(r) {{ return r.json().then(function(j) {{ return {{ ok: r.ok, r: r, j: j }}; }}); }})
                     .then(function(x) {{
                         if (!x.ok && x.j && x.j.error === 'forbidden') {{
@@ -8259,7 +8281,7 @@ def fetch_timecard_waiting_page(job_id: str):
                         if (d.step) stepLine.textContent = d.step;
                         if (typeof d.percent === 'number') setBar(d.percent);
                         if (d.status === 'done') {{
-                            window.location = completeUrl;
+                            window.location = location.origin + completeUrl;
                             return;
                         }}
                         if (d.status === 'error') {{
@@ -8286,7 +8308,7 @@ def fetch_timecard_job_done(job_id: str):
     job = _ngteco_job_read(job_id)
     if not job:
         flash("This download session is no longer available.", "error")
-        return redirect(url_for("fetch_timecard"))
+        return redirect(_payroll_path("fetch_timecard"))
     if job.get("owner") != session.get("username"):
         return "Access denied", 403
     if job.get("status") == "error":
@@ -8297,13 +8319,13 @@ def fetch_timecard_job_done(job_id: str):
                 os.remove(p)
         except Exception:
             pass
-        return redirect(url_for("fetch_timecard"))
+        return redirect(_payroll_path("fetch_timecard"))
     if job.get("status") != "done":
-        return redirect(url_for("fetch_timecard_waiting_page", job_id=job_id))
+        return redirect(_payroll_path("fetch_timecard_waiting_page", job_id=job_id))
     file_path = job.get("result_path")
     if not file_path or not os.path.isfile(file_path):
         flash("The downloaded file is missing. Please try again.", "error")
-        return redirect(url_for("fetch_timecard"))
+        return redirect(_payroll_path("fetch_timecard"))
     session["uploaded_file"] = file_path
     try:
         p = _ngteco_job_path_from_id(job_id)
@@ -8311,7 +8333,7 @@ def fetch_timecard_job_done(job_id: str):
             os.remove(p)
     except Exception:
         pass
-    return redirect(url_for("validate"))
+    return redirect(_payroll_path("validate"))
 
 
 @app.route('/fetch_timecard', methods=['GET', 'POST'])
@@ -8382,7 +8404,7 @@ def fetch_timecard():
                 <h2 class="card-title">Choose Your Method</h2>
             </div>
             
-            <form id="timecard-fetch-form" method="post" action="{url_for('fetch_timecard')}">
+            <form id="timecard-fetch-form" method="post" action="">
                 <div class="form-group">
                     <label for="method" class="form-label">Method</label>
                     <select id="method" name="method" class="form-select" onchange="toggleMethod()">
@@ -8484,9 +8506,21 @@ def fetch_timecard():
             var fd = new FormData(form);
             fd.set('async', '1');
             if (btn) {{ btn.disabled = true; }}
-            fetch(form.action, {{ method: 'POST', body: fd, headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
-                .then(function(r) {{ return r.json().then(function(j) {{ return {{ r: r, j: j }}; }}).catch(function() {{ return {{ r: r, j: null }}; }}); }})
+            var postUrl = window.location.href;
+            fetch(postUrl, {{ method: 'POST', body: fd, headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
+                .then(function(r) {{
+                    var ct = (r.headers.get('content-type') || '').toLowerCase();
+                    if (ct.indexOf('application/json') < 0) {{
+                        return r.text().then(function(t) {{ return {{ r: r, j: null, badBody: t.slice(0, 200) }}; }});
+                    }}
+                    return r.json().then(function(j) {{ return {{ r: r, j: j }}; }}).catch(function() {{ return {{ r: r, j: null }}; }});
+                }})
                 .then(function(x) {{
+                    if (x.r.status === 202 && x.j && x.j.job_id) {{
+                        var b = window.location.href.split('?')[0].replace(/\\/$/, '');
+                        window.location = b + '/waiting/' + x.j.job_id;
+                        return;
+                    }}
                     if (x.r.status === 202 && x.j && x.j.waiting_url) {{
                         window.location = x.j.waiting_url;
                         return;
@@ -8496,7 +8530,8 @@ def fetch_timecard():
                         if (btn) {{ btn.disabled = false; }}
                         return;
                     }}
-                    alert('Unexpected response. Try again or use Copy & Paste.');
+                    var hint = (x.r.status || '?') + (x.badBody ? ': ' + x.badBody : '');
+                    alert('Server did not start the job (HTTP ' + hint + '). If you use a subpath, set PAYROLL_URL_PREFIX. Or try Copy & Paste.');
                     if (btn) {{ btn.disabled = false; }}
                 }})
                 .catch(function() {{
@@ -8555,7 +8590,9 @@ def fetch_timecard():
             jsonify(
                 {
                     "job_id": job_id,
-                    "waiting_url": url_for("fetch_timecard_waiting_page", job_id=job_id),
+                    "waiting_url": _payroll_path(
+                        "fetch_timecard_waiting_page", job_id=job_id
+                    ),
                 }
             ),
             202,
