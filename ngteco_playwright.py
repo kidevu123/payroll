@@ -962,26 +962,47 @@ def _timecard_download(
             d_btn.first.click(timeout=12_000)
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             d_btn.first.click(timeout=12_000, force=True)
-        # MUI menu is portaled; .count() was often 0 before the menu opened, so we fell
-        # through to get_by_text("csv with tz") and timed out on an option the site
-        # does not show. Wait for a menu, then pick plain "csv" first.
-        try:
-            page.locator("ul[role=menu] li, [role=menu] [role=menuitem], li[role=menuitem]").first.wait_for(
-                state="visible", timeout=15_000
-            )
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            pass
-        page.wait_for_timeout(300)
-        mi = page.locator("[role=menuitem]")
-        mi.first.wait_for(state="visible", timeout=15_000)
-        # Plain "csv" only (regex anchors so "csv with tz" is not matched)
-        choice = mi.filter(has_text=re.compile(r"^\s*csv\s*$", re.I))
-        if choice.count() == 0:
-            choice = mi.filter(has_text=re.compile(r"csv with tz", re.I))
-        if choice.count() == 0:
-            choice = page.get_by_role("menuitem", name=re.compile(r"^csv$", re.I))
-        choice.first.wait_for(state="visible", timeout=12_000)
-        choice.first.click()
+        # MUI: many [role=menuitem] exist in the DOM (side nav, closed menus) but are
+        # display:none. Do not use .first — wait for a *visible* csv row or the open ul.
+        page.wait_for_timeout(400)
+        def _click_visible_menuitem_csv() -> bool:
+            for name_rx in (re.compile(r"^csv$", re.I), re.compile(r"csv with tz", re.I)):
+                try:
+                    items = page.get_by_role("menuitem", name=name_rx)
+                except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                    continue
+                n = min(items.count(), 40)
+                for i in range(n):
+                    it = items.nth(i)
+                    try:
+                        if it.is_visible():
+                            it.scroll_into_view_if_needed()
+                            it.click(timeout=6_000)
+                            return True
+                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                        continue
+            return False
+
+        if not _click_visible_menuitem_csv():
+            # Last opened popover list is often the download menu
+            ulm = page.locator("ul[role=menu]").last
+            try:
+                ulm.wait_for(state="visible", timeout=10_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+            for rx in (re.compile(r"^\s*csv\s*$", re.I), re.compile(r"csv with tz", re.I)):
+                row = ulm.locator("li[role=menuitem]").filter(has_text=rx)
+                if row.count():
+                    try:
+                        row.first.scroll_into_view_if_needed()
+                        row.first.click(timeout=6_000, force=True)
+                        break
+                    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                        continue
+            else:
+                page.get_by_text("csv", exact=True).last.click(
+                    timeout=8_000, force=True
+                )
     dl.value.save_as(str(out_path))
 
 

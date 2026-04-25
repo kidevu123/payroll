@@ -3,11 +3,19 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.12"
-__version_name__ = "v9.5.12 — NGTeco: csv menu — wait for menu, pick plain csv not csv with tz"
+__version__ = "9.5.13"
+__version_name__ = "v9.5.13 — NGTeco csv: click *visible* menuitem (35 hidden in DOM)"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.13",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: Download menu — do not use [role=menuitem].first (many MUI items are in closed",
+            "menus). Scan get_by_role(menuitem) for is_visible(), else ul[role=menu].last + force."
+        ]
+    },
     {
         "version": "9.5.12",
         "date": "2026-04-25",
