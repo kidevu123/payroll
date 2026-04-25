@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import re
 import tempfile
+from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
+from typing import Optional
 
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -54,7 +56,7 @@ def _login(page, email: str, password: str) -> None:
     page.goto(LOGIN_URL, wait_until="domcontentloaded")
     page.wait_for_timeout(800)
     email_box = page.locator('input[type="email"], input[name="email" i], input[autocomplete="username"]').first
-    email_box.wait_for(state="visible", timeout=30000)
+    email_box.wait_for(state="visible", timeout=90000)
     email_box.fill(email)
     pw = page.locator('input[type="password"]').first
     pw.wait_for(state="visible", timeout=15000)
@@ -191,6 +193,7 @@ def fetch_ngteco_csv(
     *,
     debug_dir: Path | None = None,
     headless: bool = True,
+    progress: Optional[Callable[[str, int], None]] = None,
 ) -> str:
     """
     Return raw CSV text from NGTeco timecard download (Shift & schedule + timecard flow).
@@ -212,7 +215,20 @@ def fetch_ngteco_csv(
     dbg.mkdir(parents=True, exist_ok=True)
     out_path = dbg / f"ngteco_dl_{d0}_{d1}.csv"
 
+    def _report(step: str, pct: int) -> None:
+        if not progress:
+            return
+        try:
+            # Reserve 100% for the app worker after we return
+            p = int(max(0, min(99, pct)))
+            progress(step, p)
+        except Exception:
+            pass
+
+    _report("Starting…", 1)
+
     with sync_playwright() as p:
+        _report("Launching browser…", 5)
         browser = p.chromium.launch(
             headless=headless,
             args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
@@ -220,9 +236,13 @@ def fetch_ngteco_csv(
         context = browser.new_context(accept_downloads=True)
         page = context.new_page()
         try:
+            _report("Opening NGTeco login…", 12)
             _login(page, email, password)
+            _report("Signed in; running Shift & schedule…", 40)
             _shift_schedule_flow(page, dbg)
+            _report("Loading Timecard and date range…", 68)
             _timecard_download(page, out_path, d0, d1, dbg)
+            _report("Download complete", 95)
         except Exception:
             try:
                 page.screenshot(path=str(dbg / "ngteco_error.png"), full_page=True)

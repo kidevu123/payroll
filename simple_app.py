@@ -1,4 +1,6 @@
 import os
+import secrets
+import threading
 import pandas as pd
 from pathlib import Path
 from flask import Flask, request, send_file, render_template_string, redirect, url_for, jsonify, session, flash, get_flashed_messages
@@ -824,6 +826,8 @@ def zoho_attach_receipt(company_raw, expense_id, file_path):
 # Make sure required directories exist
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
 Path(REPORT_FOLDER).mkdir(parents=True, exist_ok=True)
+FETCH_JOBS_FOLDER = os.path.join(UPLOAD_FOLDER, 'fetch_jobs')
+Path(FETCH_JOBS_FOLDER).mkdir(parents=True, exist_ok=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # USER MANAGEMENT & AUTHENTICATION
@@ -8051,6 +8055,265 @@ def delete_user():
     return redirect(url_for('manage_users'))
 
 
+def _ngteco_job_path_from_id(job_id: str):
+    if not job_id or len(job_id) > 100 or ".." in job_id:
+        return None
+    if not re.match(r"^[A-Za-z0-9._-]+$", job_id):
+        return None
+    return os.path.join(FETCH_JOBS_FOLDER, f"{job_id}.json")
+
+
+def _ngteco_job_read(job_id: str):
+    path = _ngteco_job_path_from_id(job_id)
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _ngteco_job_write(path: str, data: dict) -> None:
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=0)
+    os.replace(tmp, path)
+
+
+def _ngteco_job_update(job_id: str, **kwargs) -> None:
+    path = _ngteco_job_path_from_id(job_id)
+    if not path:
+        return
+    cur = _ngteco_job_read(job_id) or {}
+    cur.update(kwargs)
+    _ngteco_job_write(path, cur)
+
+
+def _ngteco_fetch_job_worker(
+    app,
+    job_id: str,
+    ngu: str,
+    ngp: str,
+    start_date: str,
+    end_date: str,
+    owner: str,
+) -> None:
+    def on_progress(step: str, percent: int) -> None:
+        _ngteco_job_update(
+            job_id, status="running", step=step, percent=percent, owner=owner
+        )
+
+    with app.app_context():
+        try:
+            _ngteco_job_update(
+                job_id,
+                status="running",
+                step="Starting browser automation…",
+                percent=0,
+                owner=owner,
+                error=None,
+                result_path=None,
+            )
+            csv_data = fetch_ngteco_automated(
+                ngu, ngp, start_date, end_date, progress=on_progress
+            )
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"timecard_auto_{timestamp}.csv"
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                f.write(csv_data)
+            _ngteco_job_update(
+                job_id,
+                status="done",
+                step="Complete",
+                percent=100,
+                result_path=file_path,
+            )
+        except Exception as e:
+            app.logger.exception("NGTeco background fetch job %s failed", job_id)
+            _ngteco_job_update(
+                job_id,
+                status="error",
+                step="Failed",
+                percent=0,
+                error=str(e)[:2000],
+            )
+
+
+@app.route("/fetch_timecard/progress/<job_id>")
+@login_required
+def fetch_timecard_job_progress(job_id: str):
+    job = _ngteco_job_read(job_id)
+    if not job:
+        return jsonify(error="not_found"), 404
+    if job.get("owner") != session.get("username"):
+        return jsonify(error="forbidden"), 403
+    return jsonify(
+        status=job.get("status", "unknown"),
+        step=job.get("step", "") or "",
+        percent=max(0, min(100, int(job.get("percent") or 0))),
+        error=job.get("error"),
+    )
+
+
+@app.route("/fetch_timecard/waiting/<job_id>")
+@login_required
+def fetch_timecard_waiting_page(job_id: str):
+    job = _ngteco_job_read(job_id)
+    if not job:
+        return "Job not found", 404
+    if job.get("owner") != session.get("username"):
+        return "Access denied", 403
+    menu_html = get_menu_html(session.get("username", "Unknown"))
+    complete_url = url_for("fetch_timecard_job_done", job_id=job_id)
+    progress_url = url_for("fetch_timecard_job_progress", job_id=job_id)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetching timecard - Payroll</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {{ background: #f0f4f8; }}
+        .wait-hero {{
+            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
+            padding: 36px 0 28px; margin-bottom: 24px;
+        }}
+        .wait-hero h1 {{ color: white; font-size: 24px; font-weight: 800; margin-bottom: 6px; }}
+        .wait-hero p  {{ color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }}
+        .progress-outer {{
+            width: 100%;
+            height: 14px;
+            border-radius: 999px;
+            background: #e2e8f0;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+        }}
+        .progress-inner {{
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #1e40af, #3b82f6);
+            border-radius: 999px;
+            transition: width 0.35s ease;
+        }}
+        .step-text {{ font-size: 15px; color: #334155; min-height: 1.4em; margin: 0 0 6px; font-weight: 600; }}
+        .pct-text {{ font-size: 12px; color: #64748b; margin-bottom: 10px; }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    <div class="wait-hero">
+        <div class="container container-narrow">
+            <h1>Fetching NGTeco timecard</h1>
+            <p>Keep this tab open. The bar updates as each step runs (often a few minutes).</p>
+        </div>
+    </div>
+    <div class="container container-narrow">
+        <div class="card">
+            <p class="step-text" id="stepLine">Starting…</p>
+            <p class="pct-text" id="pctLine">0%</p>
+            <div class="progress-outer" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pbar" aria-label="Download progress">
+                <div class="progress-inner" id="pfill"></div>
+            </div>
+            <p id="errBox" style="display:none;margin-top:14px;padding:10px 12px;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;color:#b91c1c;font-size:14px"></p>
+            <p style="margin-top:16px;font-size:13px;color:#64748b">Do not refresh. You can return to
+                <a href="{url_for('fetch_timecard')}">Fetch Timecard</a> if something goes wrong.
+            </p>
+        </div>
+    </div>
+    <script>
+        (function() {{
+            var completeUrl = {json.dumps(complete_url)};
+            var progressUrl = {json.dumps(progress_url)};
+            var fill = document.getElementById('pfill');
+            var stepLine = document.getElementById('stepLine');
+            var pctLine = document.getElementById('pctLine');
+            var pbar = document.getElementById('pbar');
+            var errBox = document.getElementById('errBox');
+            var stopped = false;
+            function setBar(p) {{
+                p = Math.max(0, Math.min(100, p|0));
+                fill.style.width = p + '%';
+                pbar.setAttribute('aria-valuenow', String(p));
+                pctLine.textContent = p + '%';
+            }}
+            function tick() {{
+                if (stopped) return;
+                fetch(progressUrl, {{ headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
+                    .then(function(r) {{ return r.json().then(function(j) {{ return {{ ok: r.ok, r: r, j: j }}; }}); }})
+                    .then(function(x) {{
+                        if (!x.ok && x.j && x.j.error === 'forbidden') {{
+                            errBox.style.display = 'block';
+                            errBox.textContent = 'Session expired or access denied. Open Fetch Timecard and try again.';
+                            stopped = true;
+                            return;
+                        }}
+                        if (!x.ok) return;
+                        var d = x.j;
+                        if (d.step) stepLine.textContent = d.step;
+                        if (typeof d.percent === 'number') setBar(d.percent);
+                        if (d.status === 'done') {{
+                            window.location = completeUrl;
+                            return;
+                        }}
+                        if (d.status === 'error') {{
+                            stopped = true;
+                            errBox.style.display = 'block';
+                            errBox.textContent = d.error || 'Job failed. Try again or use Copy & Paste.';
+                            setBar(0);
+                            return;
+                        }}
+                    }})
+                    .catch(function() {{ /* next poll */ }});
+            }}
+            setInterval(tick, 1000);
+            tick();
+        }})();
+    </script>
+</body>
+</html>"""
+
+
+@app.route("/fetch_timecard/complete/<job_id>")
+@login_required
+def fetch_timecard_job_done(job_id: str):
+    job = _ngteco_job_read(job_id)
+    if not job:
+        flash("This download session is no longer available.", "error")
+        return redirect(url_for("fetch_timecard"))
+    if job.get("owner") != session.get("username"):
+        return "Access denied", 403
+    if job.get("status") == "error":
+        flash("NGTeco fetch failed. Check the error on the previous screen or use Copy & Paste.", "error")
+        try:
+            p = _ngteco_job_path_from_id(job_id)
+            if p and os.path.isfile(p):
+                os.remove(p)
+        except Exception:
+            pass
+        return redirect(url_for("fetch_timecard"))
+    if job.get("status") != "done":
+        return redirect(url_for("fetch_timecard_waiting_page", job_id=job_id))
+    file_path = job.get("result_path")
+    if not file_path or not os.path.isfile(file_path):
+        flash("The downloaded file is missing. Please try again.", "error")
+        return redirect(url_for("fetch_timecard"))
+    session["uploaded_file"] = file_path
+    try:
+        p = _ngteco_job_path_from_id(job_id)
+        if p and os.path.isfile(p):
+            os.remove(p)
+    except Exception:
+        pass
+    return redirect(url_for("validate"))
+
+
 @app.route('/fetch_timecard', methods=['GET', 'POST'])
 @login_required
 def fetch_timecard():
@@ -8059,6 +8322,19 @@ def fetch_timecard():
     menu_html = get_menu_html(username)
     
     if request.method == 'GET':
+        flash_html = ""
+        for category, message in get_flashed_messages(with_categories=True):
+            if category == "error":
+                flash_html += (
+                    f'<div class="alert" style="margin-bottom:16px;padding:12px 14px;'
+                    f"border-radius:8px;background:#fee2e2;border:1px solid #fecaca;"
+                    f'color:#b91c1c;">{escape(message)}</div>'
+                )
+            else:
+                flash_html += (
+                    f'<div class="alert alert-info" style="margin-bottom:16px;">'
+                    f"{escape(message)}</div>"
+                )
         html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8091,12 +8367,13 @@ def fetch_timecard():
     </div>
     
     <div class="container container-narrow">
+        {flash_html}
         <div class="alert alert-info">
             <svg style="width:20px;height:20px;flex-shrink:0" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
             </svg>
             <div>
-                <strong>One workflow:</strong> <strong>Direct Login</strong> uses Playwright in the background to do the same steps you used to do by hand: log in (including the terms checkbox), run <strong>Shift &amp; schedule</strong> (50 per page, select all, pie/calc), then <strong>Timecard</strong> for your date range and download the CSV. It can take <strong>2–4 minutes</strong>—do not refresh. Your server must have Chromium installed: <code>pip install playwright</code> then <code>playwright install chromium</code>, and your WSGI timeout should be at least 300s for this request.
+                <strong>Direct Login</strong> runs Playwright (Chromium) on this server. After you click <em>Process Timecard</em>, you get a <strong>live progress bar</strong> and step text—no guessing how long it will take. (PythonAnywhere and similar often cannot run Chromium; use <strong>Copy &amp; Paste</strong> there.)
             </div>
         </div>
         
@@ -8105,7 +8382,7 @@ def fetch_timecard():
                 <h2 class="card-title">Choose Your Method</h2>
             </div>
             
-            <form method="post">
+            <form id="timecard-fetch-form" method="post" action="{url_for('fetch_timecard')}">
                 <div class="form-group">
                     <label for="method" class="form-label">Method</label>
                     <select id="method" name="method" class="form-select" onchange="toggleMethod()">
@@ -8164,7 +8441,7 @@ def fetch_timecard():
                 </div>
 
                 <div style="margin-top:var(--spacing-4);text-align:right">
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" id="tc-submit-btn" class="btn btn-success">
                         <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"/>
                         </svg>
@@ -8199,6 +8476,34 @@ def fetch_timecard():
                 document.getElementById('table_data').required = true;
             }}
         }}
+        document.getElementById('timecard-fetch-form').addEventListener('submit', function(e) {{
+            if (document.getElementById('method').value !== 'auto') return;
+            e.preventDefault();
+            var form = e.target;
+            var btn = document.getElementById('tc-submit-btn');
+            var fd = new FormData(form);
+            fd.set('async', '1');
+            if (btn) {{ btn.disabled = true; }}
+            fetch(form.action, {{ method: 'POST', body: fd, headers: {{ 'Accept': 'application/json' }}, credentials: 'same-origin' }})
+                .then(function(r) {{ return r.json().then(function(j) {{ return {{ r: r, j: j }}; }}).catch(function() {{ return {{ r: r, j: null }}; }}); }})
+                .then(function(x) {{
+                    if (x.r.status === 202 && x.j && x.j.waiting_url) {{
+                        window.location = x.j.waiting_url;
+                        return;
+                    }}
+                    if (x.j && x.j.error) {{
+                        alert(x.j.error);
+                        if (btn) {{ btn.disabled = false; }}
+                        return;
+                    }}
+                    alert('Unexpected response. Try again or use Copy & Paste.');
+                    if (btn) {{ btn.disabled = false; }}
+                }})
+                .catch(function() {{
+                    alert('Network error — check your connection and try again.');
+                    if (btn) {{ btn.disabled = false; }}
+                }});
+        }});
     </script>
 </body>
 </html>
@@ -8206,7 +8511,55 @@ def fetch_timecard():
         return html
 
     # POST - Process the request
-    method = request.form.get('method', 'paste')
+    method = request.form.get("method", "paste")
+    use_async = str(request.form.get("async", "")).lower() in ("1", "true", "yes")
+
+    if method == "auto" and use_async:
+        ngu = (request.form.get("username") or "").strip()
+        ngp = request.form.get("password") or ""
+        start_date = (request.form.get("start_date") or "").strip()
+        end_date = (request.form.get("end_date") or "").strip()
+        if not ngu or not ngp or not start_date or not end_date:
+            return jsonify(error="Please fill in NGTeco username, password, and both dates"), 400
+        job_id = secrets.token_urlsafe(20)
+        jpath = _ngteco_job_path_from_id(job_id)
+        if not jpath:
+            return jsonify(error="Could not start job"), 500
+        _ngteco_job_write(
+            jpath,
+            {
+                "owner": session.get("username"),
+                "status": "running",
+                "step": "Queued…",
+                "percent": 0,
+                "error": None,
+                "result_path": None,
+                "created": datetime.now().isoformat(),
+            },
+        )
+        t = threading.Thread(
+            target=_ngteco_fetch_job_worker,
+            args=(
+                app._get_current_object(),
+                job_id,
+                ngu,
+                ngp,
+                start_date,
+                end_date,
+                session.get("username", ""),
+            ),
+            daemon=True,
+        )
+        t.start()
+        return (
+            jsonify(
+                {
+                    "job_id": job_id,
+                    "waiting_url": url_for("fetch_timecard_waiting_page", job_id=job_id),
+                }
+            ),
+            202,
+        )
 
     try:
         if method == 'paste':
@@ -8302,10 +8655,12 @@ def parse_ngteco_table(table_data):
     return '\n'.join(csv_lines)
 
 
-def fetch_ngteco_automated(username, password, start_date, end_date):
+def fetch_ngteco_automated(username, password, start_date, end_date, progress=None):
     """
     Log into NGTeco with Playwright (Chromium), run Shift & schedule (50 / all / pie),
     then download the timecard CSV for the given date range.
+
+    Optional progress(step: str, percent: int) is called for UI updates.
 
     Requires: pip install playwright && playwright install chromium
     On the app server, set a long WSGI timeout (e.g. 300s) for this route.
@@ -8327,6 +8682,7 @@ def fetch_ngteco_automated(username, password, start_date, end_date):
         end_date,
         debug_dir=Path(UPLOAD_FOLDER),
         headless=not _headed,
+        progress=progress,
     )
 
 

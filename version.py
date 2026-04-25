@@ -3,11 +3,21 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.1"
-__version_name__ = "v9.5.1 — Nav menu JS hardening (bfcache, Escape, null-safe)"
-__release_date__ = "2026-04-23"
+__version__ = "9.5.2"
+__version_name__ = "v9.5.2 — Fetch Timecard: live progress bar + async Playwright job"
+__release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.2",
+        "date": "2026-04-25",
+        "changes": [
+            "UX: Direct Login (Playwright) no longer blocks the request — POST returns 202, job runs in",
+            "a background thread; /fetch_timecard/waiting/<id> shows step text + a real progress bar (polls JSON).",
+            "Job state is stored in uploads/fetch_jobs (works with multi-worker Gunicorn). Copy & paste unchanged.",
+            "ngteco_playwright: optional progress() callback; login email field wait 90s (was 30s)."
+        ]
+    },
     {
         "version": "9.5.1",
         "date": "2026-04-23",
