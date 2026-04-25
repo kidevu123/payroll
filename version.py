@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.0"
-__version_name__ = "v9.5.0 — NGTeco one-click: Playwright in Fetch Timecard"
+__version__ = "9.5.1"
+__version_name__ = "v9.5.1 — Nav menu JS hardening (bfcache, Escape, null-safe)"
 __release_date__ = "2026-04-23"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.1",
+        "date": "2026-04-23",
+        "changes": [
+            "FIX: Shared nav (get_menu_html) — null-safe menu toggle/close, Escape closes",
+            "user + mobile menus, reset menus on bfcache (pageshow). Helps stuck UI; full-page",
+            "dim from browser extensions is still ruled out in incognito."
+        ]
+    },
     {
         "version": "9.5.0",
         "date": "2026-04-23",

@@ -2052,16 +2052,31 @@ def get_menu_html(username):
     
     <script>
         function toggleMobileMenu() {{
-            document.getElementById('navbarMenu').classList.toggle('show');
+            var m = document.getElementById('navbarMenu');
+            if (m) m.classList.toggle('show');
         }}
         function toggleUserMenu() {{
-            document.getElementById('userMenuDropdown').classList.toggle('show');
+            var d = document.getElementById('userMenuDropdown');
+            if (d) d.classList.toggle('show');
         }}
-        // Close dropdowns when clicking outside
+        function closeAllMenus() {{
+            var d = document.getElementById('userMenuDropdown');
+            if (d) d.classList.remove('show');
+            var m = document.getElementById('navbarMenu');
+            if (m) m.classList.remove('show');
+        }}
+        // Close user dropdown when clicking outside (null-safe: avoids script errors on pages without the menu)
         document.addEventListener('click', function(event) {{
-            if (!event.target.closest('.user-menu')) {{
-                document.getElementById('userMenuDropdown').classList.remove('show');
-            }}
+            if (event.target.closest && event.target.closest('.user-menu')) return;
+            var d = document.getElementById('userMenuDropdown');
+            if (d) d.classList.remove('show');
+        }});
+        document.addEventListener('keydown', function(e) {{
+            if (e.key === 'Escape') closeAllMenus();
+        }});
+        // If the tab is restored from bfcache, drop any stuck .show state on nav menus
+        window.addEventListener('pageshow', function(ev) {{
+            if (ev.persisted) closeAllMenus();
         }});
     </script>
     '''
