@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.9"
-__version_name__ = "v9.5.9 — NGTeco: MUI 'select all' (header checkbox) + optional NGTECO_SELECT_ALL_SELECTOR"
+__version__ = "9.5.10"
+__version_name__ = "v9.5.10 — NGTeco timecard: MUI date range + path hint for date_hunt.png"
 __release_date__ = "2026-04-25"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.10",
+        "date": "2026-04-25",
+        "changes": [
+            "NGTeco: timecard _timecard_set_date_range — MUI read-only inputs, aria-label, placeholders,",
+            "HTML5 type=date; get_by_role Select all rows; env NGTECO_TIMECARD_START/_END_SELECTOR.",
+            "Clearer error where uploads/ngteco_date_hunt.png lives on the server (e.g. /opt/payroll/uploads/)."
+        ]
+    },
     {
         "version": "9.5.9",
         "date": "2026-04-25",

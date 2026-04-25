@@ -527,6 +527,13 @@ def _select_all_table(page, dbg: Path) -> None:
                 return
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             pass
+    try:
+        cb = page.get_by_role("checkbox", name=re.compile(r"^select all rows$", re.I))
+        if cb.count():
+            cb.first.check(timeout=20_000, force=True)
+            return
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
     page.wait_for_timeout(800)
     for container in (
         ".MuiDataGrid-main",
@@ -675,13 +682,54 @@ def _shift_schedule_flow(page, dbg: Path) -> None:
     page.wait_for_timeout(3000)
 
 
-def _timecard_download(
-    page, out_path: Path, d_start: date, d_end: date, dbg: Path
-) -> None:
-    page.goto(TIMECARD_URL, wait_until="domcontentloaded")
-    page.wait_for_load_state("networkidle", timeout=120000)
-    start_s, end_s = _fmt_us(d_start), _fmt_us(d_end)
-    filled = False
+def _timecard_fill_text_pair(loc0, loc1, start_s: str, end_s: str) -> bool:
+    """Try filling two text-like date fields (MUI often uses fill(..., force=True) on read-only input)."""
+    try:
+        loc0.click(timeout=5000)
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
+    try:
+        loc0.fill(start_s, force=True, timeout=12_000)
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        try:
+            loc0.clear(timeout=5_000)
+            loc0.fill(start_s, timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            return False
+    try:
+        loc1.click(timeout=5000)
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
+    try:
+        loc1.fill(end_s, force=True, timeout=12_000)
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        try:
+            loc1.clear(timeout=5_000)
+            loc1.fill(end_s, timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            return False
+    return True
+
+
+def _timecard_set_date_range(
+    page, d_start: date, d_end: date, start_s: str, end_s: str
+) -> bool:
+    """
+    Timecard may use Ant DatePicker, MUI (X) pickers, or native date inputs. Debug PNG:
+    uploads/ngteco_date_hunt.png on the server (e.g. /opt/payroll/uploads/ next to the app).
+    """
+    s_sel = (os.environ.get("NGTECO_TIMECARD_START_SELECTOR") or "").strip()
+    e_sel = (os.environ.get("NGTECO_TIMECARD_END_SELECTOR") or "").strip()
+    if s_sel and e_sel:
+        try:
+            s = page.locator(s_sel).first
+            e = page.locator(e_sel).first
+            s.wait_for(state="attached", timeout=8_000)
+            e.wait_for(state="attached", timeout=8_000)
+            return _timecard_fill_text_pair(s, e, start_s, end_s)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+
     for selector in (
         "div.ant-picker-input input",
         ".ant-picker-range input",
@@ -689,22 +737,152 @@ def _timecard_download(
     ):
         loc = page.locator(selector)
         if loc.count() >= 2:
-            loc.nth(0).click()
-            loc.nth(0).fill(start_s)
-            loc.nth(1).click()
-            loc.nth(1).fill(end_s)
-            filled = True
-            break
-    if not filled:
-        pair = page.locator("main input[type='text'], main input[readonly], form input[readonly]")
-        if pair.count() >= 2:
-            pair.nth(0).fill(start_s)
-            pair.nth(1).fill(end_s)
-            filled = True
+            if _timecard_fill_text_pair(loc.nth(0), loc.nth(1), start_s, end_s):
+                return True
+
+    h5 = page.locator("input[type=date], input[type=datetime-local]")
+    if h5.count() >= 2:
+        try:
+            h5.nth(0).fill(d_start.isoformat(), force=True, timeout=10_000)
+            h5.nth(1).fill(d_end.isoformat(), force=True, timeout=10_000)
+            return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    for sel in (
+        "input[placeholder*='-'][placeholder*='202' i], "
+        "input[placeholder*='/'][placeholder*='/'][placeholder*='/']",
+    ):
+        one = page.locator(sel)
+        if one.count() == 1 and "/" in start_s and "/" in end_s:
+            try:
+                one.first.fill(f"{start_s} - {end_s}", force=True, timeout=10_000)
+                return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+
+    la = page.locator(
+        'input[aria-label*="Start" i]:not([type=checkbox]), '
+        'input[aria-label*="From" i]:not([type=checkbox])'
+    )
+    lb = page.locator('input[aria-label*="End" i]:not([type=checkbox])')
+    if la.count() and lb.count():
+        if _timecard_fill_text_pair(la.first, lb.first, start_s, end_s):
+            return True
+    mui_aria3 = page.locator('input[aria-label*="date" i]:not([type=checkbox])')
+    if mui_aria3.count() >= 2:
+        if _timecard_fill_text_pair(mui_aria3.nth(0), mui_aria3.nth(1), start_s, end_s):
+            return True
+
+    for start_p, end_p in (
+        (
+            re.compile(r"start.*date|date.*start|from|begin", re.I),
+            re.compile(r"end.*date|date.*end|through", re.I),
+        ),
+    ):
+        try:
+            a = page.get_by_label(start_p)
+            b = page.get_by_label(end_p)
+            if a.count() and b.count():
+                if _timecard_fill_text_pair(a.first, b.first, start_s, end_s):
+                    return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    for role_names in (
+        (re.compile(r"start|from|begin", re.I), re.compile(r"^end$|end date|to$|through", re.I)),
+    ):
+        try:
+            a = page.get_by_role("textbox", name=role_names[0])
+            b = page.get_by_role("textbox", name=role_names[1])
+            if a.count() and b.count():
+                if _timecard_fill_text_pair(a.first, b.first, start_s, end_s):
+                    return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    for exact in (("Start date", "End date"), ("From", "To"), ("Start", "End")):
+        try:
+            a = page.get_by_label(exact[0], exact=True)
+            b = page.get_by_label(exact[1], exact=True)
+            if a.count() and b.count():
+                if _timecard_fill_text_pair(a.first, b.first, start_s, end_s):
+                    return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    for pat_s, pat_e in (
+        (re.compile(r"start|from|begin", re.I), re.compile(r"end|through|date\s*to", re.I)),
+    ):
+        try:
+            a = page.get_by_label(pat_s)
+            b = page.get_by_label(pat_e)
+            if a.count() and b.count():
+                if _timecard_fill_text_pair(a.first, b.first, start_s, end_s):
+                    return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+
+    ro = page.locator(
+        "main input[readonly], main input.MuiInputBase-input, .MuiInputBase-input[readonly], "
+        "form input[readonly], .MuiInputBase-input.MuiInput-input, "
+        "main input.MuiInputBase-input[type='text']"
+    )
+    n_ro = ro.count()
+    if n_ro >= 2:
+        for i in range(min(n_ro - 1, 5)):
+            u = ro.nth(i)
+            v = ro.nth(i + 1)
+            try:
+                if _timecard_fill_text_pair(u, v, start_s, end_s):
+                    return True
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                continue
+    mui_t = page.locator(
+        "main input.MuiInputBase-input[type='text'], main div.MuiInputBase-root input, "
+        "form input.MuiInputBase-input[type='text']"
+    )
+    if mui_t.count() >= 2 and _timecard_fill_text_pair(mui_t.nth(0), mui_t.nth(1), start_s, end_s):
+        return True
+    slash_in = page.locator("main input[placeholder*='/']")
+    if slash_in.count() >= 2 and _timecard_fill_text_pair(
+        slash_in.nth(0), slash_in.nth(1), start_s, end_s
+    ):
+        return True
+
+    pair = page.locator("main input[type='text'], main input[readonly], form input[readonly]")
+    for scope in (pair, page.locator("form input[type='text']")):
+        c = min(scope.count(), 8)
+        if c >= 2 and _timecard_fill_text_pair(scope.nth(0), scope.nth(1), start_s, end_s):
+            return True
+    for sel in (
+        "input[aria-label*='date' i]:not([type=checkbox])",
+        "input[aria-label*='Date' i]:not([type=checkbox])",
+    ):
+        loc = page.locator(sel)
+        if loc.count() >= 2 and _timecard_fill_text_pair(loc.nth(0), loc.nth(1), start_s, end_s):
+            return True
+
+    return False
+
+
+def _timecard_download(
+    page, out_path: Path, d_start: date, d_end: date, dbg: Path
+) -> None:
+    page.goto(TIMECARD_URL, wait_until="domcontentloaded")
+    page.wait_for_load_state("networkidle", timeout=120000)
+    page.wait_for_timeout(1000)
+    start_s, end_s = _fmt_us(d_start), _fmt_us(d_end)
+    filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
     if not filled:
         shot = dbg / "ngteco_date_hunt.png"
-        page.screenshot(path=str(shot), full_page=True)
-        raise RuntimeError(f"Could not set NGTeco date range (see {shot})")
+        try:
+            page.screenshot(path=str(shot), full_page=True)
+        except Exception:
+            pass
+        raise RuntimeError(
+            "Could not set NGTeco timecard date range. Full-page debug PNG is written as "
+            f"uploads/ngteco_date_hunt.png in the app directory on the payroll server (e.g. "
+            f"/opt/payroll/uploads/ngteco_date_hunt.png if you use /opt/payroll). "
+            f"Optional: set NGTECO_TIMECARD_START_SELECTOR and NGTECO_TIMECARD_END_SELECTOR to CSS "
+            f"for the start/end input fields. Underlying: {shot}"
+        )
     page.wait_for_timeout(500)
     page.get_by_role("button", name=re.compile(r"Refresh", re.I)).first.click()
     page.wait_for_load_state("networkidle", timeout=120000)
