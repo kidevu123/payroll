@@ -3,11 +3,50 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.4.3"
-__version_name__ = "v9.4.3 — Excel/print title: date range vs Current Period"
-__release_date__ = "2026-04-08"
+__version__ = "9.5.0"
+__version_name__ = "v9.5.0 — NGTeco one-click: Playwright in Fetch Timecard"
+__release_date__ = "2026-04-23"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.0",
+        "date": "2026-04-23",
+        "changes": [
+            "FEATURE: Fetch Timecard Direct Login runs the full NGTeco flow in headless",
+            "Chromium (login+terms, Shift & schedule, Timecard, CSV) via ngteco_playwright.py.",
+            "Server: pip install playwright && playwright install chromium; WSGI timeout 300s+.",
+            "Optional NGTECO_HEADED=1 to show browser. Copy & paste method unchanged."
+        ]
+    },
+    {
+        "version": "9.4.6",
+        "date": "2026-04-23",
+        "changes": [
+            "FIX: 404 on URLs like /apps/payroll/login when the proxy forwards the full",
+            "public path to Gunicorn (Flask only registered /login). WSGI middleware",
+            "StripPayrollPrefix when PAYROLL_URL_PREFIX is set; no-op if proxy strips prefix",
+            "or when env is unset (PythonAnywhere, local dev unchanged)."
+        ]
+    },
+    {
+        "version": "9.4.5",
+        "date": "2026-04-23",
+        "changes": [
+            "DEPLOY (NPM 9.conf): Under location /apps/payroll/ the proxy was always correct;",
+            "broken styling was the browser asking for /static/... at the site root. Added",
+            "Accept-Encoding \"\", sub_filter (href/src/action + CSS url) to prefix /apps/payroll,",
+            "and proxy_cookie_path so session cookies use Path=/apps/payroll. No app HTML hacks."
+        ]
+    },
+    {
+        "version": "9.4.4",
+        "date": "2026-04-23",
+        "changes": [
+            "CHORE/OPS: Production (LXC) `simple_app.py` aligned with this repo: no in-app",
+            "HTML/static rewriting or FLASK_PUBLIC_ROOT middleware. Reverse proxy: use Nginx",
+            "Proxy Manager (or equivalent) location redirect and proxy to the app root only."
+        ]
+    },
     {
         "version": "9.4.3",
         "date": "2026-04-21",

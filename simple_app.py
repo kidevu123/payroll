@@ -45,6 +45,34 @@ if not os.getenv('FLASK_SECRET_KEY'):
 # Use centralized version management
 APP_VERSION = get_version()
 
+
+class _StripPayrollPrefix:
+    """
+    If the reverse proxy forwards the full public path (e.g. /apps/payroll/login) instead
+    of only the app path (/login), Flask would 404. When PAYROLL_URL_PREFIX matches the
+    leading segment, normalize PATH_INFO before routing. No-op if nginx already strips
+    the prefix, or if the env is unset.
+    """
+
+    def __init__(self, wsgi, prefix: str):
+        self._wsgi = wsgi
+        self._p = prefix.rstrip("/")
+        self._pslash = self._p + "/"
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        if path.startswith(self._pslash):
+            rest = path[len(self._pslash) :]
+            environ["PATH_INFO"] = "/" + rest if rest else "/"
+        elif path in (self._p, self._p + "/"):
+            environ["PATH_INFO"] = "/"
+        return self._wsgi(environ, start_response)
+
+
+_pfx = (os.environ.get("PAYROLL_URL_PREFIX") or "").strip()
+if _pfx:
+    app.wsgi_app = _StripPayrollPrefix(app.wsgi_app, _pfx)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # LOGGING CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -8053,7 +8081,7 @@ def fetch_timecard():
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
             </svg>
             <div>
-                <strong>Automatic Processing:</strong> This will log into NGTeco and download timecard data for the specified date range. The data will be converted to CSV format and processed automatically.
+                <strong>One workflow:</strong> <strong>Direct Login</strong> uses Playwright in the background to do the same steps you used to do by hand: log in (including the terms checkbox), run <strong>Shift &amp; schedule</strong> (50 per page, select all, pie/calc), then <strong>Timecard</strong> for your date range and download the CSV. It can take <strong>2–4 minutes</strong>—do not refresh. Your server must have Chromium installed: <code>pip install playwright</code> then <code>playwright install chromium</code>, and your WSGI timeout should be at least 300s for this request.
             </div>
         </div>
         
@@ -8074,8 +8102,7 @@ def fetch_timecard():
                 <div id="auto-section">
                     <div class="alert alert-success" style="margin-bottom:var(--spacing-3)">
                         <div>
-                            <strong>Direct Login:</strong> This will log into NGTeco directly and fetch your timecard data automatically!
-                            <p style="margin-top:var(--spacing-2);margin-bottom:0;color:var(--color-warning)"><strong>Note:</strong> For PythonAnywhere free accounts, you may need to request whitelisting for office.ngteco.com</p>
+                            <strong>Direct Login:</strong> uses headless Chrome on this app server. Self‑hosted and VPS installs work. (Sandboxes like PythonAnywhere often cannot run Chromium; use <strong>Copy &amp; Paste</strong> there instead.)
                         </div>
                     </div>
 
@@ -8262,142 +8289,30 @@ def parse_ngteco_table(table_data):
 
 def fetch_ngteco_automated(username, password, start_date, end_date):
     """
-    Direct fetch using requests library - works on PythonAnywhere!
+    Log into NGTeco with Playwright (Chromium), run Shift & schedule (50 / all / pie),
+    then download the timecard CSV for the given date range.
+
+    Requires: pip install playwright && playwright install chromium
+    On the app server, set a long WSGI timeout (e.g. 300s) for this route.
+    Set NGTECO_HEADED=1 in the environment to run with a visible browser (debug only).
     """
-    import requests
-    from bs4 import BeautifulSoup
-
-    # Create a session to maintain cookies
-    session = requests.Session()
-
-    # Headers to appear like a real browser
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
-    }
-    session.headers.update(headers)
-
     try:
-        # Step 1: Get login page to obtain any CSRF tokens
-        login_url = 'https://office.ngteco.com/login'
-        login_page = session.get(login_url)
-        soup = BeautifulSoup(login_page.text, 'html.parser')
-
-        # Look for CSRF token (adjust based on actual form)
-        csrf_token = None
-        csrf_input = soup.find('input', {'name': '_token'}) or soup.find('input', {'name': 'csrf_token'})
-        if csrf_input:
-            csrf_token = csrf_input.get('value')
-
-        # Step 2: Login
-        login_data = {
-            'username': username,
-            'password': password,
-        }
-        if csrf_token:
-            login_data['_token'] = csrf_token
-
-        # Post login
-        login_response = session.post(login_url, data=login_data, allow_redirects=True)
-
-        # Check if login was successful
-        if 'dashboard' not in login_response.url and 'timecard' not in login_response.text:
-            raise Exception("Login failed. Please check credentials.")
-
-        # Step 3: Navigate to timecard page with date parameters
-        timecard_url = f'https://office.ngteco.com/att/timecard/timecard?start_date={start_date}&end_date={end_date}'
-        timecard_response = session.get(timecard_url)
-
-        # Step 4: Parse the timecard data
-        soup = BeautifulSoup(timecard_response.text, 'html.parser')
-
-        # Try to find the table (adjust selectors based on actual HTML)
-        table = soup.find('table', {'class': 'timecard-table'}) or \
-                soup.find('table', {'id': 'timecard-table'}) or \
-                soup.find('table')
-
-        if not table:
-            # If no table found, try to extract data from JSON or other format
-            # Check if data is in a script tag
-            scripts = soup.find_all('script')
-            for script in scripts:
-                if 'timecardData' in str(script) or 'tableData' in str(script):
-                    # Extract JSON data if present
-                    import json
-                    import re
-                    match = re.search(r'var\s+(?:timecardData|tableData)\s*=\s*(\[.*?\]);', str(script), re.DOTALL)
-                    if match:
-                        data = json.loads(match.group(1))
-                        return convert_json_to_csv(data)
-
-            raise Exception("Could not find timecard table in the response")
-
-        # Parse HTML table
-        csv_lines = ['Person ID,First Name,Last Name,Date,Timesheet,Clock In,Clock Out,Clock Time(h),Total Break Time(h),Total Work Time(h)']
-
-        rows = table.find_all('tr')
-        for row in rows[1:]:  # Skip header
-            cells = row.find_all(['td', 'th'])
-            if len(cells) >= 7:
-                # Extract text from each cell
-                person_name = cells[0].get_text(strip=True)
-                person_id = cells[1].get_text(strip=True)
-                date = cells[2].get_text(strip=True)
-                timesheet = cells[3].get_text(strip=True) if len(cells) > 3 else 'Production TimeSheet'
-                clock_in = cells[4].get_text(strip=True) if len(cells) > 4 else ''
-                clock_out = cells[5].get_text(strip=True) if len(cells) > 5 else ''
-                clock_time = cells[6].get_text(strip=True) if len(cells) > 6 else ''
-                break_time = cells[7].get_text(strip=True) if len(cells) > 7 else ''
-                work_time = cells[8].get_text(strip=True) if len(cells) > 8 else clock_time
-
-                # Split name
-                name_parts = person_name.split(' ', 1)
-                first_name = name_parts[0]
-                last_name = name_parts[1] if len(name_parts) > 1 else ''
-
-                # Convert date format
-                try:
-                    if '-' in date and len(date.split('-')[0]) == 2:
-                        date_obj = datetime.strptime(date, '%d-%m-%Y')
-                        date = date_obj.strftime('%Y-%m-%d')
-                except:
-                    pass
-
-                csv_lines.append(f'{person_id},{first_name},{last_name},{date},{timesheet},{clock_in},{clock_out},{clock_time},{break_time},{work_time}')
-
-        return '\n'.join(csv_lines)
-
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Network error: {str(e)}")
-    except Exception as e:
-        raise Exception(f"Error fetching data: {str(e)}")
-
-
-def convert_json_to_csv(data):
-    """Convert JSON data to CSV format"""
-    csv_lines = ['Person ID,First Name,Last Name,Date,Timesheet,Clock In,Clock Out,Clock Time(h),Total Break Time(h),Total Work Time(h)']
-
-    for record in data:
-        # Adjust field names based on actual JSON structure
-        person_name = record.get('employee_name', '')
-        person_id = record.get('employee_id', '')
-        date = record.get('date', '')
-        clock_in = record.get('clock_in', '')
-        clock_out = record.get('clock_out', '')
-        work_time = record.get('work_hours', '')
-
-        name_parts = person_name.split(' ', 1)
-        first_name = name_parts[0]
-        last_name = name_parts[1] if len(name_parts) > 1 else ''
-
-        csv_lines.append(f'{person_id},{first_name},{last_name},{date},Production TimeSheet,{clock_in},{clock_out},,{work_time}')
-
-    return '\n'.join(csv_lines)
-
+        from ngteco_playwright import fetch_ngteco_csv
+    except ImportError as e:
+        raise Exception(
+            "Playwright is not installed. On the app server: pip install playwright && "
+            "playwright install chromium"
+        ) from e
+    from pathlib import Path
+    _headed = str(os.environ.get("NGTECO_HEADED", "")).lower() in ("1", "true", "yes", "y")
+    return fetch_ngteco_csv(
+        username,
+        password,
+        start_date,
+        end_date,
+        debug_dir=Path(UPLOAD_FOLDER),
+        headless=not _headed,
+    )
 
 
 @app.route('/save_new_rates', methods=['POST'])
