@@ -962,18 +962,26 @@ def _timecard_download(
             d_btn.first.click(timeout=12_000)
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             d_btn.first.click(timeout=12_000, force=True)
-        page.wait_for_timeout(500)
-        csv_item = page.get_by_role("menuitem", name=re.compile(r"^csv$", re.I))
-        if csv_item.count() == 0:
-            csv_item = page.get_by_role("menuitem", name=re.compile(r"csv with tz", re.I))
-        if csv_item.count() == 0:
-            csv_item = page.locator("li[role=menuitem]").filter(has_text=re.compile(r"^csv($|\s)"))
-        if csv_item.count() == 0:
-            csv_item = page.get_by_text("csv", exact=True)
-        if csv_item.count() == 0:
-            csv_item = page.get_by_text("csv with tz", exact=True)
-        csv_item.first.wait_for(state="visible", timeout=10_000)
-        csv_item.first.click()
+        # MUI menu is portaled; .count() was often 0 before the menu opened, so we fell
+        # through to get_by_text("csv with tz") and timed out on an option the site
+        # does not show. Wait for a menu, then pick plain "csv" first.
+        try:
+            page.locator("ul[role=menu] li, [role=menu] [role=menuitem], li[role=menuitem]").first.wait_for(
+                state="visible", timeout=15_000
+            )
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        page.wait_for_timeout(300)
+        mi = page.locator("[role=menuitem]")
+        mi.first.wait_for(state="visible", timeout=15_000)
+        # Plain "csv" only (regex anchors so "csv with tz" is not matched)
+        choice = mi.filter(has_text=re.compile(r"^\s*csv\s*$", re.I))
+        if choice.count() == 0:
+            choice = mi.filter(has_text=re.compile(r"csv with tz", re.I))
+        if choice.count() == 0:
+            choice = page.get_by_role("menuitem", name=re.compile(r"^csv$", re.I))
+        choice.first.wait_for(state="visible", timeout=12_000)
+        choice.first.click()
     dl.value.save_as(str(out_path))
 
 
