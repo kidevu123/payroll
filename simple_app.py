@@ -4906,6 +4906,56 @@ def validate():
         error_details = traceback.format_exc()
         return f"Error validating file: {str(e)}<br><pre>{error_details}</pre>", 500
 
+
+@app.route('/validate_uploaded')
+@login_required
+def validate_uploaded():
+    """
+    Re-run validation using the file already stored in session.
+    Useful for flows that generate/download CSV server-side (no multipart form POST).
+    """
+    file_path = session.get('uploaded_file')
+    if not file_path:
+        return "No file found in session. Please upload or fetch a timecard first.", 400
+
+    try:
+        # For non-CSV files, keep existing behavior and go straight to processing
+        if not str(file_path).lower().endswith('.csv'):
+            return redirect(_payroll_path('process'))
+
+        df = pd.read_csv(file_path)
+        df = inject_temp_entries(df, file_path)
+
+        is_timesheet = all(
+            col in df.columns
+            for col in ['Person ID', 'First Name', 'Last Name', 'Date', 'Clock In', 'Clock Out']
+        )
+        if not is_timesheet:
+            return redirect(_payroll_path('process'))
+
+        issues = validate_timesheet(df)
+        if len(issues) > 0:
+            missing_records = []
+            for idx, row in issues.iterrows():
+                missing_records.append({
+                    'index': idx,
+                    'person_id': row['Person ID'],
+                    'name': f"{row['First Name']} {row['Last Name']}",
+                    'date': row['Date'],
+                    'clock_in': row['Clock In'] if pd.notna(row['Clock In']) and row['Clock In'] != '' else '',
+                    'clock_out': row['Clock Out'] if pd.notna(row['Clock Out']) and row['Clock Out'] != '' else ''
+                })
+
+            session['file_path'] = file_path
+            session['missing_records'] = missing_records
+            return redirect(_payroll_path('fix_missing_times'))
+
+        return redirect(_payroll_path('confirm_employees'))
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return f"Error validating file: {str(e)}<br><pre>{error_details}</pre>", 500
+
 @app.route('/process_ignore')
 def process_ignore():
     """Process the original file ignoring any issues"""
@@ -8333,7 +8383,7 @@ def fetch_timecard_job_done(job_id: str):
             os.remove(p)
     except Exception:
         pass
-    return redirect(_payroll_path("validate"))
+    return redirect(_payroll_path("validate_uploaded"))
 
 
 @app.route('/fetch_timecard', methods=['GET', 'POST'])
@@ -8670,8 +8720,8 @@ def fetch_timecard():
         # Store file path in session
         session['uploaded_file'] = file_path
 
-        # Redirect to validation
-        return redirect(url_for('validate'))
+        # Redirect to validation flow for a server-generated CSV
+        return redirect(_payroll_path('validate_uploaded'))
 
     except Exception as e:
         return f"Error processing timecard data: {str(e)}<br>Please check the format and try again.", 500
