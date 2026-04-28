@@ -32,6 +32,59 @@ def _fmt_us(d: date) -> str:
     return d.strftime("%m/%d/%Y")
 
 
+def _matches_date_value(value: str, target: date) -> bool:
+    """Return True when an input value represents target date across common UI formats."""
+    raw = (value or "").strip()
+    if not raw:
+        return False
+    # Keep only the first token in case controls append time/range text.
+    token = re.split(r"\s+", raw)[0].strip()
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(token, fmt).date() == target
+        except ValueError:
+            continue
+    return False
+
+
+def _fill_single_date_input(loc, target: date, us_value: str) -> bool:
+    """Fill one date input robustly and verify the final value was accepted by the UI."""
+    iso_value = target.isoformat()
+    for candidate in (us_value, iso_value):
+        try:
+            loc.fill(candidate, force=True, timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            try:
+                loc.clear(timeout=5_000)
+                loc.fill(candidate, timeout=12_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+        try:
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        try:
+            loc.evaluate(
+                """(el, val) => {
+                    try { el.removeAttribute('readonly'); } catch (e) {}
+                    try { el.focus(); } catch (e) {}
+                    el.value = val;
+                    for (const ev of ['input', 'change', 'blur']) {
+                        el.dispatchEvent(new Event(ev, { bubbles: true }));
+                    }
+                }""",
+                candidate,
+            )
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    return False
+
+
 def _check_terms(page) -> None:
     candidates = [
         page.get_by_role("checkbox", name=re.compile(r"read and agree|USER AGREEMENT", re.I)),
@@ -692,26 +745,18 @@ def _timecard_fill_text_pair(loc0, loc1, start_s: str, end_s: str) -> bool:
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc0.fill(start_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc0.clear(timeout=5_000)
-            loc0.fill(start_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    try:
         loc1.click(timeout=5000)
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc1.fill(end_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc1.clear(timeout=5_000)
-            loc1.fill(end_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    return True
+        d_start = datetime.strptime(start_s, "%m/%d/%Y").date()
+        d_end = datetime.strptime(end_s, "%m/%d/%Y").date()
+    except ValueError:
+        return False
+
+    ok_start = _fill_single_date_input(loc0, d_start, start_s)
+    ok_end = _fill_single_date_input(loc1, d_end, end_s)
+    return ok_start and ok_end
 
 
 def _timecard_set_date_range(
