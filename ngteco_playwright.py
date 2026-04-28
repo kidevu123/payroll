@@ -13,6 +13,8 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import csv
+from io import StringIO
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
@@ -30,6 +32,96 @@ TIMECARD_URL = f"{BASE}/att/timecard/timecard"
 
 def _fmt_us(d: date) -> str:
     return d.strftime("%m/%d/%Y")
+
+
+def _matches_date_value(value: str, target: date) -> bool:
+    """Return True when an input value represents target date across common UI formats."""
+    raw = (value or "").strip()
+    if not raw:
+        return False
+    # Keep only the first token in case controls append time/range text.
+    token = re.split(r"\s+", raw)[0].strip()
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(token, fmt).date() == target
+        except ValueError:
+            continue
+    return False
+
+
+def _fill_single_date_input(loc, target: date, us_value: str) -> bool:
+    """Fill one date input robustly and verify the final value was accepted by the UI."""
+    iso_value = target.isoformat()
+    for candidate in (us_value, iso_value):
+        try:
+            loc.fill(candidate, force=True, timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            try:
+                loc.clear(timeout=5_000)
+                loc.fill(candidate, timeout=12_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+        try:
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        try:
+            loc.evaluate(
+                """(el, val) => {
+                    try { el.removeAttribute('readonly'); } catch (e) {}
+                    try { el.focus(); } catch (e) {}
+                    el.value = val;
+                    for (const ev of ['input', 'change', 'blur']) {
+                        el.dispatchEvent(new Event(ev, { bubbles: true }));
+                    }
+                }""",
+                candidate,
+            )
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    return False
+
+
+def _parse_csv_date(value: str) -> date | None:
+    token = (value or "").strip()
+    if not token:
+        return None
+    token = re.split(r"\s+", token)[0].strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+        try:
+            return datetime.strptime(token, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _filter_csv_text_by_date_range(text: str, d0: date, d1: date) -> str:
+    """
+    Safety net: if NGTeco UI ignores date inputs, filter returned CSV rows by Date column.
+    Keeps unparsable-date rows unchanged to avoid dropping unknown record types.
+    """
+    try:
+        src = StringIO(text)
+        reader = csv.DictReader(src)
+        if not reader.fieldnames or "Date" not in reader.fieldnames:
+            return text
+        rows_out = []
+        for row in reader:
+            row_date = _parse_csv_date(row.get("Date", ""))
+            if row_date is None or (d0 <= row_date <= d1):
+                rows_out.append(row)
+        buf = StringIO()
+        writer = csv.DictWriter(buf, fieldnames=reader.fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows_out)
+        return buf.getvalue()
+    except Exception:
+        return text
 
 
 def _check_terms(page) -> None:
@@ -692,26 +784,18 @@ def _timecard_fill_text_pair(loc0, loc1, start_s: str, end_s: str) -> bool:
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc0.fill(start_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc0.clear(timeout=5_000)
-            loc0.fill(start_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    try:
         loc1.click(timeout=5000)
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc1.fill(end_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc1.clear(timeout=5_000)
-            loc1.fill(end_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    return True
+        d_start = datetime.strptime(start_s, "%m/%d/%Y").date()
+        d_end = datetime.strptime(end_s, "%m/%d/%Y").date()
+    except ValueError:
+        return False
+
+    ok_start = _fill_single_date_input(loc0, d_start, start_s)
+    ok_end = _fill_single_date_input(loc1, d_end, end_s)
+    return ok_start and ok_end
 
 
 def _timecard_set_date_range(
@@ -1140,4 +1224,4 @@ def fetch_ngteco_csv(
     text = out_path.read_text(encoding="utf-8", errors="replace")
     if text.startswith("\ufeff"):
         text = text.lstrip("\ufeff")
-    return text
+    return _filter_csv_text_by_date_range(text, d0, d1)
