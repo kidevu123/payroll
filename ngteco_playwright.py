@@ -96,6 +96,7 @@ def _fill_single_date_input(loc, target: date, us_value: str) -> bool:
     return False
 
 
+
 def _parse_csv_date(value: str) -> date | None:
     token = (value or "").strip()
     if not token:
@@ -185,8 +186,6 @@ def _required_timecard_steps(page, d_start: date, d_end: date) -> bool:
     return _fill_single_date_input(s, d_start, _fmt_us(d_start)) and _fill_single_date_input(
         e, d_end, _fmt_us(d_end)
     )
-
-
 def _check_terms(page) -> None:
     candidates = [
         page.get_by_role("checkbox", name=re.compile(r"read and agree|USER AGREEMENT", re.I)),

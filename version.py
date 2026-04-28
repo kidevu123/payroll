@@ -4,26 +4,24 @@ Centralized version tracking for the payroll application
 """
 
 __version__ = "9.5.17"
-__version_name__ = "v9.5.17 — NGTeco required XPath flow for schedule/timecard actions"
-__release_date__ = "2026-04-28"
+__version_name__ = "v9.5.17 — NGTeco XPath flow + CSV date-range filter"
+__release_date__ = "2026-05-02"
 
 VERSION_HISTORY = [
     {
         "version": "9.5.17",
-        "date": "2026-04-28",
+        "date": "2026-05-02",
         "changes": [
-            "NGTeco automation now enforces required XPath flow: click Shift & schedule menu,",
-            "set records/page to 50, click Select All, click pie action, then click Timecard menu",
-            "and fill exact start/end date inputs from the required absolute XPaths."
+            "NGTeco: required XPath flow for Shift & schedule (50/page, Select All, pie) and Timecard",
+            "(start/end inputs); merges with robust date verify from main."
         ]
     },
     {
         "version": "9.5.16",
-        "date": "2026-04-28",
+        "date": "2026-05-02",
         "changes": [
-            "NGTeco safety net: after download, filter CSV rows by requested Start/End dates using",
-            "the Date column (supports YYYY-MM-DD and MM/DD/YYYY), so exports cannot include full month",
-            "when the UI ignores date pickers."
+            "NGTeco safety net: filter downloaded CSV by requested Start/End using the Date column",
+            "(YYYY-MM-DD / MM/DD/YYYY); reduces full-month leaks when UI ignores pickers."
         ]
     },
     {
