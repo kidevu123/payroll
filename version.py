@@ -3,11 +3,47 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.14"
-__version_name__ = "v9.5.14 — NGTeco csv: JS click visible menuitem + Download retry (no get_by_text last)"
-__release_date__ = "2026-04-25"
+__version__ = "9.5.18"
+__version_name__ = "v9.5.18 — NGTeco pie action selector fallback for UI changes"
+__release_date__ = "2026-04-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.18",
+        "date": "2026-04-28",
+        "changes": [
+            "NGTeco schedule pie action: replaced brittle absolute XPath with resilient selector",
+            "for the pie icon button, plus fallback to _click_pie_chart_near_search when needed.",
+            "Prevents fetch failure when schedule toolbar layout shifts."
+        ]
+    },
+    {
+        "version": "9.5.17",
+        "date": "2026-04-28",
+        "changes": [
+            "NGTeco automation now enforces required XPath flow: click Shift & schedule menu,",
+            "set records/page to 50, click Select All, click pie action, then click Timecard menu",
+            "and fill exact start/end date inputs from the required absolute XPaths."
+        ]
+    },
+    {
+        "version": "9.5.16",
+        "date": "2026-04-28",
+        "changes": [
+            "NGTeco safety net: after download, filter CSV rows by requested Start/End dates using",
+            "the Date column (supports YYYY-MM-DD and MM/DD/YYYY), so exports cannot include full month",
+            "when the UI ignores date pickers."
+        ]
+    },
+    {
+        "version": "9.5.15",
+        "date": "2026-04-28",
+        "changes": [
+            "NGTeco timecard date entry: after setting start/end inputs, verify the control values",
+            "actually match requested dates; retry with ISO format and JS input/change/blur dispatch.",
+            "Prevents exports silently falling back to default month when date fields ignore typing."
+        ]
+    },
     {
         "version": "9.5.14",
         "date": "2026-04-25",

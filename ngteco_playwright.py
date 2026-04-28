@@ -13,6 +13,8 @@ from __future__ import annotations
 import os
 import re
 import tempfile
+import csv
+from io import StringIO
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
@@ -27,9 +29,167 @@ LOGIN_URL = f"{BASE}/user/login"
 SCHEDULE_URL = f"{BASE}/att/schedule"
 TIMECARD_URL = f"{BASE}/att/timecard/timecard"
 
+# User-required absolute XPaths (validated against live NGTeco layout in this deployment).
+XPATH_SHIFT_SCHEDULE_MENU = "/html/body/div[1]/div/div/div[1]/div[1]/div/div[5]/div[5]/div[2]/div/div/div/div/p[5]"
+XPATH_SCHEDULE_RPP_TRIGGER = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[3]/div/div[2]/div/div[2]/div"
+XPATH_SCHEDULE_SELECT_ALL = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[2]/div[1]/div/div/div[1]/div[1]/div/div/span/input"
+# Prefer a resilient pie-action selector instead of brittle absolute position.
+XPATH_SCHEDULE_PIE = "//button[.//svg/path[starts-with(@d,'M484.15')]]"
+XPATH_TIMECARD_MENU = "/html/body/div[1]/div/div/div[1]/div[1]/div/div[5]/div[5]/div[2]/div/div/div/div/p[6]"
+XPATH_TIMECARD_START = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[1]/div/div[2]/div[1]/div[2]/div/div/div[1]/div/div/input"
+XPATH_TIMECARD_END = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[1]/div/div[2]/div[1]/div[2]/div/div/div[2]/div/div/input"
+
 
 def _fmt_us(d: date) -> str:
     return d.strftime("%m/%d/%Y")
+
+
+def _matches_date_value(value: str, target: date) -> bool:
+    """Return True when an input value represents target date across common UI formats."""
+    raw = (value or "").strip()
+    if not raw:
+        return False
+    # Keep only the first token in case controls append time/range text.
+    token = re.split(r"\s+", raw)[0].strip()
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(token, fmt).date() == target
+        except ValueError:
+            continue
+    return False
+
+
+def _fill_single_date_input(loc, target: date, us_value: str) -> bool:
+    """Fill one date input robustly and verify the final value was accepted by the UI."""
+    iso_value = target.isoformat()
+    for candidate in (us_value, iso_value):
+        try:
+            loc.fill(candidate, force=True, timeout=12_000)
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            try:
+                loc.clear(timeout=5_000)
+                loc.fill(candidate, timeout=12_000)
+            except (PlaywrightTimeoutError, PlaywrightError, Exception):
+                pass
+        try:
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+        try:
+            loc.evaluate(
+                """(el, val) => {
+                    try { el.removeAttribute('readonly'); } catch (e) {}
+                    try { el.focus(); } catch (e) {}
+                    el.value = val;
+                    for (const ev of ['input', 'change', 'blur']) {
+                        el.dispatchEvent(new Event(ev, { bubbles: true }));
+                    }
+                }""",
+                candidate,
+            )
+            current = loc.input_value(timeout=2_000)
+            if _matches_date_value(current, target):
+                return True
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            pass
+    return False
+
+
+def _parse_csv_date(value: str) -> date | None:
+    token = (value or "").strip()
+    if not token:
+        return None
+    token = re.split(r"\s+", token)[0].strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+        try:
+            return datetime.strptime(token, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _filter_csv_text_by_date_range(text: str, d0: date, d1: date) -> str:
+    """
+    Safety net: if NGTeco UI ignores date inputs, filter returned CSV rows by Date column.
+    Keeps unparsable-date rows unchanged to avoid dropping unknown record types.
+    """
+    try:
+        src = StringIO(text)
+        reader = csv.DictReader(src)
+        if not reader.fieldnames or "Date" not in reader.fieldnames:
+            return text
+        rows_out = []
+        for row in reader:
+            row_date = _parse_csv_date(row.get("Date", ""))
+            if row_date is None or (d0 <= row_date <= d1):
+                rows_out.append(row)
+        buf = StringIO()
+        writer = csv.DictWriter(buf, fieldnames=reader.fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows_out)
+        return buf.getvalue()
+    except Exception:
+        return text
+
+
+def _click_xpath_required(page, xpath: str, label: str, timeout: int = 20_000) -> None:
+    loc = page.locator(f"xpath={xpath}").first
+    if loc.count() == 0:
+        raise RuntimeError(f"Required NGTeco element not found: {label}")
+    try:
+        loc.scroll_into_view_if_needed(timeout=timeout)
+    except Exception:
+        pass
+    try:
+        loc.click(timeout=timeout, force=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed required NGTeco click: {label}") from e
+
+
+def _required_schedule_steps(page, dbg: Path) -> None:
+    # Non-negotiable user flow: Shift & schedule -> 50 rows/page -> Select All -> Pie.
+    _click_xpath_required(page, XPATH_SHIFT_SCHEDULE_MENU, "Shift & schedule menu")
+    try:
+        page.wait_for_load_state("networkidle", timeout=90_000)
+    except Exception:
+        pass
+    _click_xpath_required(page, XPATH_SCHEDULE_RPP_TRIGGER, "Schedule records-per-page picker")
+    _set_records_per_page(page, "50", dbg)
+
+    sel = page.locator(f"xpath={XPATH_SCHEDULE_SELECT_ALL}").first
+    if sel.count() == 0:
+        raise RuntimeError("Required NGTeco element not found: Schedule Select All checkbox")
+    try:
+        sel.check(force=True, timeout=20_000)
+    except Exception:
+        try:
+            sel.click(force=True, timeout=20_000)
+        except Exception as e:
+            raise RuntimeError("Failed required NGTeco click: Schedule Select All checkbox") from e
+
+    try:
+        _click_xpath_required(page, XPATH_SCHEDULE_PIE, "Schedule pie action button")
+    except RuntimeError:
+        # Fallback for UI/layout shifts: inspect toolbar near search and click pie action heuristically.
+        _click_pie_chart_near_search(page, dbg)
+
+
+def _required_timecard_steps(page, d_start: date, d_end: date) -> bool:
+    # Non-negotiable user flow: Timecard menu -> start/end exact fields.
+    _click_xpath_required(page, XPATH_TIMECARD_MENU, "Timecard menu")
+    try:
+        page.wait_for_load_state("networkidle", timeout=90_000)
+    except Exception:
+        pass
+    s = page.locator(f"xpath={XPATH_TIMECARD_START}").first
+    e = page.locator(f"xpath={XPATH_TIMECARD_END}").first
+    if s.count() == 0 or e.count() == 0:
+        raise RuntimeError("Required NGTeco date inputs were not found for Timecard")
+    return _fill_single_date_input(s, d_start, _fmt_us(d_start)) and _fill_single_date_input(
+        e, d_end, _fmt_us(d_end)
+    )
 
 
 def _check_terms(page) -> None:
@@ -678,10 +838,8 @@ def _click_pie_chart_near_search(page, dbg: Path) -> None:
 def _shift_schedule_flow(page, dbg: Path) -> None:
     page.goto(SCHEDULE_URL, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=120000)
-    _set_records_per_page(page, "50", dbg)
+    _required_schedule_steps(page, dbg)
     page.wait_for_timeout(500)
-    _select_all_table(page, dbg)
-    _click_pie_chart_near_search(page, dbg)
     page.wait_for_timeout(3000)
 
 
@@ -692,26 +850,18 @@ def _timecard_fill_text_pair(loc0, loc1, start_s: str, end_s: str) -> bool:
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc0.fill(start_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc0.clear(timeout=5_000)
-            loc0.fill(start_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    try:
         loc1.click(timeout=5000)
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     try:
-        loc1.fill(end_s, force=True, timeout=12_000)
-    except (PlaywrightTimeoutError, PlaywrightError, Exception):
-        try:
-            loc1.clear(timeout=5_000)
-            loc1.fill(end_s, timeout=12_000)
-        except (PlaywrightTimeoutError, PlaywrightError, Exception):
-            return False
-    return True
+        d_start = datetime.strptime(start_s, "%m/%d/%Y").date()
+        d_end = datetime.strptime(end_s, "%m/%d/%Y").date()
+    except ValueError:
+        return False
+
+    ok_start = _fill_single_date_input(loc0, d_start, start_s)
+    ok_end = _fill_single_date_input(loc1, d_end, end_s)
+    return ok_start and ok_end
 
 
 def _timecard_set_date_range(
@@ -1042,7 +1192,9 @@ def _timecard_download(
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     start_s, end_s = _fmt_us(d_start), _fmt_us(d_end)
-    filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
+    filled = _required_timecard_steps(page, d_start, d_end)
+    if not filled:
+        filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
     if not filled:
         shot = dbg / "ngteco_date_hunt.png"
         try:
@@ -1140,4 +1292,4 @@ def fetch_ngteco_csv(
     text = out_path.read_text(encoding="utf-8", errors="replace")
     if text.startswith("\ufeff"):
         text = text.lstrip("\ufeff")
-    return text
+    return _filter_csv_text_by_date_range(text, d0, d1)
