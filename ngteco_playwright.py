@@ -29,6 +29,15 @@ LOGIN_URL = f"{BASE}/user/login"
 SCHEDULE_URL = f"{BASE}/att/schedule"
 TIMECARD_URL = f"{BASE}/att/timecard/timecard"
 
+# User-required absolute XPaths (validated against live NGTeco layout in this deployment).
+XPATH_SHIFT_SCHEDULE_MENU = "/html/body/div[1]/div/div/div[1]/div[1]/div/div[5]/div[5]/div[2]/div/div/div/div/p[5]"
+XPATH_SCHEDULE_RPP_TRIGGER = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[3]/div/div[2]/div/div[2]/div"
+XPATH_SCHEDULE_SELECT_ALL = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[2]/div[1]/div/div/div[1]/div[1]/div/div/span/input"
+XPATH_SCHEDULE_PIE = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[1]/div/div[2]/div[1]/div[2]/div/div/svg"
+XPATH_TIMECARD_MENU = "/html/body/div[1]/div/div/div[1]/div[1]/div/div[5]/div[5]/div[2]/div/div/div/div/p[6]"
+XPATH_TIMECARD_START = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[1]/div/div[2]/div[1]/div[2]/div/div/div[1]/div/div/input"
+XPATH_TIMECARD_END = "/html/body/div[1]/div/div/div[2]/div/div[2]/div/div/div[1]/div/div[2]/div[1]/div[2]/div/div/div[2]/div/div/input"
+
 
 def _fmt_us(d: date) -> str:
     return d.strftime("%m/%d/%Y")
@@ -122,6 +131,60 @@ def _filter_csv_text_by_date_range(text: str, d0: date, d1: date) -> str:
         return buf.getvalue()
     except Exception:
         return text
+
+
+def _click_xpath_required(page, xpath: str, label: str, timeout: int = 20_000) -> None:
+    loc = page.locator(f"xpath={xpath}").first
+    if loc.count() == 0:
+        raise RuntimeError(f"Required NGTeco element not found: {label}")
+    try:
+        loc.scroll_into_view_if_needed(timeout=timeout)
+    except Exception:
+        pass
+    try:
+        loc.click(timeout=timeout, force=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed required NGTeco click: {label}") from e
+
+
+def _required_schedule_steps(page, dbg: Path) -> None:
+    # Non-negotiable user flow: Shift & schedule -> 50 rows/page -> Select All -> Pie.
+    _click_xpath_required(page, XPATH_SHIFT_SCHEDULE_MENU, "Shift & schedule menu")
+    try:
+        page.wait_for_load_state("networkidle", timeout=90_000)
+    except Exception:
+        pass
+    _click_xpath_required(page, XPATH_SCHEDULE_RPP_TRIGGER, "Schedule records-per-page picker")
+    _set_records_per_page(page, "50", dbg)
+
+    sel = page.locator(f"xpath={XPATH_SCHEDULE_SELECT_ALL}").first
+    if sel.count() == 0:
+        raise RuntimeError("Required NGTeco element not found: Schedule Select All checkbox")
+    try:
+        sel.check(force=True, timeout=20_000)
+    except Exception:
+        try:
+            sel.click(force=True, timeout=20_000)
+        except Exception as e:
+            raise RuntimeError("Failed required NGTeco click: Schedule Select All checkbox") from e
+
+    _click_xpath_required(page, XPATH_SCHEDULE_PIE, "Schedule pie action button")
+
+
+def _required_timecard_steps(page, d_start: date, d_end: date) -> bool:
+    # Non-negotiable user flow: Timecard menu -> start/end exact fields.
+    _click_xpath_required(page, XPATH_TIMECARD_MENU, "Timecard menu")
+    try:
+        page.wait_for_load_state("networkidle", timeout=90_000)
+    except Exception:
+        pass
+    s = page.locator(f"xpath={XPATH_TIMECARD_START}").first
+    e = page.locator(f"xpath={XPATH_TIMECARD_END}").first
+    if s.count() == 0 or e.count() == 0:
+        raise RuntimeError("Required NGTeco date inputs were not found for Timecard")
+    return _fill_single_date_input(s, d_start, _fmt_us(d_start)) and _fill_single_date_input(
+        e, d_end, _fmt_us(d_end)
+    )
 
 
 def _check_terms(page) -> None:
@@ -770,10 +833,8 @@ def _click_pie_chart_near_search(page, dbg: Path) -> None:
 def _shift_schedule_flow(page, dbg: Path) -> None:
     page.goto(SCHEDULE_URL, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=120000)
-    _set_records_per_page(page, "50", dbg)
+    _required_schedule_steps(page, dbg)
     page.wait_for_timeout(500)
-    _select_all_table(page, dbg)
-    _click_pie_chart_near_search(page, dbg)
     page.wait_for_timeout(3000)
 
 
@@ -1126,7 +1187,9 @@ def _timecard_download(
     except (PlaywrightTimeoutError, PlaywrightError, Exception):
         pass
     start_s, end_s = _fmt_us(d_start), _fmt_us(d_end)
-    filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
+    filled = _required_timecard_steps(page, d_start, d_end)
+    if not filled:
+        filled = _timecard_set_date_range(page, d_start, d_end, start_s, end_s)
     if not filled:
         shot = dbg / "ngteco_date_hunt.png"
         try:

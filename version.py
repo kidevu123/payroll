@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.16"
-__version_name__ = "v9.5.16 — NGTeco timecard: enforce CSV date range filter"
+__version__ = "9.5.17"
+__version_name__ = "v9.5.17 — NGTeco required XPath flow for schedule/timecard actions"
 __release_date__ = "2026-04-28"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.17",
+        "date": "2026-04-28",
+        "changes": [
+            "NGTeco automation now enforces required XPath flow: click Shift & schedule menu,",
+            "set records/page to 50, click Select All, click pie action, then click Timecard menu",
+            "and fill exact start/end date inputs from the required absolute XPaths."
+        ]
+    },
     {
         "version": "9.5.16",
         "date": "2026-04-28",
