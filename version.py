@@ -3,11 +3,18 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.15"
-__version_name__ = "v9.5.15 — NGTeco timecard: robust date fill + value verification"
-__release_date__ = "2026-04-28"
+__version__ = "9.5.16"
+__version_name__ = "v9.5.16 — Patch release"
+__release_date__ = "2026-05-02"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.16",
+        "date": "2026-05-02",
+        "changes": [
+            "Version bump; see commit message for any follow-up code fixes."
+        ]
+    },
     {
         "version": "9.5.15",
         "date": "2026-04-28",
