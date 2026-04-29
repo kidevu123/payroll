@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.17"
-__version_name__ = "v9.5.17 — NGTeco XPath flow + CSV date-range filter"
-__release_date__ = "2026-05-02"
+__version__ = "9.5.18"
+__version_name__ = "v9.5.18 — Employee portal + resilient NGTeco pie action"
+__release_date__ = "2026-04-29"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.18",
+        "date": "2026-04-29",
+        "changes": [
+            "NGTeco: schedule pie/calculate step now uses stable CSS/role fallbacks before the legacy XPath.",
+            "Employee self-service portal: employee-only payslip views and time off requests.",
+            "User management: role-aware admin/staff/employee accounts with employee ID binding."
+        ]
+    },
     {
         "version": "9.5.17",
         "date": "2026-05-02",

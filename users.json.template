@@ -1,10 +1,20 @@
 {
   "admin": {
     "password": "your_hashed_password_here",
-    "name": "Administrator"
+    "role": "admin",
+    "name": "Administrator",
+    "employee_id": ""
   },
-  "rita": {
+  "payroll_staff": {
     "password": "your_hashed_password_here", 
-    "name": "Rita"
+    "role": "staff",
+    "name": "Payroll Staff",
+    "employee_id": ""
+  },
+  "employee_portal_user": {
+    "password": "your_hashed_password_here",
+    "role": "employee",
+    "name": "Employee Name",
+    "employee_id": "EMP001"
   }
 }

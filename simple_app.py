@@ -119,6 +119,7 @@ REPORT_FOLDER = 'static/reports'
 CONFIG_FILE = 'pay_rates.json'
 TEMP_WORKERS_FILE = 'temp_workers.json'
 USERS_FILE = 'users.json'
+TIME_OFF_REQUESTS_FILE = 'time_off_requests.json'
 DATABASE = 'payroll.db'
 PAY_RATES_FILE = 'pay_rates.csv'
 MISSING_TIMES_FILE = 'missing_times.csv'
@@ -850,28 +851,50 @@ Path(FETCH_JOBS_FOLDER).mkdir(parents=True, exist_ok=True)
 # Default admin user (will be created if no users exist)
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'password'
+
+def _normalize_user_record(username, value):
+    """Return a consistent user record while preserving legacy users.json formats."""
+    if isinstance(value, dict):
+        password = value.get('password') or value.get('password_hash') or ''
+        role = (value.get('role') or '').strip().lower()
+        if role not in ('admin', 'staff', 'employee'):
+            role = 'admin' if username == DEFAULT_USERNAME else ('employee' if value.get('employee_id') else 'staff')
+        return {
+            'password': password,
+            'role': role,
+            'name': value.get('name') or username,
+            'employee_id': str(value.get('employee_id') or '').strip(),
+        }
+    return {
+        'password': str(value or ''),
+        'role': 'admin' if username == DEFAULT_USERNAME else 'staff',
+        'name': username,
+        'employee_id': '',
+    }
+
 def load_users():
     """Load users from JSON file with error handling"""
     try:
         with open(USERS_FILE, 'r') as f:
             users = json.load(f)
-            app.logger.info(f"Successfully loaded {len(users)} users")
-            return users
+            normalized = {u: _normalize_user_record(u, v) for u, v in users.items()}
+            app.logger.info(f"Successfully loaded {len(normalized)} users")
+            return normalized
     except FileNotFoundError:
         # Create default user if no users file exists
         app.logger.warning(f"Users file not found. Creating default admin user.")
-        users = {DEFAULT_USERNAME: DEFAULT_PASSWORD}
+        users = {DEFAULT_USERNAME: {'password': DEFAULT_PASSWORD, 'role': 'admin', 'name': 'Administrator', 'employee_id': ''}}
         save_users(users)
         return users
     except json.JSONDecodeError as e:
         app.logger.error(f"Invalid JSON in users file: {e}")
         # Create fresh users file
-        users = {DEFAULT_USERNAME: DEFAULT_PASSWORD}
+        users = {DEFAULT_USERNAME: {'password': DEFAULT_PASSWORD, 'role': 'admin', 'name': 'Administrator', 'employee_id': ''}}
         save_users(users)
         return users
     except Exception as e:
         app.logger.error(f"Unexpected error loading users: {e}")
-        return {DEFAULT_USERNAME: DEFAULT_PASSWORD}
+        return {DEFAULT_USERNAME: {'password': DEFAULT_PASSWORD, 'role': 'admin', 'name': 'Administrator', 'employee_id': ''}}
 
 def save_users(users):
     """Save users to JSON file with error handling"""
@@ -909,6 +932,27 @@ def verify_password(stored_password, provided_password):
         app.logger.warning(f"Plaintext password detected - please update to hashed password")
         return stored_password == provided_password
 
+def get_user_record(username=None):
+    users = load_users()
+    username = username or session.get('username')
+    if not username:
+        return None
+    return users.get(username)
+
+def current_user_role():
+    rec = get_user_record()
+    return (rec or {}).get('role') or session.get('role') or ''
+
+def current_employee_id():
+    rec = get_user_record()
+    return str((rec or {}).get('employee_id') or session.get('employee_id') or '').strip()
+
+def is_employee_user():
+    return current_user_role() == 'employee'
+
+def is_admin_user():
+    return session.get('username') == DEFAULT_USERNAME or current_user_role() == 'admin'
+
 def migrate_plaintext_passwords():
     """
     Migrate all plaintext passwords to hashed passwords.
@@ -918,11 +962,12 @@ def migrate_plaintext_passwords():
         users = load_users()
         migrated = False
         
-        for username, password in users.items():
+        for username, record in users.items():
+            password = (record or {}).get('password', '')
             # Check if password is already hashed
             if not (password.startswith('pbkdf2:sha256:') or password.startswith('scrypt:')):
                 # Migrate to hashed password
-                users[username] = hash_password(password)
+                users[username]['password'] = hash_password(password)
                 migrated = True
                 app.logger.info(f"Migrated password for user: {username}")
         
@@ -1007,6 +1052,27 @@ def login_required(f):
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+
+EMPLOYEE_ALLOWED_ENDPOINTS = {
+    'employee_portal',
+    'employee_payslip_detail',
+    'employee_request_time_off',
+    'change_password',
+    'logout',
+    'static',
+}
+
+@app.before_request
+def restrict_employee_accounts():
+    """Employee accounts can only use their self-service portal."""
+    if 'logged_in' not in session or not is_employee_user():
+        return None
+    endpoint = request.endpoint or ''
+    if endpoint in EMPLOYEE_ALLOWED_ENDPOINTS:
+        return None
+    if endpoint == 'index':
+        return redirect(url_for('employee_portal'))
+    return redirect(url_for('employee_portal'))
 
 # Pay rate management functions
 def load_pay_rates():
@@ -1336,12 +1402,17 @@ def login():
 
         users = load_users()
 
-        if username in users and verify_password(users[username], password):
+        record = users.get(username)
+        if record and verify_password(record.get('password', ''), password):
             session['logged_in'] = True
             session['username'] = username
+            session['role'] = record.get('role', 'staff')
+            session['employee_id'] = record.get('employee_id', '')
             next_page = request.args.get('next')
             if next_page and next_page.startswith('/'):
                 return redirect(next_page)
+            if record.get('role') == 'employee':
+                return redirect(url_for('employee_portal'))
             return redirect(url_for('index'))
         else:
             error = 'Invalid credentials. Please try again.'
@@ -1475,6 +1546,8 @@ def logout():
     """Log out user"""
     session.pop('logged_in', None)
     session.pop('username', None)
+    session.pop('role', None)
+    session.pop('employee_id', None)
     return redirect(url_for('login'))
 
 @app.route('/change_password', methods=['GET', 'POST'])
@@ -1493,7 +1566,8 @@ def change_password():
 
         users = load_users()
 
-        if not verify_password(users.get(username), current_password):
+        record = users.get(username)
+        if not record or not verify_password(record.get('password', ''), current_password):
             error = 'Current password is incorrect'
         elif new_password != confirm_password:
             error = 'New passwords do not match'
@@ -1503,7 +1577,7 @@ def change_password():
             if not valid:
                 error = validation_error
             else:
-                users[username] = hash_password(new_password)
+                users[username]['password'] = hash_password(new_password)
                 save_users(users)
                 app.logger.info(f"Password changed for user: {username}")
                 success = 'Password changed successfully'
@@ -1794,7 +1868,19 @@ def get_base_html_head(title="Payroll Management"):
 
 def get_menu_html(username):
     """Generate enterprise navigation bar with design system"""
-    is_admin = username == 'admin'
+    role = current_user_role()
+    is_admin = username == 'admin' or role == 'admin'
+    if role == 'employee':
+        employee_nav = '''
+                    <a href="/employee" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                        </svg>
+                        <span>Portal</span>
+                    </a>
+        '''
+    else:
+        employee_nav = None
     admin_link = '''
         <a href="/manage_users" class="nav-link">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
@@ -1803,6 +1889,28 @@ def get_menu_html(username):
             <span>Manage Users</span>
         </a>
     ''' if is_admin else ''
+    time_off_link = '''
+        <a href="/time_off_requests" class="nav-link">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zM18 9H2v7a2 2 0 002 2h12a2 2 0 002-2V9z" clip-rule="evenodd"/>
+            </svg>
+            <span>Time Off</span>
+        </a>
+    ''' if role != 'employee' else ''
+    nav_links = employee_nav if employee_nav is not None else f'''
+                    <a href="/" class="nav-link">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                        </svg>
+                        <span>Home</span>
+                    </a>
+                    <a href="/fetch_timecard" class="nav-link"><span>Fetch Timecard</span></a>
+                    <a href="/manage_rates" class="nav-link"><span>Pay Rates</span></a>
+                    <a href="/reports" class="nav-link"><span>Reports</span></a>
+                    <a href="/temp_workers" class="nav-link"><span>Temp Workers</span></a>
+                    {time_off_link}
+                    {admin_link}
+    '''
     
     return f'''
     <nav class="navbar">
@@ -1821,38 +1929,7 @@ def get_menu_html(username):
             
             <div class="navbar-menu" id="navbarMenu">
                 <div class="navbar-left">
-                    <a href="/" class="nav-link">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
-                        </svg>
-                        <span>Home</span>
-                    </a>
-                    <a href="/fetch_timecard" class="nav-link">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>Fetch Timecard</span>
-                    </a>
-                    <a href="/manage_rates" class="nav-link">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>Pay Rates</span>
-                    </a>
-                    <a href="/reports" class="nav-link">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
-                        </svg>
-                        <span>Reports</span>
-                    </a>
-                    <a href="/temp_workers" class="nav-link">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z"/>
-                        </svg>
-                        <span>Temp Workers</span>
-                    </a>
-                    {admin_link}
+                    {nav_links}
                 </div>
                 
                 <div class="navbar-right">
@@ -7234,6 +7311,306 @@ def clear_report_cache():
     report_cache = {}
     report_cache_expiry = {}
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EMPLOYEE SELF-SERVICE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def load_time_off_requests():
+    try:
+        if os.path.exists(TIME_OFF_REQUESTS_FILE):
+            with open(TIME_OFF_REQUESTS_FILE, 'r') as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+    except Exception as e:
+        app.logger.error(f"Could not load time off requests: {e}")
+    return []
+
+def save_time_off_requests(requests_list):
+    tmp = TIME_OFF_REQUESTS_FILE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(requests_list, f, indent=2)
+    os.replace(tmp, TIME_OFF_REQUESTS_FILE)
+
+def _safe_report_filename(filename):
+    filename = os.path.basename(filename or '')
+    if not filename.endswith('.xlsx'):
+        return ''
+    return filename
+
+def extract_employee_payslip(filename, employee_id):
+    """Read one employee's payslip from a generated cuttable payslips workbook."""
+    filename = _safe_report_filename(filename)
+    employee_id = str(employee_id or '').strip()
+    if not filename or not employee_id:
+        return None
+    path = os.path.join(REPORT_FOLDER, filename)
+    if not os.path.exists(path):
+        return None
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(path, read_only=True, data_only=True)
+        ws = wb.active
+        title = str(ws['A1'].value or '')
+        for row in range(1, ws.max_row + 1):
+            for col in range(1, ws.max_column + 1):
+                value = ws.cell(row=row, column=col).value
+                if not (isinstance(value, str) and value.startswith('Employee:')):
+                    continue
+                name = value.replace('Employee:', '').strip()
+                id_value = ''
+                period = ''
+                for c in range(col, min(col + 5, ws.max_column) + 1):
+                    v = ws.cell(row=row + 1, column=c).value
+                    if isinstance(v, str) and v.startswith('ID:'):
+                        id_value = v.replace('ID:', '').strip()
+                    if isinstance(v, str) and v.startswith('Pay Period:'):
+                        period = v.replace('Pay Period:', '').strip()
+                if id_value != employee_id:
+                    continue
+                header_row = None
+                for r in range(row, min(row + 8, ws.max_row) + 1):
+                    if str(ws.cell(row=r, column=col).value or '').strip().lower() == 'date':
+                        header_row = r
+                        break
+                if not header_row:
+                    continue
+                days = []
+                totals = {'hours': '', 'pay': '', 'rounded': ''}
+                r = header_row + 1
+                while r <= ws.max_row:
+                    first = ws.cell(row=r, column=col).value
+                    label = str(ws.cell(row=r, column=col + 2).value or '')
+                    if isinstance(first, str) and (first.startswith('Employee:') or first.startswith('---')):
+                        break
+                    if label.startswith('Total Hours'):
+                        totals['hours'] = ws.cell(row=r, column=col + 3).value
+                    elif label.startswith('Total Pay'):
+                        totals['pay'] = ws.cell(row=r, column=col + 4).value
+                    elif label.startswith('Rounded Pay'):
+                        totals['rounded'] = ws.cell(row=r, column=col + 4).value
+                        break
+                    elif first not in (None, ''):
+                        days.append({
+                            'date': first,
+                            'in': ws.cell(row=r, column=col + 1).value,
+                            'out': ws.cell(row=r, column=col + 2).value,
+                            'hours': ws.cell(row=r, column=col + 3).value,
+                            'pay': ws.cell(row=r, column=col + 4).value,
+                        })
+                    r += 1
+                return {
+                    'filename': filename,
+                    'title': title,
+                    'name': name,
+                    'employee_id': id_value,
+                    'period': period or title.replace('Employee Payslips -', '').strip(),
+                    'days': days,
+                    'totals': totals,
+                    'created': datetime.fromtimestamp(os.path.getmtime(path)),
+                }
+    except Exception as e:
+        app.logger.error(f"Could not extract employee payslip {filename}: {e}")
+    return None
+
+def list_employee_payslips(employee_id):
+    slips = []
+    try:
+        files = []
+        for filename in os.listdir(REPORT_FOLDER):
+            if filename.startswith('payslips_for_cutting_') and filename.endswith('.xlsx'):
+                files.append((filename, os.path.getmtime(os.path.join(REPORT_FOLDER, filename))))
+        files.sort(key=lambda x: x[1], reverse=True)
+        for filename, _mtime in files[:REPORTS_LIST_LIMIT]:
+            slip = extract_employee_payslip(filename, employee_id)
+            if slip:
+                slips.append(slip)
+    except Exception as e:
+        app.logger.error(f"Could not list employee payslips: {e}")
+    return slips
+
+def _money(value):
+    try:
+        return f"${float(value):,.2f}"
+    except Exception:
+        return "$0.00" if value in (None, '') else escape(str(value))
+
+@app.route('/employee')
+@login_required
+def employee_portal():
+    if not is_employee_user():
+        return redirect(url_for('index'))
+    username = session.get('username', 'Unknown')
+    employee_id = current_employee_id()
+    record = get_user_record() or {}
+    slips = list_employee_payslips(employee_id)
+    requests_list = [r for r in load_time_off_requests() if str(r.get('employee_id')) == employee_id]
+    requests_list.sort(key=lambda r: r.get('created_at', ''), reverse=True)
+    menu_html = get_menu_html(username)
+
+    slip_rows = ''
+    for slip in slips:
+        slip_rows += f"""
+            <tr>
+                <td><strong>{escape(slip.get('period') or 'Pay period')}</strong></td>
+                <td>{escape(slip.get('created').strftime('%b %d, %Y'))}</td>
+                <td class="text-right">{_money((slip.get('totals') or {}).get('rounded') or (slip.get('totals') or {}).get('pay'))}</td>
+                <td class="text-right"><a class="btn btn-primary btn-sm" href="/employee/payslip/{escape(slip['filename'])}">View</a></td>
+            </tr>
+        """
+    if not slip_rows:
+        slip_rows = '<tr><td colspan="4" style="color:var(--color-gray-500)">No payslips are available for your employee ID yet.</td></tr>'
+
+    request_rows = ''
+    for req in requests_list[:12]:
+        request_rows += f"""
+            <tr>
+                <td>{escape(req.get('start_date', ''))} to {escape(req.get('end_date', ''))}</td>
+                <td>{escape(req.get('type', 'Time off'))}</td>
+                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+            </tr>
+        """
+    if not request_rows:
+        request_rows = '<tr><td colspan="3" style="color:var(--color-gray-500)">No time off requests yet.</td></tr>'
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - Payroll Management</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="/static/design-system.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {{ background:#f0f4f8; }}
+        .portal-hero {{ background:linear-gradient(135deg,#0f172a 0%,#1e40af 70%,#3b82f6 100%); padding:42px 0 34px; margin-bottom:32px; }}
+        .portal-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
+        .portal-hero p {{ color:rgba(255,255,255,.82); font-size:15px; margin:0; }}
+        .portal-grid {{ display:grid; grid-template-columns:1.25fr .85fr; gap:24px; align-items:start; }}
+        @media (max-width: 960px) {{ .portal-grid {{ grid-template-columns:1fr; }} }}
+    </style>
+</head>
+<body>
+    {menu_html}
+    <div class="portal-hero"><div class="container"><h1>Employee Portal</h1><p>{escape(record.get('name') or username)} · Employee ID {escape(employee_id or 'not assigned')}</p></div></div>
+    <div class="container">
+        <div class="portal-grid">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">My Payslips</h2></div>
+                <div class="table-wrapper"><table class="table"><thead><tr><th>Period</th><th>Created</th><th class="text-right">Pay</th><th class="text-right">Actions</th></tr></thead><tbody>{slip_rows}</tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Request Time Off</h2></div>
+                <form method="post" action="/employee/time_off">
+                    <div class="form-group"><label class="form-label form-label-required" for="start_date">Start Date</label><input class="form-input" id="start_date" name="start_date" type="date" required></div>
+                    <div class="form-group"><label class="form-label form-label-required" for="end_date">End Date</label><input class="form-input" id="end_date" name="end_date" type="date" required></div>
+                    <div class="form-group"><label class="form-label" for="type">Type</label><select class="form-select" id="type" name="type"><option>Vacation</option><option>Sick</option><option>Personal</option><option>Unpaid</option></select></div>
+                    <div class="form-group"><label class="form-label" for="note">Note</label><textarea class="form-textarea" id="note" name="note" rows="4" maxlength="500"></textarea></div>
+                    <button class="btn btn-primary" type="submit">Submit Request</button>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">My Time Off Requests</h2></div>
+            <div class="table-wrapper"><table class="table"><thead><tr><th>Dates</th><th>Type</th><th>Status</th></tr></thead><tbody>{request_rows}</tbody></table></div>
+        </div>
+    </div>
+</body>
+</html>"""
+    return html
+
+@app.route('/employee/payslip/<filename>')
+@login_required
+def employee_payslip_detail(filename):
+    if not is_employee_user():
+        return redirect(url_for('index'))
+    slip = extract_employee_payslip(filename, current_employee_id())
+    if not slip:
+        return "Payslip not found", 404
+    menu_html = get_menu_html(session.get('username', 'Unknown'))
+    day_rows = ''
+    for day in slip['days']:
+        day_rows += f"<tr><td>{escape(str(day.get('date') or ''))}</td><td>{escape(str(day.get('in') or ''))}</td><td>{escape(str(day.get('out') or ''))}</td><td>{escape(str(day.get('hours') or ''))}</td><td class=\"text-right\">{_money(day.get('pay'))}</td></tr>"
+    html = f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Payslip - Payroll Management</title><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" type="image/svg+xml" href="/static/favicon.svg"></head><body style="background:#f0f4f8">{menu_html}<div class="container container-narrow" style="padding-top:32px"><div class="card"><div class="card-header"><h1 class="card-title">{escape(slip['name'])} · {escape(slip['period'])}</h1></div><div class="table-wrapper"><table class="table"><thead><tr><th>Date</th><th>In</th><th>Out</th><th>Hours</th><th class="text-right">Pay</th></tr></thead><tbody>{day_rows}</tbody></table></div><div style="padding:20px;display:flex;gap:24px;justify-content:flex-end;font-weight:700"><span>Total Hours: {escape(str(slip['totals'].get('hours') or ''))}</span><span>Total Pay: {_money(slip['totals'].get('pay'))}</span><span>Rounded Pay: {_money(slip['totals'].get('rounded'))}</span></div></div></div></body></html>"""
+    return html
+
+@app.route('/employee/time_off', methods=['POST'])
+@login_required
+def employee_request_time_off():
+    if not is_employee_user():
+        return redirect(url_for('index'))
+    start_date = request.form.get('start_date', '').strip()
+    end_date = request.form.get('end_date', '').strip()
+    if not start_date or not end_date:
+        return "Start and end date are required", 400
+    try:
+        d0 = datetime.strptime(start_date, '%Y-%m-%d').date()
+        d1 = datetime.strptime(end_date, '%Y-%m-%d').date()
+        if d1 < d0:
+            return "End date cannot be before start date", 400
+    except ValueError:
+        return "Invalid date", 400
+    rec = get_user_record() or {}
+    requests_list = load_time_off_requests()
+    requests_list.append({
+        'id': secrets.token_urlsafe(12),
+        'username': session.get('username'),
+        'employee_id': current_employee_id(),
+        'employee_name': rec.get('name') or session.get('username'),
+        'start_date': start_date,
+        'end_date': end_date,
+        'type': request.form.get('type', 'Vacation').strip()[:40],
+        'note': request.form.get('note', '').strip()[:500],
+        'status': 'pending',
+        'created_at': datetime.now().isoformat(timespec='seconds'),
+    })
+    save_time_off_requests(requests_list)
+    flash('Time off request submitted.', 'success')
+    return redirect(url_for('employee_portal'))
+
+@app.route('/time_off_requests', methods=['GET', 'POST'])
+@login_required
+def time_off_requests():
+    if is_employee_user():
+        return redirect(url_for('employee_portal'))
+    requests_list = load_time_off_requests()
+    if request.method == 'POST':
+        req_id = request.form.get('id', '')
+        status = request.form.get('status', '')
+        if status not in ('approved', 'denied', 'pending'):
+            return "Invalid status", 400
+        for req in requests_list:
+            if req.get('id') == req_id:
+                req['status'] = status
+                req['reviewed_by'] = session.get('username')
+                req['reviewed_at'] = datetime.now().isoformat(timespec='seconds')
+                break
+        save_time_off_requests(requests_list)
+        return redirect(url_for('time_off_requests'))
+    requests_list.sort(key=lambda r: r.get('created_at', ''), reverse=True)
+    menu_html = get_menu_html(session.get('username', 'Unknown'))
+    rows = ''
+    for req in requests_list:
+        rows += f"""
+            <tr>
+                <td><strong>{escape(req.get('employee_name') or req.get('username') or '')}</strong><div style="font-size:12px;color:var(--color-gray-500)">ID {escape(req.get('employee_id') or '')}</div></td>
+                <td>{escape(req.get('start_date', ''))} to {escape(req.get('end_date', ''))}</td>
+                <td>{escape(req.get('type', ''))}</td>
+                <td>{escape(req.get('note', ''))}</td>
+                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+                <td class="text-right">
+                    <form method="post" action="/time_off_requests" style="display:inline"><input type="hidden" name="id" value="{escape(req.get('id', ''))}"><input type="hidden" name="status" value="approved"><button class="btn btn-success btn-sm" type="submit">Approve</button></form>
+                    <form method="post" action="/time_off_requests" style="display:inline"><input type="hidden" name="id" value="{escape(req.get('id', ''))}"><input type="hidden" name="status" value="denied"><button class="btn btn-danger btn-sm" type="submit">Deny</button></form>
+                </td>
+            </tr>
+        """
+    if not rows:
+        rows = '<tr><td colspan="6" style="color:var(--color-gray-500)">No requests yet.</td></tr>'
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Time Off - Payroll Management</title><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" type="image/svg+xml" href="/static/favicon.svg"></head><body style="background:#f0f4f8">{menu_html}<div class="container" style="padding-top:32px"><div class="card"><div class="card-header"><h1 class="card-title">Time Off Requests</h1></div><div class="table-wrapper"><table class="table"><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th>Note</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody>{rows}</tbody></table></div></div></div></body></html>"""
+
 # ========== ZOHO BOOKS EXPENSE ACTION ==========
 def _auto_push_expense_if_configured(week):
     """Optionally auto-create expense in Zoho Books if env is configured."""
@@ -7978,14 +8355,18 @@ def manage_users():
                     <thead>
                         <tr>
                             <th>Username</th>
+                            <th>Role</th>
+                            <th>Employee ID</th>
                             <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
 """
     
-    for user in users.keys():
+    for user, record in users.items():
         is_admin_user = user == 'admin'
+        role = (record or {}).get('role', 'staff')
+        employee_id = (record or {}).get('employee_id', '')
         if is_admin_user:
             html += f"""
                         <tr>
@@ -7993,6 +8374,8 @@ def manage_users():
                                 <strong>{escape(user)}</strong>
                                 <span class="badge badge-primary" style="margin-left:var(--spacing-2)">Admin</span>
                             </td>
+                            <td>{escape(role.title())}</td>
+                            <td>{escape(employee_id)}</td>
                             <td class="text-right">
                                 <span style="color:var(--color-gray-500);font-size:var(--font-size-sm);font-style:italic">Cannot delete admin</span>
                             </td>
@@ -8002,6 +8385,8 @@ def manage_users():
             html += f"""
                         <tr>
                             <td><strong>{escape(user)}</strong></td>
+                            <td>{escape(role.title())}</td>
+                            <td>{escape(employee_id)}</td>
                             <td class="text-right">
                                 <form method="post" action="/delete_user/{escape(user)}" style="display:inline;" onsubmit="return confirm('Delete user {escape(user)}?');">
                                     <button type="submit" class="btn btn-danger btn-sm">
@@ -8043,6 +8428,19 @@ def manage_users():
                     <input type="password" id="password" name="password" class="form-input" placeholder="Enter password" required>
                     <span class="form-help">At least 8 characters, must include letters and numbers</span>
                 </div>
+                <div class="form-group">
+                    <label for="role" class="form-label form-label-required">Access</label>
+                    <select id="role" name="role" class="form-select" required>
+                        <option value="employee">Employee portal only</option>
+                        <option value="staff">Payroll staff</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <span class="form-help">Employee portal accounts can only view their own payslips and request time off.</span>
+                </div>
+                <div class="form-group">
+                    <label for="employee_id" class="form-label">Employee ID</label>
+                    <input type="text" id="employee_id" name="employee_id" class="form-input" placeholder="Required for employee portal accounts">
+                </div>
                 
                 <div style="margin-top:var(--spacing-3);text-align:right">
                     <button type="submit" class="btn btn-success">
@@ -8069,6 +8467,8 @@ def add_user():
 
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '')
+    role = request.form.get('role', 'employee').strip().lower()
+    employee_id = request.form.get('employee_id', '').strip()
 
     # Validate username
     valid, error = validate_username(username)
@@ -8079,26 +8479,36 @@ def add_user():
     valid, error = validate_password(password)
     if not valid:
         return error, 400
+    if role not in ('admin', 'staff', 'employee'):
+        return "Invalid role", 400
+    if role == 'employee' and not employee_id:
+        return "Employee ID is required for employee portal accounts", 400
 
     users = load_users()
 
     if username in users:
         return "Username already exists", 400
 
-    users[username] = hash_password(password)
+    users[username] = {
+        'password': hash_password(password),
+        'role': role,
+        'name': username,
+        'employee_id': employee_id if role == 'employee' else employee_id,
+    }
     save_users(users)
     app.logger.info(f"New user added: {username}")
 
     return redirect(url_for('manage_users'))
 
 @app.route('/delete_user', methods=['POST'])
+@app.route('/delete_user/<username>', methods=['POST'])
 @login_required
-def delete_user():
+def delete_user(username=None):
     """Delete a user"""
     if session.get('username') != 'admin':
         return "Only admin can delete users", 403
 
-    username = request.form.get('username')
+    username = username or request.form.get('username')
 
     if not username:
         return "Username is required", 400

@@ -148,6 +148,45 @@ def _click_xpath_required(page, xpath: str, label: str, timeout: int = 20_000) -
         raise RuntimeError(f"Failed required NGTeco click: {label}") from e
 
 
+def _click_schedule_pie(page, dbg: Path) -> None:
+    """Click the schedule pie/calculate action using stable fallbacks before the legacy XPath."""
+    custom = (os.environ.get("NGTECO_SCHEDULE_PIE_SELECTOR") or "").strip()
+    candidates = []
+    if custom:
+        candidates.append(page.locator(custom).first)
+    candidates.extend(
+        [
+            page.locator(f"xpath={XPATH_SCHEDULE_PIE}").first,
+            page.locator('button:has(svg path[d^="M484.15"]):not([disabled])').first,
+            page.locator('svg path[d^="M484.15"]').locator("xpath=ancestor::*[self::button or @role='button'][1]").first,
+            page.locator("button[title*='chart' i], button[aria-label*='chart' i], button[title*='calculate' i], button[aria-label*='calculate' i]").first,
+            page.get_by_role("button", name=re.compile(r"chart|calculate|summary|pie", re.I)).first,
+        ]
+    )
+    for candidate in candidates:
+        try:
+            if candidate.count() == 0:
+                continue
+            candidate.wait_for(state="attached", timeout=5_000)
+            try:
+                candidate.scroll_into_view_if_needed(timeout=5_000)
+            except Exception:
+                pass
+            candidate.click(timeout=20_000, force=True)
+            page.wait_for_timeout(1500)
+            return
+        except (PlaywrightTimeoutError, PlaywrightError, Exception):
+            continue
+    try:
+        page.screenshot(path=str(dbg / "ngteco_schedule_pie_hunt.png"), full_page=True)
+    except Exception:
+        pass
+    raise RuntimeError(
+        "Could not find the NGTeco schedule pie/calculate button. "
+        f"See {dbg / 'ngteco_schedule_pie_hunt.png'} or set NGTECO_SCHEDULE_PIE_SELECTOR."
+    )
+
+
 def _required_schedule_steps(page, dbg: Path) -> None:
     # Non-negotiable user flow: Shift & schedule -> 50 rows/page -> Select All -> Pie.
     _click_xpath_required(page, XPATH_SHIFT_SCHEDULE_MENU, "Shift & schedule menu")
@@ -169,7 +208,7 @@ def _required_schedule_steps(page, dbg: Path) -> None:
         except Exception as e:
             raise RuntimeError("Failed required NGTeco click: Schedule Select All checkbox") from e
 
-    _click_xpath_required(page, XPATH_SCHEDULE_PIE, "Schedule pie action button")
+    _click_schedule_pie(page, dbg)
 
 
 def _required_timecard_steps(page, d_start: date, d_end: date) -> bool:
