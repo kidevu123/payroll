@@ -851,6 +851,7 @@ Path(FETCH_JOBS_FOLDER).mkdir(parents=True, exist_ok=True)
 # Default admin user (will be created if no users exist)
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'password'
+DEFAULT_EMPLOYEE_PORTAL_PASSWORD = 'payroll123'
 
 def _normalize_user_record(username, value):
     """Return a consistent user record while preserving legacy users.json formats."""
@@ -952,6 +953,10 @@ def is_employee_user():
 
 def is_admin_user():
     return session.get('username') == DEFAULT_USERNAME or current_user_role() == 'admin'
+
+def employee_portal_username(employee_id):
+    """Use Employee ID as the portal username, normalized for login consistency."""
+    return str(employee_id or '').strip()
 
 def migrate_plaintext_passwords():
     """
@@ -2728,6 +2733,30 @@ def manage_rates():
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4z" clip-rule="evenodd"/>
+                    </svg>
+                    Employee Portal Accounts
+                </h2>
+            </div>
+            <p style="color:var(--color-gray-600);font-size:var(--font-size-sm);margin-bottom:var(--spacing-3)">
+                Create portal-only accounts for every employee listed on Pay Rates. The username is the Employee ID.
+                Default password is <strong>""" + DEFAULT_EMPLOYEE_PORTAL_PASSWORD + """</strong>.
+            </p>
+            <form method="post" action="/bulk_create_employee_users" onsubmit="return confirm('Create missing employee portal accounts from Pay Rates?');">
+                <button type="submit" class="btn btn-primary">
+                    <svg style="width:20px;height:20px" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 00-6 6v1h9.528A6.972 6.972 0 0111 15.5c0-1.61.544-3.094 1.458-4.279A6 6 0 008 11z"/>
+                        <path d="M16 11a1 1 0 011 1v2h2a1 1 0 110 2h-2v2a1 1 0 11-2 0v-2h-2a1 1 0 110-2h2v-2a1 1 0 011-1z"/>
+                    </svg>
+                    Create Missing Employee Accounts
+                </button>
+            </form>
         </div>
         
         <div class="card">
@@ -8307,6 +8336,10 @@ def manage_users():
     
     menu_html = get_menu_html(username)
     users = load_users()
+    flash_html = ''
+    for category, message in get_flashed_messages(with_categories=True):
+        alert_class = 'alert-success' if category == 'success' else 'alert-danger' if category == 'error' else 'alert-info'
+        flash_html += f'<div class="alert {alert_class}">{escape(message)}</div>'
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -8340,6 +8373,7 @@ def manage_users():
     </div>
     
     <div class="container">
+        {flash_html}
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">
@@ -8498,6 +8532,67 @@ def add_user():
     save_users(users)
     app.logger.info(f"New user added: {username}")
 
+    return redirect(url_for('manage_users'))
+
+@app.route('/bulk_create_employee_users', methods=['POST'])
+@login_required
+def bulk_create_employee_users():
+    """Create missing employee portal users from pay_rates.json."""
+    if session.get('username') != 'admin':
+        return "Only admin can create employee users", 403
+
+    users = load_users()
+    pay_rates = load_pay_rates()
+    created = 0
+    skipped_existing = 0
+    skipped_invalid = 0
+    skipped_conflict = 0
+    default_hash = hash_password(DEFAULT_EMPLOYEE_PORTAL_PASSWORD)
+
+    existing_employee_ids = {
+        str((record or {}).get('employee_id') or '').strip()
+        for record in users.values()
+        if isinstance(record, dict) and str((record or {}).get('employee_id') or '').strip()
+    }
+
+    for employee_id, rate_data in sorted(pay_rates.items(), key=lambda item: str(item[0])):
+        employee_id = str(employee_id or '').strip()
+        if not employee_id:
+            skipped_invalid += 1
+            continue
+        username = employee_portal_username(employee_id)
+        if not username:
+            skipped_invalid += 1
+            continue
+        if employee_id in existing_employee_ids:
+            skipped_existing += 1
+            continue
+        if username in users:
+            skipped_conflict += 1
+            continue
+        name = ''
+        if isinstance(rate_data, dict):
+            name = str(rate_data.get('name') or '').strip()
+        users[username] = {
+            'password': default_hash,
+            'role': 'employee',
+            'name': name or username,
+            'employee_id': employee_id,
+        }
+        existing_employee_ids.add(employee_id)
+        created += 1
+
+    if created:
+        save_users(users)
+    parts = [f"Created {created} employee portal account{'s' if created != 1 else ''}"]
+    if skipped_existing:
+        parts.append(f"skipped {skipped_existing} existing")
+    if skipped_conflict:
+        parts.append(f"skipped {skipped_conflict} username conflict{'s' if skipped_conflict != 1 else ''}")
+    if skipped_invalid:
+        parts.append(f"skipped {skipped_invalid} invalid Employee ID{'s' if skipped_invalid != 1 else ''}")
+    parts.append(f"default password: {DEFAULT_EMPLOYEE_PORTAL_PASSWORD}")
+    flash("; ".join(parts) + ".", "success" if created else "info")
     return redirect(url_for('manage_users'))
 
 @app.route('/delete_user', methods=['POST'])

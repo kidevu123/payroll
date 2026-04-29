@@ -3,11 +3,19 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.19"
-__version_name__ = "v9.5.19 — NGTeco standalone pie SVG click"
+__version__ = "9.5.20"
+__version_name__ = "v9.5.20 — Bulk employee portal accounts"
 __release_date__ = "2026-04-29"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.20",
+        "date": "2026-04-29",
+        "changes": [
+            "Manage Users: one-click creation of employee portal accounts from Pay Rates.",
+            "Employee portal usernames use Employee ID with default password payroll123."
+        ]
+    },
     {
         "version": "9.5.19",
         "date": "2026-04-29",
