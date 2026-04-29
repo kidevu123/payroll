@@ -3,11 +3,19 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.18"
-__version_name__ = "v9.5.18 — Employee portal + resilient NGTeco pie action"
+__version__ = "9.5.19"
+__version_name__ = "v9.5.19 — NGTeco standalone pie SVG click"
 __release_date__ = "2026-04-29"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.19",
+        "date": "2026-04-29",
+        "changes": [
+            "NGTeco: schedule pie action now clicks the standalone SVG beside the search box.",
+            "Verified production Playwright export with /etc/payroll/ngteco_prefill.env credentials."
+        ]
+    },
     {
         "version": "9.5.18",
         "date": "2026-04-29",

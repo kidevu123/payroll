@@ -159,6 +159,7 @@ def _click_schedule_pie(page, dbg: Path) -> None:
             page.locator(f"xpath={XPATH_SCHEDULE_PIE}").first,
             page.locator('button:has(svg path[d^="M484.15"]):not([disabled])').first,
             page.locator('svg path[d^="M484.15"]').locator("xpath=ancestor::*[self::button or @role='button'][1]").first,
+            page.locator('svg path[d^="M484.15"]').locator("xpath=ancestor::*[self::svg][1]").first,
             page.locator("button[title*='chart' i], button[aria-label*='chart' i], button[title*='calculate' i], button[aria-label*='calculate' i]").first,
             page.get_by_role("button", name=re.compile(r"chart|calculate|summary|pie", re.I)).first,
         ]
@@ -177,6 +178,42 @@ def _click_schedule_pie(page, dbg: Path) -> None:
             return
         except (PlaywrightTimeoutError, PlaywrightError, Exception):
             continue
+    try:
+        point = page.evaluate(
+            """() => {
+                const visibleBox = (el) => {
+                    const r = el.getBoundingClientRect();
+                    const s = window.getComputedStyle(el);
+                    if (!r || r.width < 8 || r.height < 8 || s.visibility === 'hidden' || s.display === 'none') return null;
+                    return r;
+                };
+                const inputs = Array.from(document.querySelectorAll('input[placeholder]'));
+                const search = inputs.find((el) => /search\\s+by\\s+person/i.test(el.getAttribute('placeholder') || ''));
+                if (!search) return null;
+                const sr = visibleBox(search);
+                if (!sr) return null;
+                const cy = sr.top + sr.height / 2;
+                const svgs = Array.from(document.querySelectorAll('svg'))
+                    .map((el) => ({ el, r: visibleBox(el) }))
+                    .filter((item) => item.r)
+                    .filter((item) => {
+                        const r = item.r;
+                        const cx = r.left + r.width / 2;
+                        const sy = r.top + r.height / 2;
+                        return cx > sr.right + 4 && cx < sr.right + 90 && Math.abs(sy - cy) < 34;
+                    })
+                    .sort((a, b) => a.r.left - b.r.left);
+                if (!svgs.length) return null;
+                const r = svgs[0].r;
+                return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+            }"""
+        )
+        if point:
+            page.mouse.click(point["x"], point["y"])
+            page.wait_for_timeout(1500)
+            return
+    except (PlaywrightTimeoutError, PlaywrightError, Exception):
+        pass
     try:
         page.screenshot(path=str(dbg / "ngteco_schedule_pie_hunt.png"), full_page=True)
     except Exception:
