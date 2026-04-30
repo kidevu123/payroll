@@ -38,7 +38,12 @@ export const getSetting = cache(async <K extends SettingKey>(
 });
 
 /**
- * Write a setting. Validates with Zod, upserts, audits.
+ * Write a setting. Validates the new value with Zod, upserts, audits.
+ *
+ * The audit "before" value is read raw (not via getSetting) so that a missing
+ * row, or a row whose stored shape predates the current schema, does not
+ * throw before the new value can be written. Missing rows audit as null;
+ * present rows are recorded verbatim — best-effort context, not a contract.
  */
 export async function setSetting<K extends SettingKey>(
   key: K,
@@ -47,7 +52,8 @@ export async function setSetting<K extends SettingKey>(
 ): Promise<void> {
   const schema = settingsRegistry[key];
   const parsed = schema.parse(value);
-  const before = await getSetting(key);
+  const [row] = await db.select().from(settings).where(eq(settings.key, key));
+  const before: unknown = row?.value ?? null;
   await db
     .insert(settings)
     .values({ key, value: parsed, updatedById: ctx.actorId })
