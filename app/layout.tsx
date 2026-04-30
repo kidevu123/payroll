@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   description: "Self-hosted payroll and employee operations.",
 };
 
+// Every page in this app is auth-gated and reads settings/DB at render time.
+// There is nothing to prerender; opt out of static generation globally so
+// `next build` does not try to hit the database for missing-at-build-time data.
+export const dynamic = "force-dynamic";
+
 export default async function RootLayout({
   children,
 }: {

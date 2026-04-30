@@ -43,3 +43,6 @@ test-results
 
 # python tooling sometimes leaks in
 __pycache__
+
+# claude code session state
+.claude/

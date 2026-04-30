@@ -6,7 +6,7 @@
 //   Phase 3 will add: payroll.run.* + payslip.generate
 //   Phase 5 will add: notifications.dispatch
 
-import PgBoss from "pg-boss";
+import type PgBoss from "pg-boss";
 import { logger } from "@/lib/telemetry";
 
 let bossPromise: Promise<PgBoss> | null = null;
@@ -23,6 +23,7 @@ export function getBoss(): Promise<PgBoss> {
   bossPromise = (async () => {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not set; pg-boss cannot start.");
+    const { default: PgBoss } = await import("pg-boss");
     const boss = new PgBoss({
       connectionString: url,
       schema: "pgboss",
