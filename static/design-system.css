@@ -1057,3 +1057,348 @@ body {
     justify-content: center;
   }
 }
+
+/* ============================================================================
+   v9.5.23 ATLAS UI
+   A full app-wide visual reset for the dedicated container deployment.
+   ============================================================================ */
+:root {
+  --atlas-ink: #111827;
+  --atlas-text: #24324a;
+  --atlas-muted: #66758f;
+  --atlas-line: #d9e2ef;
+  --atlas-soft-line: #edf2f7;
+  --atlas-page: #f3f6fa;
+  --atlas-surface: #ffffff;
+  --atlas-surface-2: #f8fafc;
+  --atlas-navy: #153765;
+  --atlas-blue: #2458d3;
+  --atlas-blue-2: #3678f4;
+  --atlas-green: #087f5b;
+  --atlas-amber: #b7791f;
+  --atlas-red: #c53030;
+  --atlas-shadow: 0 10px 30px rgba(21, 55, 101, 0.08);
+  --atlas-shadow-soft: 0 3px 14px rgba(21, 55, 101, 0.06);
+}
+
+html {
+  background: var(--atlas-page);
+}
+
+body {
+  background:
+    linear-gradient(180deg, #ffffff 0, #ffffff 74px, var(--atlas-page) 74px, var(--atlas-page) 100%) !important;
+  color: var(--atlas-text) !important;
+}
+
+.container,
+.navbar-container {
+  max-width: 1520px !important;
+}
+
+.navbar {
+  min-height: 62px !important;
+}
+
+.navbar-container {
+  height: 62px !important;
+  padding: 0 22px !important;
+}
+
+.navbar-logo {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.navbar-title {
+  font-size: 18px !important;
+  font-weight: 800 !important;
+  color: var(--atlas-ink) !important;
+}
+
+.navbar-version {
+  background: #edf2f7 !important;
+  color: var(--atlas-muted) !important;
+  border: 1px solid #e2e8f0 !important;
+  font-weight: 700 !important;
+}
+
+.navbar-left {
+  gap: 4px !important;
+}
+
+.nav-link {
+  min-height: 40px !important;
+  padding: 9px 12px !important;
+  color: #34445c !important;
+  font-weight: 700 !important;
+}
+
+.nav-link svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.user-menu-button {
+  min-height: 40px !important;
+  padding: 8px 12px !important;
+  color: #253348 !important;
+  font-weight: 700 !important;
+}
+
+.page-hero,
+.rates-hero,
+.users-hero,
+.portal-hero {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+  color: var(--atlas-ink) !important;
+  border-bottom: 1px solid var(--atlas-line) !important;
+  padding: 30px 0 24px !important;
+  margin-bottom: 22px !important;
+}
+
+.page-hero h1,
+.rates-hero h1,
+.users-hero h1,
+.portal-hero h1 {
+  color: var(--atlas-ink) !important;
+  font-size: 30px !important;
+  line-height: 1.12 !important;
+  font-weight: 850 !important;
+  margin-bottom: 6px !important;
+}
+
+.page-hero p,
+.rates-hero p,
+.users-hero p,
+.portal-hero p {
+  color: var(--atlas-muted) !important;
+  font-size: 15px !important;
+}
+
+.card {
+  background: var(--atlas-surface) !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--atlas-shadow-soft) !important;
+  padding: 22px !important;
+}
+
+.card-header {
+  border-bottom: 1px solid var(--atlas-soft-line) !important;
+  padding-bottom: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.card-title {
+  color: var(--atlas-ink) !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+
+.metric-card,
+.stat-card {
+  background: var(--atlas-surface) !important;
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--atlas-shadow-soft) !important;
+}
+
+.metric-card span,
+.stat-label {
+  color: var(--atlas-muted) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.metric-card strong,
+.stat-value {
+  color: var(--atlas-ink) !important;
+  font-weight: 850 !important;
+}
+
+.table-wrapper {
+  border: 1px solid var(--atlas-line) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.table thead {
+  background: #f8fafc !important;
+  border-bottom: 1px solid var(--atlas-line) !important;
+}
+
+.table th {
+  color: #51627a !important;
+  padding: 12px 14px !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.table td {
+  padding: 14px !important;
+  color: #253348 !important;
+  border-bottom: 1px solid #edf2f7 !important;
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #fbfdff !important;
+}
+
+.table tbody tr:hover {
+  background: #f1f6ff !important;
+}
+
+.badge {
+  border-radius: 999px !important;
+  padding: 5px 10px !important;
+  font-weight: 800 !important;
+}
+
+.badge-primary {
+  background: #e8f0ff !important;
+  color: #1f4fbd !important;
+}
+
+.badge-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+}
+
+.badge-warning {
+  background: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.btn {
+  border-radius: 8px !important;
+  min-height: 42px !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+.btn-primary {
+  background: var(--atlas-blue) !important;
+  border-color: var(--atlas-blue) !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1e49ad !important;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: var(--atlas-green) !important;
+}
+
+.btn-danger {
+  background: var(--atlas-red) !important;
+}
+
+.btn-secondary {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #253348 !important;
+}
+
+.form-label {
+  color: #334155 !important;
+  font-weight: 800 !important;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: var(--atlas-ink) !important;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--atlas-blue) !important;
+  box-shadow: 0 0 0 4px rgba(36, 88, 211, 0.12) !important;
+}
+
+.alert {
+  border-radius: 8px !important;
+  box-shadow: var(--atlas-shadow-soft);
+}
+
+.filter-pill {
+  border-radius: 8px !important;
+  font-weight: 800 !important;
+}
+
+.filter-pill.active {
+  background: var(--atlas-blue) !important;
+  border-color: var(--atlas-blue) !important;
+}
+
+.portal-actions .btn {
+  min-width: 170px;
+}
+
+.portal-grid {
+  align-items: start !important;
+}
+
+@media (max-width: 900px) {
+  .navbar-container {
+    height: 58px !important;
+  }
+
+  .navbar-menu {
+    top: 58px !important;
+    border-top: 1px solid var(--atlas-line) !important;
+  }
+
+  .page-hero,
+  .rates-hero,
+  .users-hero,
+  .portal-hero {
+    padding: 22px 0 20px !important;
+  }
+
+  .page-hero h1,
+  .rates-hero h1,
+  .users-hero h1,
+  .portal-hero h1 {
+    font-size: 25px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .card {
+    padding: 16px !important;
+  }
+
+  .metric-card,
+  .stat-card {
+    padding: 16px !important;
+  }
+
+  .responsive-table tr {
+    box-shadow: var(--atlas-shadow-soft) !important;
+  }
+
+  .responsive-table td {
+    border-bottom: 1px solid var(--atlas-soft-line) !important;
+  }
+
+  .portal-actions {
+    width: 100%;
+  }
+
+  .portal-actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

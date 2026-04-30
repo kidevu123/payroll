@@ -7599,6 +7599,201 @@ def update_employee_payslip_index_from_df(df, filename):
     except Exception as e:
         app.logger.warning(f"Could not update employee payslip index: {e}")
 
+def _parse_consolidated_payslip_at(ws, filename, row, col, file_mtime=None):
+    """Parse one employee block inside a cuttable payslips workbook."""
+    value = ws.cell(row=row, column=col).value
+    if not (isinstance(value, str) and value.startswith('Employee:')):
+        return None
+    name = value.replace('Employee:', '').strip()
+    id_value = ''
+    period = ''
+    for c in range(col, min(col + 5, ws.max_column) + 1):
+        v = ws.cell(row=row + 1, column=c).value
+        if isinstance(v, str) and v.startswith('ID:'):
+            id_value = v.replace('ID:', '').strip()
+        if isinstance(v, str) and v.startswith('Pay Period:'):
+            period = v.replace('Pay Period:', '').strip()
+    if not id_value:
+        return None
+
+    header_row = None
+    for r in range(row, min(row + 8, ws.max_row) + 1):
+        if str(ws.cell(row=r, column=col).value or '').strip().lower() == 'date':
+            header_row = r
+            break
+    if not header_row:
+        return None
+
+    days = []
+    totals = {'hours': '', 'pay': '', 'rounded': ''}
+    r = header_row + 1
+    while r <= ws.max_row:
+        first = ws.cell(row=r, column=col).value
+        label = str(ws.cell(row=r, column=col + 2).value or '')
+        if isinstance(first, str) and (first.startswith('Employee:') or first.startswith('---')):
+            break
+        if label.startswith('Total Hours'):
+            totals['hours'] = ws.cell(row=r, column=col + 3).value
+        elif label.startswith('Total Pay'):
+            totals['pay'] = ws.cell(row=r, column=col + 4).value
+        elif label.startswith('Rounded Pay'):
+            totals['rounded'] = ws.cell(row=r, column=col + 4).value
+            break
+        elif first not in (None, ''):
+            days.append({
+                'date': first,
+                'in': ws.cell(row=r, column=col + 1).value,
+                'out': ws.cell(row=r, column=col + 2).value,
+                'hours': ws.cell(row=r, column=col + 3).value,
+                'pay': ws.cell(row=r, column=col + 4).value,
+            })
+        r += 1
+
+    if not days:
+        return None
+    created = datetime.fromtimestamp(file_mtime or time.time()).isoformat(timespec='seconds')
+    return {
+        'filename': filename,
+        'period': period,
+        'created': created,
+        'name': name,
+        'employee_id': id_value,
+        'total_hours': totals.get('hours') or '',
+        'total_pay': totals.get('pay') or '',
+        'rounded_pay': totals.get('rounded') or totals.get('pay') or '',
+        'days': days,
+        'totals': totals,
+    }
+
+def _grid_value(rows, row, col):
+    if row < 0 or row >= len(rows):
+        return None
+    current = rows[row]
+    if col < 0 or col >= len(current):
+        return None
+    return current[col]
+
+def _parse_consolidated_payslip_grid(rows, filename, row_idx, col_idx, file_mtime=None):
+    """Parse one payslip from an in-memory worksheet grid."""
+    value = _grid_value(rows, row_idx, col_idx)
+    if not (isinstance(value, str) and value.startswith('Employee:')):
+        return None
+    name = value.replace('Employee:', '').strip()
+    id_value = ''
+    period = ''
+    for c in range(col_idx, col_idx + 5):
+        v = _grid_value(rows, row_idx + 1, c)
+        if isinstance(v, str) and v.startswith('ID:'):
+            id_value = v.replace('ID:', '').strip()
+        if isinstance(v, str) and v.startswith('Pay Period:'):
+            period = v.replace('Pay Period:', '').strip()
+    if not id_value:
+        return None
+
+    header_idx = None
+    for r in range(row_idx, min(row_idx + 8, len(rows))):
+        if str(_grid_value(rows, r, col_idx) or '').strip().lower() == 'date':
+            header_idx = r
+            break
+    if header_idx is None:
+        return None
+
+    days = []
+    totals = {'hours': '', 'pay': '', 'rounded': ''}
+    r = header_idx + 1
+    while r < len(rows):
+        first = _grid_value(rows, r, col_idx)
+        label = str(_grid_value(rows, r, col_idx + 2) or '')
+        if isinstance(first, str) and (first.startswith('Employee:') or first.startswith('---')):
+            break
+        if label.startswith('Total Hours'):
+            totals['hours'] = _grid_value(rows, r, col_idx + 3)
+        elif label.startswith('Total Pay'):
+            totals['pay'] = _grid_value(rows, r, col_idx + 4)
+        elif label.startswith('Rounded Pay'):
+            totals['rounded'] = _grid_value(rows, r, col_idx + 4)
+            break
+        elif first not in (None, ''):
+            days.append({
+                'date': first,
+                'in': _grid_value(rows, r, col_idx + 1),
+                'out': _grid_value(rows, r, col_idx + 2),
+                'hours': _grid_value(rows, r, col_idx + 3),
+                'pay': _grid_value(rows, r, col_idx + 4),
+            })
+        r += 1
+
+    if not days:
+        return None
+    created = datetime.fromtimestamp(file_mtime or time.time()).isoformat(timespec='seconds')
+    return {
+        'filename': filename,
+        'period': period,
+        'created': created,
+        'name': name,
+        'employee_id': id_value,
+        'total_hours': totals.get('hours') or '',
+        'total_pay': totals.get('pay') or '',
+        'rounded_pay': totals.get('rounded') or totals.get('pay') or '',
+        'days': days,
+        'totals': totals,
+    }
+
+def index_consolidated_payslip_file(filename):
+    """Return lightweight index entries for one cuttable payslip workbook."""
+    filename = _safe_report_filename(filename)
+    if not filename:
+        return []
+    path = os.path.join(REPORT_FOLDER, filename)
+    if not os.path.exists(path):
+        return []
+    try:
+        from openpyxl import load_workbook
+        file_mtime = os.path.getmtime(path)
+        wb = load_workbook(path, read_only=True, data_only=True)
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        entries = []
+        payslip_start_columns = [0, 6, 12]
+        for row_idx in range(len(rows)):
+            for col in payslip_start_columns:
+                parsed = _parse_consolidated_payslip_grid(rows, filename, row_idx, col, file_mtime)
+                if parsed:
+                    entry = {k: v for k, v in parsed.items() if k not in ('days', 'totals')}
+                    entries.append(entry)
+        return entries
+    except Exception as e:
+        app.logger.warning(f"Could not index payslip workbook {filename}: {e}")
+        return []
+
+def rebuild_employee_payslip_index(limit_files=None):
+    """Rebuild the employee payslip index from existing consolidated workbooks."""
+    try:
+        files = []
+        for filename in os.listdir(REPORT_FOLDER):
+            if filename.startswith('payslips_for_cutting_') and filename.endswith('.xlsx'):
+                path = os.path.join(REPORT_FOLDER, filename)
+                files.append((filename, os.path.getmtime(path)))
+        files.sort(key=lambda item: item[1], reverse=True)
+        if limit_files:
+            files = files[:int(limit_files)]
+
+        index = {}
+        for filename, _ in files:
+            for entry in index_consolidated_payslip_file(filename):
+                emp_id = str(entry.get('employee_id') or '').strip()
+                if not emp_id:
+                    continue
+                existing = [e for e in index.get(emp_id, []) if e.get('filename') != filename]
+                existing.append(entry)
+                existing.sort(key=lambda e: e.get('created', ''), reverse=True)
+                index[emp_id] = existing[:REPORTS_LIST_LIMIT]
+        save_employee_payslip_index(index)
+        return index
+    except Exception as e:
+        app.logger.warning(f"Could not rebuild employee payslip index: {e}")
+        return {}
+
 def extract_employee_payslip(filename, employee_id):
     """Read one employee's payslip from a generated cuttable payslips workbook."""
     filename = _safe_report_filename(filename)
@@ -7613,61 +7808,21 @@ def extract_employee_payslip(filename, employee_id):
         wb = load_workbook(path, read_only=True, data_only=True)
         ws = wb.active
         title = str(ws['A1'].value or '')
-        for row in range(1, ws.max_row + 1):
-            for col in range(1, ws.max_column + 1):
-                value = ws.cell(row=row, column=col).value
-                if not (isinstance(value, str) and value.startswith('Employee:')):
+        rows = list(ws.iter_rows(values_only=True))
+        payslip_start_columns = [0, 6, 12]
+        for row_idx in range(len(rows)):
+            for col in payslip_start_columns:
+                parsed = _parse_consolidated_payslip_grid(rows, filename, row_idx, col, os.path.getmtime(path))
+                if not parsed or parsed.get('employee_id') != employee_id:
                     continue
-                name = value.replace('Employee:', '').strip()
-                id_value = ''
-                period = ''
-                for c in range(col, min(col + 5, ws.max_column) + 1):
-                    v = ws.cell(row=row + 1, column=c).value
-                    if isinstance(v, str) and v.startswith('ID:'):
-                        id_value = v.replace('ID:', '').strip()
-                    if isinstance(v, str) and v.startswith('Pay Period:'):
-                        period = v.replace('Pay Period:', '').strip()
-                if id_value != employee_id:
-                    continue
-                header_row = None
-                for r in range(row, min(row + 8, ws.max_row) + 1):
-                    if str(ws.cell(row=r, column=col).value or '').strip().lower() == 'date':
-                        header_row = r
-                        break
-                if not header_row:
-                    continue
-                days = []
-                totals = {'hours': '', 'pay': '', 'rounded': ''}
-                r = header_row + 1
-                while r <= ws.max_row:
-                    first = ws.cell(row=r, column=col).value
-                    label = str(ws.cell(row=r, column=col + 2).value or '')
-                    if isinstance(first, str) and (first.startswith('Employee:') or first.startswith('---')):
-                        break
-                    if label.startswith('Total Hours'):
-                        totals['hours'] = ws.cell(row=r, column=col + 3).value
-                    elif label.startswith('Total Pay'):
-                        totals['pay'] = ws.cell(row=r, column=col + 4).value
-                    elif label.startswith('Rounded Pay'):
-                        totals['rounded'] = ws.cell(row=r, column=col + 4).value
-                        break
-                    elif first not in (None, ''):
-                        days.append({
-                            'date': first,
-                            'in': ws.cell(row=r, column=col + 1).value,
-                            'out': ws.cell(row=r, column=col + 2).value,
-                            'hours': ws.cell(row=r, column=col + 3).value,
-                            'pay': ws.cell(row=r, column=col + 4).value,
-                        })
-                    r += 1
                 return {
                     'filename': filename,
                     'title': title,
-                    'name': name,
-                    'employee_id': id_value,
-                    'period': period or title.replace('Employee Payslips -', '').strip(),
-                    'days': days,
-                    'totals': totals,
+                    'name': parsed['name'],
+                    'employee_id': parsed['employee_id'],
+                    'period': parsed.get('period') or title.replace('Employee Payslips -', '').strip(),
+                    'days': parsed['days'],
+                    'totals': parsed['totals'],
                     'created': datetime.fromtimestamp(os.path.getmtime(path)),
                 }
     except Exception as e:
@@ -7675,7 +7830,14 @@ def extract_employee_payslip(filename, employee_id):
     return None
 
 def list_employee_payslips(employee_id):
-    return load_employee_payslip_index().get(str(employee_id or '').strip(), [])[:REPORTS_LIST_LIMIT]
+    emp_id = str(employee_id or '').strip()
+    index = load_employee_payslip_index()
+    slips = index.get(emp_id, [])[:REPORTS_LIST_LIMIT]
+    if slips:
+        return slips
+    # First employee portal visit after an upgrade can recover old reports automatically.
+    rebuilt = rebuild_employee_payslip_index(limit_files=80)
+    return rebuilt.get(emp_id, [])[:REPORTS_LIST_LIMIT]
 
 def _money(value):
     try:

@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.22"
-__version_name__ = "v9.5.22 — Employee name sync + responsive self-service UI"
+__version__ = "9.5.23"
+__version_name__ = "v9.5.23 — Payslip backfill + Atlas UI refresh"
 __release_date__ = "2026-04-30"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.23",
+        "date": "2026-04-30",
+        "changes": [
+            "Employee portal now rebuilds its payslip index from existing cuttable payslip workbooks so old reports appear for employees.",
+            "Added reusable consolidated-payslip workbook indexing for fast employee self-service lookups without duplicating report data.",
+            "Introduced the Atlas UI refresh: compact app shell, cleaner page headers, denser tables, stronger forms, and improved mobile polish."
+        ]
+    },
     {
         "version": "9.5.22",
         "date": "2026-04-30",
