@@ -6,6 +6,18 @@ This is a ground-up rebuild — see `docs/spec.md` for the design contract. This
 
 ## Status
 
+**Phase 3 — Payroll run state machine + PDFs.** What ships on top of Phase 2:
+
+- Pure missed-punch detection in `lib/payroll/detect-exceptions.ts` (NO_PUNCH / MISSING_OUT / MISSING_IN / SUSPICIOUS_DURATION) at 100% branch coverage.
+- Run state machine: `transitionRun` with explicit legal-edge table per spec §6. Sunday cron → ingest → detect → AWAITING_EMPLOYEE_FIXES (or AWAITING_ADMIN_REVIEW) → APPROVED → PUBLISHED. ngteco-import chains into detect-exceptions on success.
+- PDFs via `@react-pdf/renderer`: individual payslip, single-page admin signature report (25-employee constraint), optional cut-sheet.
+- Dashboard centerpiece (`PayrollRunCard`) — state-driven, fills ~50% viewport, single primary CTA.
+- `/payroll/run/[runId]` review with state-aware Approve flow that enqueues the publish job.
+- Employee `/pay` + `/pay/[periodId]` viewer with iframe of the auth-gated `/api/payslips/[id]/pdf` route + inline Acknowledge.
+- In-app notifications stub (Phase 5 promotes it to the full router with Web Push).
+
+**Phase 2 — NGTeco automation.** Encrypted credentials, Playwright scraper with persistent profile + 2FA/CAPTCHA detection + screenshot/HTML capture on failure, parser at 100% branch coverage, run history + run detail UI, two new pg-boss queues (`ngteco.import`, `payroll.run.tick`).
+
 **Phase 1 — Admin core.** What ships:
 
 - Foundation from Phase 0 (Next.js 15 / React 19 / TypeScript strict, Drizzle schema, Auth.js v5 + Argon2id, pg-boss, OTel, Docker, LX120 deploy automation).
