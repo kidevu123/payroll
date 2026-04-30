@@ -53,9 +53,9 @@ export async function handlePayrollRunPublish(data: {
   const period = await getPeriodById(run.periodId);
   if (!period) throw new Error(`publish: period ${run.periodId} not found`);
 
-  const { mkdirSync } = await import("fs");
-  const { join } = await import("path");
-  const { writeFile } = await import("fs/promises");
+  const { mkdirSync } = await import(/* webpackIgnore: true */ "fs");
+  const { join } = await import(/* webpackIgnore: true */ "path");
+  const { writeFile } = await import(/* webpackIgnore: true */ "fs/promises");
 
   const [employees, punches, payRules, company, shifts] = await Promise.all([
     listEmployees(),

@@ -195,7 +195,7 @@ function primaryAction(props: PayrollRunCardProps): React.ReactNode {
     case "AWAITING_EMPLOYEE_FIXES":
       return (
         <Button asChild size="lg">
-          <Link href={props.runId ? `/payroll/${props.runId}` : "/payroll"}>
+          <Link href={props.runId ? `/payroll/run/${props.runId}` : "/payroll"}>
             Open run for review
           </Link>
         </Button>
@@ -211,7 +211,7 @@ function primaryAction(props: PayrollRunCardProps): React.ReactNode {
     case "PUBLISHED":
       return (
         <Button asChild size="lg" variant="secondary">
-          <Link href={props.runId ? `/payroll/${props.runId}` : "/payroll"}>
+          <Link href={props.runId ? `/payroll/run/${props.runId}` : "/payroll"}>
             View published run
           </Link>
         </Button>
