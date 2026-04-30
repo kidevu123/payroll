@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger payroll-deploy every 60 seconds
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=15s
+Unit=payroll-deploy.service
+
+[Install]
+WantedBy=timers.target

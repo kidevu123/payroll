@@ -1,0 +1,103 @@
+# docker compose for the payroll platform.
+#
+# Three services:
+#   app     — the Next.js app + pg-boss worker (one process owns the queue)
+#   db      — Postgres 16 with the citext extension installed by the migrator
+#   backup  — sidecar that pg_dumps once a day and prunes archives older than 30d
+#
+# Volumes:
+#   pgdata  — Postgres data dir (named volume)
+#   /data   — bind-mounted from the host for uploads, payslips, ngteco, backups
+#
+# All operational behavior lives in /admin/settings; this file only sets up
+# infrastructure.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: payroll
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-payroll}
+      POSTGRES_DB: payroll
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payroll -d payroll"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - internal
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://payroll:${POSTGRES_PASSWORD:-payroll}@db:5432/payroll
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set in .env}
+      NGTECO_VAULT_KEY: ${NGTECO_VAULT_KEY:?NGTECO_VAULT_KEY must be set in .env}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-payroll}
+      STORAGE_ROOT: /data
+      NODE_ENV: production
+    volumes:
+      - ./data:/data
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    networks:
+      - internal
+      - egress
+
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGUSER: payroll
+      PGPASSWORD: ${POSTGRES_PASSWORD:-payroll}
+      PGDATABASE: payroll
+      PGHOST: db
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      - ./data/backups:/backups
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Backup sidecar starting; retention: ${RETENTION_DAYS}d"
+        while true; do
+          ts=$$(date -u +%Y%m%dT%H%M%SZ)
+          pg_dump --format=custom --file="/backups/payroll-$${ts}.dump" || echo "pg_dump failed at $${ts}"
+          # Prune older than RETENTION_DAYS
+          find /backups -type f -name 'payroll-*.dump' -mtime +$${RETENTION_DAYS} -delete || true
+          # Sleep 24 hours
+          sleep 86400
+        done
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+    driver: bridge
+  egress:
+    driver: bridge

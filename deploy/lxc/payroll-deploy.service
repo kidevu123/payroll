@@ -1,0 +1,29 @@
+[Unit]
+Description=Pull payroll repo and re-up the docker compose stack
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# These are filled in by the install.sh override.conf:
+Environment=PAYROLL_DIR=/opt/payroll
+Environment=PAYROLL_BRANCH=rebuild/foundation
+WorkingDirectory=/opt/payroll
+# Pull, and only rebuild + recreate if HEAD actually changed.
+ExecStart=/bin/bash -c '\
+  set -euo pipefail; \
+  cd "$PAYROLL_DIR"; \
+  git fetch --quiet origin "$PAYROLL_BRANCH"; \
+  before=$(git rev-parse HEAD); \
+  git reset --hard --quiet "origin/$PAYROLL_BRANCH"; \
+  after=$(git rev-parse HEAD); \
+  if [ "$before" = "$after" ]; then \
+    echo "no changes ($after); ensuring services are up"; \
+    /usr/bin/docker compose up -d; \
+  else \
+    echo "deploying $before -> $after"; \
+    /usr/bin/docker compose up -d --build; \
+  fi'
+
+[Install]
+WantedBy=multi-user.target

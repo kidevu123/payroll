@@ -1,0 +1,75 @@
+{
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "passwordHint": "Use al menos 12 caracteres. Se recomienda un administrador de contraseñas.",
+    "signInWelcome": "Bienvenido de nuevo. Use el correo y la contraseña que le dio su administrador.",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "resetIt": "Restablecerla",
+    "invalidCredentials": "Correo o contraseña incorrectos.",
+    "rateLimited": "Demasiados intentos fallidos. Inténtelo de nuevo en unos minutos.",
+    "locked": "Esta cuenta está bloqueada temporalmente. Contacte a su administrador."
+  },
+  "setup": {
+    "title": "Bienvenido",
+    "subtitle": "Vamos a crear su cuenta de propietario. Será la única persona con acceso hasta que invite a otros.",
+    "companyName": "Nombre de la empresa",
+    "ownerEmail": "Correo del propietario",
+    "submit": "Crear cuenta de propietario",
+    "submitting": "Creando cuenta...",
+    "alreadyComplete": "La configuración inicial ya se completó."
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "employees": "Empleados",
+    "time": "Tiempo",
+    "payroll": "Nómina",
+    "requests": "Solicitudes",
+    "ngteco": "NGTeco",
+    "reports": "Reportes",
+    "settings": "Ajustes",
+    "notifications": "Notificaciones"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "subtitle": "Un solo lugar, una sola fuente de verdad para la ejecución de nómina actual.",
+    "currentRun": "Ejecución de nómina actual",
+    "currentRunHint": "Fase de cimientos. El orquestador y la tarjeta de ejecución llegan en la Fase 3.",
+    "noActiveRun": "Sin ejecución activa",
+    "noActiveRunDescription": "La primera ejecución se programará automáticamente cuando el cron esté habilitado en Ajustes → Automatización.",
+    "openAutomation": "Abrir ajustes de automatización",
+    "pendingRequests": "Solicitudes pendientes",
+    "noPendingRequests": "Sin solicitudes pendientes",
+    "lastNgtecoImport": "Última importación de NGTeco",
+    "noImports": "Aún no hay importaciones"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "subtitle": "Cada comportamiento operativo vive aquí. Cambie un valor, el sistema lo sigue.",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "saved": "Guardado.",
+    "company": {
+      "title": "Empresa",
+      "description": "Nombre, dirección, color de marca y configuración regional. El color de marca se propaga a los PDF y la interfaz.",
+      "name": "Nombre de la empresa",
+      "address": "Dirección",
+      "brandColor": "Color de marca",
+      "timezone": "Zona horaria",
+      "locale": "Configuración regional"
+    },
+    "phase": {
+      "title": "Llega en la Fase {n}",
+      "description": "El modelo de datos y los valores predeterminados ya están listos. La interfaz de edición se entrega cuando se construya esta fase."
+    }
+  },
+  "employee": {
+    "homeGreeting": "Hola, {email}",
+    "homeIntro": "La aplicación para empleados llega en la Fase 4. Puede iniciar sesión hoy; el resto vendrá pronto.",
+    "thisWeek": "Esta semana",
+    "thisWeekHint": "Las horas y el pago proyectado aparecerán aquí.",
+    "noData": "Aún no hay datos."
+  }
+}

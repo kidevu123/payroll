@@ -1,0 +1,75 @@
+{
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "Use at least 12 characters. A password manager is recommended.",
+    "signInWelcome": "Welcome back. Use the email and password your administrator gave you.",
+    "forgotPassword": "Forgot your password?",
+    "resetIt": "Reset it",
+    "invalidCredentials": "Invalid email or password.",
+    "rateLimited": "Too many failed attempts. Try again in a few minutes.",
+    "locked": "This account is temporarily locked. Contact your administrator."
+  },
+  "setup": {
+    "title": "Welcome",
+    "subtitle": "Let's create your owner account. You'll be the only person with access until you invite others.",
+    "companyName": "Company name",
+    "ownerEmail": "Owner email",
+    "submit": "Create owner account",
+    "submitting": "Creating account...",
+    "alreadyComplete": "Setup has already been completed."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "employees": "Employees",
+    "time": "Time",
+    "payroll": "Payroll",
+    "requests": "Requests",
+    "ngteco": "NGTeco",
+    "reports": "Reports",
+    "settings": "Settings",
+    "notifications": "Notifications"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "One place, one source of truth for the current payroll run.",
+    "currentRun": "Current payroll run",
+    "currentRunHint": "Foundation phase. The orchestrator and run-card UI ship in Phase 3.",
+    "noActiveRun": "No active run",
+    "noActiveRunDescription": "The first run will be scheduled automatically once the cron job is enabled in Settings → Automation.",
+    "openAutomation": "Open automation settings",
+    "pendingRequests": "Pending requests",
+    "noPendingRequests": "No pending requests",
+    "lastNgtecoImport": "Last NGTeco import",
+    "noImports": "No imports yet"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Every operational behavior lives here. Change a value, the system follows.",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "saved": "Saved.",
+    "company": {
+      "title": "Company",
+      "description": "Name, address, brand color, and locale. The brand color cascades to PDFs and the UI.",
+      "name": "Company name",
+      "address": "Address",
+      "brandColor": "Brand color",
+      "timezone": "Timezone",
+      "locale": "Locale"
+    },
+    "phase": {
+      "title": "Lands in Phase {n}",
+      "description": "The data model and defaults are in place. The editing UI ships when this phase is built."
+    }
+  },
+  "employee": {
+    "homeGreeting": "Hi, {email}",
+    "homeIntro": "The employee app ships in Phase 4. You can sign in here today; the rest comes online soon.",
+    "thisWeek": "This week",
+    "thisWeekHint": "Hours and projected pay will appear here.",
+    "noData": "No data yet."
+  }
+}
