@@ -1,0 +1,19 @@
+{
+  "name": "FLAT_TASK employee — no punches, only task line items",
+  "punches": [],
+  "rateCents": 0,
+  "taskPay": [
+    { "amountCents": 50000 },
+    { "amountCents": 12500 }
+  ],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 0,
+    "regularCents": 0,
+    "overtimeCents": 0,
+    "taskCents": 62500,
+    "grossCents": 62500,
+    "roundedCents": 62500,
+    "days": []
+  }
+}

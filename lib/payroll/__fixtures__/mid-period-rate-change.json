@@ -1,0 +1,26 @@
+{
+  "name": "Rate increase Wed: 2000 -> 2500 cents/hr; Mon-Tue use old, Wed-Thu use new",
+  "punches": [
+    { "clockIn": "2026-04-13T13:00:00.000Z", "clockOut": "2026-04-13T21:00:00.000Z", "rateOverride": 2000 },
+    { "clockIn": "2026-04-14T13:00:00.000Z", "clockOut": "2026-04-14T21:00:00.000Z", "rateOverride": 2000 },
+    { "clockIn": "2026-04-15T13:00:00.000Z", "clockOut": "2026-04-15T21:00:00.000Z", "rateOverride": 2500 },
+    { "clockIn": "2026-04-16T13:00:00.000Z", "clockOut": "2026-04-16T21:00:00.000Z", "rateOverride": 2500 }
+  ],
+  "rateCents": 2000,
+  "taskPay": [],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 32,
+    "regularCents": 72000,
+    "overtimeCents": 0,
+    "taskCents": 0,
+    "grossCents": 72000,
+    "roundedCents": 72000,
+    "days": [
+      { "date": "2026-04-13", "hours": 8, "cents": 16000, "isOvertime": false },
+      { "date": "2026-04-14", "hours": 8, "cents": 16000, "isOvertime": false },
+      { "date": "2026-04-15", "hours": 8, "cents": 20000, "isOvertime": false },
+      { "date": "2026-04-16", "hours": 8, "cents": 20000, "isOvertime": false }
+    ]
+  }
+}

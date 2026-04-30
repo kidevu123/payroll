@@ -13,13 +13,16 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["lib/**/*.ts"],
-      exclude: ["lib/db/schema.ts", "**/*.test.*"],
+      exclude: ["lib/db/schema.ts", "**/*.test.*", "**/__fixtures__/**"],
       thresholds: {
-        // Phase 0 gate is light. Phase 1 raises this on /lib/payroll/* to 100%.
-        lines: 0,
-        functions: 0,
-        branches: 0,
-        statements: 0,
+        // Phase 1: the pay-calc primitives are the heart of the system.
+        // Anything < 100% means there's a corner case we don't actually trust.
+        "lib/payroll/**/*.ts": {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100,
+        },
       },
     },
   },

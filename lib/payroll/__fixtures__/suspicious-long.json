@@ -1,0 +1,18 @@
+{
+  "name": "16h punch — pays in full; suspicious flag is upstream of computePay",
+  "punches": [
+    { "clockIn": "2026-04-14T13:00:00.000Z", "clockOut": "2026-04-15T05:00:00.000Z" }
+  ],
+  "rateCents": 2500,
+  "taskPay": [],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 16,
+    "regularCents": 40000,
+    "overtimeCents": 0,
+    "taskCents": 0,
+    "grossCents": 40000,
+    "roundedCents": 40000,
+    "days": [{ "date": "2026-04-14", "hours": 16, "cents": 40000, "isOvertime": false }]
+  }
+}

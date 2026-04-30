@@ -1,0 +1,18 @@
+{
+  "name": "Single short day, hourly, no overtime",
+  "punches": [
+    { "clockIn": "2026-04-13T13:00:00.000Z", "clockOut": "2026-04-13T14:30:00.000Z" }
+  ],
+  "rateCents": 2000,
+  "taskPay": [],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 1.5,
+    "regularCents": 3000,
+    "overtimeCents": 0,
+    "taskCents": 0,
+    "grossCents": 3000,
+    "roundedCents": 3000,
+    "days": [{ "date": "2026-04-13", "hours": 1.5, "cents": 3000, "isOvertime": false }]
+  }
+}

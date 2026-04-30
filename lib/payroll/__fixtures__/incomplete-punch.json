@@ -1,0 +1,21 @@
+{
+  "name": "Incomplete punch (null clockOut) contributes zero",
+  "punches": [
+    { "clockIn": "2026-04-13T13:00:00.000Z", "clockOut": null },
+    { "clockIn": "2026-04-14T13:00:00.000Z", "clockOut": "2026-04-14T21:00:00.000Z" }
+  ],
+  "rateCents": 2000,
+  "taskPay": [],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 8,
+    "regularCents": 16000,
+    "overtimeCents": 0,
+    "taskCents": 0,
+    "grossCents": 16000,
+    "roundedCents": 16000,
+    "days": [
+      { "date": "2026-04-14", "hours": 8, "cents": 16000, "isOvertime": false }
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Clock-in 22:00 Tue, clock-out 06:30 Wed — entire punch attributed to Tue",
+  "punches": [
+    { "clockIn": "2026-04-14T22:00:00.000Z", "clockOut": "2026-04-15T06:30:00.000Z" }
+  ],
+  "rateCents": 2000,
+  "taskPay": [],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 8.5,
+    "regularCents": 17000,
+    "overtimeCents": 0,
+    "taskCents": 0,
+    "grossCents": 17000,
+    "roundedCents": 17000,
+    "days": [{ "date": "2026-04-14", "hours": 8.5, "cents": 17000, "isOvertime": false }]
+  }
+}

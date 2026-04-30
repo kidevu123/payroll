@@ -1,0 +1,24 @@
+{
+  "name": "Hourly punches plus task pay (e.g. bonus + tips)",
+  "punches": [
+    { "clockIn": "2026-04-13T13:00:00.000Z", "clockOut": "2026-04-13T21:00:00.000Z" },
+    { "clockIn": "2026-04-14T13:00:00.000Z", "clockOut": "2026-04-14T21:00:00.000Z" }
+  ],
+  "rateCents": 2000,
+  "taskPay": [
+    { "amountCents": 5000 }
+  ],
+  "rules": { "rounding": "NONE", "hoursDecimalPlaces": 2 },
+  "expected": {
+    "totalHours": 16,
+    "regularCents": 32000,
+    "overtimeCents": 0,
+    "taskCents": 5000,
+    "grossCents": 37000,
+    "roundedCents": 37000,
+    "days": [
+      { "date": "2026-04-13", "hours": 8, "cents": 16000, "isOvertime": false },
+      { "date": "2026-04-14", "hours": 8, "cents": 16000, "isOvertime": false }
+    ]
+  }
+}
