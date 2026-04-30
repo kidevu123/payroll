@@ -5,7 +5,9 @@
 //   • period.rollover — Phase 1 — daily 00:30 in company TZ
 //   • ngteco.import — Phase 2 — manual + payroll-tick triggered scrape
 //   • payroll.run.tick — Phase 2 — automation.payrollRun.cron orchestrator
-//   Phase 3 will add: payroll.run.publish + payslip.generate
+//   • payroll.run.detect-exceptions — Phase 3 — runs after ingest
+//   • payroll.run.fix-window-expire — Phase 3 — scheduled per-run
+//   • payroll.run.publish — Phase 3 — admin approve → PDFs + notify
 //   Phase 5 will add: notifications.dispatch
 
 import type PgBoss from "pg-boss";
@@ -13,6 +15,9 @@ import { logger } from "@/lib/telemetry";
 import { runPeriodRollover } from "./handlers/period-rollover";
 import { handleNgtecoImport } from "./handlers/ngteco-import";
 import { handlePayrollRunTick } from "./handlers/payroll-run-tick";
+import { handleDetectExceptions } from "./handlers/detect-exceptions";
+import { handleFixWindowExpire } from "./handlers/fix-window-expire";
+import { handlePayrollRunPublish } from "./handlers/payroll-run-publish";
 import { getSetting } from "@/lib/settings/runtime";
 
 let bossPromise: Promise<PgBoss> | null = null;
@@ -84,4 +89,34 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   if (automation?.payrollRun.enabled) {
     await boss.schedule("payroll.run.tick", automation.payrollRun.cron);
   }
+
+  // ── payroll.run.detect-exceptions ──────────────────────────────────────
+  await boss.createQueue("payroll.run.detect-exceptions");
+  await boss.work("payroll.run.detect-exceptions", async (jobs) => {
+    for (const j of jobs) {
+      const data = j.data as { runId?: string };
+      if (!data?.runId) continue;
+      await handleDetectExceptions({ runId: data.runId });
+    }
+  });
+
+  // ── payroll.run.fix-window-expire (one-shot, scheduled per run) ────────
+  await boss.createQueue("payroll.run.fix-window-expire");
+  await boss.work("payroll.run.fix-window-expire", async (jobs) => {
+    for (const j of jobs) {
+      const data = j.data as { runId?: string };
+      if (!data?.runId) continue;
+      await handleFixWindowExpire({ runId: data.runId });
+    }
+  });
+
+  // ── payroll.run.publish ────────────────────────────────────────────────
+  await boss.createQueue("payroll.run.publish");
+  await boss.work("payroll.run.publish", async (jobs) => {
+    for (const j of jobs) {
+      const data = j.data as { runId?: string };
+      if (!data?.runId) continue;
+      await handlePayrollRunPublish({ runId: data.runId });
+    }
+  });
 }

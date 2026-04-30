@@ -11,6 +11,7 @@
 
 import { logger } from "@/lib/telemetry";
 import { markIngestFailed } from "@/lib/db/queries/payroll-runs";
+import { getBoss } from "@/lib/jobs";
 
 export async function handleNgtecoImport(
   data: { runId: string },
@@ -31,6 +32,10 @@ export async function handleNgtecoImport(
   try {
     const summary = await runImport(runId);
     logger.info({ runId, ...summary }, "ngteco.import: handler ok");
+    // Chain into detection. The detect handler decides employee-fix vs
+    // admin-review next states and dispatches notifications.
+    const boss = await getBoss();
+    await boss.send("payroll.run.detect-exceptions", { runId });
   } catch (err) {
     if (err instanceof ChallengeDetectedError) {
       logger.error({ runId, kind: err.kind }, "ngteco.import: challenge — abort, no retry");
