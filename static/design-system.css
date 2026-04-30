@@ -844,3 +844,216 @@ body {
   .page-hero { padding: 24px 0; }
   .page-hero h1 { font-size: 22px; }
 }
+
+/* ============================================================================
+   v9.5.22 SELF-SERVICE REFRESH
+   Cleaner Gusto/Workday-inspired app shell and mobile table behavior.
+   ============================================================================ */
+:root {
+  --app-bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border-subtle: #e2e8f0;
+  --shadow-panel: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+body {
+  background: var(--app-bg);
+  color: #172033;
+}
+
+.container {
+  max-width: 1480px;
+}
+
+.card,
+.table-wrapper,
+.stat-card,
+.metric-card {
+  border-radius: 8px !important;
+  border: 1px solid var(--border-subtle) !important;
+  box-shadow: var(--shadow-panel) !important;
+}
+
+.card {
+  padding: 20px;
+}
+
+.card:hover,
+.table-wrapper:hover {
+  box-shadow: var(--shadow-panel) !important;
+}
+
+.card-title {
+  font-size: 16px;
+  color: #111827;
+}
+
+.table thead {
+  background: #17345f;
+}
+
+.table th {
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 13px;
+}
+
+.table td {
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.btn {
+  min-height: 40px;
+  border-radius: 8px;
+  letter-spacing: 0;
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: 8px 12px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  min-height: 46px;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.badge {
+  min-height: 26px;
+}
+
+.navbar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03) !important;
+  backdrop-filter: blur(14px);
+}
+
+.nav-link {
+  color: #334155 !important;
+  border-radius: 8px !important;
+}
+
+.nav-link:hover {
+  background: #eef4ff !important;
+  color: #1d4ed8 !important;
+}
+
+.user-menu-button {
+  background: #f8fafc !important;
+  border-color: #dbe3ee !important;
+  border-radius: 8px !important;
+}
+
+.metric-card strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  body {
+    background: #f8fafc;
+  }
+
+  .container {
+    padding: 0 14px;
+  }
+
+  .card {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .navbar-container {
+    height: 58px !important;
+    padding: 0 14px !important;
+  }
+
+  .navbar-logo {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .navbar-menu {
+    top: 58px !important;
+  }
+
+  .navbar-title {
+    max-width: 170px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .table-wrapper {
+    overflow: visible;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent;
+  }
+
+  .responsive-table,
+  .responsive-table thead,
+  .responsive-table tbody,
+  .responsive-table tr,
+  .responsive-table th,
+  .responsive-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .responsive-table thead {
+    display: none;
+  }
+
+  .responsive-table tr {
+    background: white !important;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  }
+
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid #eef2f7;
+    text-align: right !important;
+  }
+
+  .responsive-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .responsive-table td::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .responsive-table td[colspan] {
+    display: block;
+    text-align: left !important;
+  }
+
+  .responsive-table td[colspan]::before {
+    content: none;
+  }
+
+  .btn {
+    width: auto;
+  }
+
+  .text-right .btn,
+  td.text-right .btn {
+    justify-content: center;
+  }
+}

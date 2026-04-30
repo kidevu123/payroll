@@ -1468,8 +1468,20 @@ def get_employee_name_from_rates(pay_rates, emp_id):
     else:
         return ""
 
+employee_names_cache = None
+employee_names_cache_time = None
+EMPLOYEE_NAMES_CACHE_TTL = 60
+
 def get_employee_names():
     """Extract employee names from uploaded CSV files (front-end display only)"""
+    global employee_names_cache, employee_names_cache_time
+    current_time = time.time()
+    if (
+        employee_names_cache is not None
+        and employee_names_cache_time is not None
+        and current_time - employee_names_cache_time < EMPLOYEE_NAMES_CACHE_TTL
+    ):
+        return employee_names_cache
     employee_names = {}
     try:
         # Get all CSV files from uploads folder
@@ -1499,8 +1511,35 @@ def get_employee_names():
                 continue  # Skip files that can't be read
     except Exception:
         pass
-    
+
+    employee_names_cache = employee_names
+    employee_names_cache_time = current_time
     return employee_names
+
+def resolve_employee_name(employee_id, pay_rates=None, employee_names=None, user_record=None, fallback=''):
+    """Resolve an employee name consistently across Pay Rates, Users, and CSV imports."""
+    emp_id = str(employee_id or '').strip()
+    if not emp_id:
+        return fallback
+    pay_rates = pay_rates if pay_rates is not None else load_pay_rates()
+    employee_names = employee_names if employee_names is not None else get_employee_names()
+
+    rate_data = pay_rates.get(emp_id)
+    if isinstance(rate_data, dict):
+        name = str(rate_data.get('name') or '').strip()
+        if name:
+            return name
+
+    name = str(employee_names.get(emp_id) or '').strip()
+    if name:
+        return name
+
+    if isinstance(user_record, dict):
+        name = str(user_record.get('name') or '').strip()
+        if name and name != emp_id:
+            return name
+
+    return fallback or f"Employee {emp_id}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2708,11 +2747,10 @@ def manage_rates():
         if isinstance(rate_data, dict):
             emp_rate = rate_data.get('rate', 15.0)
             emp_shift = rate_data.get('shift_type', 'day')
-            emp_name = rate_data.get('name', '') or employee_names.get(emp_id, 'Unknown')
         else:
             emp_rate = float(rate_data) if isinstance(rate_data, (int, float)) else 15.0
             emp_shift = 'day'
-            emp_name = employee_names.get(emp_id, 'Unknown')
+        emp_name = resolve_employee_name(emp_id, pay_rates, employee_names, fallback='Unknown')
         employees.append({
             'id': emp_id,
             'rate': emp_rate,
@@ -2789,7 +2827,7 @@ def manage_rates():
             </div>
             
             <div class="table-wrapper">
-                <table class="table">
+                <table class="table responsive-table">
                     <thead>
                         <tr>
                             <th>Employee ID</th>
@@ -2806,9 +2844,9 @@ def manage_rates():
         shift_badge_color = 'badge-warning' if emp['shift_type'] == 'night' else ('badge-info' if emp['shift_type'] == 'both' else 'badge-secondary')
         html += f"""
                         <tr id="row-{escape(emp['id'])}">
-                            <td><span class="badge badge-primary">{escape(emp['id'])}</span></td>
-                            <td><strong>{escape(emp['name'])}</strong></td>
-                            <td>
+                            <td data-label="Employee ID"><span class="badge badge-primary">{escape(emp['id'])}</span></td>
+                            <td data-label="Employee Name"><strong>{escape(emp['name'])}</strong></td>
+                            <td data-label="Shift Type">
                                 <span class="shift-display">
                                     <span class="badge {shift_badge_color}">{escape(emp['shift_type'].capitalize())}</span>
                                 </span>
@@ -2818,11 +2856,11 @@ def manage_rates():
                                     <option value="both" {'selected' if emp['shift_type'] == 'both' else ''}>Both</option>
                                 </select>
                             </td>
-                            <td class="text-right">
+                            <td data-label="Pay Rate" class="text-right">
                                 <span class="rate-display" style="color:var(--color-success);font-weight:var(--font-weight-semibold);font-size:var(--font-size-lg)">${emp['rate']}</span>
                                 <input type="number" class="rate-edit hidden form-input" step="0.01" value="{emp['rate']}" data-original-value="{emp['rate']}">
                             </td>
-                            <td class="text-right">
+                            <td data-label="Actions" class="text-right">
                                 <button data-action="edit" data-employee-id="{escape(emp['id'])}" class="edit-btn btn btn-primary btn-sm">
                                     <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
                                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
@@ -7653,6 +7691,9 @@ def employee_portal():
     username = session.get('username', 'Unknown')
     employee_id = current_employee_id()
     record = get_user_record() or {}
+    pay_rates = load_pay_rates()
+    employee_names = get_employee_names()
+    employee_name = resolve_employee_name(employee_id, pay_rates, employee_names, record, fallback=username)
     slips = list_employee_payslips(employee_id)
     requests_list = [r for r in load_time_off_requests() if str(r.get('employee_id')) == employee_id]
     requests_list.sort(key=lambda r: r.get('created_at', ''), reverse=True)
@@ -7661,6 +7702,12 @@ def employee_portal():
     menu_html = get_menu_html(username)
 
     slip_rows = ''
+    latest_pay = '$0.00'
+    latest_period = 'No payslip yet'
+    if slips:
+        latest = slips[0]
+        latest_pay = _money(latest.get('rounded_pay') or latest.get('total_pay'))
+        latest_period = latest.get('period') or 'Latest pay period'
     for slip in slips:
         created_raw = slip.get('created') or ''
         try:
@@ -7669,10 +7716,10 @@ def employee_portal():
             created_display = escape(str(created_raw))
         slip_rows += f"""
             <tr>
-                <td><strong>{escape(slip.get('period') or 'Pay period')}</strong></td>
-                <td>{created_display}</td>
-                <td class="text-right">{_money(slip.get('rounded_pay') or slip.get('total_pay'))}</td>
-                <td class="text-right"><a class="btn btn-primary btn-sm" href="/employee/payslip/{escape(slip['filename'])}">View</a></td>
+                <td data-label="Period"><strong>{escape(slip.get('period') or 'Pay period')}</strong></td>
+                <td data-label="Created">{created_display}</td>
+                <td data-label="Pay" class="text-right">{_money(slip.get('rounded_pay') or slip.get('total_pay'))}</td>
+                <td data-label="Actions" class="text-right"><a class="btn btn-primary btn-sm" href="/employee/payslip/{escape(slip['filename'])}">View</a></td>
             </tr>
         """
     if not slip_rows:
@@ -7682,9 +7729,9 @@ def employee_portal():
     for req in requests_list[:12]:
         request_rows += f"""
             <tr>
-                <td>{escape(req.get('start_date', ''))} to {escape(req.get('end_date', ''))}</td>
-                <td>{escape(req.get('type', 'Time off'))}</td>
-                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+                <td data-label="Dates">{escape(req.get('start_date', ''))} to {escape(req.get('end_date', ''))}</td>
+                <td data-label="Type">{escape(req.get('type', 'Time off'))}</td>
+                <td data-label="Status"><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
             </tr>
         """
     if not request_rows:
@@ -7694,14 +7741,17 @@ def employee_portal():
     for req in punch_requests[:12]:
         punch_rows += f"""
             <tr>
-                <td>{escape(req.get('date', ''))}</td>
-                <td>{escape(req.get('clock_in') or '-')}</td>
-                <td>{escape(req.get('clock_out') or '-')}</td>
-                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+                <td data-label="Date">{escape(req.get('date', ''))}</td>
+                <td data-label="Clock In">{escape(req.get('clock_in') or '-')}</td>
+                <td data-label="Clock Out">{escape(req.get('clock_out') or '-')}</td>
+                <td data-label="Status"><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
             </tr>
         """
     if not punch_rows:
         punch_rows = '<tr><td colspan="4" style="color:var(--color-gray-500)">No punch corrections yet.</td></tr>'
+
+    pending_time_off_count = sum(1 for req in requests_list if str(req.get('status', 'pending')).lower() == 'pending')
+    pending_punch_count = sum(1 for req in punch_requests if str(req.get('status', 'pending')).lower() == 'pending')
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -7715,51 +7765,92 @@ def employee_portal():
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {{ background:#f0f4f8; }}
-        .portal-hero {{ background:linear-gradient(135deg,#0f172a 0%,#1e40af 70%,#3b82f6 100%); padding:42px 0 34px; margin-bottom:32px; }}
-        .portal-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
-        .portal-hero p {{ color:rgba(255,255,255,.82); font-size:15px; margin:0; }}
-        .portal-grid {{ display:grid; grid-template-columns:1.25fr .85fr; gap:24px; align-items:start; }}
-        @media (max-width: 960px) {{ .portal-grid {{ grid-template-columns:1fr; }} }}
+        body {{ background:#f6f8fb; }}
+        .portal-hero {{ background:#ffffff; border-bottom:1px solid #e2e8f0; padding:28px 0; margin-bottom:24px; }}
+        .portal-hero-inner {{ display:flex; justify-content:space-between; gap:20px; align-items:flex-end; }}
+        .portal-hero h1 {{ color:#111827; font-size:30px; font-weight:800; margin:0 0 6px; }}
+        .portal-hero p {{ color:#64748b; font-size:15px; margin:0; }}
+        .portal-actions {{ display:flex; gap:10px; flex-wrap:wrap; }}
+        .portal-grid {{ display:grid; grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr); gap:20px; align-items:start; }}
+        .portal-stack {{ display:grid; gap:20px; }}
+        .metric-strip {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:20px; }}
+        .metric-card {{ background:white; border:1px solid #e2e8f0; border-radius:8px; padding:16px; box-shadow:0 8px 24px rgba(15,23,42,.05); }}
+        .metric-card span {{ display:block; color:#64748b; font-size:12px; font-weight:700; text-transform:uppercase; }}
+        .metric-card strong {{ display:block; color:#111827; font-size:20px; margin-top:4px; }}
+        .form-row {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
+        @media (max-width: 960px) {{
+            .portal-grid, .metric-strip {{ grid-template-columns:1fr; }}
+            .portal-hero-inner {{ align-items:flex-start; flex-direction:column; }}
+        }}
+        @media (max-width: 560px) {{
+            .portal-hero {{ padding:20px 0; }}
+            .portal-hero h1 {{ font-size:24px; }}
+            .portal-actions .btn {{ width:100%; }}
+            .form-row {{ grid-template-columns:1fr; }}
+        }}
     </style>
 </head>
 <body>
     {menu_html}
-    <div class="portal-hero"><div class="container"><h1>Employee Portal</h1><p>{escape(record.get('name') or username)} · Employee ID {escape(employee_id or 'not assigned')}</p></div></div>
+    <div class="portal-hero">
+        <div class="container portal-hero-inner">
+            <div>
+                <h1>Welcome, {escape(employee_name.split()[0] if employee_name else username)}</h1>
+                <p>{escape(employee_name)} · Employee ID {escape(employee_id or 'not assigned')}</p>
+            </div>
+            <div class="portal-actions">
+                <a class="btn btn-secondary" href="#time-off-form">Request Time Off</a>
+                <a class="btn btn-primary" href="#punch-form">Add Missing Punch</a>
+            </div>
+        </div>
+    </div>
     <div class="container">
+        <div class="metric-strip">
+            <div class="metric-card"><span>Latest Pay</span><strong>{latest_pay}</strong><div class="text-sm text-gray-600">{escape(latest_period)}</div></div>
+            <div class="metric-card"><span>Time Off</span><strong>{pending_time_off_count} pending</strong><div class="text-sm text-gray-600">{len(requests_list)} total request{'s' if len(requests_list) != 1 else ''}</div></div>
+            <div class="metric-card"><span>Punch Fixes</span><strong>{pending_punch_count} pending</strong><div class="text-sm text-gray-600">{len(punch_requests)} total correction{'s' if len(punch_requests) != 1 else ''}</div></div>
+        </div>
         <div class="portal-grid">
-            <div class="card">
-                <div class="card-header"><h2 class="card-title">My Payslips</h2></div>
-                <div class="table-wrapper"><table class="table"><thead><tr><th>Period</th><th>Created</th><th class="text-right">Pay</th><th class="text-right">Actions</th></tr></thead><tbody>{slip_rows}</tbody></table></div>
+            <div class="portal-stack">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">My Payslips</h2></div>
+                    <div class="table-wrapper"><table class="table responsive-table"><thead><tr><th>Period</th><th>Created</th><th class="text-right">Pay</th><th class="text-right">Actions</th></tr></thead><tbody>{slip_rows}</tbody></table></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">My Time Off Requests</h2></div>
+                    <div class="table-wrapper"><table class="table responsive-table"><thead><tr><th>Dates</th><th>Type</th><th>Status</th></tr></thead><tbody>{request_rows}</tbody></table></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">My Punch Corrections</h2></div>
+                    <div class="table-wrapper"><table class="table responsive-table"><thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Status</th></tr></thead><tbody>{punch_rows}</tbody></table></div>
+                </div>
             </div>
-            <div class="card">
-                <div class="card-header"><h2 class="card-title">Request Time Off</h2></div>
-                <form method="post" action="/employee/time_off">
-                    <div class="form-group"><label class="form-label form-label-required" for="start_date">Start Date</label><input class="form-input" id="start_date" name="start_date" type="date" required></div>
-                    <div class="form-group"><label class="form-label form-label-required" for="end_date">End Date</label><input class="form-input" id="end_date" name="end_date" type="date" required></div>
-                    <div class="form-group"><label class="form-label" for="type">Type</label><select class="form-select" id="type" name="type"><option>Vacation</option><option>Sick</option><option>Personal</option><option>Unpaid</option></select></div>
-                    <div class="form-group"><label class="form-label" for="note">Note</label><textarea class="form-textarea" id="note" name="note" rows="4" maxlength="500"></textarea></div>
-                    <button class="btn btn-primary" type="submit">Submit Request</button>
-                </form>
+            <div class="portal-stack">
+                <div class="card" id="time-off-form">
+                    <div class="card-header"><h2 class="card-title">Request Time Off</h2></div>
+                    <form method="post" action="/employee/time_off">
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label form-label-required" for="start_date">Start Date</label><input class="form-input" id="start_date" name="start_date" type="date" required></div>
+                            <div class="form-group"><label class="form-label form-label-required" for="end_date">End Date</label><input class="form-input" id="end_date" name="end_date" type="date" required></div>
+                        </div>
+                        <div class="form-group"><label class="form-label" for="type">Type</label><select class="form-select" id="type" name="type"><option>Vacation</option><option>Sick</option><option>Personal</option><option>Unpaid</option></select></div>
+                        <div class="form-group"><label class="form-label" for="note">Note</label><textarea class="form-textarea" id="note" name="note" rows="4" maxlength="500"></textarea></div>
+                        <button class="btn btn-primary" type="submit">Submit Request</button>
+                    </form>
+                </div>
+                <div class="card" id="punch-form">
+                    <div class="card-header"><h2 class="card-title">Add Missing Punch</h2></div>
+                    <form method="post" action="/employee/punch">
+                        <div class="form-group"><label class="form-label form-label-required" for="punch_date">Date</label><input class="form-input" id="punch_date" name="date" type="date" required></div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label" for="clock_in">Clock In</label><input class="form-input" id="clock_in" name="clock_in" type="time" step="1"></div>
+                            <div class="form-group"><label class="form-label" for="clock_out">Clock Out</label><input class="form-input" id="clock_out" name="clock_out" type="time" step="1"></div>
+                        </div>
+                        <div class="form-group"><label class="form-label" for="punch_note">Note</label><textarea class="form-textarea" id="punch_note" name="note" rows="3" maxlength="500"></textarea></div>
+                        <button class="btn btn-primary" type="submit">Submit Punch</button>
+                    </form>
+                </div>
             </div>
-            <div class="card">
-                <div class="card-header"><h2 class="card-title">Add Missing Punch</h2></div>
-                <form method="post" action="/employee/punch">
-                    <div class="form-group"><label class="form-label form-label-required" for="punch_date">Date</label><input class="form-input" id="punch_date" name="date" type="date" required></div>
-                    <div class="form-group"><label class="form-label" for="clock_in">Clock In</label><input class="form-input" id="clock_in" name="clock_in" type="time" step="1"></div>
-                    <div class="form-group"><label class="form-label" for="clock_out">Clock Out</label><input class="form-input" id="clock_out" name="clock_out" type="time" step="1"></div>
-                    <div class="form-group"><label class="form-label" for="punch_note">Note</label><textarea class="form-textarea" id="punch_note" name="note" rows="3" maxlength="500"></textarea></div>
-                    <button class="btn btn-primary" type="submit">Submit Punch</button>
-                </form>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header"><h2 class="card-title">My Time Off Requests</h2></div>
-            <div class="table-wrapper"><table class="table"><thead><tr><th>Dates</th><th>Type</th><th>Status</th></tr></thead><tbody>{request_rows}</tbody></table></div>
-        </div>
-        <div class="card">
-            <div class="card-header"><h2 class="card-title">My Punch Corrections</h2></div>
-            <div class="table-wrapper"><table class="table"><thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Status</th></tr></thead><tbody>{punch_rows}</tbody></table></div>
         </div>
     </div>
 </body>
@@ -7803,7 +7894,7 @@ def employee_request_time_off():
         'id': secrets.token_urlsafe(12),
         'username': session.get('username'),
         'employee_id': current_employee_id(),
-        'employee_name': rec.get('name') or session.get('username'),
+        'employee_name': resolve_employee_name(current_employee_id(), user_record=rec, fallback=session.get('username')),
         'start_date': start_date,
         'end_date': end_date,
         'type': request.form.get('type', 'Vacation').strip()[:40],
@@ -7837,7 +7928,7 @@ def employee_request_punch():
         'id': secrets.token_urlsafe(12),
         'username': session.get('username'),
         'employee_id': current_employee_id(),
-        'employee_name': rec.get('name') or session.get('username'),
+        'employee_name': resolve_employee_name(current_employee_id(), user_record=rec, fallback=session.get('username')),
         'date': punch_date,
         'clock_in': clock_in,
         'clock_out': clock_out,
@@ -8626,6 +8717,9 @@ def manage_users():
     menu_html = get_menu_html(username)
     users = load_users()
     pay_rates = load_pay_rates()
+    employee_names = get_employee_names()
+    employee_account_count = sum(1 for record in users.values() if isinstance(record, dict) and record.get('role') == 'employee')
+    staff_account_count = sum(1 for record in users.values() if isinstance(record, dict) and record.get('role') != 'employee')
     flash_html = ''
     for category, message in get_flashed_messages(with_categories=True):
         alert_class = 'alert-success' if category == 'success' else 'alert-danger' if category == 'error' else 'alert-info'
@@ -8645,25 +8739,44 @@ def manage_users():
     <style>
         body {{ background: #f0f4f8; }}
         .users-hero {{
-            background: linear-gradient(135deg, #0f172a 0%, #1e40af 70%, #3b82f6 100%);
-            padding: 42px 0 34px; margin-bottom: 32px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 30px 0 24px; margin-bottom: 24px;
         }}
-        .users-hero h1 {{ color:white; font-size:28px; font-weight:800; margin-bottom:6px; }}
-        .users-hero p  {{ color:rgba(255,255,255,0.82); font-size:15px; margin:0; }}
+        .users-hero h1 {{ color:#111827; font-size:30px; font-weight:800; margin-bottom:6px; }}
+        .users-hero p  {{ color:#64748b; font-size:15px; margin:0; }}
+        .users-hero-inner {{ display:flex; justify-content:space-between; gap:20px; align-items:flex-end; }}
+        .users-stat-grid {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:20px; }}
+        .compact-form {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:start; }}
+        .compact-form .full-span {{ grid-column:1 / -1; }}
+        @media (max-width: 760px) {{
+            .users-hero-inner, .compact-form {{ grid-template-columns:1fr; flex-direction:column; align-items:flex-start; }}
+            .users-stat-grid {{ grid-template-columns:1fr; }}
+        }}
     </style>
 </head>
 <body>
     {menu_html}
     
     <div class="users-hero">
-        <div class="container">
-            <h1>Manage Users</h1>
-            <p>Add and remove system users</p>
+        <div class="container users-hero-inner">
+            <div>
+                <h1>Team Access</h1>
+                <p>Payroll staff and employee self-service accounts, backed by Pay Rates names.</p>
+            </div>
+            <form method="post" action="/bulk_create_employee_users" onsubmit="return confirm('Create missing employee portal accounts from Pay Rates?');">
+                <button type="submit" class="btn btn-primary">Create Missing Employee Accounts</button>
+            </form>
         </div>
     </div>
     
     <div class="container">
         {flash_html}
+        <div class="users-stat-grid">
+            <div class="metric-card"><span>Employees</span><strong>{len(pay_rates)}</strong><div class="text-sm text-gray-600">From Pay Rates</div></div>
+            <div class="metric-card"><span>Portal Accounts</span><strong>{employee_account_count}</strong><div class="text-sm text-gray-600">Employee logins</div></div>
+            <div class="metric-card"><span>Payroll Users</span><strong>{staff_account_count}</strong><div class="text-sm text-gray-600">Admin and staff</div></div>
+        </div>
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">
@@ -8675,7 +8788,7 @@ def manage_users():
             </div>
             
             <div class="table-wrapper">
-                <table class="table">
+                <table class="table responsive-table">
                     <thead>
                         <tr>
                             <th>Username</th>
@@ -8694,18 +8807,18 @@ def manage_users():
         if role == 'employee':
             continue
         employee_id = (record or {}).get('employee_id', '')
-        display_name = (record or {}).get('name') or get_employee_name_from_rates(pay_rates, employee_id) or ''
+        display_name = resolve_employee_name(employee_id, pay_rates, employee_names, record, fallback=(record or {}).get('name') or user)
         if is_admin_user:
             html += f"""
                         <tr>
-                            <td>
+                            <td data-label="Username">
                                 <strong>{escape(user)}</strong>
                                 <span class="badge badge-primary" style="margin-left:var(--spacing-2)">Admin</span>
                             </td>
-                            <td>{escape(display_name)}</td>
-                            <td>{escape(role.title())}</td>
-                            <td>{escape(employee_id)}</td>
-                            <td class="text-right">
+                            <td data-label="Name">{escape(display_name)}</td>
+                            <td data-label="Role">{escape(role.title())}</td>
+                            <td data-label="Employee ID">{escape(employee_id)}</td>
+                            <td data-label="Actions" class="text-right">
                                 <span style="color:var(--color-gray-500);font-size:var(--font-size-sm);font-style:italic">Cannot delete admin</span>
                             </td>
                         </tr>
@@ -8713,11 +8826,11 @@ def manage_users():
         else:
             html += f"""
                         <tr>
-                            <td><strong>{escape(user)}</strong></td>
-                            <td>{escape(display_name)}</td>
-                            <td>{escape(role.title())}</td>
-                            <td>{escape(employee_id)}</td>
-                            <td class="text-right">
+                            <td data-label="Username"><strong>{escape(user)}</strong></td>
+                            <td data-label="Name">{escape(display_name)}</td>
+                            <td data-label="Role">{escape(role.title())}</td>
+                            <td data-label="Employee ID">{escape(employee_id)}</td>
+                            <td data-label="Actions" class="text-right">
                                 <form method="post" action="/delete_user/{escape(user)}" style="display:inline;" onsubmit="return confirm('Delete user {escape(user)}?');">
                                     <button type="submit" class="btn btn-danger btn-sm">
                                         <svg style="width:16px;height:16px" fill="currentColor" viewBox="0 0 20 20">
@@ -8734,7 +8847,7 @@ def manage_users():
         emp_id = str(emp_id or '').strip()
         if not emp_id:
             continue
-        name = str((rate_data or {}).get('name') or '').strip() if isinstance(rate_data, dict) else ''
+        name = resolve_employee_name(emp_id, pay_rates, employee_names)
         portal_user = employee_portal_username(emp_id)
         has_account = any(
             isinstance(record, dict)
@@ -8745,10 +8858,10 @@ def manage_users():
         status = '<span class="badge badge-success">Active</span>' if has_account else '<span class="badge badge-warning">Missing</span>'
         employee_rows += f"""
                         <tr>
-                            <td><strong>{escape(emp_id)}</strong></td>
-                            <td>{escape(name)}</td>
-                            <td>{escape(portal_user)}</td>
-                            <td>{status}</td>
+                            <td data-label="Employee ID"><span class="badge badge-primary">{escape(emp_id)}</span></td>
+                            <td data-label="Name"><strong>{escape(name)}</strong></td>
+                            <td data-label="Username">{escape(portal_user)}</td>
+                            <td data-label="Status">{status}</td>
                         </tr>
 """
     if not employee_rows:
@@ -8772,11 +8885,8 @@ def manage_users():
             <p style="color:var(--color-gray-600);font-size:var(--font-size-sm);margin-bottom:var(--spacing-3)">
                 Employees are shown from Pay Rates. Username is the Employee ID. Default password is <strong>""" + DEFAULT_EMPLOYEE_PORTAL_PASSWORD + """</strong>.
             </p>
-            <form method="post" action="/bulk_create_employee_users" onsubmit="return confirm('Create missing employee portal accounts from Pay Rates?');">
-                <button type="submit" class="btn btn-primary">Create Missing Employee Accounts</button>
-            </form>
             <div class="table-wrapper" style="margin-top:var(--spacing-4)">
-                <table class="table">
+                <table class="table responsive-table">
                     <thead>
                         <tr>
                             <th>Employee ID</th>
@@ -8878,7 +8988,7 @@ def add_user():
     users[username] = {
         'password': hash_password(password),
         'role': role,
-        'name': username,
+        'name': resolve_employee_name(employee_id, fallback=username) if role == 'employee' else username,
         'employee_id': employee_id if role == 'employee' else employee_id,
     }
     save_users(users)
@@ -8895,10 +9005,12 @@ def bulk_create_employee_users():
 
     users = load_users()
     pay_rates = load_pay_rates()
+    employee_names = get_employee_names()
     created = 0
     skipped_existing = 0
     skipped_invalid = 0
     skipped_conflict = 0
+    updated_names = 0
     default_hash = hash_password(DEFAULT_EMPLOYEE_PORTAL_PASSWORD)
 
     existing_employee_ids = {
@@ -8922,21 +9034,32 @@ def bulk_create_employee_users():
         if username in users:
             skipped_conflict += 1
             continue
-        name = ''
-        if isinstance(rate_data, dict):
-            name = str(rate_data.get('name') or '').strip()
+        name = resolve_employee_name(employee_id, pay_rates, employee_names, fallback=username)
         users[username] = {
             'password': default_hash,
             'role': 'employee',
-            'name': name or username,
+            'name': name,
             'employee_id': employee_id,
         }
         existing_employee_ids.add(employee_id)
         created += 1
 
-    if created:
+    for record in users.values():
+        if not isinstance(record, dict) or record.get('role') != 'employee':
+            continue
+        employee_id = str(record.get('employee_id') or '').strip()
+        if not employee_id:
+            continue
+        resolved_name = resolve_employee_name(employee_id, pay_rates, employee_names, record, fallback=record.get('name') or employee_portal_username(employee_id))
+        if resolved_name and record.get('name') != resolved_name:
+            record['name'] = resolved_name
+            updated_names += 1
+
+    if created or updated_names:
         save_users(users)
     parts = [f"Created {created} employee portal account{'s' if created != 1 else ''}"]
+    if updated_names:
+        parts.append(f"updated {updated_names} name{'s' if updated_names != 1 else ''}")
     if skipped_existing:
         parts.append(f"skipped {skipped_existing} existing")
     if skipped_conflict:

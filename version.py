@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.21"
-__version_name__ = "v9.5.21 — Employee portal polish + punch requests"
-__release_date__ = "2026-04-29"
+__version__ = "9.5.22"
+__version_name__ = "v9.5.22 — Employee name sync + responsive self-service UI"
+__release_date__ = "2026-04-30"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.22",
+        "date": "2026-04-30",
+        "changes": [
+            "Employee names now resolve consistently from Pay Rates and recent NGTeco CSV data across Manage Users and the employee portal.",
+            "Bulk employee account creation also updates existing employee account names instead of leaving numeric usernames as display names.",
+            "Refreshed employee portal, Team Access, app cards, tables, forms, and mobile layouts for cleaner self-service use."
+        ]
+    },
     {
         "version": "9.5.21",
         "date": "2026-04-29",
