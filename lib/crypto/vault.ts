@@ -5,7 +5,7 @@
 // VAULT_KEY_PRIMARY + VAULT_KEY_SECONDARY in a future revision and decrypt
 // against either; for now, single key is fine.
 
-import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
+import { randomBytes, createCipheriv, createDecipheriv } from "crypto";
 
 export type SealedSecret = { ciphertext: string; iv: string };
 

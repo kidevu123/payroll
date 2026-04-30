@@ -1,0 +1,24 @@
+{
+  "$comment": "Selector config for the NGTeco Playwright scraper. Reloaded fresh on each run so the operator can edit on the LXC without redeploying. Prefer text/role/data-test attributes over CSS classes — class names change, semantics don't.",
+  "login": {
+    "url": "/login",
+    "username": "input[name='username'], input[type='email']",
+    "password": "input[name='password'], input[type='password']",
+    "submit": "button[type='submit']",
+    "loggedInLandmark": "nav, [role='navigation']"
+  },
+  "navigation": {
+    "reportsLink": "text=/Reports?/i",
+    "punchReportLink": "text=/Punch.*Report/i"
+  },
+  "report": {
+    "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
+    "toDate": "input[name='toDate'], input[type='date']:nth-of-type(2)",
+    "applyButton": "button:has-text(/Apply|Search|Run/i)",
+    "exportCsvButton": "button:has-text(/Export.*CSV/i), a:has-text(/Export.*CSV/i)"
+  },
+  "challenge": {
+    "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",
+    "captchaLandmark": "iframe[src*='captcha'], [data-captcha]"
+  }
+}
