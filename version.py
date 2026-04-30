@@ -3,11 +3,20 @@ Payroll Management System - Version Management
 Centralized version tracking for the payroll application
 """
 
-__version__ = "9.5.20"
-__version_name__ = "v9.5.20 — Bulk employee portal accounts"
+__version__ = "9.5.21"
+__version_name__ = "v9.5.21 — Employee portal polish + punch requests"
 __release_date__ = "2026-04-29"
 
 VERSION_HISTORY = [
+    {
+        "version": "9.5.21",
+        "date": "2026-04-29",
+        "changes": [
+            "Manage Users: employee portal list is sourced from Pay Rates with names and account status.",
+            "Employee portal: lightweight payslip index avoids expensive workbook scans on login.",
+            "Employee punch corrections: employees can submit missing punches; approved punches merge into payroll CSV processing."
+        ]
+    },
     {
         "version": "9.5.20",
         "date": "2026-04-29",

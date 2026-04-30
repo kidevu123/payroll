@@ -120,6 +120,7 @@ CONFIG_FILE = 'pay_rates.json'
 TEMP_WORKERS_FILE = 'temp_workers.json'
 USERS_FILE = 'users.json'
 TIME_OFF_REQUESTS_FILE = 'time_off_requests.json'
+PUNCH_REQUESTS_FILE = 'punch_requests.json'
 DATABASE = 'payroll.db'
 PAY_RATES_FILE = 'pay_rates.csv'
 MISSING_TIMES_FILE = 'missing_times.csv'
@@ -134,6 +135,7 @@ pay_rates_cache_time = None
 PAY_RATES_CACHE_TTL = 300  # Cache for 5 minutes
 
 REPORTS_METADATA_FILE = os.path.join(REPORT_FOLDER, 'reports_metadata.json')
+EMPLOYEE_PAYSLIP_INDEX_FILE = os.path.join(REPORT_FOLDER, 'employee_payslip_index.json')
 REPORTS_LIST_LIMIT = int(os.getenv('REPORTS_LIST_LIMIT', '24'))
 
 def _load_reports_metadata() -> dict:
@@ -852,6 +854,9 @@ Path(FETCH_JOBS_FOLDER).mkdir(parents=True, exist_ok=True)
 DEFAULT_USERNAME = 'admin'
 DEFAULT_PASSWORD = 'password'
 DEFAULT_EMPLOYEE_PORTAL_PASSWORD = 'payroll123'
+users_cache = None
+users_cache_time = None
+USERS_CACHE_TTL = 30
 
 def _normalize_user_record(username, value):
     """Return a consistent user record while preserving legacy users.json formats."""
@@ -875,11 +880,21 @@ def _normalize_user_record(username, value):
 
 def load_users():
     """Load users from JSON file with error handling"""
+    global users_cache, users_cache_time
+    current_time = time.time()
+    if (
+        users_cache is not None
+        and users_cache_time is not None
+        and current_time - users_cache_time < USERS_CACHE_TTL
+    ):
+        return users_cache
     try:
         with open(USERS_FILE, 'r') as f:
             users = json.load(f)
             normalized = {u: _normalize_user_record(u, v) for u, v in users.items()}
             app.logger.info(f"Successfully loaded {len(normalized)} users")
+            users_cache = normalized
+            users_cache_time = current_time
             return normalized
     except FileNotFoundError:
         # Create default user if no users file exists
@@ -899,6 +914,7 @@ def load_users():
 
 def save_users(users):
     """Save users to JSON file with error handling"""
+    global users_cache, users_cache_time
     try:
         # Create backup before saving
         if os.path.exists(USERS_FILE):
@@ -909,6 +925,8 @@ def save_users(users):
         with open(USERS_FILE, 'w') as f:
             json.dump(users, f, indent=2)
         app.logger.info(f"Successfully saved {len(users)} users")
+        users_cache = {u: _normalize_user_record(u, v) for u, v in users.items()}
+        users_cache_time = time.time()
     except IOError as e:
         app.logger.error(f"Failed to save users: {e}")
         raise RuntimeError(f"Could not save users: {str(e)}")
@@ -1062,6 +1080,7 @@ EMPLOYEE_ALLOWED_ENDPOINTS = {
     'employee_portal',
     'employee_payslip_detail',
     'employee_request_time_off',
+    'employee_request_punch',
     'change_password',
     'logout',
     'static',
@@ -1211,6 +1230,108 @@ def save_temp_workers(data):
     except Exception as _e:
         app.logger.error(f"save_temp_workers: {_e}")
         raise RuntimeError(f"Could not save temp workers: {_e}")
+
+
+def _load_json_list(path):
+    try:
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception as e:
+        app.logger.warning(f"Could not load {path}: {e}")
+    return []
+
+
+def _save_json_list(path, rows):
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(rows, f, indent=2)
+    os.replace(tmp, path)
+
+
+def load_punch_requests():
+    return _load_json_list(PUNCH_REQUESTS_FILE)
+
+
+def save_punch_requests(rows):
+    _save_json_list(PUNCH_REQUESTS_FILE, rows)
+
+
+def _parse_time_value(value):
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    for fmt in ('%H:%M:%S', '%H:%M'):
+        try:
+            return datetime.strptime(raw, fmt).strftime('%H:%M:%S')
+        except ValueError:
+            continue
+    return ''
+
+
+def _normalize_date_value(value):
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    for fmt in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
+        try:
+            return datetime.strptime(raw.split()[0], fmt).strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    try:
+        return pd.to_datetime(raw).strftime('%Y-%m-%d')
+    except Exception:
+        return raw
+
+
+def apply_approved_punch_requests(df):
+    """Merge approved employee punch corrections into a timesheet dataframe."""
+    requests_list = [
+        r for r in load_punch_requests()
+        if r.get('status') == 'approved'
+    ]
+    if not requests_list or df is None or df.empty:
+        return df
+    if 'Date' not in df.columns or 'Person ID' not in df.columns:
+        return df
+
+    df = df.copy()
+    pay_rates = load_pay_rates()
+    df['_norm_date_for_punch'] = df['Date'].apply(_normalize_date_value)
+    df['_person_id_for_punch'] = df['Person ID'].astype(str).str.strip()
+
+    for req in requests_list:
+        emp_id = str(req.get('employee_id') or '').strip()
+        req_date = _normalize_date_value(req.get('date'))
+        clock_in = _parse_time_value(req.get('clock_in'))
+        clock_out = _parse_time_value(req.get('clock_out'))
+        if not emp_id or not req_date or (not clock_in and not clock_out):
+            continue
+        matches = (df['_person_id_for_punch'] == emp_id) & (df['_norm_date_for_punch'] == req_date)
+        if matches.any():
+            idx = df[matches].index[0]
+            if clock_in:
+                df.at[idx, 'Clock In'] = clock_in
+            if clock_out:
+                df.at[idx, 'Clock Out'] = clock_out
+        else:
+            name = get_employee_name_from_rates(pay_rates, emp_id) or req.get('employee_name') or ''
+            parts = str(name).split(None, 1)
+            row = {col: '' for col in df.columns if not col.startswith('_')}
+            row.update({
+                'Person ID': emp_id,
+                'First Name': parts[0] if parts else '',
+                'Last Name': parts[1] if len(parts) > 1 else '',
+                'Date': req_date,
+                'Timesheet': 'Employee Punch Request',
+                'Clock In': clock_in,
+                'Clock Out': clock_out,
+            })
+            df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+
+    df = df.drop(columns=[c for c in ('_norm_date_for_punch', '_person_id_for_punch') if c in df.columns])
+    return df
 
 
 def _ensure_temp_worker(data, first_name, last_name, rate):
@@ -4806,6 +4927,8 @@ def validate():
 
         # Inject any temp worker entries for this date range (non-destructive if none)
         df = inject_temp_entries(df, file_path)
+        df = apply_approved_punch_requests(df)
+        df.to_csv(file_path, index=False)
 
         # Check if this looks like a timesheet
         is_timesheet = all(col in df.columns for col in
@@ -5031,6 +5154,8 @@ def validate_uploaded():
 
         df = pd.read_csv(file_path)
         df = inject_temp_entries(df, file_path)
+        df = apply_approved_punch_requests(df)
+        df.to_csv(file_path, index=False)
 
         is_timesheet = all(
             col in df.columns
@@ -5113,6 +5238,7 @@ def process_ignore():
 
                 payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
                 payslip_path = create_consolidated_payslips(df, payslip_filename, username)
+                update_employee_payslip_index_from_df(df, payslip_filename)
                 reports['payslips_sheet'] = payslip_filename
 
             # Store the reports in session
@@ -5285,6 +5411,8 @@ def process():
             try:
                 # Read the CSV file
                 df = pd.read_csv(file_path)
+                df = apply_approved_punch_requests(df)
+                df.to_csv(file_path, index=False)
 
                 # Check if this looks like a timesheet (has Person ID, Date, etc.)
                 is_timesheet = all(col in df.columns for col in
@@ -5348,6 +5476,7 @@ def process():
 
                     payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
                     payslip_path = create_consolidated_payslips(df, payslip_filename, username)
+                    update_employee_payslip_index_from_df(df, payslip_filename)
                     reports['payslips_sheet'] = payslip_filename
 
                 # Store the reports in session
@@ -7367,6 +7496,71 @@ def _safe_report_filename(filename):
         return ''
     return filename
 
+def load_employee_payslip_index():
+    try:
+        if os.path.exists(EMPLOYEE_PAYSLIP_INDEX_FILE):
+            with open(EMPLOYEE_PAYSLIP_INDEX_FILE, 'r') as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception as e:
+        app.logger.warning(f"Could not load employee payslip index: {e}")
+    return {}
+
+def save_employee_payslip_index(index):
+    try:
+        tmp = EMPLOYEE_PAYSLIP_INDEX_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump(index, f, indent=2)
+        os.replace(tmp, EMPLOYEE_PAYSLIP_INDEX_FILE)
+    except Exception as e:
+        app.logger.warning(f"Could not save employee payslip index: {e}")
+
+def update_employee_payslip_index_from_df(df, filename):
+    """Record one lightweight payslip summary per employee without duplicating workbook data."""
+    try:
+        filename = _safe_report_filename(filename)
+        if not filename or df is None or df.empty:
+            return
+        required = {'Person ID', 'First Name', 'Last Name', 'Date'}
+        if not required.issubset(set(df.columns)):
+            return
+        pay_rates = load_pay_rates()
+        work = df.copy()
+        work['Daily Hours'] = work.apply(compute_daily_hours, axis=1)
+        work['Hourly Rate'] = work['Person ID'].astype(str).apply(lambda emp_id: get_employee_rate(pay_rates, emp_id))
+        work['Daily Pay'] = (work['Daily Hours'] * work['Hourly Rate']).round(2)
+        totals = work.groupby('Person ID').agg(
+            Total_Hours=('Daily Hours', 'sum'),
+            Weekly_Total=('Daily Pay', 'sum'),
+            First_Name=('First Name', 'first'),
+            Last_Name=('Last Name', 'first'),
+        ).reset_index()
+        totals = totals[totals['Total_Hours'] > 0]
+        if totals.empty:
+            return
+        date_range = _date_range_for_report_header(work)
+        index = load_employee_payslip_index()
+        created = datetime.now().isoformat(timespec='seconds')
+        for _, row in totals.iterrows():
+            emp_id = str(row['Person ID']).strip()
+            if not emp_id:
+                continue
+            entry = {
+                'filename': filename,
+                'period': date_range,
+                'created': created,
+                'name': f"{row['First_Name']} {row['Last_Name']}".strip(),
+                'total_hours': round(float(row['Total_Hours']), 2),
+                'total_pay': round(float(row['Weekly_Total']), 2),
+                'rounded_pay': round(float(row['Weekly_Total'])),
+            }
+            existing = [e for e in index.get(emp_id, []) if e.get('filename') != filename]
+            existing.insert(0, entry)
+            index[emp_id] = existing[:REPORTS_LIST_LIMIT]
+        save_employee_payslip_index(index)
+    except Exception as e:
+        app.logger.warning(f"Could not update employee payslip index: {e}")
+
 def extract_employee_payslip(filename, employee_id):
     """Read one employee's payslip from a generated cuttable payslips workbook."""
     filename = _safe_report_filename(filename)
@@ -7443,20 +7637,7 @@ def extract_employee_payslip(filename, employee_id):
     return None
 
 def list_employee_payslips(employee_id):
-    slips = []
-    try:
-        files = []
-        for filename in os.listdir(REPORT_FOLDER):
-            if filename.startswith('payslips_for_cutting_') and filename.endswith('.xlsx'):
-                files.append((filename, os.path.getmtime(os.path.join(REPORT_FOLDER, filename))))
-        files.sort(key=lambda x: x[1], reverse=True)
-        for filename, _mtime in files[:REPORTS_LIST_LIMIT]:
-            slip = extract_employee_payslip(filename, employee_id)
-            if slip:
-                slips.append(slip)
-    except Exception as e:
-        app.logger.error(f"Could not list employee payslips: {e}")
-    return slips
+    return load_employee_payslip_index().get(str(employee_id or '').strip(), [])[:REPORTS_LIST_LIMIT]
 
 def _money(value):
     try:
@@ -7475,15 +7656,22 @@ def employee_portal():
     slips = list_employee_payslips(employee_id)
     requests_list = [r for r in load_time_off_requests() if str(r.get('employee_id')) == employee_id]
     requests_list.sort(key=lambda r: r.get('created_at', ''), reverse=True)
+    punch_requests = [r for r in load_punch_requests() if str(r.get('employee_id')) == employee_id]
+    punch_requests.sort(key=lambda r: r.get('created_at', ''), reverse=True)
     menu_html = get_menu_html(username)
 
     slip_rows = ''
     for slip in slips:
+        created_raw = slip.get('created') or ''
+        try:
+            created_display = datetime.fromisoformat(created_raw).strftime('%b %d, %Y')
+        except Exception:
+            created_display = escape(str(created_raw))
         slip_rows += f"""
             <tr>
                 <td><strong>{escape(slip.get('period') or 'Pay period')}</strong></td>
-                <td>{escape(slip.get('created').strftime('%b %d, %Y'))}</td>
-                <td class="text-right">{_money((slip.get('totals') or {}).get('rounded') or (slip.get('totals') or {}).get('pay'))}</td>
+                <td>{created_display}</td>
+                <td class="text-right">{_money(slip.get('rounded_pay') or slip.get('total_pay'))}</td>
                 <td class="text-right"><a class="btn btn-primary btn-sm" href="/employee/payslip/{escape(slip['filename'])}">View</a></td>
             </tr>
         """
@@ -7501,6 +7689,19 @@ def employee_portal():
         """
     if not request_rows:
         request_rows = '<tr><td colspan="3" style="color:var(--color-gray-500)">No time off requests yet.</td></tr>'
+
+    punch_rows = ''
+    for req in punch_requests[:12]:
+        punch_rows += f"""
+            <tr>
+                <td>{escape(req.get('date', ''))}</td>
+                <td>{escape(req.get('clock_in') or '-')}</td>
+                <td>{escape(req.get('clock_out') or '-')}</td>
+                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+            </tr>
+        """
+    if not punch_rows:
+        punch_rows = '<tr><td colspan="4" style="color:var(--color-gray-500)">No punch corrections yet.</td></tr>'
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -7541,10 +7742,24 @@ def employee_portal():
                     <button class="btn btn-primary" type="submit">Submit Request</button>
                 </form>
             </div>
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">Add Missing Punch</h2></div>
+                <form method="post" action="/employee/punch">
+                    <div class="form-group"><label class="form-label form-label-required" for="punch_date">Date</label><input class="form-input" id="punch_date" name="date" type="date" required></div>
+                    <div class="form-group"><label class="form-label" for="clock_in">Clock In</label><input class="form-input" id="clock_in" name="clock_in" type="time" step="1"></div>
+                    <div class="form-group"><label class="form-label" for="clock_out">Clock Out</label><input class="form-input" id="clock_out" name="clock_out" type="time" step="1"></div>
+                    <div class="form-group"><label class="form-label" for="punch_note">Note</label><textarea class="form-textarea" id="punch_note" name="note" rows="3" maxlength="500"></textarea></div>
+                    <button class="btn btn-primary" type="submit">Submit Punch</button>
+                </form>
+            </div>
         </div>
         <div class="card">
             <div class="card-header"><h2 class="card-title">My Time Off Requests</h2></div>
             <div class="table-wrapper"><table class="table"><thead><tr><th>Dates</th><th>Type</th><th>Status</th></tr></thead><tbody>{request_rows}</tbody></table></div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h2 class="card-title">My Punch Corrections</h2></div>
+            <div class="table-wrapper"><table class="table"><thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Status</th></tr></thead><tbody>{punch_rows}</tbody></table></div>
         </div>
     </div>
 </body>
@@ -7600,6 +7815,40 @@ def employee_request_time_off():
     flash('Time off request submitted.', 'success')
     return redirect(url_for('employee_portal'))
 
+@app.route('/employee/punch', methods=['POST'])
+@login_required
+def employee_request_punch():
+    if not is_employee_user():
+        return redirect(url_for('index'))
+    punch_date = request.form.get('date', '').strip()
+    clock_in = _parse_time_value(request.form.get('clock_in'))
+    clock_out = _parse_time_value(request.form.get('clock_out'))
+    if not punch_date:
+        return "Date is required", 400
+    try:
+        punch_date = datetime.strptime(punch_date, '%Y-%m-%d').date().isoformat()
+    except ValueError:
+        return "Invalid date", 400
+    if not clock_in and not clock_out:
+        return "Enter a clock in, a clock out, or both", 400
+    rec = get_user_record() or {}
+    requests_list = load_punch_requests()
+    requests_list.append({
+        'id': secrets.token_urlsafe(12),
+        'username': session.get('username'),
+        'employee_id': current_employee_id(),
+        'employee_name': rec.get('name') or session.get('username'),
+        'date': punch_date,
+        'clock_in': clock_in,
+        'clock_out': clock_out,
+        'note': request.form.get('note', '').strip()[:500],
+        'status': 'pending',
+        'created_at': datetime.now().isoformat(timespec='seconds'),
+    })
+    save_punch_requests(requests_list)
+    flash('Punch correction submitted.', 'success')
+    return redirect(url_for('employee_portal'))
+
 @app.route('/time_off_requests', methods=['GET', 'POST'])
 @login_required
 def time_off_requests():
@@ -7638,7 +7887,47 @@ def time_off_requests():
         """
     if not rows:
         rows = '<tr><td colspan="6" style="color:var(--color-gray-500)">No requests yet.</td></tr>'
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Time Off - Payroll Management</title><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" type="image/svg+xml" href="/static/favicon.svg"></head><body style="background:#f0f4f8">{menu_html}<div class="container" style="padding-top:32px"><div class="card"><div class="card-header"><h1 class="card-title">Time Off Requests</h1></div><div class="table-wrapper"><table class="table"><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th>Note</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody>{rows}</tbody></table></div></div></div></body></html>"""
+    punch_requests = load_punch_requests()
+    if request.method == 'GET':
+        punch_requests.sort(key=lambda r: r.get('created_at', ''), reverse=True)
+    punch_rows = ''
+    for req in punch_requests:
+        punch_rows += f"""
+            <tr>
+                <td><strong>{escape(req.get('employee_name') or req.get('username') or '')}</strong><div style="font-size:12px;color:var(--color-gray-500)">ID {escape(req.get('employee_id') or '')}</div></td>
+                <td>{escape(req.get('date', ''))}</td>
+                <td>{escape(req.get('clock_in') or '-')}</td>
+                <td>{escape(req.get('clock_out') or '-')}</td>
+                <td>{escape(req.get('note', ''))}</td>
+                <td><span class="badge badge-primary">{escape(req.get('status', 'pending').title())}</span></td>
+                <td class="text-right">
+                    <form method="post" action="/punch_requests" style="display:inline"><input type="hidden" name="id" value="{escape(req.get('id', ''))}"><input type="hidden" name="status" value="approved"><button class="btn btn-success btn-sm" type="submit">Approve</button></form>
+                    <form method="post" action="/punch_requests" style="display:inline"><input type="hidden" name="id" value="{escape(req.get('id', ''))}"><input type="hidden" name="status" value="denied"><button class="btn btn-danger btn-sm" type="submit">Deny</button></form>
+                </td>
+            </tr>
+        """
+    if not punch_rows:
+        punch_rows = '<tr><td colspan="7" style="color:var(--color-gray-500)">No punch corrections yet.</td></tr>'
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Time Off - Payroll Management</title><link rel="stylesheet" href="/static/design-system.css"><link rel="icon" type="image/svg+xml" href="/static/favicon.svg"></head><body style="background:#f0f4f8">{menu_html}<div class="container" style="padding-top:32px"><div class="card"><div class="card-header"><h1 class="card-title">Time Off Requests</h1></div><div class="table-wrapper"><table class="table"><thead><tr><th>Employee</th><th>Dates</th><th>Type</th><th>Note</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody>{rows}</tbody></table></div></div><div class="card"><div class="card-header"><h1 class="card-title">Punch Corrections</h1></div><div class="table-wrapper"><table class="table"><thead><tr><th>Employee</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Note</th><th>Status</th><th class="text-right">Actions</th></tr></thead><tbody>{punch_rows}</tbody></table></div></div></div></body></html>"""
+
+@app.route('/punch_requests', methods=['POST'])
+@login_required
+def punch_requests():
+    if is_employee_user():
+        return redirect(url_for('employee_portal'))
+    req_id = request.form.get('id', '')
+    status = request.form.get('status', '')
+    if status not in ('approved', 'denied', 'pending'):
+        return "Invalid status", 400
+    requests_list = load_punch_requests()
+    for req in requests_list:
+        if req.get('id') == req_id:
+            req['status'] = status
+            req['reviewed_by'] = session.get('username')
+            req['reviewed_at'] = datetime.now().isoformat(timespec='seconds')
+            break
+    save_punch_requests(requests_list)
+    return redirect(url_for('time_off_requests'))
 
 # ========== ZOHO BOOKS EXPENSE ACTION ==========
 def _auto_push_expense_if_configured(week):
@@ -8336,6 +8625,7 @@ def manage_users():
     
     menu_html = get_menu_html(username)
     users = load_users()
+    pay_rates = load_pay_rates()
     flash_html = ''
     for category, message in get_flashed_messages(with_categories=True):
         alert_class = 'alert-success' if category == 'success' else 'alert-danger' if category == 'error' else 'alert-info'
@@ -8389,6 +8679,7 @@ def manage_users():
                     <thead>
                         <tr>
                             <th>Username</th>
+                            <th>Name</th>
                             <th>Role</th>
                             <th>Employee ID</th>
                             <th class="text-right">Actions</th>
@@ -8400,7 +8691,10 @@ def manage_users():
     for user, record in users.items():
         is_admin_user = user == 'admin'
         role = (record or {}).get('role', 'staff')
+        if role == 'employee':
+            continue
         employee_id = (record or {}).get('employee_id', '')
+        display_name = (record or {}).get('name') or get_employee_name_from_rates(pay_rates, employee_id) or ''
         if is_admin_user:
             html += f"""
                         <tr>
@@ -8408,6 +8702,7 @@ def manage_users():
                                 <strong>{escape(user)}</strong>
                                 <span class="badge badge-primary" style="margin-left:var(--spacing-2)">Admin</span>
                             </td>
+                            <td>{escape(display_name)}</td>
                             <td>{escape(role.title())}</td>
                             <td>{escape(employee_id)}</td>
                             <td class="text-right">
@@ -8419,6 +8714,7 @@ def manage_users():
             html += f"""
                         <tr>
                             <td><strong>{escape(user)}</strong></td>
+                            <td>{escape(display_name)}</td>
                             <td>{escape(role.title())}</td>
                             <td>{escape(employee_id)}</td>
                             <td class="text-right">
@@ -8433,8 +8729,64 @@ def manage_users():
                             </td>
                         </tr>
 """
-    
+    employee_rows = ''
+    for emp_id, rate_data in sorted(pay_rates.items(), key=lambda item: str(item[0])):
+        emp_id = str(emp_id or '').strip()
+        if not emp_id:
+            continue
+        name = str((rate_data or {}).get('name') or '').strip() if isinstance(rate_data, dict) else ''
+        portal_user = employee_portal_username(emp_id)
+        has_account = any(
+            isinstance(record, dict)
+            and record.get('role') == 'employee'
+            and str(record.get('employee_id') or '').strip() == emp_id
+            for record in users.values()
+        )
+        status = '<span class="badge badge-success">Active</span>' if has_account else '<span class="badge badge-warning">Missing</span>'
+        employee_rows += f"""
+                        <tr>
+                            <td><strong>{escape(emp_id)}</strong></td>
+                            <td>{escape(name)}</td>
+                            <td>{escape(portal_user)}</td>
+                            <td>{status}</td>
+                        </tr>
+"""
+    if not employee_rows:
+        employee_rows = '<tr><td colspan="4" style="color:var(--color-gray-500)">No employees found in Pay Rates.</td></tr>'
+
     html += """
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg style="width:24px;height:24px;display:inline;margin-right:8px;vertical-align:middle" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4z" clip-rule="evenodd"/>
+                    </svg>
+                    Employee Portal Accounts
+                </h2>
+            </div>
+            <p style="color:var(--color-gray-600);font-size:var(--font-size-sm);margin-bottom:var(--spacing-3)">
+                Employees are shown from Pay Rates. Username is the Employee ID. Default password is <strong>""" + DEFAULT_EMPLOYEE_PORTAL_PASSWORD + """</strong>.
+            </p>
+            <form method="post" action="/bulk_create_employee_users" onsubmit="return confirm('Create missing employee portal accounts from Pay Rates?');">
+                <button type="submit" class="btn btn-primary">Create Missing Employee Accounts</button>
+            </form>
+            <div class="table-wrapper" style="margin-top:var(--spacing-4)">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+""" + employee_rows + """
                     </tbody>
                 </table>
             </div>
@@ -9373,6 +9725,8 @@ def confirm_employees():
             return "No file found in session. Please upload again.", 400
         
         df = pd.read_csv(file_path)
+        df = apply_approved_punch_requests(df)
+        df.to_csv(file_path, index=False)
         employees = get_unique_employees_from_df(df)
         
         # Check for missing pay rates and add shift info to employees
@@ -9876,6 +10230,7 @@ def process_confirmed():
             return "No file found. Please upload again.", 400
         
         df = pd.read_csv(file_path)
+        df = apply_approved_punch_requests(df)
         
         # Filter to only selected employees
         if confirmed_ids:
@@ -9919,6 +10274,7 @@ def process_confirmed():
             
             payslip_filename = f"payslips_for_cutting_{week_str}.xlsx"
             payslip_path = create_consolidated_payslips(df, payslip_filename, username)
+            update_employee_payslip_index_from_df(df, payslip_filename)
             reports['payslips_sheet'] = payslip_filename
         
         session['reports'] = reports
