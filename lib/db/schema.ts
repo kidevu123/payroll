@@ -577,6 +577,33 @@ export const holidays = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Ingest exceptions — promoted from payroll_runs.exception_snapshot to a
+// queryable table in Phase 2. Each row is one unmatched / parse-error /
+// duplicate-hash candidate from a NGTeco import. The owner resolves them
+// (e.g. binds an unmatched ngteco_employee_ref to an existing Employee)
+// from /ngteco/[runId]; resolved_at + resolved_by_id close it out.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const ingestExceptions = pgTable(
+  "ingest_exceptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    payrollRunId: uuid("payroll_run_id")
+      .notNull()
+      .references(() => payrollRuns.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // 'UNMATCHED_REF' | 'PARSE_ERROR' | 'DUPLICATE_HASH'
+    ngtecoEmployeeRef: text("ngteco_employee_ref"),
+    rawData: jsonb("raw_data"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedById: uuid("resolved_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("ingest_exceptions_run_idx").on(t.payrollRunId)],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Login rate limiting (Postgres-backed; no Redis dependency).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -615,3 +642,7 @@ export type EmployeeRateHistoryRow = typeof employeeRateHistory.$inferSelect;
 export type NewEmployeeRateHistory = typeof employeeRateHistory.$inferInsert;
 export type Setting = typeof settings.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
+export type PayrollRun = typeof payrollRuns.$inferSelect;
+export type NewPayrollRun = typeof payrollRuns.$inferInsert;
+export type IngestException = typeof ingestExceptions.$inferSelect;
+export type NewIngestException = typeof ingestExceptions.$inferInsert;
