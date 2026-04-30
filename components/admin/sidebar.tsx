@@ -9,6 +9,7 @@ import {
   MessageSquareWarning,
   Workflow,
   BarChart3,
+  ScrollText,
   Settings2,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/requests", label: "Requests", icon: MessageSquareWarning },
   { href: "/ngteco", label: "NGTeco", icon: Workflow },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/audit", label: "Audit", icon: ScrollText },
   { href: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 
