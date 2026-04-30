@@ -2,6 +2,10 @@ import { defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
+  esbuild: {
+    // Auto JSX runtime so test files can use JSX without `import React`.
+    jsx: "automatic",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./"),
