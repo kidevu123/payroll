@@ -12,10 +12,17 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // modules (fs, tls, grpc native bindings). Webpack can't bundle them safely;
 // they must be left external. Enumerate dynamically so adding/dropping otel
 // packages doesn't require updating this list by hand.
+//
+// `@opentelemetry/api` is excluded: it is small, pure-JS, and bundles fine for
+// every runtime. Externalizing it breaks the edge middleware (Edge runtime
+// has no CommonJS require).
+const OTEL_BUNDLE_SAFE = new Set(['api']);
 const otelExternals = (() => {
   try {
     const otelDir = join(__dirname, 'node_modules', '@opentelemetry');
-    return readdirSync(otelDir).map((name) => `@opentelemetry/${name}`);
+    return readdirSync(otelDir)
+      .filter((name) => !OTEL_BUNDLE_SAFE.has(name))
+      .map((name) => `@opentelemetry/${name}`);
   } catch {
     return [];
   }
@@ -39,8 +46,10 @@ const serverOnlyPackages = [
   ...otelExternals,
 ];
 
+// Match all @opentelemetry/* except `@opentelemetry/api` (bundle-safe; see
+// OTEL_BUNDLE_SAFE above for why).
 const serverOnlyMatchers = [
-  /^@opentelemetry\//,
+  /^@opentelemetry\/(?!api(?:$|\/))/,
   /^@grpc\//,
   /^@node-rs\//,
 ];
