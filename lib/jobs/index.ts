@@ -2,12 +2,14 @@
 //
 // Jobs registered here:
 //   • noop.heartbeat — sanity check, runs once per minute
+//   • period.rollover — Phase 1 — daily 00:30 in company TZ
 //   Phase 2 will add: ngteco.import
 //   Phase 3 will add: payroll.run.* + payslip.generate
 //   Phase 5 will add: notifications.dispatch
 
 import type PgBoss from "pg-boss";
 import { logger } from "@/lib/telemetry";
+import { runPeriodRollover } from "./handlers/period-rollover";
 
 let bossPromise: Promise<PgBoss> | null = null;
 
@@ -44,11 +46,15 @@ export function getBoss(): Promise<PgBoss> {
 async function registerJobs(boss: PgBoss): Promise<void> {
   // pg-boss v10 removed implicit queue creation; create explicitly first.
   await boss.createQueue("noop.heartbeat");
-  // Heartbeat — validates the queue is alive end to end.
   await boss.work("noop.heartbeat", async (jobs) => {
     logger.debug({ count: jobs.length }, "heartbeat tick");
   });
-  // Schedule the heartbeat once per minute. Idempotent — repeat calls just
-  // overwrite the schedule.
   await boss.schedule("noop.heartbeat", "* * * * *");
+
+  await boss.createQueue("period.rollover");
+  await boss.work("period.rollover", async () => {
+    await runPeriodRollover();
+  });
+  // 00:30 daily; the handler reads company timezone to decide what "today" is.
+  await boss.schedule("period.rollover", "30 0 * * *");
 }
