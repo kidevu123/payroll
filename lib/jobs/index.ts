@@ -42,6 +42,8 @@ export function getBoss(): Promise<PgBoss> {
 }
 
 async function registerJobs(boss: PgBoss): Promise<void> {
+  // pg-boss v10 removed implicit queue creation; create explicitly first.
+  await boss.createQueue("noop.heartbeat");
   // Heartbeat — validates the queue is alive end to end.
   await boss.work("noop.heartbeat", async (jobs) => {
     logger.debug({ count: jobs.length }, "heartbeat tick");
