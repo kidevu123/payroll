@@ -1,219 +1,94 @@
-# Phase 0 bring-up handoff
+# Multi-phase build handoff
 
-This file is the runbook for Claude Code (or a careful human) to take the locally-written Phase 0 scaffolding and turn it into a live deployment. The original Phase 0 architecture work happened in Cowork mode, which can't reach GitHub, the npm registry, or the LAN — so what's here is "code complete, never installed, never pushed, never deployed."
+Phase 0 is live on LX120. Phases 0.5 through 6 are queued for autonomous execution per the owner's direction. This file is the operational runbook for Claude Code (or any contributor) driving that build.
 
-If you're Claude Code, work this list top to bottom. Stop and ask the owner if any step in the **Stop and ask** section trips. Verify each step's success criteria before moving on.
+The phase plan and per-phase deliverables live in `docs/phases.md`. This file is the *how*: how to drive each phase, how to verify it, how to recover from failures.
 
 ---
 
-## Pre-flight
-
-You're operating from `~/Documents/payroll-rebuild` on the owner's Mac. Confirm:
+## Pre-flight (run once before starting Phase 0.5)
 
 ```bash
 cd ~/Documents/payroll-rebuild
-ls CLAUDE.md docs/spec.md package.json
+git status                                      # expect clean
+git fetch origin
+git rev-parse HEAD                              # remember this for rollback
+git rev-parse origin/rebuild/foundation         # should match HEAD
+gh auth status 2>&1 | head -3                   # confirm GitHub auth
+ssh -o ConnectTimeout=5 -o BatchMode=yes root@192.168.1.190 'pct exec 120 -- echo ok'
+                                                # confirm LX120 SSH
 ```
 
-If any of those files is missing, stop — something is wrong with the working directory.
-
-Confirm Node 22 is available:
-
-```bash
-node --version   # expect v22.x
-```
-
-If not, suggest `nvm use` (the repo has a `.nvmrc`).
-
-Confirm GitHub auth works:
-
-```bash
-gh auth status 2>&1 | head -3 || git ls-remote git@github.com:kidevu123/payroll.git HEAD 2>&1 | head -3
-```
-
-You need **either** `gh` authenticated **or** a working SSH key for `kidevu123`. Don't proceed without confirming one of those.
-
-Confirm SSH to the PVE host works:
-
-```bash
-ssh -o ConnectTimeout=5 -o BatchMode=yes root@192.168.1.190 'pct list | grep -E "^120 "'
-```
-
-Expect a line showing container 120's status. If this fails, stop and ask the owner about SSH key setup.
+Note the starting SHA. If anything goes wrong mid-build, that's the rollback point.
 
 ---
 
-## 1. Re-init the local git history
+## The per-phase loop
 
-The Cowork sandbox left a partial `.git` directory because the FUSE mount couldn't unlink lockfiles. Wipe and re-init clean:
+Every phase from 0.5 through 6 follows the same six-step rhythm:
 
-```bash
-cd ~/Documents/payroll-rebuild
-rm -rf .git
-git init -q -b rebuild/foundation
-git add -A
-git -c "user.email=$(git config --global user.email)" \
-    -c "user.name=$(git config --global user.name)" \
-    commit -q -m "Phase 0: foundation
+### 1. Read
 
-Greenfield rebuild per spec v2 (docs/spec.md). Phase 0 ships:
+Open `docs/phases.md` and re-read the phase you're about to execute. Note the file inventory, queries, components, tests, migrations, and "Done when" gates.
 
-- Next.js 15 (App Router) + React 19 + Tailwind v4 + shadcn primitives
-- Drizzle schema for all Phase 0 entities + the rest of the domain
-- Auth.js v5 with email + password (Argon2id), Postgres-backed rate
-  limiting, first-run /setup flow, edge-safe redirect-only middleware
-- Typed Settings infrastructure: Zod-per-key, per-request memo cache,
-  audit-on-write. All section 4 tabs scaffolded; Company tab editable.
-- pg-boss bootstrap with a heartbeat job
-- OpenTelemetry SDK with console exporter (OTLP via env)
-- /api/health checks app + db + boss
-- Multi-stage Dockerfile (Playwright base for Phase 2 readiness)
-  + docker-compose.yml (app + postgres + daily backup sidecar)
-- LX120 deploy automation: install.sh + systemd unit + 60s timer
-- Spanish translations seeded from the i18n glossary
-- README, deploy-proxmox.md, runbook.md, ngteco-troubleshooting.md
-"
-```
+### 2. Plan with TodoWrite
 
-**Success criterion:** `git log --oneline` shows one commit; `git status` is clean.
+Use the TodoList tool. Create one task per major deliverable (queries, components, jobs, tests, docs, migration, demo seed update). Mark them `in_progress` as you work.
 
----
+### 3. Build
 
-## 2. Install dependencies and verify the build
+Implement. Conventional Commit prefixes: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `db`. One topical commit per concern — not one mega-commit. Commit as you go; don't wait until the end.
+
+When you add tables/columns/indexes:
 
 ```bash
-npm install
-```
-
-If `npm install` fails on version pins (the package.json targets a React 19 RC and Tailwind v4 beta because the spec was written before stable releases existed), update to the current stable releases:
-
-- `react` and `react-dom`: latest stable 19.x (drop the RC pin).
-- `next`: 15.x latest.
-- `tailwindcss` and `@tailwindcss/postcss`: latest 4.x stable.
-- `next-auth`: latest 5.x beta (Auth.js v5 hasn't shipped 5.0 stable yet).
-
-After updating, re-run `npm install` and commit the change as a separate commit (`chore: bump deps to current stable`).
-
-Then verify:
-
-```bash
-npm run typecheck    # tsc --noEmit
-npm run lint         # next lint
-npm test             # vitest run
-```
-
-All three should pass with zero errors. The smoke test in `lib/utils.test.ts` is the only test for Phase 0; it just confirms the runner works.
-
-If `npm run lint` complains about a missing eslint config, accept Next.js's default by running `npx next lint` once interactively (it will create `.eslintrc.json`), then commit that file.
-
-**Success criterion:** typecheck and tests pass cleanly.
-
----
-
-## 3. Generate the initial Drizzle migration
-
-The migrator refuses to start with an empty `/drizzle` folder, so generate the baseline locally and commit it:
-
-```bash
-# Need a Postgres URL to introspect, but generate doesn't actually connect —
-# any URL string is fine for `generate`. Provide a placeholder:
 DATABASE_URL="postgres://placeholder:placeholder@localhost:5432/placeholder" \
   npm run db:generate
-```
-
-That writes `/drizzle/0000_*.sql` and `/drizzle/meta/_journal.json` plus a snapshot. Commit them:
-
-```bash
 git add drizzle
-git commit -m "drizzle: initial migration"
+git commit -m "db: phase-N migration"
 ```
 
-**Success criterion:** `/drizzle/0000_*.sql` exists and contains `CREATE TABLE` statements for `users`, `employees`, `pay_periods`, `punches`, `settings`, `audit_log`, etc. (all 18 tables in `lib/db/schema.ts`).
+The generated SQL must be reversible — `drizzle-kit drop` should clean up. If it can't, restructure.
 
----
-
-## 4. Push to GitHub
-
-The owner's repo at `github.com/kidevu123/payroll` may have legacy `main` content. **Do not touch `main`.** Push only `rebuild/foundation`:
+### 4. Verify locally
 
 ```bash
-git remote add origin git@github.com:kidevu123/payroll.git \
-  || git remote set-url origin git@github.com:kidevu123/payroll.git
-
-# Use force-with-lease in case rebuild/foundation already exists from a prior
-# attempt; this won't touch any other branch.
-git push -u --force-with-lease origin rebuild/foundation
+npm run typecheck
+npm run lint
+npm test
 ```
 
-**Success criterion:** `gh repo view kidevu123/payroll --json defaultBranchRef,refs` (or visiting GitHub) shows `rebuild/foundation` exists and `main` is untouched.
+All three must pass clean. Coverage gates from `vitest.config.ts` must be green. Zero skipped tests, zero `// @ts-expect-error`.
 
----
+If a test fails: fix the test or fix the code, don't skip it.
 
-## 5. Bring up LX120
-
-You have two options. Pick based on whether the LXC already has a payroll deploy:
+### 5. Push and deploy
 
 ```bash
-ssh root@192.168.1.190 'pct exec 120 -- ls /opt/payroll 2>/dev/null && echo EXISTS || echo FRESH'
+git push origin rebuild/foundation
 ```
 
-### 5a. Fresh LX120 (no existing deploy)
+The LX120 systemd timer (`payroll-deploy.timer`) fires every 60 seconds. It runs `git fetch && git reset --hard origin/rebuild/foundation` and rebuilds the docker compose stack only if HEAD changed.
 
-Run the one-shot installer over SSH. It clones the repo, installs Docker if missing, generates secrets, installs the systemd timer, and starts the stack:
-
-```bash
-ssh root@192.168.1.190 -t \
-  'pct exec 120 -- bash -c "curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/rebuild/foundation/deploy/lxc/install.sh | bash -s -- rebuild/foundation"'
-```
-
-Watch the output. If anything fails, snapshot the error and stop — don't try to recover blindly.
-
-### 5b. Existing LX120 with a previous (legacy) payroll deploy
-
-**Stop and ask** before touching it. The owner said legacy reports and payslips need to remain accessible. The legacy install may be holding files we want to migrate. Don't `docker compose down --volumes` or remove `/opt/payroll` without explicit owner approval.
-
-If the owner gives the OK, the safe upgrade is:
+### 6. Smoke test
 
 ```bash
-# Save the legacy state first
-ssh root@192.168.1.190 'pct exec 120 -- bash -c "
-  cd /opt/payroll &&
-  docker compose ps &&
-  ls -la data/ &&
-  date
-" '
-# Then back up the legacy data dir
-ssh root@192.168.1.190 'pct exec 120 -- bash -c "
-  cp -r /opt/payroll/data /root/payroll-legacy-data-$(date +%Y%m%d)
-" '
-# Then run the installer (it preserves /etc/payroll/.env if present, and
-# the install.sh script is idempotent)
-```
-
----
-
-## 6. Verify the deployment
-
-```bash
-# Get the LXC IP
 LXC_IP=$(ssh root@192.168.1.190 'pct exec 120 -- hostname -I | awk "{print \$1}"' | tr -d '\r\n')
-echo "LXC IP: $LXC_IP"
 
-# Wait up to 2 minutes for first build to finish
-for i in $(seq 1 24); do
+# Wait up to 4 minutes for build + restart
+for i in $(seq 1 48); do
   status=$(curl -s -o /dev/null -w "%{http_code}" "http://${LXC_IP}:3000/api/health" || echo 000)
-  echo "[$i/24] /api/health → $status"
+  echo "[$i/48] /api/health → $status"
   [ "$status" = "200" ] && break
   sleep 5
 done
 
-# Final state
 curl -s "http://${LXC_IP}:3000/api/health" | jq
 ```
 
-**Success criterion:** `/api/health` returns 200 with `{ status: "ok", checks: { app: "ok", db: "ok", boss: "ok" } }`.
+If health is green, run the phase-specific smoke check (each phase in `docs/phases.md` has a "Done when" list — verify each item).
 
-If `db` or `boss` is `error`, tail the logs:
+If health is red, tail logs:
 
 ```bash
 ssh root@192.168.1.190 -t 'pct exec 120 -- bash -c "
@@ -221,44 +96,131 @@ ssh root@192.168.1.190 -t 'pct exec 120 -- bash -c "
 "'
 ```
 
-The most likely failure modes are:
-- Migrations folder empty → you skipped step 3.
-- `DATABASE_URL` mismatch → check `/etc/payroll/.env` matches what compose passes.
-- `argon2` native build issue → the runtime image is `mcr.microsoft.com/playwright:v1.48.2-jammy` which has libstdc++ etc.; if it fails, the npm install in the build stage probably hit a network issue.
+Fix forward. If you're stuck for more than 15 minutes on the same error, stop and surface.
+
+### 7. Tag and post
+
+```bash
+git tag phase-N-done
+git push --tags
+```
+
+Post a short progress message in the chat:
+
+> Phase N done. Commits A..B on rebuild/foundation, deployed to <ip>. Health green. Demo seed updated. Notable deviations: <none | list>. Starting Phase N+1.
+
+Then loop back to step 1 with the next phase.
 
 ---
 
-## 7. Smoke test the UI
+## Phase order
 
-Open `http://${LXC_IP}:3000` in a browser. It should redirect to `/setup`. Create the OWNER account. After redirect to `/login`, sign in. You should land on the empty admin dashboard with the sidebar (Dashboard, Employees, Time, Payroll, Requests, NGTeco, Reports, Settings) and Settings tabs (Company is the only editable one in Phase 0; the rest show "Lands in Phase N" placeholders).
+1. **Phase 0.5** — pre-flight bug fixes (Setting audit-before, login state, vitest)
+2. **Phase 1** — admin core
+3. **Phase 2** — NGTeco automation
+4. **Phase 3** — payroll run state machine + PDFs
+5. **Phase 4** — employee PWA
+6. **Phase 5** — requests + notifications
+7. **Phase 6** — reports + polish
 
-If any of that is broken, capture a screenshot or the network tab and report it. Don't try to fix it without owner direction.
+Don't skip ahead. Each phase's "Done when" gates must all be green before the next phase starts.
 
----
-
-## 8. Report back
-
-When everything is green, summarize:
-
-- Commit SHA on `rebuild/foundation`
-- LX120 IP and the URL the owner can hit
-- That `main` was not touched
-- Any deviations you had to make (dep version bumps, eslint config, etc.)
-
-Then **stop and wait** for the owner to greenlight Phase 1. Per spec §23: do not start a new phase without explicit go-ahead.
+After Phase 6 ships and the owner signs off, see `docs/phases.md` § "After Phase 6" for the merge-to-main procedure.
 
 ---
 
-## Stop and ask
+## Recovery: when something breaks mid-phase
 
-Stop and ask the owner before doing any of the following:
+### A migration breaks production data
 
-- Touching `main` on `kidevu123/payroll`
-- Running `docker compose down --volumes` or anything that drops the Postgres volume
-- Removing or modifying `/opt/payroll/data` on the LXC if a previous deploy exists there
-- Adding any feature, file, or behavior not described in `docs/spec.md`
-- Bumping any dependency to a major version that isn't required to make `npm install` succeed
-- Disabling 2FA, the audit log, or any other security control listed in spec §13
-- Importing legacy data — owner has not yet provided the source
+Stop. Don't try to fix forward.
 
-If you're unsure, default to asking. The owner explicitly said they're nervous about messing things up, which means caution wins over speed.
+```bash
+# On LX120
+ssh root@192.168.1.190 'pct exec 120 -- bash -c "
+  cd /opt/payroll && docker compose stop app
+  docker compose exec -T db pg_dump --format=custom --file=/backups/before-rollback-$(date +%s).dump
+"'
+```
+
+Then revert the offending commit on the Mac:
+
+```bash
+git revert <bad-sha>
+git push
+```
+
+Wait for the LXC to redeploy. Verify `/api/health`.
+
+### A test starts failing intermittently
+
+Don't skip it. If it's flaky, the test is wrong (or the code has a race). Fix the root cause.
+
+### LX120 disk fills up
+
+`/data/backups` is the most likely culprit. The backup sidecar prunes to 30 days but `pg_dump` over time grows. Bump LXC disk (Proxmox UI) or shorten retention.
+
+### "It worked locally but not on LX120"
+
+Check the Dockerfile and `docker-compose.yml` for things you forgot to copy. The standalone bundle (`output: 'standalone'`) in `next.config.mjs` only includes server-side code Next.js can statically trace; if you import something dynamically, mark it explicitly via `serverExternalPackages` or copy it manually.
+
+---
+
+## Owner intervention
+
+The owner can stop the autonomous build at any time by:
+
+- Killing the Claude Code session (Ctrl+C in their terminal)
+- Pausing the deploy timer on LX120: `ssh root@192.168.1.190 'pct exec 120 -- systemctl stop payroll-deploy.timer'`
+- Force-pushing to `rebuild/foundation` themselves (their commits become the new HEAD)
+
+If the owner asks for a hard pause mid-phase, leave the workspace clean (no uncommitted changes), commit any in-flight work as `wip(phase-N): <description>`, and report.
+
+---
+
+## Demo seed maintenance
+
+`scripts/seed-demo.ts` is upgraded across phases. Each phase's "Done when" includes "Demo seed updated." Don't let the demo seed rot — it's the primary visual reference for "is this working?"
+
+To run the demo seed:
+
+```bash
+# Locally against a dev DB:
+npm run seed:demo
+
+# Against the LXC:
+ssh root@192.168.1.190 -t 'pct exec 120 -- bash -c "
+  cd /opt/payroll && docker compose exec -T app \
+    node ./node_modules/tsx/dist/cli.mjs scripts/seed-demo.ts
+"'
+```
+
+The demo seed is idempotent (uses `onConflictDoNothing`). Re-running just adds anything new. To wipe and start fresh:
+
+```bash
+# DESTRUCTIVE — only run on a non-production database
+ssh root@192.168.1.190 -t 'pct exec 120 -- bash -c "
+  cd /opt/payroll && docker compose exec -T app \
+    node ./node_modules/tsx/dist/cli.mjs scripts/seed-demo.ts --reset
+"'
+```
+
+Don't ship `--reset` against production data.
+
+---
+
+## Conventions reminder
+
+The spec's anti-patterns (§22) are non-negotiable:
+
+- No emoji anywhere
+- Money is integer cents
+- No floats for money
+- Lucide icons + colored chips + text labels
+- Server actions are the API
+- Authz at the action layer
+- Audit on every mutation
+- Settings are levers, not assumptions
+- Tests are required, not optional
+
+Read `CLAUDE.md` if any of these surprises you.
