@@ -1,5 +1,9 @@
 // Audit log writer. Every mutation in the system goes through this before
 // commit (§3 invariant).
+//
+// Pass a Drizzle transaction handle as `executor` to enroll the audit insert
+// in the same transaction as the mutation; if the audit insert fails, the
+// outer transaction rolls back and the mutation never lands.
 
 import { db } from "@/lib/db";
 import { auditLog } from "@/lib/db/schema";
@@ -15,7 +19,13 @@ export type AuditEntry = {
   after?: unknown;
 };
 
-export async function writeAudit(entry: AuditEntry): Promise<void> {
+/** Anything with `.insert()` matching the Drizzle PG signature. */
+export type AuditExecutor = Pick<typeof db, "insert">;
+
+export async function writeAudit(
+  entry: AuditEntry,
+  executor: AuditExecutor = db,
+): Promise<void> {
   let ip: string | null = null;
   let userAgent: string | null = null;
   try {
@@ -28,7 +38,7 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
   } catch {
     // Outside a request context (jobs, scripts) — leave IP/UA null.
   }
-  await db.insert(auditLog).values({
+  await executor.insert(auditLog).values({
     actorId: entry.actorId,
     actorRole: entry.actorRole,
     action: entry.action,
