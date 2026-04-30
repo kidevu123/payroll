@@ -43,6 +43,8 @@ const serverOnlyPackages = [
   '@node-rs/argon2',
   '@grpc/grpc-js',
   'require-in-the-middle',
+  'playwright',
+  'playwright-core',
   ...otelExternals,
 ];
 
@@ -52,6 +54,7 @@ const serverOnlyMatchers = [
   /^@opentelemetry\/(?!api(?:$|\/))/,
   /^@grpc\//,
   /^@node-rs\//,
+  /^playwright(?:-core)?(?:$|\/)/,
 ];
 
 /** @type {import('next').NextConfig} */

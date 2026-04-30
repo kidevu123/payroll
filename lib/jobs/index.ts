@@ -3,13 +3,17 @@
 // Jobs registered here:
 //   • noop.heartbeat — sanity check, runs once per minute
 //   • period.rollover — Phase 1 — daily 00:30 in company TZ
-//   Phase 2 will add: ngteco.import
-//   Phase 3 will add: payroll.run.* + payslip.generate
+//   • ngteco.import — Phase 2 — manual + payroll-tick triggered scrape
+//   • payroll.run.tick — Phase 2 — automation.payrollRun.cron orchestrator
+//   Phase 3 will add: payroll.run.publish + payslip.generate
 //   Phase 5 will add: notifications.dispatch
 
 import type PgBoss from "pg-boss";
 import { logger } from "@/lib/telemetry";
 import { runPeriodRollover } from "./handlers/period-rollover";
+import { handleNgtecoImport } from "./handlers/ngteco-import";
+import { handlePayrollRunTick } from "./handlers/payroll-run-tick";
+import { getSetting } from "@/lib/settings/runtime";
 
 let bossPromise: Promise<PgBoss> | null = null;
 
@@ -57,4 +61,27 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   });
   // 00:30 daily; the handler reads company timezone to decide what "today" is.
   await boss.schedule("period.rollover", "30 0 * * *");
+
+  // ── ngteco.import ──────────────────────────────────────────────────────
+  await boss.createQueue("ngteco.import");
+  await boss.work("ngteco.import", async (jobs) => {
+    for (const j of jobs) {
+      const data = j.data as { runId?: string };
+      if (!data?.runId) {
+        logger.error({ jobId: j.id }, "ngteco.import: missing runId");
+        continue;
+      }
+      await handleNgtecoImport({ runId: data.runId });
+    }
+  });
+
+  // ── payroll.run.tick — wired to automation.payrollRun.cron ─────────────
+  await boss.createQueue("payroll.run.tick");
+  await boss.work("payroll.run.tick", async () => {
+    await handlePayrollRunTick(boss);
+  });
+  const automation = await getSetting("automation").catch(() => null);
+  if (automation?.payrollRun.enabled) {
+    await boss.schedule("payroll.run.tick", automation.payrollRun.cron);
+  }
 }
