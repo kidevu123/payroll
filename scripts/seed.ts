@@ -83,9 +83,10 @@ async function main() {
     console.log(`Seeded ${seedDefaults.length} default settings (skip-on-conflict).`);
 
     // ── Smoke check ──
-    const [{ count }] = await db.execute<{ count: number }>(
+    const rows = await db.execute<{ count: number }>(
       sql`select count(*)::int as count from settings`,
     );
+    const count = rows[0]?.count ?? 0;
     console.log(`Settings row count: ${count}`);
   } finally {
     await client.end({ timeout: 5 });
