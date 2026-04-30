@@ -6,17 +6,18 @@ This is a ground-up rebuild — see `docs/spec.md` for the design contract. This
 
 ## Status
 
-**Phase 0 — Foundation.** What's in this branch:
+**Phase 1 — Admin core.** What ships:
 
-- Next.js 15 (App Router) + React 19, TypeScript strict, Tailwind v4, shadcn primitives
-- Drizzle schema for all Phase 0 entities (Employee, Shift, PayPeriod, Punch, Setting, AuditLog, plus the rest of the domain)
-- Auth.js v5 with email + password, Argon2id, Postgres-backed rate limiting, first-run `/setup` flow
-- Typed Settings infrastructure with all §4 tabs scaffolded and the Company tab fully editable
-- pg-boss bootstrap, OpenTelemetry (console exporter by default, OTLP via env), `/api/health`
-- Multi-stage Dockerfile, `docker-compose.yml` (app + postgres + backup sidecar)
-- LX120 deploy automation: `deploy/lxc/install.sh` + systemd timer that pulls every 60s
+- Foundation from Phase 0 (Next.js 15 / React 19 / TypeScript strict, Drizzle schema, Auth.js v5 + Argon2id, pg-boss, OTel, Docker, LX120 deploy automation).
+- Pure pay computation in `lib/payroll/` with 100% branch coverage gated in CI: `computePay`, `period-boundaries`, `rounding`. Fixtures cover short days, suspicious longs, midnight crossings, mid-period rate changes, flat-task and mixed-mode employees, incomplete punches.
+- Typed query layer in `lib/db/queries/` with transactional audit (audit insert enrolls in the same Drizzle transaction as every mutation): employees, shifts, pay periods, punches, rate history, audit reads.
+- Admin pages: employees CRUD with rate history, time grid (per-period, color-coded, click-to-edit), period review with computed totals, audit log viewer (owner-only).
+- Settings tabs (full implementations replacing Phase 0 stubs): pay periods, pay rules, shifts (CRUD + reorder + archive), security.
+- pg-boss `period.rollover` job — daily 00:30 in company TZ, idempotent.
+- `scripts/import-employees.ts` — dry-run-by-default CSV importer with title-case + dedupe.
+- `scripts/seed-demo.ts` — 24 employees, 5 periods, realistic punches, two seeded alerts on the open period.
 
-The admin shell is live with all sidebar tabs visible — most surface "Lands in Phase N" placeholders. Phase 1 starts populating real flows.
+Phase 0.5 fix included: `setSetting` no longer throws when the prior row is missing or shape-stale (the bug that caused `/setup` to silently lose company settings).
 
 ## Local development
 
@@ -115,7 +116,7 @@ npm run typecheck   # tsc --noEmit
 npm run lint
 ```
 
-Phase 1 lights up coverage gates on `/lib/payroll/*`. Phase 2 adds Playwright snapshot tests against fixtures.
+`npm test` runs vitest with v8 coverage; the gate is 100% on `lib/payroll/**/*.ts` for lines, functions, branches, and statements. Phase 2 adds Playwright snapshot tests against fixtures.
 
 ## Operations
 
