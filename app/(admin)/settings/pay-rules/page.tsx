@@ -1,10 +1,7 @@
-import { PhaseStub } from "../_phase-stub";
-export default function Page() {
-  return (
-    <PhaseStub
-      title="Pay rules"
-      description="Rounding, decimal places, optional overtime. Defaults: round to nearest dollar, 2 decimals, OT off."
-      phase={1}
-    />
-  );
+import { getSetting } from "@/lib/settings/runtime";
+import { PayRulesForm } from "./pay-rules-form";
+
+export default async function Page() {
+  const settings = await getSetting("payRules");
+  return <PayRulesForm settings={settings} />;
 }

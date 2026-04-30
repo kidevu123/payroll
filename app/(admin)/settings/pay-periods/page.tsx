@@ -1,10 +1,9 @@
-import { PhaseStub } from "../_phase-stub";
-export default function Page() {
-  return (
-    <PhaseStub
-      title="Pay periods"
-      description="Length, anchor date, working days. Default: 7 days starting Monday, Mon–Sat working."
-      phase={1}
-    />
-  );
+import { getSetting } from "@/lib/settings/runtime";
+import { countPeriods } from "@/lib/db/queries/pay-periods";
+import { PayPeriodForm } from "./pay-period-form";
+
+export default async function Page() {
+  const settings = await getSetting("payPeriod");
+  const periodCount = await countPeriods();
+  return <PayPeriodForm settings={settings} periodCount={periodCount} />;
 }
