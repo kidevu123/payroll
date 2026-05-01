@@ -368,9 +368,26 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                     Import complete.{" "}
                     {success.summary.punchesImported > 0
                       ? `Added ${success.summary.punchesImported} new punch${success.summary.punchesImported === 1 ? "" : "es"}.`
-                      : "No new punches were added."}
+                      : success.summary.punchesMoved > 0
+                        ? `Moved ${success.summary.punchesMoved} existing punch${success.summary.punchesMoved === 1 ? "" : "es"} into this period.`
+                        : "No new punches were added."}
                   </p>
                   <ul className="space-y-0.5 text-xs text-emerald-900">
+                    {success.summary.punchesMoved > 0 && (
+                      <li>
+                        • {success.summary.punchesMoved} punch
+                        {success.summary.punchesMoved === 1 ? "" : "es"} re-pointed
+                        from a different period — your CSV is now the source of truth.
+                      </li>
+                    )}
+                    {success.summary.payslipsVoidedFromMove > 0 && (
+                      <li>
+                        • {success.summary.payslipsVoidedFromMove} payslip
+                        {success.summary.payslipsVoidedFromMove === 1 ? "" : "s"}{" "}
+                        on the source period{success.summary.payslipsVoidedFromMove === 1 ? "" : "s"}{" "}
+                        voided so totals recompute. Re-publish those runs if needed.
+                      </li>
+                    )}
                     {success.summary.duplicates > 0 && (
                       <li>
                         • {success.summary.duplicates} duplicate

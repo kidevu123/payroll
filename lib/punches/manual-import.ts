@@ -11,11 +11,12 @@
 //   - When a pay_schedule_id is supplied, the run is tagged accordingly so
 //     the per-period detail filters employees correctly.
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
   payrollRuns,
+  payslips,
   punches,
   ingestExceptions,
 } from "@/lib/db/schema";
@@ -39,6 +40,11 @@ export type ManualImportSummary = {
   unmatched: number;
   parseErrors: number;
   duplicates: number;
+  /** Existing punches whose period_id was rewritten to the target period. */
+  punchesMoved: number;
+  /** Distinct (employee_id, source_period_id) pairs that had punches moved out
+   *  — their existing payslips were voided so source-period totals recompute. */
+  payslipsVoidedFromMove: number;
 };
 
 export async function runManualCsvImport(
@@ -50,6 +56,8 @@ export async function runManualCsvImport(
     unmatched: 0,
     parseErrors: errors.length,
     duplicates: 0,
+    punchesMoved: 0,
+    payslipsVoidedFromMove: 0,
   };
   // Persist parse errors as ingest_exceptions.
   for (const e of errors) {
@@ -83,6 +91,11 @@ export async function runManualCsvImport(
   const cohort: Set<string> | null = Array.isArray(run.cohortEmployeeIds)
     ? new Set(run.cohortEmployeeIds)
     : null;
+  // Set of "<employeeId>|<sourcePeriodId>" for punches we moved out of a
+  // different period. After the loop we void payslips on those source
+  // periods so the source-period totals recompute (they're now overcounting
+  // by exactly the moved hours).
+  const movedFromSourcePeriods = new Set<string>();
 
   // Dedup is enforced globally by the unique index on ngteco_record_hash, so
   // we don't preload a per-period set anymore — that missed punches that
@@ -120,11 +133,11 @@ export async function runManualCsvImport(
       continue;
     }
     // Try the insert; if the partial unique index on ngteco_record_hash
-    // catches a duplicate, treat it as a benign skip. We don't use
-    // ON CONFLICT here because Postgres can't infer a partial unique
-    // index without including the WHERE predicate, and Drizzle's
-    // onConflictDoNothing inference doesn't carry that predicate. The
-    // try/catch is robust either way and produces the same outcome.
+    // catches a duplicate, branch behavior:
+    //   - cohort SET (explicit admin upload): MOVE the existing punch into
+    //     the target period. The manual upload is the source of truth, and
+    //     the punches table model only allows one period_id per row.
+    //   - cohort NOT SET (legacy/back-compat): treat as a benign skip.
     seenHashes.add(c.ngtecoRecordHash);
     try {
       await db.insert(punches).values({
@@ -138,6 +151,47 @@ export async function runManualCsvImport(
       summary.punchesImported++;
     } catch (err) {
       if (isUniqueViolation(err, "punches_ngteco_hash_unique")) {
+        if (cohort && cohort.has(emp.id)) {
+          // MOVE: locate the existing row and re-point period_id at the
+          // target. Track the source period so we can void payslips on
+          // the source after the loop.
+          const [existing] = await db
+            .select()
+            .from(punches)
+            .where(eq(punches.ngtecoRecordHash, c.ngtecoRecordHash));
+          if (existing) {
+            if (existing.periodId === run.periodId) {
+              // Same period — true within-period dupe, skip.
+              summary.duplicates++;
+              await db.insert(ingestExceptions).values({
+                payrollRunId: input.payrollRunId,
+                type: "DUPLICATE_HASH",
+                ngtecoEmployeeRef: c.ngtecoEmployeeRef,
+                rawData: {
+                  hash: c.ngtecoRecordHash,
+                  raw: c.raw,
+                  scope: "same-period",
+                },
+              });
+              continue;
+            }
+            const sourcePeriodId = existing.periodId;
+            await db
+              .update(punches)
+              .set({
+                periodId: run.periodId,
+                source: "MANUAL_ADMIN",
+                editedAt: new Date(),
+                editedById: input.actor.id,
+                editReason: `csv-upload moved from ${sourcePeriodId} to ${run.periodId}`,
+              })
+              .where(eq(punches.id, existing.id));
+            summary.punchesMoved++;
+            movedFromSourcePeriods.add(`${emp.id}|${sourcePeriodId}`);
+          }
+          continue;
+        }
+        // Cohort NOT set — legacy back-compat: skip silently.
         summary.duplicates++;
         await db.insert(ingestExceptions).values({
           payrollRunId: input.payrollRunId,
@@ -152,6 +206,37 @@ export async function runManualCsvImport(
         continue;
       }
       throw err;
+    }
+  }
+
+  // Source-period payslip cleanup. Any (employee, source-period) pair we
+  // moved punches out of has a stale total — void the existing payslip on
+  // the source so its run total recomputes from the remaining (smaller)
+  // set of punches. Idempotent: voiding an already-voided payslip is a
+  // no-op in voidPayslip().
+  if (movedFromSourcePeriods.size > 0) {
+    const { voidPayslip } = await import("@/lib/db/queries/payslips");
+    for (const key of movedFromSourcePeriods) {
+      const [employeeId, sourcePeriodId] = key.split("|");
+      if (!employeeId || !sourcePeriodId) continue;
+      const stale = await db
+        .select()
+        .from(payslips)
+        .where(
+          and(
+            eq(payslips.employeeId, employeeId),
+            eq(payslips.periodId, sourcePeriodId),
+            isNull(payslips.voidedAt),
+          ),
+        );
+      for (const p of stale) {
+        await voidPayslip(
+          p.id,
+          `csv-upload moved punches to ${run.periodId}`,
+          input.actor,
+        );
+        summary.payslipsVoidedFromMove++;
+      }
     }
   }
 
