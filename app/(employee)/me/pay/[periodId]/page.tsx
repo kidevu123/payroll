@@ -42,7 +42,7 @@ export default async function EmployeePayslipViewer({
   return (
     <div className="space-y-4 p-4 max-w-3xl mx-auto">
       <Button asChild variant="ghost" size="sm">
-        <Link href="/pay">
+        <Link href="/me/pay">
           <ArrowLeft className="h-4 w-4" /> All payslips
         </Link>
       </Button>

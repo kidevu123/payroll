@@ -66,10 +66,80 @@
     }
   },
   "employee": {
-    "homeGreeting": "Hi, {email}",
-    "homeIntro": "The employee app ships in Phase 4. You can sign in here today; the rest comes online soon.",
-    "thisWeek": "This week",
-    "thisWeekHint": "Hours and projected pay will appear here.",
-    "noData": "No data yet."
+    "tabs": {
+      "home": "Home",
+      "time": "Time",
+      "pay": "Pay",
+      "profile": "Profile"
+    },
+    "home": {
+      "greeting": "Hi, {name}",
+      "weekTitle": "This week",
+      "weekHours": "Hours so far",
+      "weekProjected": "Projected net pay",
+      "weekDaysLeft": "Days remaining",
+      "alertsTitle": "Heads up",
+      "alertsEmpty": "No issues to fix.",
+      "quickActions": "Quick actions",
+      "fixMissedPunch": "Report a missed punch",
+      "requestTimeOff": "Request time off",
+      "comingPhase5": "Submission flow lands in Phase 5."
+    },
+    "time": {
+      "title": "My time",
+      "subtitle": "Last four weeks plus this week.",
+      "weekOf": "Week of {date}",
+      "in": "In",
+      "out": "Out",
+      "hours": "Hours",
+      "edited": "edited",
+      "noPunches": "No punches yet."
+    },
+    "pay": {
+      "title": "My pay",
+      "empty": "No payslips yet",
+      "emptyHint": "Your first payslip lands here when payroll publishes.",
+      "open": "Open",
+      "statePending": "Pending review",
+      "statePublished": "Published",
+      "stateAcknowledged": "Acknowledged",
+      "viewerHours": "Hours",
+      "viewerGross": "Gross",
+      "viewerNet": "Net (rounded)",
+      "acknowledge": "I have reviewed this payslip",
+      "acknowledging": "Recording...",
+      "acknowledgedAt": "Acknowledged {when}",
+      "noPayslip": "No payslip yet for this period.",
+      "willAppear": "When the run publishes, a PDF lands here automatically."
+    },
+    "profile": {
+      "title": "Profile",
+      "displayName": "Display name",
+      "legalName": "Legal name",
+      "email": "Email",
+      "phone": "Phone",
+      "language": "Language",
+      "languageEn": "English",
+      "languageEs": "Español",
+      "changesNeedApproval": "Changes to legal name and email require admin approval.",
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved.",
+      "signOut": "Sign out",
+      "passwordChange": "Change password",
+      "comingSoon": "Notification preferences land in Phase 5.",
+      "noEmployeeRecord": "Your account is not linked to an employee record."
+    },
+    "offline": {
+      "title": "You're offline",
+      "subtitle": "Reconnect and try again. Your sign-in stays active."
+    }
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved."
   }
 }

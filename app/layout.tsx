@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
+import { resolveLocale, messagesFor } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Payroll",
@@ -18,6 +20,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const company = await getCompanySettings();
+  const locale = await resolveLocale();
+  const messages = messagesFor(locale);
 
   // Brand color is owner-controlled (Setting('company.brandColorHex')).
   // We expose it as a CSS custom property so any --brand-* consumer picks it up.
@@ -26,8 +30,12 @@ export default async function RootLayout({
     : undefined;
 
   return (
-    <html lang={company?.locale?.split("-")[0] ?? "en"} style={brandStyle}>
-      <body>{children}</body>
+    <html lang={locale} style={brandStyle}>
+      <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }

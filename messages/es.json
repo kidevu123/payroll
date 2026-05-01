@@ -66,10 +66,80 @@
     }
   },
   "employee": {
-    "homeGreeting": "Hola, {email}",
-    "homeIntro": "La aplicación para empleados llega en la Fase 4. Puede iniciar sesión hoy; el resto vendrá pronto.",
-    "thisWeek": "Esta semana",
-    "thisWeekHint": "Las horas y el pago proyectado aparecerán aquí.",
-    "noData": "Aún no hay datos."
+    "tabs": {
+      "home": "Inicio",
+      "time": "Tiempo",
+      "pay": "Pago",
+      "profile": "Perfil"
+    },
+    "home": {
+      "greeting": "Hola, {name}",
+      "weekTitle": "Esta semana",
+      "weekHours": "Horas trabajadas",
+      "weekProjected": "Pago neto estimado",
+      "weekDaysLeft": "Días restantes",
+      "alertsTitle": "Pendientes",
+      "alertsEmpty": "No hay problemas que resolver.",
+      "quickActions": "Acciones rápidas",
+      "fixMissedPunch": "Reportar un fichaje faltante",
+      "requestTimeOff": "Solicitar tiempo libre",
+      "comingPhase5": "El flujo de envío llega en la Fase 5."
+    },
+    "time": {
+      "title": "Mi tiempo",
+      "subtitle": "Las últimas cuatro semanas más esta semana.",
+      "weekOf": "Semana del {date}",
+      "in": "Entrada",
+      "out": "Salida",
+      "hours": "Horas",
+      "edited": "editado",
+      "noPunches": "Aún no hay fichajes."
+    },
+    "pay": {
+      "title": "Mi pago",
+      "empty": "Aún no hay recibos de pago",
+      "emptyHint": "Su primer recibo aparece aquí cuando se publique la nómina.",
+      "open": "Abrir",
+      "statePending": "Pendiente de revisión",
+      "statePublished": "Publicado",
+      "stateAcknowledged": "Confirmado",
+      "viewerHours": "Horas",
+      "viewerGross": "Bruto",
+      "viewerNet": "Neto (redondeado)",
+      "acknowledge": "He revisado este recibo de pago",
+      "acknowledging": "Registrando...",
+      "acknowledgedAt": "Confirmado {when}",
+      "noPayslip": "Aún no hay recibo para este período.",
+      "willAppear": "Cuando la ejecución se publique, el PDF aparecerá aquí automáticamente."
+    },
+    "profile": {
+      "title": "Perfil",
+      "displayName": "Nombre para mostrar",
+      "legalName": "Nombre legal",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "language": "Idioma",
+      "languageEn": "Inglés",
+      "languageEs": "Español",
+      "changesNeedApproval": "Los cambios al nombre legal y correo requieren aprobación del administrador.",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "saved": "Guardado.",
+      "signOut": "Cerrar sesión",
+      "passwordChange": "Cambiar contraseña",
+      "comingSoon": "Las preferencias de notificación llegan en la Fase 5.",
+      "noEmployeeRecord": "Su cuenta no está vinculada a un registro de empleado."
+    },
+    "offline": {
+      "title": "Sin conexión",
+      "subtitle": "Reconéctese e inténtelo de nuevo. Su sesión sigue activa."
+    }
+  },
+  "common": {
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Guardado."
   }
 }

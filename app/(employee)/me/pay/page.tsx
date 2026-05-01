@@ -58,7 +58,7 @@ export default async function EmployeePayList() {
                     ? "published"
                     : "pending"
               }
-              href={`/pay/${payslip.periodId}`}
+              href={`/me/pay/${payslip.periodId}`}
             />
           ))}
         </div>

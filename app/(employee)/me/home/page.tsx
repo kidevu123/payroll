@@ -1,0 +1,147 @@
+// Employee Home tab — week stats, alerts, quick actions.
+
+import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Wrench, CalendarPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { WeekStatsCard } from "@/components/employee/week-stats-card";
+import { AlertCard } from "@/components/employee/alert-card";
+import { requireSession } from "@/lib/auth-guards";
+import { listPunches } from "@/lib/db/queries/punches";
+import { getEmployee } from "@/lib/db/queries/employees";
+import { listRates } from "@/lib/db/queries/rate-history";
+import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
+import {
+  ensureNextPeriod,
+  getCurrentPeriod,
+} from "@/lib/db/queries/pay-periods";
+import { getSetting } from "@/lib/settings/runtime";
+import { computePay } from "@/lib/payroll/computePay";
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function todayInTz(tz: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+}
+
+export default async function EmployeeHome() {
+  const session = await requireSession();
+  const t = await getTranslations("employee.home");
+  if (!session.user.employeeId) {
+    return (
+      <main className="px-4 py-6 space-y-4">
+        <h1 className="text-xl font-semibold">
+          {t("greeting", { name: session.user.email })}
+        </h1>
+        <p className="text-sm text-[--text-muted]">
+          Your account is not linked to an employee record.
+        </p>
+      </main>
+    );
+  }
+
+  const employee = await getEmployee(session.user.employeeId);
+  if (!employee) {
+    return (
+      <main className="px-4 py-6 space-y-4">
+        <h1 className="text-xl font-semibold">
+          {t("greeting", { name: session.user.email })}
+        </h1>
+      </main>
+    );
+  }
+
+  const [company, payRules] = await Promise.all([
+    getSetting("company"),
+    getSetting("payRules"),
+  ]);
+  const today = todayInTz(company.timezone);
+  await ensureNextPeriod(today);
+  const period = await getCurrentPeriod(today);
+
+  let stats = { hours: 0, projected: 0, daysLeft: 0 };
+  let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
+  if (period) {
+    const [punches, rates, openAlerts] = await Promise.all([
+      listPunches({ periodId: period.id, employeeId: employee.id }),
+      listRates(employee.id),
+      listAlertsForEmployee(employee.id, { unresolvedOnly: true }),
+    ]);
+    alerts = openAlerts;
+    const result = computePay({
+      punches,
+      rateAt: (p) => {
+        const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
+          .toISOString()
+          .slice(0, 10);
+        for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
+        return employee.hourlyRateCents ?? 0;
+      },
+      taskPay: [],
+      rules: {
+        rounding: payRules.rounding,
+        hoursDecimalPlaces: payRules.hoursDecimalPlaces,
+      },
+    });
+    const todayMs = new Date(`${today}T00:00:00Z`).getTime();
+    const endMs = new Date(`${period.endDate}T00:00:00Z`).getTime();
+    stats = {
+      hours: result.totalHours,
+      projected: result.roundedCents,
+      daysLeft: Math.max(0, Math.round((endMs - todayMs) / MS_PER_DAY)),
+    };
+  }
+
+  return (
+    <main className="px-4 py-6 space-y-4">
+      <header>
+        <h1 className="text-xl font-semibold">
+          {t("greeting", {
+            name:
+              employee.displayName.split(" ")[0] ?? employee.displayName,
+          })}
+        </h1>
+      </header>
+
+      <WeekStatsCard
+        hours={stats.hours}
+        projectedCents={stats.projected}
+        daysLeft={stats.daysLeft}
+        decimals={payRules.hoursDecimalPlaces}
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("alertsTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {alerts.length === 0 ? (
+            <p className="text-sm text-[--text-muted]">{t("alertsEmpty")}</p>
+          ) : (
+            alerts.map((a) => <AlertCard key={a.id} date={a.date} issue={a.issue} />)
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("quickActions")}</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-2">
+          <Button asChild variant="secondary" className="justify-start">
+            <Link href="#">
+              <Wrench className="h-4 w-4" /> {t("fixMissedPunch")}
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" className="justify-start">
+            <Link href="#">
+              <CalendarPlus className="h-4 w-4" /> {t("requestTimeOff")}
+            </Link>
+          </Button>
+          <p className="text-xs text-[--text-muted]">{t("comingPhase5")}</p>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}

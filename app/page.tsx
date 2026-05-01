@@ -18,5 +18,5 @@ export default async function RootPage() {
   if (session.user.role === "OWNER" || session.user.role === "ADMIN") {
     redirect("/dashboard");
   }
-  redirect("/home");
+  redirect("/me/home");
 }

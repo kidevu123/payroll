@@ -22,6 +22,6 @@ export async function acknowledgePayslipAction(
     id: session.user.id,
     role: session.user.role,
   });
-  revalidatePath(`/pay/${payslip.periodId}`);
-  revalidatePath("/pay");
+  revalidatePath(`/me/pay/${payslip.periodId}`);
+  revalidatePath("/me/pay");
 }
