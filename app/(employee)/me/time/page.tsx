@@ -1,11 +1,14 @@
-// Employee Time tab — last 5 weeks of punches grouped by week.
+// Employee Time tab — Today (auto-refreshing) on top, then last 5 weeks
+// grouped by week. The Today card picks up new punches from the NGTeco
+// poll within ~1 minute (cron interval + auto-refresh).
 
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Calendar } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HoursDisplay } from "@/components/domain/hours-display";
+import { AutoRefresh } from "@/components/employee/auto-refresh";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
@@ -71,12 +74,79 @@ export default async function EmployeeTime() {
   }
   const weekKeys = [...byWeek.keys()].sort().reverse();
 
+  // Today's punches — surfaced front-and-center.
+  const todayPunches = punches.filter(
+    (p) => dayKey(p.clockIn, company.timezone) === today,
+  );
+  let todayMs = 0;
+  for (const p of todayPunches) {
+    if (p.voidedAt) continue;
+    if (p.clockOut) todayMs += p.clockOut.getTime() - p.clockIn.getTime();
+  }
+
   return (
     <main className="px-4 py-6 space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-text-muted">{t("subtitle")}</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">{t("title")}</h1>
+          <p className="text-sm text-text-muted">{t("subtitle")}</p>
+        </div>
+        <AutoRefresh intervalMs={60_000} label="Updates" />
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Today · {today}</CardTitle>
+          <CardDescription>
+            <HoursDisplay
+              hours={todayMs / MS_PER_HOUR}
+              decimals={payRules.hoursDecimalPlaces}
+            />{" "}
+            so far. Pulled from NGTeco every few minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {todayPunches.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No punches yet today. They&apos;ll appear here within a minute
+              of you clocking in.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {todayPunches.map((p) => (
+                <div
+                  key={p.id}
+                  className={`flex items-center justify-between text-sm rounded-input border border-border px-3 py-2 ${
+                    p.voidedAt ? "opacity-50 line-through" : ""
+                  }`}
+                >
+                  <span>
+                    <span className="text-text-muted">{t("in")}: </span>
+                    <span className="font-mono">
+                      {fmtTime(p.clockIn, company.timezone)}
+                    </span>
+                    <span className="text-text-muted ml-3">{t("out")}: </span>
+                    <span className="font-mono">
+                      {fmtTime(p.clockOut, company.timezone)}
+                    </span>
+                  </span>
+                  {!p.clockOut && (
+                    <span className="text-xs text-emerald-700 font-medium">on the clock</span>
+                  )}
+                </div>
+              ))}
+              <div className="pt-2">
+                <Link
+                  href={`/me/time/${today}`}
+                  className="text-xs text-brand-700 hover:underline"
+                >
+                  Open day detail · report a fix →
+                </Link>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {recent.length === 0 ? (
         <EmptyState
@@ -132,5 +202,3 @@ export default async function EmployeeTime() {
   );
 }
 
-// Mark unused for now to avoid lint warning.
-void fmtTime;

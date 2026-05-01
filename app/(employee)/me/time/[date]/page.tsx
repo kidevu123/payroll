@@ -1,8 +1,9 @@
-// Employee day-detail screen. Shows the day's punches with in/out/hours
-// and an "edited" indicator. Phase 5 will add the missed-punch fix CTA.
+// Employee day-detail screen. Shows the day's punches with in/out/hours,
+// an "edited" indicator, and a "Report a fix" form that creates a
+// missed-punch request without needing a pre-existing alert.
 
 import Link from "next/link";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, CheckCircle2 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
+import { ReportFixForm } from "./report-form";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -24,13 +26,16 @@ function fmtTime(d: Date | null, tz: string): string {
 
 export default async function EmployeeDay({
   params,
+  searchParams,
 }: {
   params: Promise<{ date: string }>;
+  searchParams: Promise<{ reported?: string }>;
 }) {
   const session = await requireSession();
   const t = await getTranslations("employee.time");
   if (!session.user.employeeId) return <main className="p-4">…</main>;
   const { date } = await params;
+  const sp = await searchParams;
   const company = await getSetting("company");
   const payRules = await getSetting("payRules");
   const punches = await listPunches({ employeeId: session.user.employeeId });
@@ -38,6 +43,17 @@ export default async function EmployeeDay({
     (p) =>
       new Intl.DateTimeFormat("en-CA", { timeZone: company.timezone }).format(p.clockIn) === date,
   );
+  // Pre-fill the report form with the first punch if one exists.
+  const firstPunch = dayPunches[0];
+  const fmtForInput = (d: Date | null): string => {
+    if (!d) return "";
+    return `${date}T${new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: company.timezone,
+      hourCycle: "h23",
+    }).format(d)}`;
+  };
 
   let totalMs = 0;
   for (const p of dayPunches) {
@@ -91,6 +107,18 @@ export default async function EmployeeDay({
           )}
         </CardContent>
       </Card>
+
+      {sp.reported && (
+        <div className="rounded-card border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" /> Sent. Admin will review on /requests.
+        </div>
+      )}
+
+      <ReportFixForm
+        date={date}
+        defaultIn={fmtForInput(firstPunch?.clockIn ?? null)}
+        defaultOut={fmtForInput(firstPunch?.clockOut ?? null)}
+      />
     </main>
   );
 }
