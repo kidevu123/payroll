@@ -50,6 +50,13 @@
       "when": 1777665342801,
       "tag": "0006_outstanding_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777679400000,
+      "tag": "0007_repair_salaried_and_payslip_void",
+      "breakpoints": true
     }
   ]
 }
