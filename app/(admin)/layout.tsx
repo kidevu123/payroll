@@ -6,6 +6,7 @@ import { unreadCount } from "@/lib/notifications/in-app";
 import { getSetting } from "@/lib/settings/runtime";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPeriods } from "@/lib/db/queries/pay-periods";
+import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
 
 const SETTINGS_TARGETS: CommandTarget[] = [
@@ -22,12 +23,17 @@ const SETTINGS_TARGETS: CommandTarget[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
-  const [unread, company, employees, periods] = await Promise.all([
+  const [unread, company, employees, periods, locale] = await Promise.all([
     unreadCount(session.user.id).catch(() => 0),
     getSetting("company").catch(() => null),
     listEmployees({ status: "ACTIVE" }).catch(() => []),
     listPeriods({ limit: 12 }).catch(() => []),
+    resolveLocale(),
   ]);
+  const companyForBrand = {
+    name: company?.name ?? "Payroll",
+    logoPath: company?.logoPath ?? null,
+  };
 
   const employeeTargets: CommandTarget[] = employees.map((e) => ({
     id: `emp-${e.id}`,
@@ -46,20 +52,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-dvh flex bg-page">
-      <Sidebar
-        company={{
-          name: company?.name ?? "Payroll",
-          logoPath: company?.logoPath ?? null,
-        }}
-      />
+      <Sidebar company={companyForBrand} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           email={session.user.email}
           role={session.user.role}
           unreadCount={unread}
           commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
+          company={companyForBrand}
+          currentLocale={locale}
         />
-        <main className="flex-1 p-6 lg:p-8 max-w-screen-2xl w-full mx-auto page-enter">{children}</main>
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 max-w-screen-2xl w-full mx-auto page-enter">
+          {children}
+        </main>
         <AppFooter />
       </div>
     </div>

@@ -7,6 +7,8 @@ import { Bell, LogOut, Search, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "./sign-out-action";
 import { CommandPalette, type CommandTarget } from "./command-palette";
+import { MobileNav } from "./mobile-nav";
+import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 
 const TITLE_MAP: Record<string, string> = {
@@ -43,11 +45,15 @@ export function Topbar({
   role,
   unreadCount,
   commandTargets,
+  company,
+  currentLocale,
 }: {
   email: string;
   role: string;
   unreadCount: number;
   commandTargets: CommandTarget[];
+  company: { name: string; logoPath: string | null };
+  currentLocale: "en" | "es";
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -69,7 +75,8 @@ export function Topbar({
 
   return (
     <>
-      <div className="h-14 border-b border-border bg-surface flex items-center gap-3 px-4 lg:px-6">
+      <div className="h-14 border-b border-border bg-surface flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
+        <MobileNav company={company} />
         <div className="min-w-0 flex-1 flex items-center gap-2">
           <h1 className="text-sm font-semibold tracking-tight truncate">
             {title}
@@ -117,7 +124,9 @@ export function Topbar({
           ) : null}
         </Link>
 
-        <div className="hidden sm:block text-right leading-tight max-w-[180px]">
+        <LanguageSwitcher current={currentLocale} />
+
+        <div className="hidden md:block text-right leading-tight max-w-[180px]">
           <div className="text-sm truncate" title={email}>
             {email}
           </div>
