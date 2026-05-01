@@ -18,6 +18,7 @@ import { db } from "@/lib/db";
 import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
+import { InFlightRow } from "./in-flight-row";
 
 export const dynamic = "force-dynamic";
 
@@ -122,28 +123,16 @@ export default async function PayrollPage() {
             </p>
           ) : (
             recentInFlight.map((r) => (
-              <Link
+              <InFlightRow
                 key={r.id}
+                runId={r.id}
                 href={`/payroll/run/${r.id}`}
-                className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {r.startDate ?? "?"} – {r.endDate ?? "?"}
-                    </span>
-                    {r.scheduleName && (
-                      <span className="rounded-input bg-surface px-2 py-0.5 text-[11px] text-text-muted">
-                        {r.scheduleName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-text-muted">
-                    Created {r.createdAt.toISOString().slice(0, 16).replace("T", " ")}
-                  </div>
-                </div>
-                <StatusPill status={r.state} />
-              </Link>
+                startDate={r.startDate ?? "?"}
+                endDate={r.endDate ?? "?"}
+                scheduleName={r.scheduleName}
+                state={r.state}
+                createdAt={r.createdAt.toISOString()}
+              />
             ))
           )}
         </CardContent>
