@@ -6,6 +6,17 @@ This is a ground-up rebuild — see `docs/spec.md` for the design contract. This
 
 ## Status
 
+**Phase 6 — Polish & reports.** What ships on top of Phase 5:
+
+- `/reports` — YTD totals per employee for a given year, payroll-trends line chart (hours + net $), CSV exports for employees / payslips / punches / audit / period totals.
+- `/audit` — date-range, action keyword search, and inline before/after diff with changed-key highlighting.
+- Operations docs filled in: `runbook.md` (Sunday close walk-through, restore drill, common issues), `ngteco-troubleshooting.md`, `admin-onboarding.md`, `employee-onboarding.md`.
+- `lib/reports/csv-export.ts` at 100% branch coverage; RFC-4180 quoting.
+
+**Phase 5 — Requests + notifications + Web Push.** Missed-punch fix flow + time-off requests, in-app + Web Push dispatcher (VAPID-backed), admin /requests inbox with inline approve/reject, bell badge with unread count.
+
+**Phase 4 — Employee PWA.** Mobile-first /me/* shell with bottom-nav, dynamic manifest, service worker offline shell, next-intl wired with employee-facing en + es coverage.
+
 **Phase 3 — Payroll run state machine + PDFs.** What ships on top of Phase 2:
 
 - Pure missed-punch detection in `lib/payroll/detect-exceptions.ts` (NO_PUNCH / MISSING_OUT / MISSING_IN / SUSPICIOUS_DURATION) at 100% branch coverage.

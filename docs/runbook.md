@@ -1,18 +1,19 @@
 # Runbook
 
-Operational notes for running the payroll platform. Phase 0 surface is small; this file grows as more behavior lands.
+Operational notes for running the payroll platform.
 
 ## Sunday night payroll (target ≤5 minutes, owner-facing)
 
-When Phase 3 is live:
+1. Open the dashboard. The **Current payroll run** card is the only thing that matters.
+2. If state is `AWAITING_ADMIN_REVIEW`, click **Approve**, scan the totals + alert pills on the per-employee table, click **Confirm publish**.
+3. Done. PDFs land in `/data/payslips/<period-start>/`, payslips appear under each employee's `/me/pay`, and admins + employees both get `payroll_run.published` notifications.
 
-1. Open the dashboard. The "Current payroll run" card is the only thing that matters.
-2. If state is `AWAITING_ADMIN_REVIEW`, click **Review**, scan totals + warnings, **Approve**.
-3. Done.
+If state is `AWAITING_EMPLOYEE_FIXES`, the card shows how many alerts are still open and the deadline (set from `automation.employeeFixWindowHours`). You can click **Advance to review** to skip the wait.
 
-If state is `INGEST_FAILED`, the card surfaces the failure with a link to the screenshot + page HTML. Either:
-- Click **Retry import** if it looks transient
-- Click **Edit selectors** if NGTeco changed their UI
+If state is `INGEST_FAILED`, the card surfaces the failure with a link to the captured screenshot. Either:
+
+- Click **Retry ingest** if it looks transient (network blip, timeout)
+- Edit `lib/ngteco/selectors.json` on the LXC if NGTeco changed their UI, then retry — selectors reload fresh on every run, no redeploy needed
 
 ## Common issues
 
@@ -34,13 +35,12 @@ Look for:
 curl -s http://localhost:3000/api/health | jq
 ```
 
-`{ status: "degraded", checks: { db: "error" } }` → Postgres is down or unreachable. Check `docker compose logs db`.
-
-`{ status: "degraded", checks: { boss: "error" } }` → pg-boss couldn't claim its schema. Usually means the `pgboss` schema couldn't be created (permissions). Open a shell on the db service and verify the `payroll` user owns the database.
+- `{ status: "degraded", checks: { db: "error" } }` → Postgres is down or unreachable. Check `docker compose logs db`.
+- `{ status: "degraded", checks: { boss: "error" } }` → pg-boss couldn't claim its schema. Usually means the `pgboss` schema couldn't be created (permissions). Open a shell on the db service and verify the `payroll` user owns the database.
 
 ### Login locked out
 
-Login rate limit is 5 failures per 15 minutes per email by default. Adjust in Settings → Security. To clear an account's lockout immediately:
+Login rate limit is 5 failures per 15 minutes per email by default. Adjust in **Settings → Security**. To clear an account's lockout immediately:
 
 ```
 docker compose -f /opt/payroll/docker-compose.yml exec -T db \
@@ -49,27 +49,44 @@ docker compose -f /opt/payroll/docker-compose.yml exec -T db \
 
 ### Owner forgot password
 
-Phase 1 will ship a CLI:
+Generate a hash (uses argon2id with the same parameters the app does):
 
 ```
-docker compose -f /opt/payroll/docker-compose.yml exec -T app \
-  node ./node_modules/tsx/dist/cli.mjs scripts/admin-reset.ts you@example.com
-```
-
-For now (Phase 0): connect to the db and reset the hash by hand:
-
-```
-docker compose -f /opt/payroll/docker-compose.yml exec -T app \
-  node ./node_modules/tsx/dist/cli.mjs -e "
-    import('./lib/auth.js').then(async ({ hashPassword }) => {
-      console.log(await hashPassword('NEW_PASSWORD_HERE'));
-    });
+docker compose -f /opt/payroll/docker-compose.yml exec -T app sh -c '
+  node -e "
+    require(\"@/lib/auth\").hashPassword(\"NEW_PASSWORD_HERE\").then(h => console.log(h));
   "
-
-# Then:
-docker compose -f /opt/payroll/docker-compose.yml exec -T db \
-  psql -U payroll -d payroll -c "UPDATE users SET password_hash = '<paste-hash>' WHERE email = 'you@example.com';"
+'
 ```
+
+Then update the row:
+
+```
+docker compose -f /opt/payroll/docker-compose.yml exec -T db \
+  psql -U payroll -d payroll \
+  -c "UPDATE users SET password_hash = '<paste-hash>' WHERE email = 'you@example.com';"
+```
+
+### NGTeco import keeps failing
+
+See `docs/ngteco-troubleshooting.md`. The two most common root causes are selector drift (NGTeco changed their UI) and a 2FA challenge accidentally enabled on the service account.
+
+### Push notifications stopped working
+
+```
+docker compose -f /opt/payroll/docker-compose.yml exec -T db \
+  psql -U payroll -d payroll -c "SELECT count(*) FROM push_subscriptions;"
+```
+
+If 0, no devices are subscribed — nothing's broken, the operator just hasn't enabled push on any device yet (`/me/profile/notifications`).
+
+If non-zero but no notifications are landing, check that `VAPID_*` are set in `/etc/payroll/.env`:
+
+```
+grep VAPID /etc/payroll/.env
+```
+
+If missing, re-run `deploy/lxc/install.sh` — it backfills the keys without rotating the existing ones (which would brick all subscriptions).
 
 ### Deploy didn't pick up a push
 
@@ -97,15 +114,41 @@ The unit is `Type=oneshot` so this just runs the cycle once.
 
 ## Backups
 
-See `docs/deploy-proxmox.md`. tl;dr — daily nightly to `/data/backups`, 30-day retention, restore is one command.
+Daily `pg_dump --format=custom` lands in `/data/backups/payroll-<timestamp>.dump`. Retention is 30 days (configurable via `BACKUP_RETENTION_DAYS` in `/etc/payroll/.env`).
 
-## Rolling forward to Phase 1
+### Restore drill (do this once a quarter)
 
-When Phase 1 lands on `main`, change the deploy branch (covered in `deploy-proxmox.md` under "Branches"). The migrator runs on every container start, so schema deltas land automatically.
+```
+# Pick a recent dump.
+ls -lh /opt/payroll/data/backups | tail -5
+
+# Drop and recreate the db (DESTRUCTIVE — use only for restore drills).
+docker compose -f /opt/payroll/docker-compose.yml exec -T db dropdb -U payroll payroll
+docker compose -f /opt/payroll/docker-compose.yml exec -T db createdb -U payroll payroll
+
+# Restore.
+docker compose -f /opt/payroll/docker-compose.yml exec -T db \
+  pg_restore -U payroll -d payroll < /opt/payroll/data/backups/payroll-XXXXXXXXTXXXXXXZ.dump
+
+# Bring the app back up — it will run migrations + seed on next start.
+docker compose -f /opt/payroll/docker-compose.yml restart app
+curl -s http://localhost:3000/api/health | jq
+```
+
+## Rolling forward branches
+
+When `rebuild/foundation` merges to `main`, switch the LXC to track main:
+
+```
+sudo sed -i 's|rebuild/foundation|main|' /etc/systemd/system/payroll-deploy.service.d/override.conf
+sudo systemctl daemon-reload
+sudo systemctl restart payroll-deploy.service
+```
 
 ## Where logs go
 
 - App + jobs → stdout, captured by docker
-- Auth events + mutations → `audit_log` table
-- NGTeco import artifacts → `/data/ngteco/{imports,failures}/` (Phase 2+)
-- Generated payslip PDFs → `/data/payslips/<year>/<period>/` (Phase 3+)
+- Auth events + mutations → `audit_log` table (visible at `/audit`, owner-only)
+- NGTeco import artifacts → `/data/ngteco/{profile,failures}/`
+- Generated payslip PDFs → `/data/payslips/<period-start>/`
+- Daily backups → `/data/backups/`
