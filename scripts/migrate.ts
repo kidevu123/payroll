@@ -47,6 +47,7 @@ async function main() {
     }
 
     await seedDefaultPaySchedules(sql);
+    await bootstrapZohoFromEnv(sql);
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -68,6 +69,66 @@ async function seedDefaultPaySchedules(
     WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Semi-Monthly')
   `;
   console.log("Default pay schedules ensured.");
+}
+
+/**
+ * If the legacy Flask app's ZB_HB_* / ZB_BB_* env vars are present, seal them
+ * into a zoho_organizations row so the owner doesn't have to re-enter Zoho
+ * credentials in Settings → Zoho on a fresh deploy. Idempotent: existing
+ * rows are reused (and only the refresh_token is refreshed if the env value
+ * is newer; client_id / client_secret are only seeded once).
+ */
+async function bootstrapZohoFromEnv(sql: ReturnType<typeof postgres>): Promise<void> {
+  const apiDomain = process.env.ZB_DOMAIN ?? "https://www.zohoapis.com";
+  const accountsDomain = process.env.ZB_ACCOUNTS_DOMAIN ?? "https://accounts.zoho.com";
+  const candidates = [
+    { prefix: "ZB_HB", name: "Haute" },
+    { prefix: "ZB_BB", name: "Boomin" },
+  ];
+  // Lazy import so the migrate script doesn't pull lib/* unless we need it.
+  const { seal } = await import("../lib/crypto/vault");
+  for (const { prefix, name } of candidates) {
+    const orgId = process.env[`${prefix}_ORG_ID`];
+    const clientId = process.env[`${prefix}_CLIENT_ID`];
+    const clientSecret = process.env[`${prefix}_CLIENT_SECRET`];
+    const refreshToken = process.env[`${prefix}_REFRESH_TOKEN`];
+    if (!orgId || !clientId || !clientSecret || !refreshToken) {
+      continue;
+    }
+    const expenseAccountName =
+      process.env[`${prefix}_EXPENSE_ACCOUNT_NAME`] ?? "Payroll Expenses";
+    const expenseAccountId = process.env[`${prefix}_EXPENSE_ACCOUNT_ID`] ?? null;
+    const paidThroughName =
+      process.env[`${prefix}_PAID_THROUGH_NAME`] ?? "Operating Account";
+    const paidThroughId = process.env[`${prefix}_PAID_THROUGH_ID`] ?? null;
+    const vendorId = process.env[`${prefix}_VENDOR_ID`] ?? null;
+    const sealedClientId = JSON.stringify(seal(clientId));
+    const sealedClientSecret = JSON.stringify(seal(clientSecret));
+    const sealedRefresh = JSON.stringify(seal(refreshToken));
+    await sql`
+      INSERT INTO zoho_organizations (
+        name, organization_id, api_domain, accounts_domain,
+        client_id_encrypted, client_secret_encrypted, refresh_token_encrypted,
+        default_expense_account_name, default_expense_account_id,
+        default_paid_through_name, default_paid_through_id,
+        default_vendor_id, active
+      )
+      VALUES (
+        ${name}, ${orgId}, ${apiDomain}, ${accountsDomain},
+        ${sealedClientId}::jsonb, ${sealedClientSecret}::jsonb, ${sealedRefresh}::jsonb,
+        ${expenseAccountName}, ${expenseAccountId},
+        ${paidThroughName}, ${paidThroughId},
+        ${vendorId}, true
+      )
+      ON CONFLICT (name) DO UPDATE
+      SET organization_id = EXCLUDED.organization_id,
+          api_domain = EXCLUDED.api_domain,
+          accounts_domain = EXCLUDED.accounts_domain,
+          refresh_token_encrypted = EXCLUDED.refresh_token_encrypted,
+          updated_at = NOW()
+    `;
+    console.log(`Bootstrapped Zoho org "${name}" from ${prefix}_* env.`);
+  }
 }
 
 main().catch((err) => {
