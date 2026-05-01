@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { getOrg, setOrgRefreshToken } from "@/lib/db/queries/zoho";
 import { open as openSealed } from "@/lib/crypto/vault";
 import { writeAudit } from "@/lib/db/audit";
+import { logger } from "@/lib/telemetry";
 
 function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
   return (
@@ -54,6 +55,19 @@ export async function GET(req: Request): Promise<Response> {
   });
   if (!resp.ok) {
     const text = await resp.text();
+    // Log the redirect URI we used so an admin chasing an "Invalid Redirect
+    // Uri" can compare it to what's registered in the Zoho console.
+    logger.error(
+      {
+        orgId: org.id,
+        redirectUri,
+        appUrl,
+        appUrlEnv: process.env.APP_URL ?? null,
+        zohoStatus: resp.status,
+        zohoBody: text.slice(0, 500),
+      },
+      "zoho.oauth.callback: token exchange failed",
+    );
     return NextResponse.redirect(
       new URL(
         `/settings/zoho?error=${encodeURIComponent(`token_exchange_failed: ${text.slice(0, 120)}`)}`,

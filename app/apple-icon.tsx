@@ -1,14 +1,19 @@
-// Dynamic favicon. Reads the uploaded favicon from disk if available,
-// otherwise renders an SVG fallback with the company initials. Next.js
-// resolves /favicon.ico to whatever this exports.
+// Apple touch icon. iOS Safari uses this for "Add to Home Screen" and
+// shared-link previews; without it iOS falls back to a screenshot or the
+// 32x32 favicon (which is what produced the plain "P" you saw in
+// bookmarks). 180x180 is the modern recommendation.
 
 import { ImageResponse } from "next/og";
 import { readAsset } from "@/lib/branding/storage";
 import { getSetting } from "@/lib/settings/runtime";
 
-export const size = { width: 32, height: 32 };
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 export const dynamic = "force-dynamic";
+
+const CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=300, must-revalidate",
+};
 
 function initialsFor(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -17,28 +22,18 @@ function initialsFor(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-// Browsers cache favicons aggressively; we need them to re-check after an
-// upload. Short max-age + must-revalidate + ETag-via-content gives us the
-// best of both: cheap repeat fetches, but new uploads land within minutes.
-const CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=300, must-revalidate",
-};
-
-export default async function Icon() {
+export default async function AppleIcon() {
+  // Prefer the uploaded favicon when it's a raster format. iOS won't
+  // upscale a 32x32 ICO cleanly, but if the admin uploaded a PNG we
+  // serve it as-is; iOS handles the resize. SVG also works.
   const asset = await readAsset("favicon");
-  if (asset && asset.ext === ".png") {
-    return new Response(asset.bytes as unknown as BodyInit, {
-      headers: { "Content-Type": "image/png", ...CACHE_HEADERS },
-    });
-  }
-  if (asset) {
-    // For .ico/.svg, serve directly with the right MIME.
-    const mime = asset.ext === ".ico" ? "image/x-icon" : "image/svg+xml";
+  if (asset && (asset.ext === ".png" || asset.ext === ".svg")) {
+    const mime = asset.ext === ".png" ? "image/png" : "image/svg+xml";
     return new Response(asset.bytes as unknown as BodyInit, {
       headers: { "Content-Type": mime, ...CACHE_HEADERS },
     });
   }
-  // No favicon uploaded — render initials onto the brand color.
+  // Fallback: render a 180x180 brand square with company initials.
   const company = await getSetting("company").catch(() => null);
   const initials = initialsFor(company?.name ?? "Payroll");
   const brand = company?.brandColorHex ?? "#0f766e";
@@ -53,10 +48,12 @@ export default async function Icon() {
           alignItems: "center",
           justifyContent: "center",
           color: "white",
-          fontSize: 18,
+          fontSize: 96,
           fontWeight: 700,
           fontFamily: "sans-serif",
-          letterSpacing: -1,
+          letterSpacing: -2,
+          // Rounded corners to play nicely with iOS's own masking.
+          borderRadius: 36,
         }}
       >
         {initials}

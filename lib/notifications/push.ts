@@ -25,6 +25,19 @@ export function vapidPublicKey(): string | null {
   return process.env.VAPID_PUBLIC_KEY ?? null;
 }
 
+/**
+ * Returns true when both VAPID keys + a contact email are present, so the
+ * UI can decide whether the "Enable notifications" prompt would actually
+ * work. We don't validate key length here — that's web-push's job.
+ */
+export function vapidConfigured(): boolean {
+  return Boolean(
+    process.env.VAPID_PUBLIC_KEY &&
+      process.env.VAPID_PRIVATE_KEY &&
+      process.env.VAPID_CONTACT_EMAIL,
+  );
+}
+
 export async function dispatchPush(
   recipientId: string,
   payload: PushPayload,
