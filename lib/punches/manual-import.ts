@@ -77,14 +77,14 @@ export async function runManualCsvImport(
     : [];
   const empByRef = new Map(emps.map((e) => [e.ngtecoEmployeeRef!, e]));
 
-  // Existing dedupe hashes for this run's period (light filter — full unique
-  // index on ngteco_record_hash catches the rest).
+  // Dedup is enforced globally by the unique index on ngteco_record_hash, so
+  // we don't preload a per-period set anymore — that missed punches that
+  // were already imported under a *different* period (e.g. the cron pulled
+  // Juan's punches into the weekly run, and the admin then uploaded Juan's
+  // CSV against a semi-monthly period). Crashing on the constraint failed
+  // the whole upload; ON CONFLICT DO NOTHING skips silently. seenHashes
+  // still catches duplicates *within* a single CSV without a DB roundtrip.
   const seenHashes = new Set<string>();
-  const existing = await db
-    .select({ hash: punches.ngtecoRecordHash })
-    .from(punches)
-    .where(eq(punches.periodId, run.periodId));
-  for (const r of existing) if (r.hash) seenHashes.add(r.hash);
 
   for (const c of candidates) {
     if (seenHashes.has(c.ngtecoRecordHash)) {
@@ -93,7 +93,7 @@ export async function runManualCsvImport(
         payrollRunId: input.payrollRunId,
         type: "DUPLICATE_HASH",
         ngtecoEmployeeRef: c.ngtecoEmployeeRef,
-        rawData: { hash: c.ngtecoRecordHash, raw: c.raw },
+        rawData: { hash: c.ngtecoRecordHash, raw: c.raw, scope: "within-file" },
       });
       continue;
     }
@@ -108,15 +108,31 @@ export async function runManualCsvImport(
       });
       continue;
     }
-    await db.insert(punches).values({
-      employeeId: emp.id,
-      periodId: run.periodId,
-      clockIn: new Date(c.clockIn),
-      clockOut: c.clockOut ? new Date(c.clockOut) : null,
-      source: "MANUAL_ADMIN",
-      ngtecoRecordHash: c.ngtecoRecordHash,
-    });
+    const inserted = await db
+      .insert(punches)
+      .values({
+        employeeId: emp.id,
+        periodId: run.periodId,
+        clockIn: new Date(c.clockIn),
+        clockOut: c.clockOut ? new Date(c.clockOut) : null,
+        source: "MANUAL_ADMIN",
+        ngtecoRecordHash: c.ngtecoRecordHash,
+      })
+      .onConflictDoNothing({ target: punches.ngtecoRecordHash })
+      .returning({ id: punches.id });
     seenHashes.add(c.ngtecoRecordHash);
+    if (inserted.length === 0) {
+      // Hash already exists in the DB (any period). Treat as a benign
+      // duplicate — the admin's CSV was a re-upload of data we already had.
+      summary.duplicates++;
+      await db.insert(ingestExceptions).values({
+        payrollRunId: input.payrollRunId,
+        type: "DUPLICATE_HASH",
+        ngtecoEmployeeRef: c.ngtecoEmployeeRef,
+        rawData: { hash: c.ngtecoRecordHash, raw: c.raw, scope: "cross-period" },
+      });
+      continue;
+    }
     summary.punchesImported++;
   }
 

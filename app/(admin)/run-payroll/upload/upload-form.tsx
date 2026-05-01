@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Upload, FileText, ArrowRight, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Upload, FileText, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { PaySchedule } from "@/lib/db/schema";
+import type { ManualImportSummary } from "@/lib/punches/manual-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +20,11 @@ import {
   type OverlappingRun,
 } from "./actions";
 
+type SuccessState = { runId: string; summary: ManualImportSummary };
+
 export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<SuccessState | null>(null);
   const [pending, setPending] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -98,9 +103,11 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
           action={async (form) => {
             setPending(true);
             setError(null);
+            setSuccess(null);
             const result = await uploadCsvAction(form);
             setPending(false);
-            if (result?.error) setError(result.error);
+            if ("error" in result) setError(result.error);
+            else setSuccess({ runId: result.runId, summary: result.summary });
           }}
           className="space-y-4"
         >
@@ -239,6 +246,59 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
           )}
 
           {error && <p className="text-sm text-red-700">{error}</p>}
+
+          {success && (
+            <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                <div className="space-y-2">
+                  <p className="font-medium text-emerald-800">
+                    Import complete.{" "}
+                    {success.summary.punchesImported > 0
+                      ? `Added ${success.summary.punchesImported} new punch${success.summary.punchesImported === 1 ? "" : "es"}.`
+                      : "No new punches were added."}
+                  </p>
+                  <ul className="space-y-0.5 text-xs text-emerald-900">
+                    {success.summary.duplicates > 0 && (
+                      <li>
+                        • {success.summary.duplicates} duplicate
+                        {success.summary.duplicates === 1 ? " was" : "s were"}{" "}
+                        already in the system and {success.summary.duplicates === 1 ? "was" : "were"}{" "}
+                        skipped.
+                      </li>
+                    )}
+                    {success.summary.unmatched > 0 && (
+                      <li>
+                        • {success.summary.unmatched} row
+                        {success.summary.unmatched === 1 ? "" : "s"} couldn&apos;t
+                        be matched to an employee. Check the run detail.
+                      </li>
+                    )}
+                    {success.summary.parseErrors > 0 && (
+                      <li>
+                        • {success.summary.parseErrors} parse error
+                        {success.summary.parseErrors === 1 ? "" : "s"} —
+                        review the run detail.
+                      </li>
+                    )}
+                  </ul>
+                  {success.summary.punchesImported === 0 &&
+                    success.summary.duplicates > 0 && (
+                      <p className="text-xs text-emerald-900">
+                        Every punch in this CSV was already imported (likely by
+                        the NGTeco scrape). The run was created but contains
+                        no new data; you can cancel it from the detail page.
+                      </p>
+                    )}
+                  <Button asChild size="sm">
+                    <Link href={`/payroll/run/${success.runId}`}>
+                      Open run <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-end">
             <Button

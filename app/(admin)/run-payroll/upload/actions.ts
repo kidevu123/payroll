@@ -1,14 +1,16 @@
 "use server";
 
 import { z } from "zod";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { payPeriods, payrollRuns } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
-import { runManualCsvImport } from "@/lib/punches/manual-import";
+import {
+  runManualCsvImport,
+  type ManualImportSummary,
+} from "@/lib/punches/manual-import";
 import { getSetting } from "@/lib/settings/runtime";
 
 const schema = z.object({
@@ -69,9 +71,13 @@ export async function findOverlappingRunsAction(
   }));
 }
 
+export type UploadCsvResult =
+  | { error: string }
+  | { ok: true; runId: string; summary: ManualImportSummary };
+
 export async function uploadCsvAction(
   formData: FormData,
-): Promise<{ error?: string } | void> {
+): Promise<UploadCsvResult> {
   const session = await requireAdmin();
   const file = formData.get("csv");
   if (!(file instanceof File) || file.size === 0) {
@@ -145,8 +151,9 @@ export async function uploadCsvAction(
     after: { periodId, source: "MANUAL_CSV" },
   });
 
+  let summary: ManualImportSummary;
   try {
-    await runManualCsvImport({
+    summary = await runManualCsvImport({
       csv,
       payrollRunId: run.id,
       timezone: company.timezone,
@@ -165,5 +172,5 @@ export async function uploadCsvAction(
 
   revalidatePath("/payroll");
   revalidatePath("/reports");
-  redirect(`/payroll/run/${run.id}`);
+  return { ok: true, runId: run.id, summary };
 }
