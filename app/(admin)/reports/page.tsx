@@ -1,121 +1,41 @@
-// Reports landing. YTD totals + trends + CSV exports.
+// Reports landing — legacy-style table of every payroll_run, newest first.
+// Each row links to the per-period admin detail at /payroll/[periodId].
 
 import Link from "next/link";
-import { BarChart3, Download } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MoneyDisplay } from "@/components/domain/money-display";
-import { HoursDisplay } from "@/components/domain/hours-display";
-import { listEmployees } from "@/lib/db/queries/employees";
-import { getYtd } from "@/lib/reports/ytd";
-import { getPeriodTotals } from "@/lib/reports/period-totals";
-import { getSetting } from "@/lib/settings/runtime";
-import { TrendsChart } from "./trends-chart";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { listReports } from "@/lib/db/queries/payroll-runs";
+import { db } from "@/lib/db";
+import { zohoOrganizations } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { ReportsTable } from "./reports-table";
 
-export default async function ReportsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ year?: string }>;
-}) {
-  const params = await searchParams;
-  const year = Number.parseInt(params.year ?? "", 10) || new Date().getFullYear();
-  const [ytd, totals, payRules, employees] = await Promise.all([
-    getYtd(year),
-    getPeriodTotals(),
-    getSetting("payRules"),
-    listEmployees(),
+export const dynamic = "force-dynamic";
+
+export default async function ReportsPage() {
+  const [reports, orgs] = await Promise.all([
+    listReports(200),
+    db.select().from(zohoOrganizations).where(eq(zohoOrganizations.active, true)),
   ]);
-  const empById = new Map(employees.map((e) => [e.id, e]));
-
-  const grandRounded = ytd.reduce((s, r) => s + r.roundedCents, 0);
-  const grandHours = ytd.reduce((s, r) => s + r.hours, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Reports</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
           <p className="text-sm text-text-muted">
-            Year-to-date totals + period trends. CSV exports below.
+            {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.
           </p>
         </div>
-        <form method="GET" action="/reports" className="flex items-end gap-2">
-          <label className="text-sm">
-            Year{" "}
-            <input
-              type="number"
-              name="year"
-              defaultValue={year}
-              min={2020}
-              max={2100}
-              className="h-9 w-24 rounded-input border border-border bg-surface px-2"
-            />
-          </label>
-          <Button type="submit" size="sm" variant="secondary">
-            Apply
-          </Button>
-        </form>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base">YTD totals — {year}</CardTitle>
-            <CardDescription>
-              {ytd.length} {ytd.length === 1 ? "person" : "people"} paid · {grandHours.toFixed(0)}h ·{" "}
-              <MoneyDisplay cents={grandRounded} monospace={false} />
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1.5 text-sm max-h-[24rem] overflow-y-auto">
-            {ytd.length === 0 ? (
-              <p className="text-text-muted">No published payslips for {year}.</p>
-            ) : (
-              ytd.map((row) => {
-                const e = empById.get(row.employeeId);
-                return (
-                  <div
-                    key={row.employeeId}
-                    className="flex items-center justify-between gap-3 border-b border-border last:border-b-0 py-1"
-                  >
-                    <span className="truncate">{e?.displayName ?? row.employeeId}</span>
-                    <span className="text-right text-xs text-text-muted">
-                      <HoursDisplay
-                        hours={row.hours}
-                        decimals={payRules.hoursDecimalPlaces}
-                      />{" "}
-                      ·{" "}
-                      <MoneyDisplay cents={row.roundedCents} monospace={false} />
-                    </span>
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Payroll trends</CardTitle>
-            <CardDescription>Per-period totals across the available history.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {totals.length === 0 ? (
-              <p className="text-sm text-text-muted">
-                Trends light up once payroll publishes its first period.
-              </p>
-            ) : (
-              <TrendsChart
-                points={totals.map((t) => ({
-                  startDate: t.startDate,
-                  hours: t.hours,
-                  netDollars: t.roundedCents / 100,
-                  employees: t.employeeCount,
-                }))}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <ReportsTable reports={reports} zohoOrgs={orgs} />
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
@@ -143,6 +63,3 @@ function ExportLink({ type, label }: { type: string; label: string }) {
     </Button>
   );
 }
-
-// quiet the unused-import warnings.
-void BarChart3;

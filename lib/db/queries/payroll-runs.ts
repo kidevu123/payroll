@@ -6,12 +6,17 @@
 // AWAITING_ADMIN_REVIEW) → APPROVED → PUBLISHED, plus terminal failure
 // states. transitionRun gates on the legal-edge table.
 
-import { desc, eq, and } from "drizzle-orm";
+import { desc, eq, and, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   payrollRuns,
   payPeriods,
+  payslips,
+  paySchedules,
+  users,
   ingestExceptions,
+  zohoOrganizations,
+  zohoPushes,
   type PayrollRun,
   type IngestException,
   payrollRunStateEnum,
@@ -43,6 +48,206 @@ export async function listRuns(limit = 30): Promise<PayrollRun[]> {
     .from(payrollRuns)
     .orderBy(desc(payrollRuns.createdAt))
     .limit(limit);
+}
+
+/**
+ * Reports table row: one per payroll_run, joined with its period, schedule
+ * and approver user (if any). Amount is the explicit total_amount_cents
+ * for legacy rows; for cron/manual runs we fall back to sum(payslips.rounded).
+ * Posting date prefers posted_at, then publishedAt, then approvedAt, then createdAt.
+ *
+ * Per-org Zoho push status is folded in so the Reports table can render
+ * "Pushed (id)" pills without an N+1 lookup.
+ */
+export type ReportRow = {
+  id: string;
+  periodId: string;
+  startDate: string;
+  endDate: string;
+  source: PayrollRun["source"];
+  state: PayrollRun["state"];
+  scheduleName: string | null;
+  amountCents: number;
+  createdByDisplay: string;
+  postedAt: Date;
+  publishedToPortalAt: Date | null;
+  pdfPath: string | null;
+  zohoPushes: Array<{ orgId: string; orgName: string; expenseId: string | null; pushedAt: Date }>;
+};
+
+export async function listReports(limit = 100): Promise<ReportRow[]> {
+  const rows = await db
+    .select({
+      id: payrollRuns.id,
+      periodId: payrollRuns.periodId,
+      startDate: payPeriods.startDate,
+      endDate: payPeriods.endDate,
+      source: payrollRuns.source,
+      state: payrollRuns.state,
+      scheduleName: paySchedules.name,
+      totalAmount: payrollRuns.totalAmountCents,
+      payslipSum: sql<number>`COALESCE((
+        SELECT SUM(${payslips.roundedPayCents})::int
+        FROM ${payslips}
+        WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
+      ), 0)`,
+      createdByName: payrollRuns.createdByName,
+      approverDisplay: users.email,
+      postedAt: payrollRuns.postedAt,
+      publishedAt: payrollRuns.publishedAt,
+      approvedAt: payrollRuns.approvedAt,
+      createdAt: payrollRuns.createdAt,
+      publishedToPortalAt: payrollRuns.publishedToPortalAt,
+      pdfPath: payrollRuns.pdfPath,
+    })
+    .from(payrollRuns)
+    .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
+    .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
+    .leftJoin(users, eq(payrollRuns.approvedById, users.id))
+    .orderBy(
+      desc(
+        sql`COALESCE(${payrollRuns.postedAt}, ${payrollRuns.publishedAt}, ${payrollRuns.approvedAt}, ${payrollRuns.createdAt})`,
+      ),
+    )
+    .limit(limit);
+
+  // Bulk-load zoho pushes per run to avoid an N+1.
+  const runIds = rows.map((r) => r.id);
+  const pushes = runIds.length
+    ? await db
+        .select({
+          payrollRunId: zohoPushes.payrollRunId,
+          organizationId: zohoPushes.organizationId,
+          orgName: zohoOrganizations.name,
+          expenseId: zohoPushes.expenseId,
+          pushedAt: zohoPushes.pushedAt,
+          status: zohoPushes.status,
+        })
+        .from(zohoPushes)
+        .leftJoin(
+          zohoOrganizations,
+          eq(zohoPushes.organizationId, zohoOrganizations.id),
+        )
+        .where(
+          sql`${zohoPushes.payrollRunId} = ANY(${runIds}::uuid[]) AND ${zohoPushes.status} = 'OK'`,
+        )
+    : [];
+  const pushesByRun = new Map<
+    string,
+    Array<{ orgId: string; orgName: string; expenseId: string | null; pushedAt: Date }>
+  >();
+  for (const p of pushes) {
+    const list = pushesByRun.get(p.payrollRunId) ?? [];
+    list.push({
+      orgId: p.organizationId,
+      orgName: p.orgName ?? "(unknown)",
+      expenseId: p.expenseId,
+      pushedAt: p.pushedAt,
+    });
+    pushesByRun.set(p.payrollRunId, list);
+  }
+
+  return rows.map((r) => ({
+    id: r.id,
+    periodId: r.periodId,
+    startDate: r.startDate ?? "",
+    endDate: r.endDate ?? "",
+    source: r.source,
+    state: r.state,
+    scheduleName: r.scheduleName,
+    amountCents: r.totalAmount ?? r.payslipSum,
+    createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
+    postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
+    publishedToPortalAt: r.publishedToPortalAt,
+    pdfPath: r.pdfPath,
+    zohoPushes: pushesByRun.get(r.id) ?? [],
+  }));
+}
+
+export async function getRunWithPeriod(
+  id: string,
+): Promise<(PayrollRun & { startDate: string; endDate: string; scheduleName: string | null }) | null> {
+  const [row] = await db
+    .select({
+      run: payrollRuns,
+      startDate: payPeriods.startDate,
+      endDate: payPeriods.endDate,
+      scheduleName: paySchedules.name,
+    })
+    .from(payrollRuns)
+    .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
+    .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
+    .where(eq(payrollRuns.id, id));
+  if (!row) return null;
+  return {
+    ...row.run,
+    startDate: row.startDate ?? "",
+    endDate: row.endDate ?? "",
+    scheduleName: row.scheduleName,
+  };
+}
+
+export async function deleteRun(
+  id: string,
+  actor: Actor,
+): Promise<void> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, id));
+    if (!before) throw new Error(`deleteRun: ${id} not found`);
+    // Cascade payslips manually since the FK is RESTRICT.
+    await tx.delete(payslips).where(eq(payslips.payrollRunId, id));
+    await tx.delete(payrollRuns).where(eq(payrollRuns.id, id));
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payroll_run.delete",
+        targetType: "PayrollRun",
+        targetId: id,
+        before,
+      },
+      tx,
+    );
+  });
+}
+
+/**
+ * Mark a run as published to the employee portal. Sets the timestamp,
+ * audits the change, and bumps the run's publishedAt if not already set.
+ * Idempotent: a no-op if already published.
+ */
+export async function publishToPortal(
+  id: string,
+  actor: Actor,
+): Promise<PayrollRun> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, id));
+    if (!before) throw new Error(`publishToPortal: ${id} not found`);
+    if (before.publishedToPortalAt) return before;
+    const now = new Date();
+    const [row] = await tx
+      .update(payrollRuns)
+      .set({
+        publishedToPortalAt: now,
+        publishedAt: before.publishedAt ?? now,
+      })
+      .where(eq(payrollRuns.id, id))
+      .returning();
+    if (!row) throw new Error("publishToPortal: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payroll_run.publish_to_portal",
+        targetType: "PayrollRun",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
 }
 
 export async function getRun(id: string): Promise<PayrollRun | null> {
