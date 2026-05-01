@@ -92,11 +92,40 @@ export default async function EmployeePayslipViewer({
             </CardContent>
           </Card>
 
-          <iframe
-            title={`Payslip ${period.startDate}`}
-            src={`/api/payslips/${payslip.id}/pdf`}
-            className="w-full h-[70vh] rounded-[--radius-card] border border-[--border] bg-[--surface]"
-          />
+          {(() => {
+            const lower = (payslip.pdfPath ?? "").toLowerCase();
+            const isPdf = lower.endsWith(".pdf");
+            if (isPdf) {
+              return (
+                <iframe
+                  title={`Payslip ${period.startDate}`}
+                  src={`/api/payslips/${payslip.id}/pdf`}
+                  className="w-full h-[70vh] rounded-[--radius-card] border border-[--border] bg-[--surface]"
+                />
+              );
+            }
+            // Legacy XLSX / non-PDF artifact: download link.
+            const fmt = lower.endsWith(".xlsx") || lower.endsWith(".xls")
+              ? "Excel spreadsheet"
+              : lower.endsWith(".csv")
+                ? "CSV file"
+                : "file";
+            return (
+              <Card>
+                <CardContent className="p-6 space-y-3 text-sm">
+                  <p>
+                    This is a legacy payslip exported as an {fmt}. Download it
+                    to view the full breakdown.
+                  </p>
+                  <Button asChild>
+                    <a href={`/api/payslips/${payslip.id}/pdf`} download>
+                      Download original report
+                    </a>
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {!payslip.acknowledgedAt && (
             <AcknowledgeButton payslipId={payslip.id} />

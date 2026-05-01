@@ -22,17 +22,39 @@ export async function GET(
   if (!payslip.pdfPath) {
     return new NextResponse("not generated", { status: 404 });
   }
-  const { readFile } = await import("fs/promises");
+  const { readFile } = await import(/* webpackIgnore: true */ "fs/promises");
   let bytes: Buffer;
   try {
     bytes = await readFile(payslip.pdfPath);
   } catch {
     return new NextResponse("file missing", { status: 410 });
   }
+  // Legacy imports point at .xlsx (the period's bulk admin report) since
+  // the original Flask app didn't generate per-employee PDFs. Serve the
+  // right Content-Type and force download for non-PDFs.
+  const lower = payslip.pdfPath.toLowerCase();
+  const isPdf = lower.endsWith(".pdf");
+  const ext = lower.endsWith(".xlsx")
+    ? "xlsx"
+    : lower.endsWith(".xls")
+      ? "xls"
+      : lower.endsWith(".csv")
+        ? "csv"
+        : "pdf";
+  const contentType = isPdf
+    ? "application/pdf"
+    : ext === "xlsx"
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      : ext === "xls"
+        ? "application/vnd.ms-excel"
+        : ext === "csv"
+          ? "text/csv"
+          : "application/octet-stream";
+  const fileBase = `payslip-${payslip.periodId}`;
   return new NextResponse(bytes as unknown as BodyInit, {
     headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="payslip-${payslip.periodId}.pdf"`,
+      "Content-Type": contentType,
+      "Content-Disposition": `${isPdf ? "inline" : "attachment"}; filename="${fileBase}.${ext}"`,
       "Cache-Control": "private, no-store",
     },
   });
