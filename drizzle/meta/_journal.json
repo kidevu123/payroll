@@ -64,6 +64,13 @@
       "when": 1777673319801,
       "tag": "0008_open_eternals",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777686000000,
+      "tag": "0009_repair_cohort_column",
+      "breakpoints": true
     }
   ]
 }
