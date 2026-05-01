@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
@@ -7,6 +7,23 @@ import { resolveLocale, messagesFor } from "@/lib/i18n";
 export const metadata: Metadata = {
   title: "Payroll",
   description: "Self-hosted payroll and employee operations.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Payroll",
+  },
+};
+
+// Drives the browser chrome / status bar color. The actual brand hex is
+// re-injected per-render via the inline style on <html> (the Next metadata
+// API hard-codes the value at build time, so this is the safe default; the
+// runtime style override wins for live theming).
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Every page in this app is auth-gated and reads settings/DB at render time.
