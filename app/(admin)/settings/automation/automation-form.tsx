@@ -54,6 +54,32 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
             label="When should the global payroll run fire?"
             defaultValue={automation.payrollRun.cron}
           />
+
+          <div className="space-y-3 rounded-card border border-border bg-surface-2 p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <input
+                id="punchPollEnabled"
+                type="checkbox"
+                name="punchPollEnabled"
+                defaultChecked={automation.ngtecoPunchPoll.enabled}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="punchPollEnabled">Real-time NGTeco punch poll</Label>
+            </div>
+            <p className="text-xs text-text-muted">
+              When on, the worker pulls every individual punch off NGTeco&apos;s
+              View Attendance Punch view on a short interval. Pairs in/out
+              automatically and lands them on the current pay period — so
+              /me/time stays approximately live instead of waiting for the
+              weekly aggregator. Default: every 15 minutes.
+            </p>
+            <CronPicker
+              name="punchPollCron"
+              label="Poll interval (cron)"
+              defaultValue={automation.ngtecoPunchPoll.cron}
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="employeeFixWindowHours">Employee fix window (hours)</Label>

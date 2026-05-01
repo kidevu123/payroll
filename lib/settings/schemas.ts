@@ -78,6 +78,15 @@ export const automationSchema = z.object({
     // Sunday 7pm ET — confirmed default per §21 #6.
     cron: z.string().default("0 19 * * 0"),
   }),
+  // Per-punch poll of NGTeco's View Attendance Punch view. Default every
+  // 15 min so /me/time is approximately real-time without hammering the
+  // service account. Disable to fall back to weekly-only ingestion.
+  ngtecoPunchPoll: z
+    .object({
+      enabled: z.boolean(),
+      cron: z.string(),
+    })
+    .default({ enabled: true, cron: "*/15 * * * *" }),
   employeeFixWindowHours: z.number().int().min(1).max(168).default(24),
   adminAutoNotifyOnIngestFail: z.boolean().default(true),
   suspiciousDurationMinutesShortThreshold: z.number().int().min(1).default(240),

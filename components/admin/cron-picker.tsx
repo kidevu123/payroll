@@ -11,6 +11,10 @@ export type CronPreset = {
 };
 
 const PRESETS: CronPreset[] = [
+  { label: "Every 5 minutes", value: "*/5 * * * *", hint: "Realtime poll" },
+  { label: "Every 15 minutes", value: "*/15 * * * *", hint: "Realtime poll" },
+  { label: "Every 30 minutes", value: "*/30 * * * *", hint: "Realtime poll" },
+  { label: "Every hour", value: "0 * * * *", hint: "Hourly poll" },
   { label: "Every Sunday at 7pm", value: "0 19 * * 0", hint: "Weekly close after Saturday's punches" },
   { label: "Every Saturday at 7pm", value: "0 19 * * 6", hint: "Weekly close on Saturday" },
   { label: "Every Friday at 5pm", value: "0 17 * * 5", hint: "End-of-week Friday cutoff" },
@@ -44,7 +48,10 @@ export function CronPicker({
   const [custom, setCustom] = React.useState<string>(defaultValue);
 
   const value = selected === "__custom__" ? custom : selected;
-  const validCron = /^[\d*/,\- ]+$/.test(value) && value.trim().split(/\s+/).length === 5;
+  // Permissive cron regex: digits, *, /, ,, -, plus whitespace. The 5-field
+  // length check below makes the malformed-banner light up.
+  const validCron =
+    /^[\d*/,\- ]+$/.test(value) && value.trim().split(/\s+/).length === 5;
 
   const description = React.useMemo(() => describeCron(value), [value]);
 
@@ -116,6 +123,19 @@ function describeCron(c: string): string {
   const parts = c.trim().split(/\s+/);
   if (parts.length !== 5) return "Invalid cron length.";
   const [minRaw, hourRaw, domRaw, monRaw, dowRaw] = parts as [string, string, string, string, string];
+
+  // Stride patterns: "*/N * * * *" → every N minutes / hours.
+  const stride = /^\*\/(\d+)$/.exec(minRaw);
+  if (stride && hourRaw === "*" && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
+    return `Every ${stride[1]} minute${stride[1] === "1" ? "" : "s"}.`;
+  }
+  if (minRaw === "0" && /^\*\/(\d+)$/.exec(hourRaw) && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
+    const h = /^\*\/(\d+)$/.exec(hourRaw)![1]!;
+    return `Every ${h} hour${h === "1" ? "" : "s"}.`;
+  }
+  if (minRaw === "0" && hourRaw === "*" && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
+    return "Every hour, on the hour.";
+  }
 
   const time = (() => {
     const min = Number(minRaw);

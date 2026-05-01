@@ -119,4 +119,20 @@ async function registerJobs(boss: PgBoss): Promise<void> {
       await handlePayrollRunPublish({ runId: data.runId });
     }
   });
+
+  // ── ngteco.punch.poll — per-punch realtime ingestion ──────────────────
+  // Handler dynamically imported so its transitive dependencies (vault,
+  // playwright scraper) don't enter the edge bundle for instrumentation.ts.
+  await boss.createQueue("ngteco.punch.poll");
+  await boss.work("ngteco.punch.poll", async () => {
+    const { handlePunchPoll } = await import("./handlers/punch-poll");
+    await handlePunchPoll();
+  });
+  if (automation?.ngtecoPunchPoll?.enabled) {
+    await boss.schedule(
+      "ngteco.punch.poll",
+      automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
+    );
+  }
 }
+
