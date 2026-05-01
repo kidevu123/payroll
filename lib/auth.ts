@@ -102,13 +102,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.employeeId = (user as { employeeId?: string }).employeeId;
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
       }
-      // After /login/change-password commits a new password it triggers
-      // session update; refresh the must_change_password bit so the
-      // middleware redirect loop ends.
-      if (trigger === "update" && token.id) {
+      // Refresh stable bits from the DB on every JWT call. Cheap (one
+      // indexed lookup) and ensures employeeId / role / mustChangePassword
+      // pick up admin-side changes without the user re-signing-in. Catches
+      // the bug where an employee was invited AFTER they signed in: their
+      // old JWT had employeeId=undefined and /me/time stayed empty until
+      // they logged out and back in.
+      if (token.id) {
         const fresh = await findUserById(token.id as string);
-        token.mustChangePassword = fresh?.mustChangePassword ?? false;
+        if (fresh) {
+          token.employeeId = fresh.employeeId ?? undefined;
+          token.role = fresh.role;
+          token.mustChangePassword = fresh.mustChangePassword;
+        }
       }
+      void trigger;
       return token;
     },
     async session({ session, token }) {
