@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { payPeriods, payrollRuns } from "@/lib/db/schema";
@@ -17,7 +17,57 @@ const schema = z.object({
   payScheduleId: z
     .union([z.string().uuid(), z.literal("").transform(() => null)])
     .nullable(),
+  confirmDuplicate: z.string().optional(),
 });
+
+export type OverlappingRun = {
+  runId: string;
+  source: string;
+  state: string;
+  startDate: string;
+  endDate: string;
+  totalAmountCents: number | null;
+};
+
+/**
+ * Look for any payroll_run whose period overlaps [start, end]. Used to
+ * warn the admin BEFORE the upload commits — most "I uploaded twice by
+ * accident" cases are caught here.
+ */
+export async function findOverlappingRunsAction(
+  startDate: string,
+  endDate: string,
+): Promise<OverlappingRun[]> {
+  await requireAdmin();
+  if (!z.string().date().safeParse(startDate).success) return [];
+  if (!z.string().date().safeParse(endDate).success) return [];
+  const rows = await db
+    .select({
+      runId: payrollRuns.id,
+      source: payrollRuns.source,
+      state: payrollRuns.state,
+      startDate: payPeriods.startDate,
+      endDate: payPeriods.endDate,
+      totalAmountCents: payrollRuns.totalAmountCents,
+    })
+    .from(payrollRuns)
+    .innerJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
+    .where(
+      and(
+        lte(payPeriods.startDate, endDate),
+        gte(payPeriods.endDate, startDate),
+      ),
+    )
+    .orderBy(sql`${payPeriods.startDate} DESC`);
+  return rows.map((r) => ({
+    runId: r.runId,
+    source: r.source,
+    state: r.state,
+    startDate: r.startDate,
+    endDate: r.endDate,
+    totalAmountCents: r.totalAmountCents,
+  }));
+}
 
 export async function uploadCsvAction(
   formData: FormData,
@@ -31,6 +81,7 @@ export async function uploadCsvAction(
     startDate: formData.get("startDate"),
     endDate: formData.get("endDate"),
     payScheduleId: formData.get("payScheduleId") || null,
+    confirmDuplicate: formData.get("confirmDuplicate") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
