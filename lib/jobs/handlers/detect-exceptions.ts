@@ -19,7 +19,7 @@ import {
 } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
 import { detectExceptions } from "@/lib/payroll/detect-exceptions";
-import { dispatchInApp } from "@/lib/notifications/in-app";
+import { dispatch } from "@/lib/notifications/router";
 
 export async function handleDetectExceptions(data: {
   runId: string;
@@ -110,7 +110,7 @@ export async function handleDetectExceptions(data: {
       };
     })
     .filter((n): n is NonNullable<typeof n> => n !== null);
-  if (employeeNotices.length > 0) await dispatchInApp(employeeNotices);
+  if (employeeNotices.length > 0) await dispatch(employeeNotices);
 
   // Transition.
   const fixWindowHours = automation.employeeFixWindowHours;
@@ -133,10 +133,10 @@ export async function handleDetectExceptions(data: {
   // Notify admins that a run is awaiting review.
   const admins = await adminUserIds();
   if (admins.length > 0) {
-    await dispatchInApp(
+    await dispatch(
       admins.map((id) => ({
         recipientId: id,
-        kind: "payroll_run.awaiting_review",
+        kind: "payroll_run.awaiting_review" as const,
         payload: { runId, periodId: period.id },
       })),
     );

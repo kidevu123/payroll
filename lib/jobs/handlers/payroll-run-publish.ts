@@ -28,7 +28,7 @@ import {
 import { adminUserIds, userIdsForEmployees } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
-import { dispatchInApp } from "@/lib/notifications/in-app";
+import { dispatch } from "@/lib/notifications/router";
 import type {
   PayslipDocInput,
   SignatureReportInput,
@@ -232,13 +232,13 @@ export async function handlePayrollRunPublish(data: {
       };
     })
     .filter((n): n is NonNullable<typeof n> => n !== null);
-  if (employeeNotices.length > 0) await dispatchInApp(employeeNotices);
+  if (employeeNotices.length > 0) await dispatch(employeeNotices);
   const admins = await adminUserIds();
   if (admins.length > 0) {
-    await dispatchInApp(
+    await dispatch(
       admins.map((id) => ({
         recipientId: id,
-        kind: "payroll_run.published",
+        kind: "payroll_run.published" as const,
         payload: { runId, periodId: period.id, count: sigRows.length },
       })),
     );

@@ -7,7 +7,7 @@
 import { logger } from "@/lib/telemetry";
 import { getRun, transitionRun } from "@/lib/db/queries/payroll-runs";
 import { adminUserIds } from "@/lib/db/queries/recipients";
-import { dispatchInApp } from "@/lib/notifications/in-app";
+import { dispatch } from "@/lib/notifications/router";
 
 export async function handleFixWindowExpire(data: { runId: string }): Promise<void> {
   const { runId } = data;
@@ -26,10 +26,10 @@ export async function handleFixWindowExpire(data: { runId: string }): Promise<vo
   await transitionRun(runId, "AWAITING_ADMIN_REVIEW", null, {});
   const admins = await adminUserIds();
   if (admins.length > 0) {
-    await dispatchInApp(
+    await dispatch(
       admins.map((id) => ({
         recipientId: id,
-        kind: "payroll_run.awaiting_review",
+        kind: "payroll_run.awaiting_review" as const,
         payload: { runId, reason: "employee fix window expired" },
       })),
     );

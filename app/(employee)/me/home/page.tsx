@@ -119,7 +119,9 @@ export default async function EmployeeHome() {
           {alerts.length === 0 ? (
             <p className="text-sm text-[--text-muted]">{t("alertsEmpty")}</p>
           ) : (
-            alerts.map((a) => <AlertCard key={a.id} date={a.date} issue={a.issue} />)
+            alerts.map((a) => (
+              <AlertCard key={a.id} alertId={a.id} date={a.date} issue={a.issue} />
+            ))
           )}
         </CardContent>
       </Card>
@@ -129,17 +131,20 @@ export default async function EmployeeHome() {
           <CardTitle className="text-base">{t("quickActions")}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2">
-          <Button asChild variant="secondary" className="justify-start">
-            <Link href="#">
+          <Button asChild variant="secondary" className="justify-start" disabled={alerts.length === 0}>
+            <Link
+              href={
+                alerts[0] ? `/me/home/missed-punch/${alerts[0].id}` : "#"
+              }
+            >
               <Wrench className="h-4 w-4" /> {t("fixMissedPunch")}
             </Link>
           </Button>
           <Button asChild variant="secondary" className="justify-start">
-            <Link href="#">
+            <Link href="/me/home/time-off/new">
               <CalendarPlus className="h-4 w-4" /> {t("requestTimeOff")}
             </Link>
           </Button>
-          <p className="text-xs text-[--text-muted]">{t("comingPhase5")}</p>
         </CardContent>
       </Card>
     </main>

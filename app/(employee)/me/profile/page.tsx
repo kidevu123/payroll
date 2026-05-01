@@ -60,7 +60,9 @@ export default async function EmployeeProfile() {
 
       <Card>
         <CardContent className="p-4 space-y-3 text-sm">
-          <p className="text-[--text-muted]">{t("comingSoon")}</p>
+          <Button asChild variant="secondary" className="w-full justify-center">
+            <a href="/me/profile/notifications">Notifications</a>
+          </Button>
           <form action={signOutAction}>
             <Button type="submit" variant="secondary" className="w-full justify-center">
               <LogOut className="h-4 w-4" /> {t("signOut")}
