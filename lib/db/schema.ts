@@ -638,6 +638,14 @@ export const payrollRuns = pgTable(
     // Stored PDF path for legacy reports (and for admin-uploaded report
     // attachments). Served from /api/reports/[id]/pdf.
     pdfPath: text("pdf_path"),
+    /**
+     * Admin-locked cohort for manual runs. When set, only these employees
+     * appear in the run's payslips, regardless of pay schedule. Set during
+     * the CSV upload preview step when the admin explicitly checks who to
+     * pay this period. NULL = include all employees who match the run's
+     * pay schedule (the legacy / cron behavior).
+     */
+    cohortEmployeeIds: jsonb("cohort_employee_ids").$type<string[]>(),
     retryCount: integer("retry_count").notNull().default(0),
     lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true })

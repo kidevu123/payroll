@@ -103,14 +103,21 @@ export default async function PeriodReviewPage({
     ? schedules.find((s) => s.id === runScheduleId)
     : null;
 
-  // Filter employees to those on the same schedule as the run, when set.
-  // Legacy weekly runs include every non-Juan employee, SM runs include
-  // only Juan — both fall out of this filter naturally. SALARIED staff
-  // are excluded from punch-driven views regardless of schedule.
+  // Filter employees with the same precedence the publish handler uses:
+  //   1. run.cohortEmployeeIds (admin-locked cohort) — strongest signal
+  //   2. run.payScheduleId (auto-cohort)
+  //   3. all
+  // SALARIED staff are excluded from punch-driven views regardless.
+  const runCohort: string[] | null = Array.isArray(run?.cohortEmployeeIds)
+    ? (run!.cohortEmployeeIds as string[])
+    : null;
+  const cohortSet = runCohort ? new Set(runCohort) : null;
   const employees = (
-    runScheduleId
-      ? allEmployees.filter((e) => e.payScheduleId === runScheduleId)
-      : allEmployees
+    cohortSet
+      ? allEmployees.filter((e) => cohortSet.has(e.id))
+      : runScheduleId
+        ? allEmployees.filter((e) => e.payScheduleId === runScheduleId)
+        : allEmployees
   ).filter((e) => e.payType !== "SALARIED");
 
   const punchesByEmployee = new Map<string, typeof punches>();

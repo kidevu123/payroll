@@ -14,7 +14,11 @@ import { listRates } from "@/lib/db/queries/rate-history";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { findUserByEmployeeId } from "@/lib/db/queries/users";
+import { listPayslipsForEmployee } from "@/lib/db/queries/payslips";
+import { getPeriodById } from "@/lib/db/queries/pay-periods";
+import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getSetting } from "@/lib/settings/runtime";
+import { Download, FileText } from "lucide-react";
 import { ArchiveEmployeeButton } from "./archive-button";
 import { AccountSection } from "./account-section";
 
@@ -27,14 +31,28 @@ export default async function EmployeeDetailPage({
   const employee = await getEmployee(id);
   if (!employee) notFound();
 
-  const [allShifts, rates, recentPunches, company, schedules, account] = await Promise.all([
+  const [allShifts, rates, recentPunches, company, schedules, account, payslips, payrollDocs] = await Promise.all([
     listShifts({ includeArchived: true }),
     listRates(employee.id),
     listPunches({ employeeId: employee.id, includeVoided: false }),
     getSetting("company"),
     listSchedules({ includeInactive: true }),
     findUserByEmployeeId(employee.id),
+    listPayslipsForEmployee(employee.id),
+    listEmployeeVisibleDocs(employee.id),
   ]);
+  // Resolve period dates for each payslip — small handful per employee.
+  const payslipsWithPeriods = await Promise.all(
+    payslips.map(async (p) => {
+      const period = await getPeriodById(p.periodId);
+      return { payslip: p, period };
+    }),
+  );
+  payslipsWithPeriods.sort((a, b) => {
+    const aDate = a.period?.endDate ?? "";
+    const bDate = b.period?.endDate ?? "";
+    return bDate.localeCompare(aDate);
+  });
   const shift = employee.shiftId ? allShifts.find((s) => s.id === employee.shiftId) : null;
   const schedule = employee.payScheduleId
     ? schedules.find((s) => s.id === employee.payScheduleId)
@@ -77,7 +95,16 @@ export default async function EmployeeDetailPage({
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <Field label="Phone" value={employee.phone ?? "—"} />
             <Field label="Hired on" value={employee.hiredOn} />
-            <Field label="Pay type" value={employee.payType === "HOURLY" ? "Hourly" : "Flat / task"} />
+            <Field
+              label="Pay type"
+              value={
+                employee.payType === "HOURLY"
+                  ? "Hourly"
+                  : employee.payType === "FLAT_TASK"
+                    ? "Flat / task"
+                    : "Salaried (external W2)"
+              }
+            />
             <Field
               label={employee.payType === "FLAT_TASK" ? "Default flat rate" : "Current rate"}
               value={
@@ -126,6 +153,106 @@ export default async function EmployeeDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Payslips</CardTitle>
+          <CardDescription>
+            Every non-voided payslip generated for this employee. Latest first.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {payslipsWithPeriods.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No payslips yet for this employee.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {payslipsWithPeriods.map(({ payslip, period }) => (
+                <li
+                  key={payslip.id}
+                  className="flex items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {period
+                        ? `${period.startDate} – ${period.endDate}`
+                        : "Unknown period"}
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      {Number(payslip.hoursWorked).toFixed(2)} h ·{" "}
+                      <MoneyDisplay
+                        cents={payslip.roundedPayCents}
+                        monospace={false}
+                      />
+                      {payslip.acknowledgedAt && " · acknowledged"}
+                    </p>
+                  </div>
+                  {payslip.pdfPath ? (
+                    <Button asChild size="sm" variant="ghost">
+                      <Link
+                        href={`/api/payslips/${payslip.id}/pdf`}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        <Download className="h-3.5 w-3.5" /> PDF
+                      </Link>
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-text-subtle">No PDF</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {payrollDocs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Uploaded W2 / paystub documents</CardTitle>
+            <CardDescription>
+              Documents uploaded by admin for this employee (visible to them
+              on /me/pay).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {payrollDocs.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="h-4 w-4 text-text-muted shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {d.originalFilename}
+                      </p>
+                      <p className="text-xs text-text-muted">
+                        {d.kind} · uploaded{" "}
+                        {d.uploadedAt
+                          .toISOString()
+                          .slice(0, 10)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link
+                      href={`/api/payroll-docs/${d.id}`}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      <Download className="h-3.5 w-3.5" /> View
+                    </Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

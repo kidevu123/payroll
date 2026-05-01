@@ -1,6 +1,6 @@
 {
-  "id": "f3d7c534-d106-4b5a-bd2b-de280af33143",
-  "prevId": "8b75de49-01a8-4338-9ad9-5bd538a9e377",
+  "id": "19f10cb5-dccf-4ff7-afe1-4335bcc0b043",
+  "prevId": "f3d7c534-d106-4b5a-bd2b-de280af33143",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1851,6 +1851,12 @@
         "pdf_path": {
           "name": "pdf_path",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cohort_employee_ids": {
+          "name": "cohort_employee_ids",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

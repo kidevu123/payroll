@@ -1,0 +1,1 @@
+ALTER TABLE "payroll_runs" ADD COLUMN "cohort_employee_ids" jsonb;

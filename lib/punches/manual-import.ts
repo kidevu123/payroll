@@ -77,6 +77,13 @@ export async function runManualCsvImport(
     : [];
   const empByRef = new Map(emps.map((e) => [e.ngtecoEmployeeRef!, e]));
 
+  // If the run carries an explicit admin-selected cohort, only employees in
+  // that set get punches imported. Everyone else's CSV rows are skipped
+  // entirely (logged as ingest_exceptions for audit, not as errors).
+  const cohort: Set<string> | null = Array.isArray(run.cohortEmployeeIds)
+    ? new Set(run.cohortEmployeeIds)
+    : null;
+
   // Dedup is enforced globally by the unique index on ngteco_record_hash, so
   // we don't preload a per-period set anymore — that missed punches that
   // were already imported under a *different* period (e.g. the cron pulled
@@ -106,6 +113,10 @@ export async function runManualCsvImport(
         ngtecoEmployeeRef: c.ngtecoEmployeeRef,
         rawData: { name: c.ngtecoEmployeeName, raw: c.raw },
       });
+      continue;
+    }
+    // Skip employees not in the admin-selected cohort, if one is set.
+    if (cohort && !cohort.has(emp.id)) {
       continue;
     }
     // Try the insert; if the partial unique index on ngteco_record_hash

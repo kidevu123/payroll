@@ -16,16 +16,25 @@ import {
 } from "@/components/ui/card";
 import {
   findOverlappingRunsAction,
+  previewCsvAction,
   uploadCsvAction,
+  type CsvPreviewEmployee,
   type OverlappingRun,
 } from "./actions";
 
 type SuccessState = { runId: string; summary: ManualImportSummary };
+type PreviewState = {
+  employees: CsvPreviewEmployee[];
+  parseErrors: number;
+  selected: Set<string>; // employeeIds selected for the run
+};
 
 export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<SuccessState | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [previewing, setPreviewing] = React.useState(false);
+  const [preview, setPreview] = React.useState<PreviewState | null>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
   const [startDate, setStartDate] = React.useState("");
@@ -247,6 +256,109 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
 
           {error && <p className="text-sm text-red-700">{error}</p>}
 
+          {preview && (
+            <div className="rounded-card border border-border bg-surface-2/40 p-3 space-y-2">
+              <div className="flex items-baseline justify-between">
+                <p className="text-sm font-medium">
+                  Employees in this CSV ({preview.employees.length})
+                </p>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-brand-700 underline"
+                    onClick={() =>
+                      setPreview({
+                        ...preview,
+                        selected: new Set(
+                          preview.employees
+                            .filter((e) => e.employeeId !== null)
+                            .map((e) => e.employeeId!),
+                        ),
+                      })
+                    }
+                  >
+                    Select all
+                  </button>
+                  <span className="text-text-muted">·</span>
+                  <button
+                    type="button"
+                    className="text-brand-700 underline"
+                    onClick={() =>
+                      setPreview({ ...preview, selected: new Set() })
+                    }
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-text-muted">
+                Check the employees you want to pay for this period. Unchecked
+                employees won&apos;t get a payslip even if their hours are in
+                the CSV.
+              </p>
+              <ul className="divide-y divide-border max-h-72 overflow-y-auto rounded border border-border bg-surface">
+                {preview.employees.map((e) => {
+                  const isSelectable = e.employeeId !== null;
+                  const isChecked =
+                    e.employeeId !== null &&
+                    preview.selected.has(e.employeeId);
+                  return (
+                    <li
+                      key={e.ngtecoRef}
+                      className="flex items-center gap-3 px-3 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={isChecked}
+                        disabled={!isSelectable}
+                        onChange={(ev) => {
+                          if (!e.employeeId) return;
+                          const next = new Set(preview.selected);
+                          if (ev.target.checked) next.add(e.employeeId);
+                          else next.delete(e.employeeId);
+                          setPreview({ ...preview, selected: next });
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {e.displayName}
+                          {e.unmatched && (
+                            <span className="ml-2 rounded-input bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">
+                              No match (ref: {e.ngtecoRef})
+                            </span>
+                          )}
+                          {e.payType === "SALARIED" && (
+                            <span className="ml-2 rounded-input bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-800">
+                              Salaried — paystub upload only
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-text-muted">
+                          {e.dayCount} day{e.dayCount === 1 ? "" : "s"} · {e.totalHours.toFixed(2)} h
+                          {e.payScheduleName && ` · ${e.payScheduleName}`}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {preview.parseErrors > 0 && (
+                <p className="text-xs text-amber-700">
+                  {preview.parseErrors} CSV row
+                  {preview.parseErrors === 1 ? "" : "s"} couldn&apos;t be
+                  parsed. They&apos;ll be logged as ingest exceptions on the
+                  run.
+                </p>
+              )}
+              <input
+                type="hidden"
+                name="cohortJson"
+                value={JSON.stringify([...preview.selected])}
+              />
+            </div>
+          )}
+
           {success && (
             <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3 text-sm">
               <div className="flex items-start gap-2">
@@ -300,14 +412,53 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
             </div>
           )}
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={previewing || !file}
+              onClick={async () => {
+                if (!file) return;
+                setPreviewing(true);
+                setError(null);
+                const fd = new FormData();
+                fd.set("csv", file);
+                const r = await previewCsvAction(fd);
+                setPreviewing(false);
+                if ("error" in r) {
+                  setError(r.error);
+                  return;
+                }
+                // Default selection: every matched, non-salaried employee.
+                const defaults = new Set(
+                  r.employees
+                    .filter((e) => e.employeeId && e.payType !== "SALARIED")
+                    .map((e) => e.employeeId!),
+                );
+                setPreview({
+                  employees: r.employees,
+                  parseErrors: r.parseErrors,
+                  selected: defaults,
+                });
+              }}
+            >
+              {previewing ? "Reading CSV…" : "Preview CSV"}
+            </Button>
             <Button
               type="submit"
               disabled={
-                pending || !file || (overlaps.length > 0 && !confirmedOverlap)
+                pending ||
+                !file ||
+                (overlaps.length > 0 && !confirmedOverlap) ||
+                (preview !== null && preview.selected.size === 0)
               }
             >
-              {pending ? "Importing…" : "Import & open run"} <ArrowRight className="h-4 w-4" />
+              {pending
+                ? "Importing…"
+                : preview
+                  ? `Generate payslips for ${preview.selected.size} selected`
+                  : "Import & open run"}{" "}
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </form>

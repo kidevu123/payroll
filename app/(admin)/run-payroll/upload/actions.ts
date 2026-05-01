@@ -2,15 +2,16 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
-import { payPeriods, payrollRuns } from "@/lib/db/schema";
+import { employees, payPeriods, payrollRuns } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import {
   runManualCsvImport,
   type ManualImportSummary,
 } from "@/lib/punches/manual-import";
+import { parse as parseCsv } from "@/lib/punches/parser";
 import { getSetting } from "@/lib/settings/runtime";
 
 const schema = z.object({
@@ -20,6 +21,12 @@ const schema = z.object({
     .union([z.string().uuid(), z.literal("").transform(() => null)])
     .nullable(),
   confirmDuplicate: z.string().optional(),
+  /**
+   * JSON-stringified array of employee ids the admin selected. Empty
+   * (or missing) means "include everyone in the CSV" — the legacy
+   * single-step upload behavior. Set means "lock the cohort to these".
+   */
+  cohortJson: z.string().optional(),
 });
 
 export type OverlappingRun = {
@@ -79,6 +86,134 @@ export type UploadCsvResult =
   | { error: string }
   | { ok: true; runId: string; summary: ManualImportSummary };
 
+export type CsvPreviewEmployee = {
+  /** Employee uuid in the local DB (null when CSV row didn't match anyone). */
+  employeeId: string | null;
+  /** Display name from DB if matched, else CSV name. */
+  displayName: string;
+  /** NGTeco / legacy ref from the CSV. */
+  ngtecoRef: string;
+  /** Days the employee has rows for in the CSV (within range). */
+  dayCount: number;
+  /** Hours summed from the CSV's punch_in / punch_out for matched days. */
+  totalHours: number;
+  /** Pay schedule the employee is on. Helps the admin decide quickly. */
+  payScheduleName: string | null;
+  /** Pay type — SALARIED rows are paid externally, no payslip computed. */
+  payType: "HOURLY" | "FLAT_TASK" | "SALARIED" | null;
+  /** True when no DB employee has this NGTeco ref. UI surfaces a warning. */
+  unmatched: boolean;
+};
+
+export type CsvPreviewResult =
+  | { error: string }
+  | {
+      ok: true;
+      employees: CsvPreviewEmployee[];
+      parseErrors: number;
+      dateRange: { min: string; max: string } | null;
+    };
+
+/**
+ * Parse the CSV and return per-employee summaries WITHOUT touching the DB.
+ * The admin sees this list, picks who to include, then submits the real
+ * upload via uploadCsvAction with selectedEmployeeIds.
+ */
+export async function previewCsvAction(
+  formData: FormData,
+): Promise<CsvPreviewResult> {
+  await requireAdmin();
+  const file = formData.get("csv");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a CSV file." };
+  }
+  const company = await getSetting("company");
+  const csv = await file.text();
+  const result = parseCsv(csv, company.timezone);
+  if (result.candidates.length === 0 && result.errors.length === 0) {
+    return { error: "CSV appears empty." };
+  }
+
+  // Group candidates by ngtecoRef.
+  const byRef = new Map<
+    string,
+    { ngtecoRef: string; name: string; days: Set<string>; hoursMs: number }
+  >();
+  let minIso: string | null = null;
+  let maxIso: string | null = null;
+  for (const c of result.candidates) {
+    const day = c.clockIn.slice(0, 10);
+    if (minIso === null || day < minIso) minIso = day;
+    if (maxIso === null || day > maxIso) maxIso = day;
+    let entry = byRef.get(c.ngtecoEmployeeRef);
+    if (!entry) {
+      entry = {
+        ngtecoRef: c.ngtecoEmployeeRef,
+        name: c.ngtecoEmployeeName ?? c.ngtecoEmployeeRef,
+        days: new Set(),
+        hoursMs: 0,
+      };
+      byRef.set(c.ngtecoEmployeeRef, entry);
+    }
+    entry.days.add(day);
+    if (c.clockOut) {
+      entry.hoursMs +=
+        new Date(c.clockOut).getTime() - new Date(c.clockIn).getTime();
+    }
+  }
+
+  // Match against DB employees.
+  const refs = [...byRef.keys()];
+  const dbEmployees = refs.length
+    ? await db
+        .select()
+        .from(employees)
+        .where(inArray(employees.ngtecoEmployeeRef, refs))
+    : [];
+  const empByRef = new Map(
+    dbEmployees.map((e) => [e.ngtecoEmployeeRef!, e]),
+  );
+
+  // Pull pay-schedule names in one shot.
+  const scheduleIds = [
+    ...new Set(
+      dbEmployees
+        .map((e) => e.payScheduleId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const { paySchedules } = await import("@/lib/db/schema");
+  const schedules = scheduleIds.length
+    ? await db.select().from(paySchedules).where(inArray(paySchedules.id, scheduleIds))
+    : [];
+  const scheduleNameById = new Map(schedules.map((s) => [s.id, s.name]));
+
+  const out: CsvPreviewEmployee[] = [];
+  for (const entry of byRef.values()) {
+    const emp = empByRef.get(entry.ngtecoRef) ?? null;
+    out.push({
+      employeeId: emp?.id ?? null,
+      displayName: emp?.displayName ?? entry.name,
+      ngtecoRef: entry.ngtecoRef,
+      dayCount: entry.days.size,
+      totalHours: Math.round((entry.hoursMs / 3_600_000) * 100) / 100,
+      payScheduleName: emp?.payScheduleId
+        ? scheduleNameById.get(emp.payScheduleId) ?? null
+        : null,
+      payType: emp?.payType ?? null,
+      unmatched: !emp,
+    });
+  }
+  out.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  return {
+    ok: true,
+    employees: out,
+    parseErrors: result.errors.length,
+    dateRange: minIso && maxIso ? { min: minIso, max: maxIso } : null,
+  };
+}
+
 export async function uploadCsvAction(
   formData: FormData,
 ): Promise<UploadCsvResult> {
@@ -92,12 +227,29 @@ export async function uploadCsvAction(
     endDate: formData.get("endDate"),
     payScheduleId: formData.get("payScheduleId") || null,
     confirmDuplicate: formData.get("confirmDuplicate") || undefined,
+    cohortJson: formData.get("cohortJson") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   if (parsed.data.endDate < parsed.data.startDate) {
     return { error: "End date must be on or after start date." };
+  }
+
+  // Parse the explicit admin cohort selection if present.
+  let cohortIds: string[] | null = null;
+  if (parsed.data.cohortJson) {
+    try {
+      const arr = JSON.parse(parsed.data.cohortJson);
+      if (
+        Array.isArray(arr) &&
+        arr.every((x) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x))
+      ) {
+        cohortIds = arr;
+      }
+    } catch {
+      // ignore malformed cohort json — falls back to "all"
+    }
   }
 
   const csv = await file.text();
@@ -156,7 +308,7 @@ export async function uploadCsvAction(
     });
   }
 
-  // Create the MANUAL_CSV run.
+  // Create the MANUAL_CSV run, locking the cohort if the admin selected one.
   const [run] = await db
     .insert(payrollRuns)
     .values({
@@ -166,6 +318,7 @@ export async function uploadCsvAction(
       ingestStartedAt: new Date(),
       source: "MANUAL_CSV",
       payScheduleId: parsed.data.payScheduleId,
+      cohortEmployeeIds: cohortIds,
       createdByName: session.user.email,
       postedAt: new Date(),
     })

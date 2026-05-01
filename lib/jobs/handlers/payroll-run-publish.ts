@@ -37,6 +37,71 @@ import type {
 
 const PAYSLIP_ROOT = process.env.PAYSLIP_STORAGE_DIR ?? "/data/payslips";
 
+/**
+ * Format a Date as a YYYY-MM-DD calendar day in the supplied timezone.
+ * Mirrors the bucket key computePay uses (it pre-shifts before passing to
+ * dayKey), so the maps stay aligned.
+ */
+function tzDayKey(d: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+}
+
+/** Format a Date as HH:MM:SS in the supplied timezone (24h). */
+function tzTimeOfDay(d: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  let h = "00";
+  let m = "00";
+  let s = "00";
+  for (const p of parts) {
+    if (p.type === "hour") h = p.value === "24" ? "00" : p.value;
+    else if (p.type === "minute") m = p.value;
+    else if (p.type === "second") s = p.value;
+  }
+  return `${h}:${m}:${s}`;
+}
+
+/**
+ * For each day a punch contributes hours to, find the earliest clockIn and
+ * the latest clockOut (formatted in company timezone). Voided + incomplete
+ * punches are skipped — they don't contribute pay either.
+ */
+function buildDayInOut(
+  ePunches: { clockIn: Date | string; clockOut: Date | string | null; voidedAt?: Date | string | null }[],
+  tz: string,
+): Map<string, { inTime?: string; outTime?: string }> {
+  const out = new Map<string, { inMs: number; outMs: number }>();
+  for (const p of ePunches) {
+    if (p.voidedAt) continue;
+    if (!p.clockOut) continue;
+    const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+    const outT = p.clockOut instanceof Date ? p.clockOut : new Date(p.clockOut);
+    if (Number.isNaN(inT.getTime()) || Number.isNaN(outT.getTime())) continue;
+    if (outT.getTime() <= inT.getTime()) continue;
+    const day = tzDayKey(inT, tz);
+    const cur = out.get(day);
+    if (!cur) {
+      out.set(day, { inMs: inT.getTime(), outMs: outT.getTime() });
+    } else {
+      if (inT.getTime() < cur.inMs) cur.inMs = inT.getTime();
+      if (outT.getTime() > cur.outMs) cur.outMs = outT.getTime();
+    }
+  }
+  const formatted = new Map<string, { inTime?: string; outTime?: string }>();
+  for (const [day, v] of out) {
+    formatted.set(day, {
+      inTime: tzTimeOfDay(new Date(v.inMs), tz),
+      outTime: tzTimeOfDay(new Date(v.outMs), tz),
+    });
+  }
+  return formatted;
+}
+
 export async function handlePayrollRunPublish(data: {
   runId: string;
 }): Promise<void> {
@@ -58,19 +123,27 @@ export async function handlePayrollRunPublish(data: {
   const { join } = await import(/* webpackIgnore: true */ "path");
   const { writeFile } = await import(/* webpackIgnore: true */ "fs/promises");
 
-  // Cohort filter: a run that targets a specific pay schedule only includes
-  // employees on that schedule. Runs without a schedule (legacy / back-compat)
-  // include everyone, matching prior behavior.
+  // Cohort filter — three layers, in order of precedence:
+  //   1. run.cohortEmployeeIds — explicit admin selection from the upload
+  //      preview step. This is the strongest signal and overrides everything.
+  //   2. run.payScheduleId — auto-cohort by pay schedule.
+  //   3. Neither — include everyone (legacy back-compat).
   const employeeFilter = run.payScheduleId
     ? { payScheduleId: run.payScheduleId }
     : {};
-  const [employees, punches, payRules, company, shifts] = await Promise.all([
+  const [allEmployees, punches, payRules, company, shifts] = await Promise.all([
     listEmployees(employeeFilter),
     listPunches({ periodId: period.id }),
     getSetting("payRules"),
     getSetting("company"),
     listShifts({ includeArchived: true }),
   ]);
+  const cohort: Set<string> | null = Array.isArray(run.cohortEmployeeIds)
+    ? new Set(run.cohortEmployeeIds)
+    : null;
+  const employees = cohort
+    ? allEmployees.filter((e) => cohort.has(e.id))
+    : allEmployees;
   const shiftById = new Map(shifts.map((s) => [s.id, s]));
 
   // Task pay rows for this period in one shot.
@@ -156,6 +229,9 @@ export async function handlePayrollRunPublish(data: {
     });
 
     const pdfPath = join(periodDir, `${e.id}.pdf`);
+    // Build first-in / last-out maps per day in company timezone — feeds the
+    // legacy-format daily table (Date / In / Out / Hours / Pay).
+    const dayInOut = buildDayInOut(ePunches, company.timezone);
     const docInput: PayslipDocInput = {
       company: {
         name: company.name,
@@ -168,13 +244,21 @@ export async function handlePayrollRunPublish(data: {
         legalName: e.legalName,
         legacyId: e.legacyId,
         shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
+        hourlyRateCents: e.hourlyRateCents,
       },
       period: { startDate: period.startDate, endDate: period.endDate },
       rules: {
         rounding: payRules.rounding,
         hoursDecimalPlaces: payRules.hoursDecimalPlaces,
       },
-      days: result.byDay,
+      days: result.byDay.map((d) => {
+        const io = dayInOut.get(d.date);
+        return {
+          ...d,
+          ...(io?.inTime ? { inTime: io.inTime } : {}),
+          ...(io?.outTime ? { outTime: io.outTime } : {}),
+        };
+      }),
       totals: {
         hours: result.totalHours,
         regularCents: result.regularCents,

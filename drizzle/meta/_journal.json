@@ -57,6 +57,13 @@
       "when": 1777679400000,
       "tag": "0007_repair_salaried_and_payslip_void",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777673319801,
+      "tag": "0008_open_eternals",
+      "breakpoints": true
     }
   ]
 }
