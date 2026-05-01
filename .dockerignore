@@ -1,6 +1,7 @@
 node_modules
 .next
-.git
+# .git is intentionally NOT excluded so the build can stamp the SHA + build
+# date into the footer. Repo is small; extra context cost is acceptable.
 .env
 .env.*
 !.env.example

@@ -31,11 +31,22 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# git is needed for `git rev-parse HEAD` below — the SHA gets baked into
+# NEXT_PUBLIC_GIT_SHA so the footer can show the running commit.
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build Next (output: standalone) and prepare static assets for the runtime image.
-RUN npm run build
+# Stamp the build with the git SHA + UTC timestamp. .git is in the build
+# context (see .dockerignore); if missing for any reason, fall back to
+# "unknown" rather than failing the build.
+RUN GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
+    && BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+    && echo "Building $GIT_SHA at $BUILD_AT" \
+    && NEXT_PUBLIC_GIT_SHA=$GIT_SHA NEXT_PUBLIC_BUILD_AT=$BUILD_AT \
+       npm run build
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: run
