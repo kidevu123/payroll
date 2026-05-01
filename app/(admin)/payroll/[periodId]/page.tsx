@@ -19,6 +19,7 @@ import { HoursDisplay } from "@/components/domain/hours-display";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
+import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
@@ -31,6 +32,8 @@ import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { PayrollDocsSection } from "./payroll-docs-section";
 import { listDocs } from "@/lib/db/queries/payroll-documents";
+import { PayslipManageSection } from "./payslip-manage-section";
+import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -72,7 +75,7 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs, allPayslips] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
@@ -81,6 +84,7 @@ export default async function PeriodReviewPage({
     db.select().from(paySchedules),
     listTempWorkers({ periodId }),
     listDocs({ periodId }),
+    listPayslipsForPeriod(periodId, { includeVoided: true }),
   ]);
   const tz = company.timezone ?? "America/New_York";
 
@@ -98,10 +102,13 @@ export default async function PeriodReviewPage({
 
   // Filter employees to those on the same schedule as the run, when set.
   // Legacy weekly runs include every non-Juan employee, SM runs include
-  // only Juan — both fall out of this filter naturally.
-  const employees = runScheduleId
-    ? allEmployees.filter((e) => e.payScheduleId === runScheduleId)
-    : allEmployees;
+  // only Juan — both fall out of this filter naturally. SALARIED staff
+  // are excluded from punch-driven views regardless of schedule.
+  const employees = (
+    runScheduleId
+      ? allEmployees.filter((e) => e.payScheduleId === runScheduleId)
+      : allEmployees
+  ).filter((e) => e.payType !== "SALARIED");
 
   const punchesByEmployee = new Map<string, typeof punches>();
   for (const p of punches) {
@@ -112,6 +119,12 @@ export default async function PeriodReviewPage({
     const list = punchesByEmployee.get(p.employeeId) ?? [];
     list.push(p);
     punchesByEmployee.set(p.employeeId, list);
+  }
+  // Collapse near-duplicates (poll vs CSV producing two rows for the
+  // same physical shift). Display + computePay both consume the deduped
+  // list so the period detail and the payslip stay consistent.
+  for (const [empId, list] of punchesByEmployee) {
+    punchesByEmployee.set(empId, dedupNearDuplicatePunches(list));
   }
 
   const tasks = await db
@@ -403,13 +416,42 @@ export default async function PeriodReviewPage({
         locked={period.state === "PAID"}
       />
 
+      <PayslipManageSection
+        rows={allPayslips
+          .map((p) => {
+            const e = allEmployees.find((x) => x.id === p.employeeId);
+            if (!e) return null;
+            return {
+              payslip: {
+                id: p.id,
+                employeeId: p.employeeId,
+                hoursWorked: p.hoursWorked,
+                roundedPayCents: p.roundedPayCents,
+                voidedAt: p.voidedAt,
+                voidReason: p.voidReason,
+              },
+              employee: { id: e.id, displayName: e.displayName },
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .sort((a, b) =>
+            a.employee.displayName.localeCompare(b.employee.displayName),
+          )}
+      />
+
       <PayrollDocsSection
         periodId={periodId}
-        employees={employees.map((e) => ({
-          id: e.id,
-          displayName: e.displayName,
-          requiresW2Upload: e.requiresW2Upload,
-        }))}
+        // Pass ALL active employees so the section can show salaried
+        // staff alongside the requires-W2-upload flag list. The section
+        // filters internally.
+        employees={allEmployees
+          .filter((e) => e.status === "ACTIVE")
+          .map((e) => ({
+            id: e.id,
+            displayName: e.displayName,
+            requiresW2Upload: e.requiresW2Upload,
+            payType: e.payType,
+          }))}
         initialDocs={payrollDocs}
         locked={period.state === "PAID"}
       />

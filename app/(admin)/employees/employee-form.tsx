@@ -109,8 +109,11 @@ export function EmployeeForm(props: Props) {
             defaultValue={e?.payType ?? "HOURLY"}
             className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
-            <option value="HOURLY">Hourly</option>
+            <option value="HOURLY">Hourly (punches → computed payslip)</option>
             <option value="FLAT_TASK">Flat / task (per-task contractor)</option>
+            <option value="SALARIED">
+              Salaried (external W2 — no punches, doc upload only)
+            </option>
           </select>
         </div>
         <div className="space-y-1">

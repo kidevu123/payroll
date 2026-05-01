@@ -20,7 +20,7 @@ const createSchema = z.object({
   phone: z.string().max(40).optional().nullable(),
   hiredOn: z.string().date(),
   shiftId: z.string().uuid().optional().nullable(),
-  payType: z.enum(["HOURLY", "FLAT_TASK"]),
+  payType: z.enum(["HOURLY", "FLAT_TASK", "SALARIED"]),
   payScheduleId: z.string().uuid().optional().nullable(),
   initialHourlyRateCents: z
     .union([z.coerce.number().int().min(0), z.literal("").transform(() => null)])
@@ -82,7 +82,7 @@ const updateSchema = z.object({
   email: z.string().email(),
   phone: z.string().max(40).optional().nullable(),
   shiftId: z.string().uuid().optional().nullable(),
-  payType: z.enum(["HOURLY", "FLAT_TASK"]),
+  payType: z.enum(["HOURLY", "FLAT_TASK", "SALARIED"]),
   payScheduleId: z.string().uuid().optional().nullable(),
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),

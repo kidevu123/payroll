@@ -95,6 +95,7 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
         SELECT SUM(${payslips.roundedPayCents})::int
         FROM ${payslips}
         WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
+          AND ${payslips.voidedAt} IS NULL
       ), 0)`,
       createdByName: payrollRuns.createdByName,
       approverDisplay: users.email,
@@ -109,11 +110,12 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
     .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
     .leftJoin(users, eq(payrollRuns.approvedById, users.id))
-    .orderBy(
-      desc(
-        sql`COALESCE(${payrollRuns.postedAt}, ${payrollRuns.publishedAt}, ${payrollRuns.approvedAt}, ${payrollRuns.createdAt})`,
-      ),
-    )
+    // Sort by the actual period the run pays out, newest first. Sorting by
+    // postedAt put 2025 legacy imports above 2026 cron runs because the
+    // legacy importer stamps postedAt = source-file mtime (often a 2026
+    // re-import of historical 2025 reports). Period.endDate is what the
+    // admin actually thinks of as "the report's date".
+    .orderBy(desc(payPeriods.endDate), desc(payrollRuns.createdAt))
     .limit(limit);
 
   // Bulk-load zoho pushes per run to avoid an N+1. Use Drizzle's `inArray`

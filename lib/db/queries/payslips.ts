@@ -5,7 +5,7 @@
 //     owns the payslip. Until the admin clicks Publish, the payslip stays
 //     internal-only.
 
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   payrollRuns,
@@ -20,12 +20,22 @@ export type Actor = {
   role: "OWNER" | "ADMIN" | "EMPLOYEE";
 };
 
-export async function listPayslipsForPeriod(periodId: string): Promise<Payslip[]> {
-  return db.select().from(payslips).where(eq(payslips.periodId, periodId));
+export async function listPayslipsForPeriod(
+  periodId: string,
+  opts: { includeVoided?: boolean } = {},
+): Promise<Payslip[]> {
+  const conds = [eq(payslips.periodId, periodId)];
+  if (!opts.includeVoided) conds.push(isNull(payslips.voidedAt));
+  return db.select().from(payslips).where(and(...conds));
 }
 
-export async function listPayslipsForEmployee(employeeId: string): Promise<Payslip[]> {
-  return db.select().from(payslips).where(eq(payslips.employeeId, employeeId));
+export async function listPayslipsForEmployee(
+  employeeId: string,
+  opts: { includeVoided?: boolean } = {},
+): Promise<Payslip[]> {
+  const conds = [eq(payslips.employeeId, employeeId)];
+  if (!opts.includeVoided) conds.push(isNull(payslips.voidedAt));
+  return db.select().from(payslips).where(and(...conds));
 }
 
 /**
@@ -43,6 +53,7 @@ export async function listPublishedPayslipsForEmployee(
       and(
         eq(payslips.employeeId, employeeId),
         isNotNull(payrollRuns.publishedToPortalAt),
+        isNull(payslips.voidedAt),
       ),
     );
   return rows.map((r) => r.p);
@@ -96,6 +107,7 @@ export async function getPublishedPayslipForEmployeePeriod(
         eq(payslips.employeeId, employeeId),
         eq(payslips.periodId, periodId),
         isNotNull(payrollRuns.publishedToPortalAt),
+        isNull(payslips.voidedAt),
       ),
     );
   return rows[0]?.p ?? null;
@@ -154,4 +166,99 @@ export async function markPublished(payrollRunId: string): Promise<void> {
     .update(payslips)
     .set({ publishedAt: new Date() })
     .where(eq(payslips.payrollRunId, payrollRunId));
+}
+
+/**
+ * Soft-delete a payslip from a run. Use case: an employee was incorrectly
+ * included in a run (wrong cohort, wrong schedule) and the admin needs to
+ * remove them after the fact — even on a PUBLISHED run. Voided payslips
+ * are excluded from listings, totals, and the employee portal.
+ *
+ * Recomputes the parent run's total_amount_cents from non-voided payslips
+ * so /reports rolls up correctly without re-publishing.
+ */
+export async function voidPayslip(
+  id: string,
+  reason: string,
+  actor: Actor,
+): Promise<Payslip> {
+  if (!reason.trim()) throw new Error("voidPayslip: reason is required");
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`voidPayslip: ${id} not found`);
+    if (before.voidedAt) return before;
+    const [row] = await tx
+      .update(payslips)
+      .set({
+        voidedAt: new Date(),
+        voidedById: actor.id,
+        voidReason: reason,
+      })
+      .where(eq(payslips.id, id))
+      .returning();
+    if (!row) throw new Error("voidPayslip: returning() empty");
+    await recomputeRunTotal(tx, before.payrollRunId);
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.void",
+        targetType: "Payslip",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+/** Reverse voidPayslip — for "I removed the wrong person, put them back". */
+export async function unvoidPayslip(
+  id: string,
+  actor: Actor,
+): Promise<Payslip> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`unvoidPayslip: ${id} not found`);
+    if (!before.voidedAt) return before;
+    const [row] = await tx
+      .update(payslips)
+      .set({ voidedAt: null, voidedById: null, voidReason: null })
+      .where(eq(payslips.id, id))
+      .returning();
+    if (!row) throw new Error("unvoidPayslip: returning() empty");
+    await recomputeRunTotal(tx, before.payrollRunId);
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.unvoid",
+        targetType: "Payslip",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+async function recomputeRunTotal(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  runId: string,
+): Promise<void> {
+  const [agg] = await tx
+    .select({
+      total: sql<number>`COALESCE(SUM(${payslips.roundedPayCents}), 0)::int`,
+    })
+    .from(payslips)
+    .where(and(eq(payslips.payrollRunId, runId), isNull(payslips.voidedAt)));
+  const total = Number(agg?.total ?? 0);
+  await tx
+    .update(payrollRuns)
+    .set({ totalAmountCents: total })
+    .where(eq(payrollRuns.id, runId));
 }

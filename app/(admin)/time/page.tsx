@@ -9,6 +9,7 @@ import {
   getMostRecentPeriod,
 } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
+import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
 
@@ -72,12 +73,17 @@ export default async function TimePage() {
   }
 
   const days = eachDay(period.startDate, period.endDate);
-  const [employees, punches] = await Promise.all([
+  const [allActive, punches] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
     listPunches({ periodId: period.id }),
   ]);
+  // SALARIED staff don't punch — hide them from the grid so the admin
+  // doesn't see "missed" red cells for everyone-on-salary every day.
+  const employees = allActive.filter((e) => e.payType !== "SALARIED");
 
-  // Group punches by employeeId + day.
+  // Group punches by employeeId + day, then dedup near-duplicates within
+  // each cell so the grid doesn't show "1" / "2" cells for what's really
+  // a single shift represented twice.
   const grid = new Map<string, Map<string, typeof punches>>();
   for (const e of employees) grid.set(e.id, new Map());
   for (const p of punches) {
@@ -87,6 +93,11 @@ export default async function TimePage() {
     const list = byDay.get(day) ?? [];
     list.push(p);
     byDay.set(day, list);
+  }
+  for (const byDay of grid.values()) {
+    for (const [day, list] of byDay) {
+      byDay.set(day, dedupNearDuplicatePunches(list));
+    }
   }
 
   return (

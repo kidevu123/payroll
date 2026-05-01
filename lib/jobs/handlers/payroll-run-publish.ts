@@ -19,6 +19,7 @@ import {
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
+import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listShifts } from "@/lib/db/queries/shifts";
 import {
@@ -84,12 +85,16 @@ export async function handlePayrollRunPublish(data: {
     tasksByEmployee.set(t.employeeId, list);
   }
 
-  // Punches grouped per employee.
+  // Punches grouped per employee — and deduped so payslips don't double-
+  // count when realtime poll + CSV import inserted near-identical rows.
   const punchesByEmployee = new Map<string, typeof punches>();
   for (const p of punches) {
     const list = punchesByEmployee.get(p.employeeId) ?? [];
     list.push(p);
     punchesByEmployee.set(p.employeeId, list);
+  }
+  for (const [empId, list] of punchesByEmployee) {
+    punchesByEmployee.set(empId, dedupNearDuplicatePunches(list));
   }
 
   const periodDir = join(PAYSLIP_ROOT, period.startDate);
@@ -115,6 +120,12 @@ export async function handlePayrollRunPublish(data: {
 
   for (const e of employees) {
     if (e.status !== "ACTIVE" && e.status !== "INACTIVE") continue;
+    // SALARIED employees are paid externally (accountant cuts the check).
+    // We don't compute hours/pay or generate a payslip; the admin uploads
+    // the W2/paystub through PayrollDocsSection on the period page and the
+    // employee sees it on /me/pay. Skipping here also keeps SALARIED rows
+    // out of the run's totalAmountCents.
+    if (e.payType === "SALARIED") continue;
     const ePunches = punchesByEmployee.get(e.id) ?? [];
     const eTasks = tasksByEmployee.get(e.id) ?? [];
     const rates = await listRates(e.id);

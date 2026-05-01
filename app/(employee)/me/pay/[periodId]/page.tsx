@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
+import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getPublishedPayslipForEmployeePeriod } from "@/lib/db/queries/payslips";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getEmployee } from "@/lib/db/queries/employees";
@@ -114,7 +115,7 @@ async function PayslipBody({
   payRules: Awaited<ReturnType<typeof getSetting<"payRules">>>;
   tz: string;
   rateCents: number | null;
-  payType: "HOURLY" | "FLAT_TASK";
+  payType: "HOURLY" | "FLAT_TASK" | "SALARIED";
 }) {
   // Pull every punch the employee has and filter by date range against the
   // employee's display tz — covers cases where punches are stored on a
@@ -199,14 +200,16 @@ async function PayslipBody({
                 </thead>
                 <tbody className="divide-y divide-border/40">
                   {days.flatMap((d) => {
-                    const list = byDay
-                      .get(d)!
-                      .slice()
-                      .sort((a, b) => {
-                        const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
-                        const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
-                        return ai.getTime() - bi.getTime();
-                      });
+                    const list = dedupNearDuplicatePunches(
+                      byDay
+                        .get(d)!
+                        .slice()
+                        .sort((a, b) => {
+                          const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
+                          const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+                          return ai.getTime() - bi.getTime();
+                        }),
+                    );
                     return list.map((p, i) => {
                       const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
                       const outT = p.clockOut
@@ -298,3 +301,4 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
     </div>
   );
 }
+

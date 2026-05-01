@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/queries/pay-periods";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
+import { voidPayslip, unvoidPayslip } from "@/lib/db/queries/payslips";
 
 const idSchema = z.string().uuid();
 
@@ -111,6 +112,60 @@ export async function pollNowAction(): Promise<PollNowResult> {
       error: err instanceof Error ? err.message : "Poll failed.",
     };
   }
+}
+
+const voidPayslipSchema = z.object({ reason: z.string().min(1).max(500) });
+
+/**
+ * Soft-delete one employee's payslip from a run. Works on PUBLISHED runs
+ * too — admin override is the bible. The run's total recomputes from the
+ * remaining non-voided payslips, so /reports stays consistent without
+ * re-publishing.
+ */
+export async function voidPayslipAction(
+  payslipId: string,
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(payslipId).success) return { error: "Invalid id." };
+  const parsed = voidPayslipSchema.safeParse({
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) return { error: "Reason required." };
+  try {
+    await voidPayslip(payslipId, parsed.data.reason, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not void payslip.",
+    };
+  }
+  // Path is unknown at this layer; revalidate the most likely landing pages.
+  revalidatePath("/reports");
+  revalidatePath("/payroll");
+  return;
+}
+
+export async function unvoidPayslipAction(
+  payslipId: string,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(payslipId).success) return { error: "Invalid id." };
+  try {
+    await unvoidPayslip(payslipId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not unvoid.",
+    };
+  }
+  revalidatePath("/reports");
+  revalidatePath("/payroll");
+  return;
 }
 
 export async function getLastPollAction(): Promise<{

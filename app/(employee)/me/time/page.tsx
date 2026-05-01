@@ -11,6 +11,7 @@ import { HoursDisplay } from "@/components/domain/hours-display";
 import { AutoRefresh } from "@/components/employee/auto-refresh";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
+import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -51,7 +52,10 @@ export default async function EmployeeTime() {
   }
   const company = await getSetting("company");
   const payRules = await getSetting("payRules");
-  const punches = await listPunches({ employeeId: session.user.employeeId });
+  // Dedup once at the top so today + week views both render the same set.
+  const punches = dedupNearDuplicatePunches(
+    await listPunches({ employeeId: session.user.employeeId }),
+  );
   const today = dayKey(new Date(), company.timezone);
   const fiveWeeksAgo = new Date(`${today}T00:00:00Z`).getTime() - 35 * MS_PER_DAY;
   const recent = punches.filter(

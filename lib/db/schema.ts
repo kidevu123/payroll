@@ -52,7 +52,15 @@ export const employeeStatusEnum = pgEnum("employee_status", [
   "TERMINATED",
 ]);
 
-export const payTypeEnum = pgEnum("pay_type", ["HOURLY", "FLAT_TASK"]);
+export const payTypeEnum = pgEnum("pay_type", [
+  "HOURLY",
+  "FLAT_TASK",
+  // Salaried (e.g. W2 staff prepared by an external accountant). No
+  // punch tracking, no auto-computed payslip — admin uploads the W2 /
+  // paystub document for the employee to view. Time-off + portal still
+  // apply.
+  "SALARIED",
+]);
 
 export const languageEnum = pgEnum("language", ["en", "es"]);
 
@@ -670,6 +678,16 @@ export const payslips = pgTable(
     pdfPath: text("pdf_path"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    /**
+     * Soft-delete for individual payslips. When the admin says "this person
+     * shouldn't be on this run" (e.g. Juan ended up in the weekly run before
+     * his pay-schedule was set), they void the payslip from /payroll/[id].
+     * Voided payslips are excluded from listings, totals, the employee
+     * portal, and the run's recomputed amount.
+     */
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedById: uuid("voided_by_id").references(() => users.id),
+    voidReason: text("void_reason"),
   },
   (t) => [
     uniqueIndex("payslips_employee_period_unique").on(t.employeeId, t.periodId),

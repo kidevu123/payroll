@@ -19,7 +19,10 @@ import {
   uploadPayrollDocAction,
 } from "./payroll-docs-actions";
 
-type EmployeeLite = Pick<Employee, "id" | "displayName" | "requiresW2Upload">;
+type EmployeeLite = Pick<
+  Employee,
+  "id" | "displayName" | "requiresW2Upload" | "payType"
+>;
 
 export function PayrollDocsSection({
   periodId,
@@ -32,7 +35,11 @@ export function PayrollDocsSection({
   initialDocs: PayrollPeriodDocument[];
   locked: boolean;
 }) {
-  const w2Employees = employees.filter((e) => e.requiresW2Upload);
+  // Anyone flagged as W2 upload required, plus anyone on SALARIED pay
+  // type (they're externally paid by definition).
+  const w2Employees = employees.filter(
+    (e) => e.requiresW2Upload || e.payType === "SALARIED",
+  );
 
   if (w2Employees.length === 0) {
     return null;

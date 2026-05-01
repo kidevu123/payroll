@@ -49,20 +49,17 @@ export async function handlePunchPoll(): Promise<PollSummary> {
   }
   const runId = `poll-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 
-  // webpackIgnore: tells webpack NOT to follow these chunks — the modules
-  // are resolved at runtime by Node, which is the only runtime that calls
-  // this handler. Without the ignore, webpack walks vault → node:crypto +
-  // scraper → fs/path on edge bundles and the build fails. Same trick as
-  // ngteco-import.ts.
-  const vault = (await import(
-    /* webpackIgnore: true */ "../../crypto/vault.js"
-  )) as typeof import("@/lib/crypto/vault");
-  const scraperMod = (await import(
-    /* webpackIgnore: true */ "../../ngteco/scraper.js"
-  )) as typeof import("@/lib/ngteco/scraper");
-  const importerMod = (await import(
-    /* webpackIgnore: true */ "../../punches/poll-importer.js"
-  )) as typeof import("@/lib/punches/poll-importer");
+  // Dynamic imports without webpackIgnore. The previous webpackIgnored
+  // relative paths broke when this handler was invoked from a server
+  // action (chunk lands in /app/.next/server/chunks/N.js, so
+  // ../../crypto/vault.js resolves to /app/.next/crypto/vault.js which
+  // doesn't exist). Plain dynamic imports of @/ paths code-split into
+  // their own chunks at build time and resolve correctly from any
+  // caller — and dynamic imports aren't pulled into the edge bundle of
+  // instrumentation.ts the way static imports would be.
+  const vault = await import("@/lib/crypto/vault");
+  const scraperMod = await import("@/lib/ngteco/scraper");
+  const importerMod = await import("@/lib/punches/poll-importer");
   const { open: openSealed } = vault;
   const {
     scrapeViewAttendance,
