@@ -13,7 +13,7 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { ExceptionBadge } from "@/components/domain/exception-badge";
-import { getRun } from "@/lib/db/queries/payroll-runs";
+import { getRun, listExceptions } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -25,6 +25,7 @@ import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
 import { taskPayLineItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { AlertTriangle } from "lucide-react";
 import { RunActions } from "./run-actions";
 
 export default async function RunReviewPage({
@@ -38,14 +39,17 @@ export default async function RunReviewPage({
   const period = await getPeriodById(run.periodId);
   if (!period) notFound();
 
-  const [employees, punches, payRules, payPeriod, alerts, payslips] = await Promise.all([
+  const [employees, punches, payRules, payPeriod, alerts, payslips, company, exceptions] = await Promise.all([
     listEmployees(),
     listPunches({ periodId: period.id }),
     getSetting("payRules"),
     getSetting("payPeriod"),
     listAlertsForPeriod(period.id),
     listPayslipsForPeriod(period.id),
+    getSetting("company"),
+    listExceptions(runId),
   ]);
+  const tz = company.timezone ?? "America/New_York";
 
   const tasks = await db
     .select()
@@ -230,6 +234,171 @@ export default async function RunReviewPage({
                 </tfoot>
               </table>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {exceptions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-700" />
+              Skipped rows ({exceptions.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                  <tr>
+                    <th className="py-2 pr-3 font-medium">Type</th>
+                    <th className="py-2 px-3 font-medium">Ref</th>
+                    <th className="py-2 px-3 font-medium">Reason / details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {exceptions.slice(0, 50).map((e) => {
+                    const raw = (e.rawData ?? {}) as Record<string, unknown>;
+                    const reason =
+                      typeof raw.reason === "string"
+                        ? raw.reason
+                        : typeof raw.error === "string"
+                          ? raw.error
+                          : "";
+                    const rawRow = raw.raw as Record<string, string> | undefined;
+                    const summary = rawRow
+                      ? [rawRow["date"], rawRow["clock_in"], rawRow["clock_out"], rawRow["first_name"], rawRow["last_name"]]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : "";
+                    return (
+                      <tr key={e.id} className="hover:bg-surface-2/30">
+                        <td className="py-1.5 pr-3 font-mono text-xs">{e.type}</td>
+                        <td className="py-1.5 px-3 font-mono text-xs">
+                          {e.ngtecoEmployeeRef ?? "—"}
+                        </td>
+                        <td className="py-1.5 px-3 text-xs">
+                          <div>{reason}</div>
+                          {summary && (
+                            <div className="text-text-subtle truncate">{summary}</div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {exceptions.length > 50 && (
+                <p className="mt-2 text-xs text-text-muted">
+                  Showing first 50 of {exceptions.length}. Resolve in /ngteco/{run.id}.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Punches</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {rendered.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No punches landed on this run yet.
+            </p>
+          ) : (
+            rendered.map(({ employee }) => {
+              const ePunches = punchesByE.get(employee.id) ?? [];
+              const byDay = new Map<string, typeof ePunches>();
+              for (const p of ePunches) {
+                if (p.voidedAt) continue;
+                const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
+                  p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
+                );
+                const list = byDay.get(day) ?? [];
+                list.push(p);
+                byDay.set(day, list);
+              }
+              const days = Array.from(byDay.entries()).sort((a, b) =>
+                a[0].localeCompare(b[0]),
+              );
+              return (
+                <div key={employee.id} className="space-y-2">
+                  <div className="font-semibold text-sm border-b border-border pb-1">
+                    {employee.displayName}
+                  </div>
+                  {days.length === 0 ? (
+                    <p className="text-xs text-text-muted">No punches.</p>
+                  ) : (
+                    <table className="min-w-full text-sm">
+                      <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle">
+                        <tr>
+                          <th className="py-1 pr-3 font-medium">Day</th>
+                          <th className="py-1 px-3 font-medium">In</th>
+                          <th className="py-1 px-3 font-medium">Out</th>
+                          <th className="py-1 px-3 font-medium text-right">Hours</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {days.flatMap(([day, ps]) =>
+                          ps
+                            .sort((a, b) => {
+                              const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
+                              const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+                              return ai.getTime() - bi.getTime();
+                            })
+                            .map((p, i) => {
+                              const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+                              const outT = p.clockOut
+                                ? p.clockOut instanceof Date
+                                  ? p.clockOut
+                                  : new Date(p.clockOut)
+                                : null;
+                              const hours = outT
+                                ? (outT.getTime() - inT.getTime()) / 3_600_000
+                                : null;
+                              return (
+                                <tr key={p.id} className="hover:bg-surface-2/30">
+                                  <td className="py-1 pr-3 text-text-muted">
+                                    {i === 0
+                                      ? new Intl.DateTimeFormat("en-US", {
+                                          weekday: "short",
+                                          month: "short",
+                                          day: "numeric",
+                                          timeZone: tz,
+                                        }).format(new Date(`${day}T12:00:00Z`))
+                                      : ""}
+                                  </td>
+                                  <td className="py-1 px-3 font-mono">
+                                    {new Intl.DateTimeFormat("en-US", {
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                      timeZone: tz,
+                                    }).format(inT)}
+                                  </td>
+                                  <td className="py-1 px-3 font-mono">
+                                    {outT
+                                      ? new Intl.DateTimeFormat("en-US", {
+                                          hour: "numeric",
+                                          minute: "2-digit",
+                                          timeZone: tz,
+                                        }).format(outT)
+                                      : "—"}
+                                  </td>
+                                  <td className="py-1 px-3 text-right font-mono tabular-nums">
+                                    {hours !== null ? hours.toFixed(2) : "—"}
+                                  </td>
+                                </tr>
+                              );
+                            }),
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>
