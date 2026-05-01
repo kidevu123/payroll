@@ -118,7 +118,16 @@ function parseLegacyDate(s: string): string | null {
   if (us) {
     const m = us[1]!.padStart(2, "0");
     const d = us[2]!.padStart(2, "0");
-    const y = us[3]!.length === 2 ? `20${us[3]}` : us[3]!;
+    let y = us[3]!;
+    if (y.length === 2) {
+      // Same pivot as lib/punches/parser.ts — if 20YY would land more than
+      // ~6 months in the future, treat as 19YY. Catches "12/27/25" punches
+      // misread as 2026-12-27 by earlier imports.
+      const candidate = 2000 + Number(y);
+      const candidateMs = new Date(`${candidate}-${m}-${d}T12:00:00Z`).getTime();
+      const sixMonths = Date.now() + 6 * 30 * 24 * 60 * 60 * 1000;
+      y = String(candidateMs > sixMonths ? candidate - 100 : candidate);
+    }
     return `${y}-${m}-${d}`;
   }
   return null;
@@ -435,6 +444,28 @@ async function main(): Promise<void> {
         AND NOT EXISTS (SELECT 1 FROM payroll_runs WHERE period_id = p.id)
     `;
     console.log(`[apply] purged ghost periods: ${ghostWipe.count}`);
+
+    // One-time: any pay_period that starts AFTER today (which can only
+    // happen via the parsed-as-future-year bug) loses its associated
+    // punches/payslips/runs and is itself deleted. The Step 6 punch
+    // re-import will land them at the correct year via the fixed
+    // parseLegacyDate.
+    const futureWipe = await client`
+      WITH future_periods AS (
+        SELECT id FROM pay_periods WHERE start_date > NOW()::date + INTERVAL '60 days'
+      )
+      , del_payslips AS (
+        DELETE FROM payslips WHERE period_id IN (SELECT id FROM future_periods)
+      )
+      , del_punches AS (
+        DELETE FROM punches WHERE period_id IN (SELECT id FROM future_periods)
+      )
+      , del_runs AS (
+        DELETE FROM payroll_runs WHERE period_id IN (SELECT id FROM future_periods)
+      )
+      DELETE FROM pay_periods WHERE id IN (SELECT id FROM future_periods)
+    `;
+    console.log(`[apply] purged future-dated periods: ${futureWipe.count}`);
 
     // ── APPLY: 3. Resolve pay schedules for the run-tagging step.
     const [weeklySchedule] = await db
