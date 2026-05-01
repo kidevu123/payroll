@@ -29,6 +29,8 @@ import { LockButtons } from "./lock-buttons";
 import { PublishPortalButton } from "./publish-portal-button";
 import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
+import { PayrollDocsSection } from "./payroll-docs-section";
+import { listDocs } from "@/lib/db/queries/payroll-documents";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -70,7 +72,7 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
@@ -78,6 +80,7 @@ export default async function PeriodReviewPage({
     getSetting("company"),
     db.select().from(paySchedules),
     listTempWorkers({ periodId }),
+    listDocs({ periodId }),
   ]);
   const tz = company.timezone ?? "America/New_York";
 
@@ -397,6 +400,17 @@ export default async function PeriodReviewPage({
       <TempWorkersSection
         periodId={periodId}
         initialEntries={tempWorkers}
+        locked={period.state === "PAID"}
+      />
+
+      <PayrollDocsSection
+        periodId={periodId}
+        employees={employees.map((e) => ({
+          id: e.id,
+          displayName: e.displayName,
+          requiresW2Upload: e.requiresW2Upload,
+        }))}
+        initialDocs={payrollDocs}
         locked={period.state === "PAID"}
       />
 

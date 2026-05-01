@@ -169,6 +169,25 @@ export function EmployeeForm(props: Props) {
           className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
+      <div className="rounded-card border border-border bg-surface-2/50 p-3">
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="requiresW2Upload"
+            value="1"
+            defaultChecked={e?.requiresW2Upload ?? false}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            <span className="font-medium">Requires W2 / paystub upload</span>
+            <span className="block text-xs text-text-muted">
+              Pay is prepared externally (e.g. accountant) and the document
+              is uploaded into this system. The employee sees it in their
+              portal under Pay.
+            </span>
+          </span>
+        </label>
+      </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button asChild variant="ghost" type="button">

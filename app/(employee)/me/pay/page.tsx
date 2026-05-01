@@ -2,11 +2,13 @@
 // the portal (payroll_runs.published_to_portal_at IS NOT NULL). Internal
 // runs never appear here.
 
-import { Wallet } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PayslipCard } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
+import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getSetting } from "@/lib/settings/runtime";
 
@@ -21,8 +23,11 @@ export default async function EmployeePayList() {
       </div>
     );
   }
-  const payslips = await listPublishedPayslipsForEmployee(session.user.employeeId);
-  const payRules = await getSetting("payRules");
+  const [payslips, payRules, payrollDocs] = await Promise.all([
+    listPublishedPayslipsForEmployee(session.user.employeeId),
+    getSetting("payRules"),
+    listEmployeeVisibleDocs(session.user.employeeId),
+  ]);
   const periods = await Promise.all(payslips.map((p) => getPeriodById(p.periodId)));
 
   // Sort newest first.
@@ -32,9 +37,51 @@ export default async function EmployeePayList() {
     .sort((a, b) => (a.period.startDate < b.period.startDate ? 1 : -1));
 
   return (
-    <div className="space-y-4 p-4 max-w-3xl mx-auto">
+    <div className="space-y-6 p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold">My pay</h1>
-      {rows.length === 0 ? (
+
+      {payrollDocs.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium text-text-muted">
+            Documents from your employer
+          </h2>
+          <ul className="space-y-2">
+            {payrollDocs.map((d) => (
+              <li
+                key={d.id}
+                className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface p-3 shadow-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="h-4 w-4 text-text-muted shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {d.originalFilename}
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      {d.kind} · uploaded{" "}
+                      {d.uploadedAt.toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href={`/api/payroll-docs/${d.id}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="flex items-center gap-1 rounded-input border border-border px-2.5 py-1.5 text-sm hover:bg-surface-2"
+                >
+                  <Download className="h-3.5 w-3.5" /> View
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState
           icon={Wallet}
           title="No payslips yet"

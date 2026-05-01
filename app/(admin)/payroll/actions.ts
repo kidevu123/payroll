@@ -9,6 +9,8 @@ import {
   unlockPeriod,
   unmarkPaid,
 } from "@/lib/db/queries/pay-periods";
+import { getLastPoll } from "@/lib/db/queries/poll-history";
+import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
 
 const idSchema = z.string().uuid();
 
@@ -76,4 +78,60 @@ export async function unmarkPaidAction(
   revalidatePath(`/payroll/${id}`);
   revalidatePath("/payroll");
   revalidatePath("/reports");
+}
+
+export type PollNowResult =
+  | { error: string }
+  | { ok: true; summary: PollSummary };
+
+/**
+ * Manually trigger a punch.poll run. Blocks until the scrape + import
+ * completes (typical ~30-60s) and returns a summary the UI can show.
+ * Both cron + manual triggers funnel through runPollAndLog so the
+ * ngteco_poll_log entry is consistent.
+ */
+export async function pollNowAction(): Promise<PollNowResult> {
+  const session = await requireAdmin();
+  // Dynamic import: the runner pulls Playwright + node:fs through the
+  // poll handler chain. Top-level import would re-trigger the edge bundle
+  // analyzer issue described in punch-poll.ts.
+  const { runPollAndLog } = await import(
+    "@/lib/jobs/handlers/punch-poll-runner"
+  );
+  try {
+    const summary = await runPollAndLog({
+      triggeredBy: "MANUAL",
+      triggeredById: session.user.id,
+    });
+    revalidatePath("/payroll");
+    revalidatePath("/time");
+    return { ok: true, summary };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Poll failed.",
+    };
+  }
+}
+
+export async function getLastPollAction(): Promise<{
+  startedAt: string | null;
+  finishedAt: string | null;
+  ok: boolean;
+  triggeredBy: string;
+  pairsInserted: number | null;
+  pairsUpdated: number | null;
+  errorMessage: string | null;
+} | null> {
+  await requireAdmin();
+  const last = await getLastPoll();
+  if (!last) return null;
+  return {
+    startedAt: last.startedAt.toISOString(),
+    finishedAt: last.finishedAt?.toISOString() ?? null,
+    ok: last.ok,
+    triggeredBy: last.triggeredBy,
+    pairsInserted: last.pairsInserted,
+    pairsUpdated: last.pairsUpdated,
+    errorMessage: last.errorMessage,
+  };
 }

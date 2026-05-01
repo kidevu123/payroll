@@ -28,6 +28,7 @@ const createSchema = z.object({
     .optional(),
   language: z.enum(["en", "es"]).default("en"),
   notes: z.string().max(2000).optional().nullable(),
+  requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
 });
 
 export async function createEmployeeAction(
@@ -46,6 +47,7 @@ export async function createEmployeeAction(
     initialHourlyRateCents: formData.get("initialHourlyRateCents"),
     language: formData.get("language") || "en",
     notes: formData.get("notes") || null,
+    requiresW2Upload: formData.get("requiresW2Upload") || "0",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -63,6 +65,7 @@ export async function createEmployeeAction(
       payScheduleId: d.payScheduleId ?? null,
       language: d.language,
       notes: d.notes ?? null,
+      requiresW2Upload: d.requiresW2Upload === "1",
       ...(d.initialHourlyRateCents !== undefined && d.initialHourlyRateCents !== null
         ? { initialHourlyRateCents: d.initialHourlyRateCents }
         : {}),
@@ -83,6 +86,7 @@ const updateSchema = z.object({
   payScheduleId: z.string().uuid().optional().nullable(),
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),
+  requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
 });
 
 export async function updateEmployeeAction(
@@ -101,6 +105,7 @@ export async function updateEmployeeAction(
     payScheduleId: formData.get("payScheduleId") || null,
     language: formData.get("language"),
     notes: formData.get("notes") || null,
+    requiresW2Upload: formData.get("requiresW2Upload") || "0",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -118,6 +123,7 @@ export async function updateEmployeeAction(
       payScheduleId: d.payScheduleId ?? null,
       language: d.language,
       notes: d.notes ?? null,
+      requiresW2Upload: d.requiresW2Upload === "1",
     },
     { id: session.user.id, role: session.user.role },
   );

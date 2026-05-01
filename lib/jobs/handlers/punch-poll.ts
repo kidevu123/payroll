@@ -19,19 +19,33 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
   );
 }
 
-export async function handlePunchPoll(): Promise<void> {
+export type PollSummary = {
+  ok: boolean;
+  /** "skipped because creds missing", challenge, scrape failure, etc. */
+  reason?: string;
+  eventsScraped?: number;
+  pairsInserted?: number;
+  pairsUpdated?: number;
+  unmatchedRefs?: number;
+  openShifts?: number;
+  durationMs?: number;
+  /** When set, callers (esp. the manual button) can show the screenshot link. */
+  screenshotPath?: string;
+};
+
+export async function handlePunchPoll(): Promise<PollSummary> {
   const ngteco = await getSetting("ngteco").catch(() => null);
   const company = await getSetting("company").catch(() => null);
   if (!ngteco || !company) {
     logger.info("punch.poll: settings unavailable; skipping");
-    return;
+    return { ok: false, reason: "settings unavailable" };
   }
   if (
     !isEnvelope(ngteco.usernameEncrypted) ||
     !isEnvelope(ngteco.passwordEncrypted)
   ) {
     logger.info("punch.poll: NGTeco credentials not configured; skipping");
-    return;
+    return { ok: false, reason: "NGTeco credentials not configured" };
   }
   const runId = `poll-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 
@@ -72,26 +86,48 @@ export async function handlePunchPoll(): Promise<void> {
       { runId, events: result.events.length, durationMs: result.durationMs },
       "punch.poll: scrape ok",
     );
-    if (result.events.length === 0) return;
+    if (result.events.length === 0) {
+      return {
+        ok: true,
+        eventsScraped: 0,
+        pairsInserted: 0,
+        pairsUpdated: 0,
+        durationMs: result.durationMs,
+      };
+    }
     const summary = await importPunchPoll(result.events, {
       timezone: company.timezone,
     });
     logger.info({ runId, ...summary }, "punch.poll: import done");
+    return {
+      ok: true,
+      eventsScraped: result.events.length,
+      pairsInserted: summary.pairsInserted,
+      pairsUpdated: summary.pairsUpdated,
+      unmatchedRefs: summary.unmatchedRefs,
+      openShifts: summary.openShifts,
+      durationMs: result.durationMs,
+    };
   } catch (err) {
     if (err instanceof ChallengeDetectedError) {
       logger.warn({ runId, kind: err.kind }, "punch.poll: challenge detected");
-      return;
+      return { ok: false, reason: `challenge: ${err.kind}` };
     }
     if (err instanceof ScrapeFailure) {
       logger.error(
         { runId, msg: err.message, screenshot: err.artifacts.screenshotPath },
         "punch.poll: scrape failure",
       );
-      return;
+      return {
+        ok: false,
+        reason: err.message,
+        ...(err.artifacts.screenshotPath
+          ? { screenshotPath: err.artifacts.screenshotPath }
+          : {}),
+      };
     }
-    logger.error(
-      { runId, err: err instanceof Error ? err.message : String(err) },
-      "punch.poll: unexpected error",
-    );
+    const reason = err instanceof Error ? err.message : String(err);
+    logger.error({ runId, err: reason }, "punch.poll: unexpected error");
+    return { ok: false, reason };
   }
 }

@@ -101,13 +101,13 @@ export function ReportsTable({
         <table className="min-w-full text-sm">
           <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
             <tr>
-              <th className="py-3 pl-4 pr-3 font-medium">Week</th>
-              <th className="py-3 px-3 font-medium text-right">Amount</th>
-              <th className="py-3 px-3 font-medium">Schedule</th>
-              <th className="py-3 px-3 font-medium">Created by</th>
-              <th className="py-3 px-3 font-medium">Posted</th>
-              <th className="py-3 px-3 font-medium">Visibility</th>
-              <th className="py-3 px-3 font-medium text-right pr-4">Actions</th>
+              <th className="py-2 pl-4 pr-3 font-medium">Run</th>
+              <th className="py-2 px-3 font-medium text-right">Amount</th>
+              <th className="py-2 px-3 font-medium">Schedule</th>
+              <th className="py-2 px-3 font-medium">Created by</th>
+              <th className="py-2 px-3 font-medium">Posted</th>
+              <th className="py-2 px-3 font-medium">Visibility</th>
+              <th className="py-2 px-3 font-medium text-right pr-4">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -116,34 +116,58 @@ export function ReportsTable({
               const pushedBoomin = r.zohoPushes.find((p) => p.orgId === boomin?.id);
               const published = r.publishedToPortalAt !== null;
               const isLegacy = r.source === "LEGACY_IMPORT";
-              // Show the temp-labor sub-line only on the first row for each
-              // period — temp totals are per-period, not per-run, so dupes
-              // would mislead. Reports come back sorted desc by post date.
               const prev = idx > 0 ? reports[idx - 1] : null;
-              const showTemp = r.tempLaborCents > 0 && prev?.periodId !== r.periodId;
-              const periodGrandTotal = r.amountCents + r.tempLaborCents;
+              const newPeriod = prev?.periodId !== r.periodId;
+              // Sum every run row that shares this period (they're already
+              // adjacent because listReports orders by post date and runs
+              // for one period almost always cluster). For perfect group
+              // totals across mis-ordered rows we'd need a pre-pass, but
+              // the temp_labor_cents field is already per-period so the
+              // grand total below is correct regardless.
+              const periodGrandTotal = sumPeriodRuns(reports, r.periodId);
               return (
-                <tr key={r.id} className="hover:bg-surface/40 transition-colors">
-                  <td className="py-3 pl-4 pr-3">
+                <React.Fragment key={r.id}>
+                  {newPeriod && (
+                    <tr className="bg-surface-3/60 border-t-2 border-border/60">
+                      <td colSpan={7} className="px-4 py-2">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <div className="flex items-baseline gap-3">
+                            <span className="font-semibold text-text">
+                              {formatRange(r.startDate, r.endDate)}
+                            </span>
+                            <span className="text-xs text-text-muted">
+                              Period total
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-3 text-right">
+                            <span className="font-mono tabular-nums font-semibold text-text">
+                              <MoneyDisplay cents={periodGrandTotal} />
+                            </span>
+                            {r.tempLaborCents > 0 && (
+                              <span className="text-xs text-text-muted">
+                                (incl. <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                <tr className="hover:bg-surface/40 transition-colors">
+                  <td className="py-2 pl-8 pr-3">
                     <Link
                       href={`/payroll/${r.periodId}`}
-                      className="font-semibold text-text hover:text-brand-700 hover:underline underline-offset-2"
+                      className="text-sm text-text hover:text-brand-700 hover:underline underline-offset-2"
                     >
-                      {formatRange(r.startDate, r.endDate)}
+                      <span className="font-mono text-xs text-text-subtle">
+                        {r.source.replace(/_/g, " ").toLowerCase()}
+                      </span>{" "}
+                      <span className="ml-1">·</span>{" "}
+                      <span className="font-mono text-xs">{r.id.slice(0, 8)}…</span>
                     </Link>
                   </td>
-                  <td className="py-3 px-3 text-right font-mono tabular-nums font-semibold text-text">
+                  <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-text">
                     <MoneyDisplay cents={r.amountCents} />
-                    {showTemp && (
-                      <div className="text-[10px] font-normal text-text-muted">
-                        + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
-                      </div>
-                    )}
-                    {showTemp && (
-                      <div className="text-[10px] font-medium text-text">
-                        = <MoneyDisplay cents={periodGrandTotal} monospace={false} /> total
-                      </div>
-                    )}
                   </td>
                   <td className="py-3 px-3 text-text-muted">
                     {r.scheduleName ?? <span className="italic">unassigned</span>}
@@ -248,6 +272,7 @@ export function ReportsTable({
                     </div>
                   </td>
                 </tr>
+                </React.Fragment>
               );
             })}
           </tbody>
@@ -255,6 +280,18 @@ export function ReportsTable({
       </div>
     </div>
   );
+}
+
+function sumPeriodRuns(reports: ReportRow[], periodId: string): number {
+  let total = 0;
+  let temp = 0;
+  for (const r of reports) {
+    if (r.periodId === periodId) {
+      total += r.amountCents;
+      temp = r.tempLaborCents; // same value across rows in this period
+    }
+  }
+  return total + temp;
 }
 
 function PushPill({

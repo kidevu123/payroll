@@ -125,8 +125,8 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // playwright scraper) don't enter the edge bundle for instrumentation.ts.
   await boss.createQueue("ngteco.punch.poll");
   await boss.work("ngteco.punch.poll", async () => {
-    const { handlePunchPoll } = await import("./handlers/punch-poll");
-    await handlePunchPoll();
+    const { runPollAndLog } = await import("./handlers/punch-poll-runner");
+    await runPollAndLog({ triggeredBy: "CRON" });
   });
   if (automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(

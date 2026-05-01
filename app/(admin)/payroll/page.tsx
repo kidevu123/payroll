@@ -18,12 +18,14 @@ import { db } from "@/lib/db";
 import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
+import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
+import { getLastPoll } from "@/lib/db/queries/poll-history";
 import { InFlightRow } from "./in-flight-row";
 
 export const dynamic = "force-dynamic";
 
 export default async function PayrollPage() {
-  const [openPeriods, recentInFlight, schedules] = await Promise.all([
+  const [openPeriods, recentInFlight, schedules, lastPoll] = await Promise.all([
     listPeriods({ limit: 5 }),
     db
       .select({
@@ -44,25 +46,35 @@ export default async function PayrollPage() {
       .orderBy(desc(payrollRuns.createdAt))
       .limit(10),
     db.select().from(paySchedules).where(eq(paySchedules.active, true)),
+    getLastPoll(),
   ]);
   const openCount = openPeriods.filter((p) => p.state === "OPEN").length;
   const lockedCount = openPeriods.filter((p) => p.state === "LOCKED").length;
   const paidCount = openPeriods.filter((p) => p.state === "PAID").length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Run payroll</h1>
-        <p className="text-sm text-text-muted">
-          Trigger an import or upload a CSV. Historical reports live in{" "}
-          <Link href="/reports" className="text-brand-700 underline underline-offset-2">
-            Reports
-          </Link>
-          .
-        </p>
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
+          <p className="text-xs text-text-muted">
+            Trigger an import or upload a CSV. Historical reports live in{" "}
+            <Link href="/reports" className="text-brand-700 underline underline-offset-2">
+              Reports
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="text-xs text-text-muted">
+          {openCount > 0 && <span>{openCount} open</span>}
+          {openCount > 0 && (lockedCount > 0 || paidCount > 0) && " · "}
+          {lockedCount > 0 && <span>{lockedCount} locked</span>}
+          {lockedCount > 0 && paidCount > 0 && " · "}
+          {paidCount > 0 && <span>{paidCount} paid</span>}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Card className="bg-surface-2 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -82,6 +94,32 @@ export default async function PayrollPage() {
                 : schedules.map((s) => s.name).join(", ")}
               .
             </p>
+            <div className="border-t border-border pt-3">
+              <p className="text-xs font-medium text-text mb-1.5">
+                Realtime punch poll
+              </p>
+              <p className="text-xs text-text-muted mb-2">
+                Pull the latest in/out events from NGTeco without creating a
+                new payroll run. Use this to confirm someone&apos;s punch is
+                visible.
+              </p>
+              <PollPunchesNowButton
+                initialLast={
+                  lastPoll
+                    ? {
+                        startedAt: lastPoll.startedAt.toISOString(),
+                        finishedAt:
+                          lastPoll.finishedAt?.toISOString() ?? null,
+                        ok: lastPoll.ok,
+                        triggeredBy: lastPoll.triggeredBy,
+                        pairsInserted: lastPoll.pairsInserted,
+                        pairsUpdated: lastPoll.pairsUpdated,
+                        errorMessage: lastPoll.errorMessage,
+                      }
+                    : null
+                }
+              />
+            </div>
           </CardContent>
         </Card>
 

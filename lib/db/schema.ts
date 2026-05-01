@@ -252,6 +252,12 @@ export const employees = pgTable(
     hiredOn: date("hired_on").notNull(),
     ngtecoEmployeeRef: text("ngteco_employee_ref"),
     notes: text("notes"),
+    /**
+     * When true, payroll for this employee requires the admin to upload a
+     * W2/paystub document each period (e.g. external accountant prepares it).
+     * Surfaces as an "Upload paystub" slot on the period detail.
+     */
+    requiresW2Upload: boolean("requires_w2_upload").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -421,6 +427,78 @@ export const tempWorkerEntries = pgTable(
       .on(t.periodId)
       .where(sql`${t.deletedAt} IS NULL`),
   ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Payroll period documents (W2 / paystub uploads)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Per-(period, employee) artefacts for employees who need an externally
+// prepared paystub or W2. Drives the "your paystub is ready" view on the
+// employee portal. Storage is filesystem at PAYROLL_DOC_ROOT (default
+// /data/uploads/payroll-docs).
+
+export const payrollPeriodDocumentKindEnum = pgEnum(
+  "payroll_period_document_kind",
+  ["W2", "PAYSTUB", "OTHER"],
+);
+
+export const payrollPeriodDocuments = pgTable(
+  "payroll_period_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => payPeriods.id, { onDelete: "restrict" }),
+    employeeId: uuid("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "restrict" }),
+    kind: payrollPeriodDocumentKindEnum("kind").notNull().default("PAYSTUB"),
+    filePath: text("file_path").notNull(),
+    mime: text("mime").notNull(),
+    originalFilename: text("original_filename").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    visibleToEmployee: boolean("visible_to_employee").notNull().default(true),
+    uploadedById: uuid("uploaded_by_id")
+      .notNull()
+      .references(() => users.id),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (t) => [
+    index("payroll_period_documents_period_idx").on(t.periodId),
+    index("payroll_period_documents_employee_idx").on(t.employeeId),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NGTeco poll log
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Append-only history of every punch.poll run (cron + manual). Surfaces
+// "last poll was N min ago, imported X" in the admin UI.
+
+export const ngtecoPollLog = pgTable(
+  "ngteco_poll_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** Manual button vs scheduled cron. */
+    triggeredBy: text("triggered_by").notNull(), // 'CRON' | 'MANUAL'
+    triggeredById: uuid("triggered_by_id").references(() => users.id),
+    ok: boolean("ok").notNull().default(false),
+    eventsScraped: integer("events_scraped"),
+    pairsInserted: integer("pairs_inserted"),
+    pairsUpdated: integer("pairs_updated"),
+    errorMessage: text("error_message"),
+  },
+  (t) => [index("ngteco_poll_log_started_idx").on(t.startedAt)],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -890,3 +968,7 @@ export type ZohoPush = typeof zohoPushes.$inferSelect;
 export type NewZohoPush = typeof zohoPushes.$inferInsert;
 export type TempWorkerEntry = typeof tempWorkerEntries.$inferSelect;
 export type NewTempWorkerEntry = typeof tempWorkerEntries.$inferInsert;
+export type NgtecoPollLogRow = typeof ngtecoPollLog.$inferSelect;
+export type NewNgtecoPollLogRow = typeof ngtecoPollLog.$inferInsert;
+export type PayrollPeriodDocument = typeof payrollPeriodDocuments.$inferSelect;
+export type NewPayrollPeriodDocument = typeof payrollPeriodDocuments.$inferInsert;
