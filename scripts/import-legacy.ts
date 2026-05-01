@@ -634,9 +634,19 @@ async function main(): Promise<void> {
       periodCache.set(start, row.id);
       return row.id;
     }
+    const futureCutoffMs = Date.now() + 60 * 24 * 60 * 60 * 1000;
     for (const p of punchMap.values()) {
       const empId = empIdByLegacy.get(p.legacyId);
       if (!empId) {
+        punchSkipped++;
+        continue;
+      }
+      // Drop punches dated more than 60 days in the future. The legacy
+      // CSVs contain a few "12/27/2026" rows that are obvious data-entry
+      // typos for 2025 — leaving them in the DB creates ghost periods on
+      // /payroll. The owner can re-add the punch through the manual
+      // editor once that's available (gap item 1 in legacy-feature-gaps).
+      if (p.clockIn.getTime() > futureCutoffMs) {
         punchSkipped++;
         continue;
       }
