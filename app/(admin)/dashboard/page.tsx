@@ -25,6 +25,10 @@ import {
   listRuns,
 } from "@/lib/db/queries/payroll-runs";
 import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
+import {
+  listPendingMissedPunchRequests,
+  listPendingTimeOffRequests,
+} from "@/lib/db/queries/requests";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
@@ -42,6 +46,11 @@ export default async function DashboardPage() {
 
   const period = (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
   const run = await getCurrentRun();
+  const [pendingMissed, pendingTimeOff] = await Promise.all([
+    listPendingMissedPunchRequests(),
+    listPendingTimeOffRequests(),
+  ]);
+  const pendingTotal = pendingMissed.length + pendingTimeOff.length;
 
   let stats:
     | {
@@ -163,19 +172,57 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Pending requests</CardTitle>
-            <CardDescription>Missed punches and time off awaiting your review.</CardDescription>
+            <CardDescription>
+              {pendingTotal === 0
+                ? "Nothing awaits your review."
+                : `${pendingMissed.length} missed-punch · ${pendingTimeOff.length} time-off`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <EmptyState
-              icon={MessageSquareWarning}
-              title="Lands in Phase 5"
-              description="The full request flow (employee submit, admin approve) ships when notifications go live."
-              action={
-                <Button asChild variant="secondary">
-                  <Link href="/requests">Open</Link>
-                </Button>
-              }
-            />
+            {pendingTotal === 0 ? (
+              <EmptyState
+                icon={MessageSquareWarning}
+                title="All clear"
+                description="No employee submissions waiting on a decision."
+                action={
+                  <Button asChild variant="secondary">
+                    <Link href="/requests">Open requests page</Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {pendingMissed.slice(0, 3).map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/requests`}
+                    className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
+                  >
+                    <div className="text-sm font-medium">Missed punch · {r.date}</div>
+                    <div className="text-xs text-text-muted truncate">{r.reason}</div>
+                  </Link>
+                ))}
+                {pendingTimeOff.slice(0, 3).map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`/requests`}
+                    className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
+                  >
+                    <div className="text-sm font-medium">
+                      Time off · {r.startDate} – {r.endDate} ({r.type.toLowerCase()})
+                    </div>
+                    {r.reason && (
+                      <div className="text-xs text-text-muted truncate">{r.reason}</div>
+                    )}
+                  </Link>
+                ))}
+                {pendingTotal > 6 && (
+                  <Button asChild variant="ghost" size="sm" className="mt-2">
+                    <Link href="/requests">View all {pendingTotal}</Link>
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>

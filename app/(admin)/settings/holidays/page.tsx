@@ -1,10 +1,9 @@
-import { PhaseStub } from "../_phase-stub";
-export default function Page() {
-  return (
-    <PhaseStub
-      title="Holidays"
-      description="Observed holidays. Suppresses missed-punch alerts and informs default time-off behavior."
-      phase={3}
-    />
-  );
+import { listAllHolidays } from "@/lib/db/queries/holidays";
+import { HolidaysManager } from "./holidays-manager";
+
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const rows = await listAllHolidays();
+  return <HolidaysManager holidays={rows} />;
 }

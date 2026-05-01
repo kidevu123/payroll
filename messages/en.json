@@ -36,7 +36,7 @@
     "title": "Dashboard",
     "subtitle": "One place, one source of truth for the current payroll run.",
     "currentRun": "Current payroll run",
-    "currentRunHint": "Foundation phase. The orchestrator and run-card UI ship in Phase 3.",
+    "currentRunHint": "Single source of truth for the current payroll run.",
     "noActiveRun": "No active run",
     "noActiveRunDescription": "The first run will be scheduled automatically once the cron job is enabled in Settings → Automation.",
     "openAutomation": "Open automation settings",
@@ -61,8 +61,8 @@
       "locale": "Locale"
     },
     "phase": {
-      "title": "Lands in Phase {n}",
-      "description": "The data model and defaults are in place. The editing UI ships when this phase is built."
+      "title": "Coming soon",
+      "description": "The data model and defaults are in place; an editor will surface here in a future release."
     }
   },
   "employee": {
@@ -83,7 +83,7 @@
       "quickActions": "Quick actions",
       "fixMissedPunch": "Report a missed punch",
       "requestTimeOff": "Request time off",
-      "comingPhase5": "Submission flow lands in Phase 5."
+      "submissionHint": "Use the buttons above to file a missed-punch fix or a time-off request."
     },
     "time": {
       "title": "My time",

@@ -36,7 +36,7 @@
     "title": "Panel",
     "subtitle": "Un solo lugar, una sola fuente de verdad para la ejecución de nómina actual.",
     "currentRun": "Ejecución de nómina actual",
-    "currentRunHint": "Fase de cimientos. El orquestador y la tarjeta de ejecución llegan en la Fase 3.",
+    "currentRunHint": "Una sola fuente de verdad para la ejecución de nómina actual.",
     "noActiveRun": "Sin ejecución activa",
     "noActiveRunDescription": "La primera ejecución se programará automáticamente cuando el cron esté habilitado en Ajustes → Automatización.",
     "openAutomation": "Abrir ajustes de automatización",
@@ -61,8 +61,8 @@
       "locale": "Configuración regional"
     },
     "phase": {
-      "title": "Llega en la Fase {n}",
-      "description": "El modelo de datos y los valores predeterminados ya están listos. La interfaz de edición se entrega cuando se construya esta fase."
+      "title": "Próximamente",
+      "description": "El modelo de datos y los valores predeterminados ya están listos; el editor llegará en una versión futura."
     }
   },
   "employee": {
@@ -83,7 +83,7 @@
       "quickActions": "Acciones rápidas",
       "fixMissedPunch": "Reportar un fichaje faltante",
       "requestTimeOff": "Solicitar tiempo libre",
-      "comingPhase5": "El flujo de envío llega en la Fase 5."
+      "submissionHint": "Use los botones de arriba para enviar una corrección de fichaje o solicitar tiempo libre."
     },
     "time": {
       "title": "Mi tiempo",

@@ -1,6 +1,7 @@
-// Per-user notification preferences. Phase 5 ships push-enable + a
-// listing of recent notifications. Per-event-kind channel toggles land
-// in Phase 6 polish.
+// Per-user notification preferences: push-enable for this device + a
+// listing of recent notifications. Channel-level defaults are managed
+// by the admin in Settings → Notifications; this page is the user's
+// device-scoped opt-in.
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";

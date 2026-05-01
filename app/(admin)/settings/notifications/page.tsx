@@ -1,10 +1,9 @@
-import { PhaseStub } from "../_phase-stub";
-export default function Page() {
-  return (
-    <PhaseStub
-      title="Notifications"
-      description="Per-event-kind channel toggles. In-app and push are on by default; email is disabled per owner direction."
-      phase={5}
-    />
-  );
+import { getSetting } from "@/lib/settings/runtime";
+import { NotificationsForm } from "./notifications-form";
+
+export const dynamic = "force-dynamic";
+
+export default async function Page() {
+  const notifications = await getSetting("notifications");
+  return <NotificationsForm notifications={notifications} />;
 }
