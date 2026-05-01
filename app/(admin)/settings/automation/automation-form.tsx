@@ -5,6 +5,7 @@ import type { AutomationSettings } from "@/lib/settings/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CronPicker } from "@/components/admin/cron-picker";
 import {
   Card,
   CardContent,
@@ -48,13 +49,11 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
             />
             <Label htmlFor="enabled">Run-tick enabled</Label>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="cron">Cron (5-field)</Label>
-            <Input id="cron" name="cron" required defaultValue={automation.payrollRun.cron} />
-            <p className="text-xs text-text-muted">
-              Default Sunday 7pm ET: <code>0 19 * * 0</code>
-            </p>
-          </div>
+          <CronPicker
+            name="cron"
+            label="When should the global payroll run fire?"
+            defaultValue={automation.payrollRun.cron}
+          />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="employeeFixWindowHours">Employee fix window (hours)</Label>

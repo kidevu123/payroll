@@ -6,6 +6,7 @@ import type { PaySchedule } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CronPicker } from "@/components/admin/cron-picker";
 import {
   Card,
   CardContent,
@@ -242,14 +243,11 @@ function ScheduleForm({
           />
         </div>
       )}
-      <div className="space-y-1">
-        <Label htmlFor={`cron-${schedule?.id ?? "new"}`}>Cron (5-field)</Label>
-        <Input
-          id={`cron-${schedule?.id ?? "new"}`}
+      <div className="sm:col-span-2">
+        <CronPicker
           name="cron"
-          required
+          label="When does this schedule fire?"
           defaultValue={schedule?.cron ?? "0 19 * * 0"}
-          placeholder="0 19 * * 0"
         />
       </div>
       <div className="flex items-center gap-2 pt-6 sm:col-span-2">
