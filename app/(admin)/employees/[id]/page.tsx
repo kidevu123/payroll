@@ -13,8 +13,10 @@ import { listShifts } from "@/lib/db/queries/shifts";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
+import { findUserByEmployeeId } from "@/lib/db/queries/users";
 import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
+import { AccountSection } from "./account-section";
 
 export default async function EmployeeDetailPage({
   params,
@@ -25,12 +27,13 @@ export default async function EmployeeDetailPage({
   const employee = await getEmployee(id);
   if (!employee) notFound();
 
-  const [allShifts, rates, recentPunches, company, schedules] = await Promise.all([
+  const [allShifts, rates, recentPunches, company, schedules, account] = await Promise.all([
     listShifts({ includeArchived: true }),
     listRates(employee.id),
     listPunches({ employeeId: employee.id, includeVoided: false }),
     getSetting("company"),
     listSchedules({ includeInactive: true }),
+    findUserByEmployeeId(employee.id),
   ]);
   const shift = employee.shiftId ? allShifts.find((s) => s.id === employee.shiftId) : null;
   const schedule = employee.payScheduleId
@@ -139,6 +142,12 @@ export default async function EmployeeDetailPage({
           )}
         </CardContent>
       </Card>
+
+      <AccountSection
+        employeeId={employee.id}
+        employeeEmail={employee.email}
+        user={account}
+      />
 
       {employee.status !== "TERMINATED" && (
         <ArchiveEmployeeButton id={employee.id} name={employee.displayName} />

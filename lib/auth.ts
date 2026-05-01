@@ -12,7 +12,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
-import { findUserByEmail, recordSuccessfulLogin } from "@/lib/db/queries/users";
+import { findUserByEmail, findUserById, recordSuccessfulLogin } from "@/lib/db/queries/users";
 import { recordLoginAttempt, isRateLimited } from "@/lib/auth-rate-limit";
 import { writeAudit } from "@/lib/db/audit";
 
@@ -89,16 +89,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.email,
           role: user.role,
           employeeId: user.employeeId ?? undefined,
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         if (user.id !== undefined) token.id = user.id;
         token.role = (user as { role: "OWNER" | "ADMIN" | "EMPLOYEE" }).role;
         token.employeeId = (user as { employeeId?: string }).employeeId;
+        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+      }
+      // After /login/change-password commits a new password it triggers
+      // session update; refresh the must_change_password bit so the
+      // middleware redirect loop ends.
+      if (trigger === "update" && token.id) {
+        const fresh = await findUserById(token.id as string);
+        token.mustChangePassword = fresh?.mustChangePassword ?? false;
       }
       return token;
     },
@@ -107,6 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as "OWNER" | "ADMIN" | "EMPLOYEE";
         session.user.employeeId = token.employeeId as string | undefined;
+        session.user.mustChangePassword = token.mustChangePassword as boolean | undefined;
       }
       return session;
     },

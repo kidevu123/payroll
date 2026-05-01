@@ -8,7 +8,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/setup", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/setup", "/api/health", "/login/change-password"];
 
 // Auth.js v5 default cookie names. Suffix differs in production (Secure cookies
 // get the `__Secure-` prefix). Check both.

@@ -8,12 +8,14 @@ declare module "next-auth" {
       email: string;
       role: "OWNER" | "ADMIN" | "EMPLOYEE";
       employeeId?: string | undefined;
+      mustChangePassword?: boolean | undefined;
     };
   }
   interface User {
     id?: string;
     role?: "OWNER" | "ADMIN" | "EMPLOYEE";
     employeeId?: string | undefined;
+    mustChangePassword?: boolean | undefined;
   }
 }
 
@@ -22,5 +24,6 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: "OWNER" | "ADMIN" | "EMPLOYEE";
     employeeId?: string | undefined;
+    mustChangePassword?: boolean | undefined;
   }
 }
