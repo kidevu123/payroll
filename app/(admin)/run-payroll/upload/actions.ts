@@ -58,6 +58,10 @@ export async function findOverlappingRunsAction(
       and(
         lte(payPeriods.startDate, endDate),
         gte(payPeriods.endDate, startDate),
+        // Hide zombies — CANCELLED and INGEST_FAILED runs aren't real
+        // overlaps the admin needs to confirm against. They clutter the
+        // warning panel and confuse the "did this already publish?" question.
+        sql`${payrollRuns.state} NOT IN ('CANCELLED','INGEST_FAILED','FAILED')`,
       ),
     )
     .orderBy(sql`${payPeriods.startDate} DESC`);
@@ -124,6 +128,32 @@ export async function uploadCsvAction(
       .returning();
     if (!row) return { error: "Could not create pay period." };
     periodId = row.id;
+  }
+
+  // Auto-cancel zombie failed/scheduled MANUAL_CSV runs for this same
+  // period so the warning list doesn't accumulate. They came from prior
+  // upload attempts that hit dedup or parse errors. Real PUBLISHED runs
+  // are left alone.
+  const cancelled = await db
+    .update(payrollRuns)
+    .set({ state: "CANCELLED" })
+    .where(
+      and(
+        eq(payrollRuns.periodId, periodId),
+        eq(payrollRuns.source, "MANUAL_CSV"),
+        sql`${payrollRuns.state} IN ('INGEST_FAILED','INGESTING','SCHEDULED')`,
+      ),
+    )
+    .returning({ id: payrollRuns.id });
+  if (cancelled.length > 0) {
+    await writeAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "payroll_run.manual_csv.cleanup_failed",
+      targetType: "PayPeriod",
+      targetId: periodId,
+      after: { cancelledRunIds: cancelled.map((c) => c.id) },
+    });
   }
 
   // Create the MANUAL_CSV run.

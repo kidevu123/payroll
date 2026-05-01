@@ -108,32 +108,40 @@ export async function runManualCsvImport(
       });
       continue;
     }
-    const inserted = await db
-      .insert(punches)
-      .values({
+    // Try the insert; if the partial unique index on ngteco_record_hash
+    // catches a duplicate, treat it as a benign skip. We don't use
+    // ON CONFLICT here because Postgres can't infer a partial unique
+    // index without including the WHERE predicate, and Drizzle's
+    // onConflictDoNothing inference doesn't carry that predicate. The
+    // try/catch is robust either way and produces the same outcome.
+    seenHashes.add(c.ngtecoRecordHash);
+    try {
+      await db.insert(punches).values({
         employeeId: emp.id,
         periodId: run.periodId,
         clockIn: new Date(c.clockIn),
         clockOut: c.clockOut ? new Date(c.clockOut) : null,
         source: "MANUAL_ADMIN",
         ngtecoRecordHash: c.ngtecoRecordHash,
-      })
-      .onConflictDoNothing({ target: punches.ngtecoRecordHash })
-      .returning({ id: punches.id });
-    seenHashes.add(c.ngtecoRecordHash);
-    if (inserted.length === 0) {
-      // Hash already exists in the DB (any period). Treat as a benign
-      // duplicate — the admin's CSV was a re-upload of data we already had.
-      summary.duplicates++;
-      await db.insert(ingestExceptions).values({
-        payrollRunId: input.payrollRunId,
-        type: "DUPLICATE_HASH",
-        ngtecoEmployeeRef: c.ngtecoEmployeeRef,
-        rawData: { hash: c.ngtecoRecordHash, raw: c.raw, scope: "cross-period" },
       });
-      continue;
+      summary.punchesImported++;
+    } catch (err) {
+      if (isUniqueViolation(err, "punches_ngteco_hash_unique")) {
+        summary.duplicates++;
+        await db.insert(ingestExceptions).values({
+          payrollRunId: input.payrollRunId,
+          type: "DUPLICATE_HASH",
+          ngtecoEmployeeRef: c.ngtecoEmployeeRef,
+          rawData: {
+            hash: c.ngtecoRecordHash,
+            raw: c.raw,
+            scope: "cross-period",
+          },
+        });
+        continue;
+      }
+      throw err;
     }
-    summary.punchesImported++;
   }
 
   await db
@@ -160,4 +168,19 @@ export async function runManualCsvImport(
   // Reference `and` so the import doesn't dangle.
   void and;
   return summary;
+}
+
+/**
+ * Detect a Postgres "unique_violation" (SQLSTATE 23505). Optionally narrow
+ * to a specific constraint name. postgres.js + node-postgres both surface
+ * the constraint via `.constraint`/`.constraint_name` on the error object.
+ */
+function isUniqueViolation(err: unknown, constraintName?: string): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: string; constraint?: string; constraint_name?: string };
+  if (e.code !== "23505") return false;
+  if (!constraintName) return true;
+  return (
+    e.constraint === constraintName || e.constraint_name === constraintName
+  );
 }
