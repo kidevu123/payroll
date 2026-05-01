@@ -4,9 +4,12 @@
 //   pnpm db:migrate
 //
 // Behavior:
-//   1. Ensure the citext extension is installed (idempotent).
+//   1. Ensure required Postgres extensions are installed (idempotent).
 //   2. Run drizzle-kit's migrator against /drizzle.
-//   3. Exit non-zero on failure so docker-compose dependency ordering catches it.
+//   3. Idempotently seed default pay schedules (Weekly, Semi-Monthly) so
+//      the run-tick job has a target on first boot. Safe to re-run; insert
+//      is gated on a name-unique check.
+//   4. Exit non-zero on failure so docker-compose dependency ordering catches it.
 
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -42,9 +45,29 @@ async function main() {
       }
       throw err;
     }
+
+    await seedDefaultPaySchedules(sql);
   } finally {
     await sql.end({ timeout: 5 });
   }
+}
+
+async function seedDefaultPaySchedules(
+  sql: ReturnType<typeof postgres>,
+): Promise<void> {
+  // Weekly Mon-Sat @ Sunday 7pm ET (matches §21 #6 owner-confirmed default).
+  await sql`
+    INSERT INTO pay_schedules (name, period_kind, start_day_of_week, cron, active)
+    SELECT 'Weekly', 'WEEKLY'::pay_schedule_kind, 1, '0 19 * * 0', true
+    WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Weekly')
+  `;
+  // Semi-Monthly: 1-15 and 16-EOM. Cron fires on the 1st and 16th at 7pm ET.
+  await sql`
+    INSERT INTO pay_schedules (name, period_kind, cron, active)
+    SELECT 'Semi-Monthly', 'SEMI_MONTHLY'::pay_schedule_kind, '0 19 1,16 * *', true
+    WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Semi-Monthly')
+  `;
+  console.log("Default pay schedules ensured.");
 }
 
 main().catch((err) => {

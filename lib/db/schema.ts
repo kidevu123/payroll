@@ -101,6 +101,20 @@ export const payrollRunStateEnum = pgEnum("payroll_run_state", [
   "CANCELLED",
 ]);
 
+export const payrollRunSourceEnum = pgEnum("payroll_run_source", [
+  "CRON_AUTO",
+  "MANUAL_CSV",
+  "LEGACY_IMPORT",
+  "AD_HOC",
+]);
+
+export const payScheduleKindEnum = pgEnum("pay_schedule_kind", [
+  "WEEKLY",
+  "BIWEEKLY",
+  "SEMI_MONTHLY",
+  "MONTHLY",
+]);
+
 export const notificationChannelEnum = pgEnum("notification_channel", [
   "IN_APP",
   "EMAIL",
@@ -126,6 +140,11 @@ export const users = pgTable(
     }),
     twoFactorSecret: text("two_factor_secret"), // null when 2FA disabled
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    // Set true when an admin issues a temporary password. The login flow
+    // redirects to /login/change-password until cleared by a user-driven
+    // password update. Owner/admin onboarding tools set this; the user
+    // cannot lower it without changing the password.
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     failedLoginCount: integer("failed_login_count").notNull().default(0),
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
@@ -177,6 +196,31 @@ export const shifts = pgTable("shifts", {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pay schedules — owner-defined cadences (Weekly Mon-Sat, Semi-Monthly 1-15
+// & 16-EOM, etc). Each Employee is assigned exactly one. The payroll.run.tick
+// job fires per schedule's cron and only includes employees on that schedule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const paySchedules = pgTable("pay_schedules", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  periodKind: payScheduleKindEnum("period_kind").notNull(),
+  // For WEEKLY/BIWEEKLY: 0=Sun..6=Sat, the day the period begins.
+  startDayOfWeek: integer("start_day_of_week"),
+  // For BIWEEKLY: anchor that pins the alternating cycle.
+  anchorDate: date("anchor_date"),
+  // Cron expression (5-field) for when this schedule's payroll run should fire.
+  cron: text("cron").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Employees
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -195,6 +239,10 @@ export const employees = pgTable(
     status: employeeStatusEnum("status").notNull().default("ACTIVE"),
     shiftId: uuid("shift_id").references(() => shifts.id),
     payType: payTypeEnum("pay_type").notNull().default("HOURLY"),
+    // Which cadence this employee is paid on. Nullable until the v1.2 migration
+    // sets a default for each existing row; the run-tick job ignores employees
+    // without an assignment so onboarding stays explicit.
+    payScheduleId: uuid("pay_schedule_id").references(() => paySchedules.id),
     // hourlyRateCents is a denormalized cache of the latest EmployeeRateHistory row.
     // Pay computation always reads from history (as of punch.clockIn). Never edit
     // this field directly; it's updated by the rate-history insert trigger.
@@ -446,13 +494,37 @@ export const payrollRuns = pgTable(
     approvedById: uuid("approved_by_id").references(() => users.id),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    // Distinct from publishedAt: this is when the report becomes visible to
+    // employees in /me/pay. Auto-populated for cron-triggered runs at the
+    // moment of admin Approve; manual CSV-uploaded runs require an explicit
+    // Publish click. Push notifications fire only at Publish.
+    publishedToPortalAt: timestamp("published_to_portal_at", { withTimezone: true }),
+    source: payrollRunSourceEnum("source").notNull().default("CRON_AUTO"),
+    payScheduleId: uuid("pay_schedule_id").references(() => paySchedules.id),
+    // For LEGACY_IMPORT rows: the total dollar amount from the historic
+    // metadata file. For other sources: NULL (sum of payslips is authoritative).
+    totalAmountCents: integer("total_amount_cents"),
+    // Display string for the Reports table when the actor was a legacy admin
+    // username (e.g. "rita") that doesn't map to a Users row.
+    createdByName: text("created_by_name"),
+    // Posting date shown on the Reports table — the user-visible "when did
+    // this report exist". For legacy: the file mtime. For cron/manual: NULL,
+    // and the table falls back to publishedAt or approvedAt.
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+    // Stored PDF path for legacy reports (and for admin-uploaded report
+    // attachments). Served from /api/reports/[id]/pdf.
+    pdfPath: text("pdf_path"),
     retryCount: integer("retry_count").notNull().default(0),
     lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("runs_period_idx").on(t.periodId)],
+  (t) => [
+    index("runs_period_idx").on(t.periodId),
+    index("runs_source_idx").on(t.source),
+    index("runs_published_portal_idx").on(t.publishedToPortalAt),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -651,6 +723,93 @@ export const loginAttempts = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Zoho organizations — one row per company we push expenses to (Haute,
+// Boomin, etc). The OAuth refresh token is encrypted at rest via the same
+// AES-GCM vault used for NGTeco credentials.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const zohoOrganizations = pgTable(
+  "zoho_organizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Display label shown in Settings + the Reports push buttons (e.g. "Haute").
+    name: text("name").notNull(),
+    // Zoho Books organization_id (numeric string). Pinned per company.
+    organizationId: text("organization_id").notNull(),
+    // OAuth refresh token, sealed via lib/crypto/vault.ts. Stored as the
+    // standard `{ ciphertext, iv }` envelope; only lib/zoho/* decrypts.
+    refreshTokenEncrypted: jsonb("refresh_token_encrypted"),
+    // OAuth client credentials are also sealed (per-org because the legacy app
+    // had a different Zoho app per company).
+    clientIdEncrypted: jsonb("client_id_encrypted"),
+    clientSecretEncrypted: jsonb("client_secret_encrypted"),
+    // Zoho data-center domain — defaults to https://www.zohoapis.com but US-EU
+    // tenants vary. accountsDomain pairs it for token refresh.
+    apiDomain: text("api_domain").notNull().default("https://www.zohoapis.com"),
+    accountsDomain: text("accounts_domain")
+      .notNull()
+      .default("https://accounts.zoho.com"),
+    // Mapping for the expense push: which expense account + vendor to charge.
+    // Strings to allow either an ID or a friendly name for a one-time lookup.
+    defaultExpenseAccountName: text("default_expense_account_name"),
+    defaultExpenseAccountId: text("default_expense_account_id"),
+    defaultPaidThroughName: text("default_paid_through_name"),
+    defaultPaidThroughId: text("default_paid_through_id"),
+    defaultVendorName: text("default_vendor_name"),
+    defaultVendorId: text("default_vendor_id"),
+    active: boolean("active").notNull().default(true),
+    lastConnectionTestAt: timestamp("last_connection_test_at", {
+      withTimezone: true,
+    }),
+    lastConnectionTestOk: boolean("last_connection_test_ok"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("zoho_orgs_name_unique").on(t.name),
+    index("zoho_orgs_active_idx").on(t.active),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zoho push log — one row per attempt. Idempotency lives at the (run_id, org_id)
+// level: a successful push is unique on those two columns. Re-pressing the
+// button on the Reports table loads the existing successful row instead of
+// re-pushing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const zohoPushes = pgTable(
+  "zoho_pushes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    payrollRunId: uuid("payroll_run_id")
+      .notNull()
+      .references(() => payrollRuns.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => zohoOrganizations.id, { onDelete: "restrict" }),
+    expenseId: text("expense_id"), // Zoho's returned id when successful
+    amountCents: integer("amount_cents").notNull(),
+    status: text("status").notNull(), // 'OK' | 'ERROR'
+    errorMessage: text("error_message"),
+    pushedById: uuid("pushed_by_id").references(() => users.id),
+    pushedAt: timestamp("pushed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("zoho_pushes_run_idx").on(t.payrollRunId),
+    uniqueIndex("zoho_pushes_run_org_ok_unique")
+      .on(t.payrollRunId, t.organizationId)
+      .where(sql`${t.status} = 'OK'`),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Inferred row types — re-export from a single place for ergonomics.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -685,3 +844,9 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+export type PaySchedule = typeof paySchedules.$inferSelect;
+export type NewPaySchedule = typeof paySchedules.$inferInsert;
+export type ZohoOrganization = typeof zohoOrganizations.$inferSelect;
+export type NewZohoOrganization = typeof zohoOrganizations.$inferInsert;
+export type ZohoPush = typeof zohoPushes.$inferSelect;
+export type NewZohoPush = typeof zohoPushes.$inferInsert;
