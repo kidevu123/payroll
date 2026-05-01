@@ -71,6 +71,13 @@
       "when": 1777686000000,
       "tag": "0009_repair_cohort_column",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777678688771,
+      "tag": "0010_glorious_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

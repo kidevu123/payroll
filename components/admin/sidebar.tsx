@@ -20,6 +20,7 @@ import {
   ScrollText,
   Settings2,
   Circle,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ const SECTIONS: { heading: string; items: NavItem[] }[] = [
       { href: "/employees", label: "Employees", icon: Users },
       { href: "/time", label: "Time", icon: CalendarDays },
       { href: "/payroll", label: "Payroll", icon: Wallet },
+      { href: "/salaried", label: "Salaried", icon: Briefcase },
       { href: "/requests", label: "Requests", icon: MessageSquareWarning },
     ],
   },

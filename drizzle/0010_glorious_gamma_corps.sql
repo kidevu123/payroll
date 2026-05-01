@@ -1,0 +1,1 @@
+ALTER TABLE "payroll_period_documents" ALTER COLUMN "period_id" DROP NOT NULL;

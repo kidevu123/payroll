@@ -49,6 +49,39 @@ export function EmployeeForm(props: Props) {
   const e = props.mode === "edit" ? props.employee : undefined;
   const prefill = props.mode === "create" ? props.prefill ?? {} : {};
 
+  // Look up Weekly + Semi-Monthly schedule IDs from the active list. The
+  // classification UI maps to (payType, payScheduleId) under the hood.
+  const weeklySchedule = props.schedules.find(
+    (s) => s.periodKind === "WEEKLY" && s.active,
+  );
+  const semiSchedule = props.schedules.find(
+    (s) => s.periodKind === "SEMI_MONTHLY" && s.active,
+  );
+
+  // Derive the existing employee's classification from their stored
+  // payType / payScheduleId so edits open with the right radio selected.
+  const initialClassification: "WEEKLY_HOURLY" | "SEMI_HOURLY" | "SALARIED" = (() => {
+    if (e?.payType === "SALARIED") return "SALARIED";
+    if (e?.payScheduleId === semiSchedule?.id) return "SEMI_HOURLY";
+    return "WEEKLY_HOURLY"; // safe default for HOURLY without a schedule
+  })();
+  const [classification, setClassification] = React.useState<
+    "WEEKLY_HOURLY" | "SEMI_HOURLY" | "SALARIED"
+  >(initialClassification);
+
+  // Hidden values submitted to the server actions (which still take
+  // payType + payScheduleId so we don't have to rev the schema).
+  const submittedPayType =
+    classification === "SALARIED" ? "SALARIED" : "HOURLY";
+  const submittedPayScheduleId =
+    classification === "WEEKLY_HOURLY"
+      ? weeklySchedule?.id ?? ""
+      : classification === "SEMI_HOURLY"
+        ? semiSchedule?.id ?? ""
+        : // Salaried — irrelevant to payroll runs, leave assigned to whatever
+          // the employee already had so we don't unnecessarily null it out.
+          e?.payScheduleId ?? "";
+
   return (
     <form
       action={onSubmit}
@@ -138,39 +171,47 @@ export function EmployeeForm(props: Props) {
             ))}
           </select>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="payType">Pay type</Label>
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="classification">Classification</Label>
           <select
-            id="payType"
-            name="payType"
-            defaultValue={e?.payType ?? "HOURLY"}
+            id="classification"
+            value={classification}
+            onChange={(ev) =>
+              setClassification(
+                ev.target.value as
+                  | "WEEKLY_HOURLY"
+                  | "SEMI_HOURLY"
+                  | "SALARIED",
+              )
+            }
             className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
-            <option value="HOURLY">Hourly (punches → computed payslip)</option>
-            <option value="FLAT_TASK">Flat / task (per-task contractor)</option>
+            <option value="WEEKLY_HOURLY">
+              Weekly hourly (punches → weekly payroll)
+            </option>
+            <option value="SEMI_HOURLY">
+              Semi-monthly hourly (punches accumulate; only run on the
+              semi-monthly cycle, excluded from weekly payroll)
+            </option>
             <option value="SALARIED">
-              Salaried (external W2 — no punches, doc upload only)
+              Salaried (W2 only — no punches, paystub uploaded by admin)
             </option>
           </select>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="payScheduleId">Pay schedule</Label>
-          <select
-            id="payScheduleId"
+          <p className="text-xs text-text-muted">
+            {classification === "WEEKLY_HOURLY" &&
+              "Punches roll up into the weekly payroll run."}
+            {classification === "SEMI_HOURLY" &&
+              "Punches keep accumulating; processed on the semi-monthly cycle. Completely excluded from weekly payroll."}
+            {classification === "SALARIED" &&
+              "No punches. Upload W2 / paystub from the Salaried tab; appears on the employee's Pay tab."}
+          </p>
+          {/* Hidden fields — server actions still consume payType + payScheduleId. */}
+          <input type="hidden" name="payType" value={submittedPayType} />
+          <input
+            type="hidden"
             name="payScheduleId"
-            defaultValue={e?.payScheduleId ?? ""}
-            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
-          >
-            <option value="">Unassigned (no scheduled run)</option>
-            {props.schedules
-              .filter((s) => s.active || s.id === e?.payScheduleId)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                  {s.active ? "" : " (inactive)"}
-                </option>
-              ))}
-          </select>
+            value={submittedPayScheduleId}
+          />
         </div>
         {props.mode === "create" && (
           <div className="space-y-1">
@@ -209,25 +250,47 @@ export function EmployeeForm(props: Props) {
           className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
-      <div className="rounded-card border border-border bg-surface-2/50 p-3">
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="requiresW2Upload"
-            value="1"
-            defaultChecked={e?.requiresW2Upload ?? false}
-            className="mt-0.5 h-4 w-4"
-          />
-          <span>
-            <span className="font-medium">Requires W2 / paystub upload</span>
-            <span className="block text-xs text-text-muted">
-              Pay is prepared externally (e.g. accountant) and the document
-              is uploaded into this system. The employee sees it in their
-              portal under Pay.
-            </span>
+      {classification === "SALARIED" ? (
+        // Salaried implies W2 upload — no checkbox needed. Hidden field
+        // ensures the action receives "1" so the period detail's W2 slot
+        // appears unconditionally for salaried staff.
+        <div className="rounded-card border border-purple-200 bg-purple-50/40 p-3 text-sm">
+          <span className="font-medium text-purple-900">
+            W2 / paystub upload is enabled
           </span>
-        </label>
-      </div>
+          <span className="block text-xs text-purple-800">
+            Salaried staff are paid externally. Upload their W2 or paystub
+            from the Salaried tab; the employee sees it on their Pay tab.
+          </span>
+          <input type="hidden" name="requiresW2Upload" value="1" />
+        </div>
+      ) : classification === "SEMI_HOURLY" ? (
+        <div className="rounded-card border border-border bg-surface-2/50 p-3">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="requiresW2Upload"
+              value="1"
+              defaultChecked={e?.requiresW2Upload ?? false}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              <span className="font-medium">
+                Also upload an external paystub each period
+              </span>
+              <span className="block text-xs text-text-muted">
+                Tick this when the accountant prepares Juan-style W2-formatted
+                paystubs alongside his hourly run. The period detail page will
+                show an upload slot for him.
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : (
+        // Weekly hourly — payslip is computed from punches; no W2 needed.
+        // Submit a hidden "0" so legacy data flips off if it was on.
+        <input type="hidden" name="requiresW2Upload" value="0" />
+      )}
       {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button asChild variant="ghost" type="button">

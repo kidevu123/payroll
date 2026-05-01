@@ -455,9 +455,13 @@ export const payrollPeriodDocuments = pgTable(
   "payroll_period_documents",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    periodId: uuid("period_id")
-      .notNull()
-      .references(() => payPeriods.id, { onDelete: "restrict" }),
+    /** Nullable: salaried employees are paid externally and their W2 /
+     *  paystub uploads aren't tied to a payroll period. Per-period
+     *  uploads (the requiresW2Upload flow on the period detail page)
+     *  populate this field. The Salaried tab leaves it null. */
+    periodId: uuid("period_id").references(() => payPeriods.id, {
+      onDelete: "restrict",
+    }),
     employeeId: uuid("employee_id")
       .notNull()
       .references(() => employees.id, { onDelete: "restrict" }),
