@@ -425,6 +425,17 @@ async function main(): Promise<void> {
     `;
     console.log(`[apply] wiped legacy runs: ${runWipe.count}`);
 
+    // Also purge ghost pay_periods left behind by earlier imports — periods
+    // with no punches AND no payroll_runs. Catches the 2026-12-27 → 2027-01-02
+    // row that the v1.2 2-digit-year bug created from a "12/27/26" row in
+    // the legacy CSV.
+    const ghostWipe = await client`
+      DELETE FROM pay_periods p
+      WHERE NOT EXISTS (SELECT 1 FROM punches WHERE period_id = p.id)
+        AND NOT EXISTS (SELECT 1 FROM payroll_runs WHERE period_id = p.id)
+    `;
+    console.log(`[apply] purged ghost periods: ${ghostWipe.count}`);
+
     // ── APPLY: 3. Resolve pay schedules for the run-tagging step.
     const [weeklySchedule] = await db
       .select()
@@ -664,7 +675,17 @@ async function main(): Promise<void> {
     //               hours come from punches that fall in [start, end]; rate
     //               is the employee's current hourlyRateCents (close enough
     //               for legacy data — the Flask app didn't track rate
-    //               history per-period either).
+    //               history per-period either). The rounded total respects
+    //               the active payRules.rounding rule.
+    const { roundCents } = await import("../lib/payroll/rounding");
+    const payRulesRow = await client<{ value: { rounding?: string } | null }[]>`
+      SELECT value FROM settings WHERE key = 'payRules'
+    `;
+    const roundingRule = (payRulesRow[0]?.value?.rounding ?? "NEAREST_DOLLAR") as
+      | "NONE"
+      | "NEAREST_DOLLAR"
+      | "NEAREST_QUARTER"
+      | "NEAREST_FIFTEEN_MIN_HOURS";
     const legacyRuns = await client<{
       id: string;
       pay_schedule_id: string | null;
@@ -711,6 +732,7 @@ async function main(): Promise<void> {
         if (hours <= 0) continue;
         const rate = e.hourly_rate_cents ?? 0;
         const gross = Math.round(hours * rate);
+        const rounded = roundCents(gross, roundingRule);
         // ON CONFLICT on (employee_id, period_id) — overwrites payroll_run_id
         // and re-syncs hours/gross.
         await client`
@@ -721,7 +743,7 @@ async function main(): Promise<void> {
           )
           VALUES (
             ${e.id}, ${r.period_id}, ${r.id},
-            ${hours.toFixed(2)}, ${gross}, ${gross}, 0,
+            ${hours.toFixed(2)}, ${gross}, ${rounded}, 0,
             NOW()
           )
           ON CONFLICT (employee_id, period_id) DO UPDATE
