@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import {
   employees,
   employeeRateHistory,
+  users,
   type Employee,
   type NewEmployee,
 } from "@/lib/db/schema";
@@ -132,6 +133,33 @@ export async function updateEmployee(
       .where(eq(employees.id, id))
       .returning();
     if (!row) throw new Error("updateEmployee: returning() empty");
+    // If the employee has a linked User, keep its login email in sync with
+    // the employee's email — admins set it on the Employee form and expect
+    // the same address to appear on the Account section.
+    if (patch.email && patch.email !== before.email) {
+      const [linkedUser] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.employeeId, id));
+      if (linkedUser && linkedUser.email !== patch.email) {
+        await tx
+          .update(users)
+          .set({ email: patch.email, updatedAt: new Date() })
+          .where(eq(users.id, linkedUser.id));
+        await writeAudit(
+          {
+            actorId: actor.id,
+            actorRole: actor.role,
+            action: "user.email_sync_from_employee",
+            targetType: "User",
+            targetId: linkedUser.id,
+            before: { email: linkedUser.email },
+            after: { email: patch.email },
+          },
+          tx,
+        );
+      }
+    }
     await writeAudit(
       {
         actorId: actor.id,
