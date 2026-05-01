@@ -12,6 +12,10 @@ import {
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
 import { voidPayslip, unvoidPayslip } from "@/lib/db/queries/payslips";
+import {
+  findDuplicatePunchClusters,
+  mergeDuplicatePunches,
+} from "@/lib/db/queries/punches";
 
 const idSchema = z.string().uuid();
 
@@ -166,6 +170,46 @@ export async function unvoidPayslipAction(
   revalidatePath("/reports");
   revalidatePath("/payroll");
   return;
+}
+
+/**
+ * Run the duplicate-punch merge over a single period (or all-time when
+ * periodId is omitted). Picks the longest-duration row in each cluster
+ * and voids the rest with a "dedup: <reason>" audit trail.
+ */
+export async function mergeDuplicatePunchesAction(
+  periodId: string | null,
+): Promise<{ error?: string } | { ok: true; voided: number; clusters: number }> {
+  const session = await requireAdmin();
+  if (periodId !== null && !idSchema.safeParse(periodId).success) {
+    return { error: "Invalid period." };
+  }
+  try {
+    const filters = periodId ? { periodId } : {};
+    const result = await mergeDuplicatePunches(
+      filters,
+      "admin-triggered merge of same-minute duplicates",
+      { id: session.user.id, role: session.user.role },
+    );
+    revalidatePath("/payroll");
+    revalidatePath("/time");
+    if (periodId) revalidatePath(`/payroll/${periodId}`);
+    return { ok: true, ...result };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not merge duplicates.",
+    };
+  }
+}
+
+export async function countDuplicateClustersAction(
+  periodId: string | null,
+): Promise<number> {
+  await requireAdmin();
+  if (periodId !== null && !idSchema.safeParse(periodId).success) return 0;
+  const filters = periodId ? { periodId } : {};
+  const clusters = await findDuplicatePunchClusters(filters);
+  return clusters.length;
 }
 
 export async function getLastPollAction(): Promise<{

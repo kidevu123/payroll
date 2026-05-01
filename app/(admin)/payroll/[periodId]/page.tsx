@@ -34,6 +34,8 @@ import { PayrollDocsSection } from "./payroll-docs-section";
 import { listDocs } from "@/lib/db/queries/payroll-documents";
 import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
+import { DedupPunchesButton } from "./dedup-button";
+import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -75,7 +77,7 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs, allPayslips] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs, allPayslips, duplicateClusters] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
@@ -85,6 +87,7 @@ export default async function PeriodReviewPage({
     listTempWorkers({ periodId }),
     listDocs({ periodId }),
     listPayslipsForPeriod(periodId, { includeVoided: true }),
+    findDuplicatePunchClusters({ periodId }),
   ]);
   const tz = company.timezone ?? "America/New_York";
 
@@ -414,6 +417,11 @@ export default async function PeriodReviewPage({
         periodId={periodId}
         initialEntries={tempWorkers}
         locked={period.state === "PAID"}
+      />
+
+      <DedupPunchesButton
+        periodId={periodId}
+        initialClusterCount={duplicateClusters.length}
       />
 
       <PayslipManageSection

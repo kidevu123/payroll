@@ -2,18 +2,32 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
+import { assetVersion } from "@/lib/branding/storage";
 import { resolveLocale, messagesFor } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "Payroll",
-  description: "Self-hosted payroll and employee operations.",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
+/**
+ * Cache-busted icon links keyed off the uploaded favicon's mtime. Forces
+ * browsers to fetch a fresh URL after upload — more reliable than
+ * Cache-Control headers (mobile browsers ignore them for favicons).
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const v = await assetVersion("favicon");
+  return {
     title: "Payroll",
-  },
-};
+    description: "Self-hosted payroll and employee operations.",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: "Payroll",
+    },
+    icons: {
+      icon: [{ url: `/icon?v=${v}`, sizes: "any" }],
+      apple: [{ url: `/apple-icon?v=${v}`, sizes: "180x180" }],
+      shortcut: [{ url: `/icon?v=${v}` }],
+    },
+  };
+}
 
 // Drives the browser chrome / status bar color. The actual brand hex is
 // re-injected per-render via the inline style on <html> (the Next metadata

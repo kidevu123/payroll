@@ -100,6 +100,29 @@ export async function readAsset(name: "logo" | "favicon"): Promise<{ bytes: Buff
   return { bytes, ext: found.ext };
 }
 
+/**
+ * mtime-based version string for an uploaded asset, suitable for stamping
+ * onto `<link rel="icon">` query params so browsers fetch a fresh URL
+ * after upload instead of relying on Cache-Control headers (which mobile
+ * browsers in particular love to ignore for favicons).
+ *
+ * Returns "default" when no asset has been uploaded — that's a stable
+ * value so the cache key for the fallback initials icon stays the same
+ * across page loads.
+ */
+export async function assetVersion(
+  name: "logo" | "favicon",
+): Promise<string> {
+  const found = await findAssetPath(name);
+  if (!found) return "default";
+  try {
+    const s = await stat(found.path);
+    return Math.floor(s.mtimeMs).toString(36);
+  } catch {
+    return "default";
+  }
+}
+
 export async function findIconPath(
   size: "192" | "512" | "maskable-512",
 ): Promise<string | null> {
