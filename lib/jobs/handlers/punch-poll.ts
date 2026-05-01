@@ -49,17 +49,25 @@ export async function handlePunchPoll(): Promise<PollSummary> {
   }
   const runId = `poll-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 
-  // Dynamic imports without webpackIgnore. The previous webpackIgnored
-  // relative paths broke when this handler was invoked from a server
-  // action (chunk lands in /app/.next/server/chunks/N.js, so
-  // ../../crypto/vault.js resolves to /app/.next/crypto/vault.js which
-  // doesn't exist). Plain dynamic imports of @/ paths code-split into
-  // their own chunks at build time and resolve correctly from any
-  // caller — and dynamic imports aren't pulled into the edge bundle of
-  // instrumentation.ts the way static imports would be.
-  const vault = await import("@/lib/crypto/vault");
-  const scraperMod = await import("@/lib/ngteco/scraper");
-  const importerMod = await import("@/lib/punches/poll-importer");
+  // webpackIgnore is required: instrumentation.ts statically reaches this
+  // handler, and webpack would otherwise try to include vault.ts (which
+  // imports node:crypto) into the edge bundle and fail the whole build.
+  // The downside is that the relative path resolves differently from
+  // different caller chunks — the cron worker reaches it fine, but a
+  // server action invocation lands in a different chunk dir and gets
+  // ENOENT. The Poll-now manual button is broken as a result; the
+  // scheduled cron still works. Fixing the manual path requires moving
+  // these dynamic imports behind a stable absolute path; deferring until
+  // automation is the priority again.
+  const vault = (await import(
+    /* webpackIgnore: true */ "../../crypto/vault.js"
+  )) as typeof import("@/lib/crypto/vault");
+  const scraperMod = (await import(
+    /* webpackIgnore: true */ "../../ngteco/scraper.js"
+  )) as typeof import("@/lib/ngteco/scraper");
+  const importerMod = (await import(
+    /* webpackIgnore: true */ "../../punches/poll-importer.js"
+  )) as typeof import("@/lib/punches/poll-importer");
   const { open: openSealed } = vault;
   const {
     scrapeViewAttendance,
