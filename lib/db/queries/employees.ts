@@ -24,6 +24,13 @@ export type EmployeeListFilters = {
   status?: "ACTIVE" | "INACTIVE" | "TERMINATED";
   shiftId?: string;
   search?: string;
+  /**
+   * Cohort filter for payroll runs:
+   *   - string  → employees on this exact pay schedule
+   *   - "none"  → employees without any schedule (employees.pay_schedule_id IS NULL)
+   *   - undefined → no filter
+   */
+  payScheduleId?: string | "none";
 };
 
 export async function listEmployees(
@@ -32,6 +39,11 @@ export async function listEmployees(
   const conditions = [];
   if (filters.status) conditions.push(eq(employees.status, filters.status));
   if (filters.shiftId) conditions.push(eq(employees.shiftId, filters.shiftId));
+  if (filters.payScheduleId === "none") {
+    conditions.push(sql`${employees.payScheduleId} IS NULL`);
+  } else if (filters.payScheduleId) {
+    conditions.push(eq(employees.payScheduleId, filters.payScheduleId));
+  }
   if (filters.search) {
     const term = `%${filters.search}%`;
     conditions.push(

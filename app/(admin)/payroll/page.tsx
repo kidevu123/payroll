@@ -46,6 +46,8 @@ export default async function PayrollPage() {
     db.select().from(paySchedules).where(eq(paySchedules.active, true)),
   ]);
   const openCount = openPeriods.filter((p) => p.state === "OPEN").length;
+  const lockedCount = openPeriods.filter((p) => p.state === "LOCKED").length;
+  const paidCount = openPeriods.filter((p) => p.state === "PAID").length;
 
   return (
     <div className="space-y-6">
@@ -118,8 +120,14 @@ export default async function PayrollPage() {
           {recentInFlight.length === 0 ? (
             <p className="text-sm text-text-muted">
               {openCount > 0
-                ? `${openCount} open period${openCount === 1 ? "" : "s"} ready for the next tick.`
-                : "All periods are PAID. The next scheduled tick will create a new one."}
+                ? `${openCount} open period${openCount === 1 ? "" : "s"} ready for the next tick.${
+                    lockedCount > 0
+                      ? ` ${lockedCount} locked, awaiting payment.`
+                      : ""
+                  }`
+                : lockedCount > 0
+                  ? `${lockedCount} locked period${lockedCount === 1 ? "" : "s"} awaiting payment. Mark paid from the period detail page once payment is sent.`
+                  : `${paidCount} paid period${paidCount === 1 ? "" : "s"} on file. The next scheduled tick will create a new period.`}
             </p>
           ) : (
             recentInFlight.map((r) => (

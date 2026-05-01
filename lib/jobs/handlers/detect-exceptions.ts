@@ -35,6 +35,11 @@ export async function handleDetectExceptions(data: {
     logger.error({ runId, periodId: run.periodId }, "detect-exceptions: period not found");
     return;
   }
+  // Match the cohort that publish will use — otherwise we'd flag missing
+  // punches for employees who aren't actually part of this run.
+  const employeeFilter = run.payScheduleId
+    ? { payScheduleId: run.payScheduleId }
+    : {};
   const [
     employees,
     punches,
@@ -44,7 +49,7 @@ export async function handleDetectExceptions(data: {
     automation,
     company,
   ] = await Promise.all([
-    listEmployees(),
+    listEmployees(employeeFilter),
     listPunches({ periodId: period.id }),
     listHolidaysInRange(period.startDate, period.endDate),
     listApprovedTimeOffInRange(period.startDate, period.endDate),

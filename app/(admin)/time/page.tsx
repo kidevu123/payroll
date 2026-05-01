@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
+import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -131,13 +132,36 @@ export default async function TimePage() {
                   else if (list.some((p) => !p.clockOut)) state = "incomplete";
                   else state = "complete";
                   if (e.status !== "ACTIVE") state = "inactive";
+
+                  // Sort by clockIn so first-in / last-out are stable.
+                  const sorted = [...list].sort(
+                    (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
+                  );
+                  const first = sorted[0];
+                  const last = sorted[sorted.length - 1];
+                  // Sum hours across closed punches. Open punches contribute nothing
+                  // (we don't show "elapsed so far"; the cell label "open" makes that obvious).
+                  const closedMs = sorted.reduce((acc, p) => {
+                    if (!p.clockOut) return acc;
+                    return acc + (p.clockOut.getTime() - p.clockIn.getTime());
+                  }, 0);
+                  const hours = closedMs / (1000 * 60 * 60);
+
                   return (
                     <td key={d} className="p-1 align-middle">
                       <Link
                         href={`/time/${period.id}/${d}/${e.id}`}
-                        className={`flex items-center justify-center rounded-chip border h-9 w-full ${cellClasses(state)} hover:brightness-95`}
+                        className={`flex flex-col items-stretch justify-center rounded-chip border px-2 py-1 min-h-9 w-full text-[10px] leading-tight ${cellClasses(state)} hover:brightness-95`}
+                        aria-label={cellAriaLabel(state, sorted, company.timezone)}
                       >
-                        {list.length > 0 ? `${list.length}` : "—"}
+                        <PunchCellContent
+                          state={state}
+                          first={first}
+                          last={last}
+                          count={sorted.length}
+                          hours={hours}
+                          tz={company.timezone}
+                        />
                       </Link>
                     </td>
                   );
@@ -157,4 +181,52 @@ function Legend({ label, state }: { label: string; state: CellState }) {
       <span className="h-2 w-2 rounded-full bg-current opacity-60" /> {label}
     </span>
   );
+}
+
+type PunchLite = { clockIn: Date; clockOut: Date | null };
+
+function PunchCellContent({
+  state,
+  first,
+  last,
+  count,
+  hours,
+  tz,
+}: {
+  state: CellState;
+  first: PunchLite | undefined;
+  last: PunchLite | undefined;
+  count: number;
+  hours: number;
+  tz: string;
+}) {
+  if (state === "inactive" || !first) {
+    return (
+      <span className="font-mono tabular-nums text-center opacity-70">—</span>
+    );
+  }
+  const inLabel = formatTimeShort(first.clockIn, tz);
+  const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "?";
+  return (
+    <>
+      <span className="font-mono tabular-nums text-center">
+        {inLabel}–{outLabel}
+        {count > 1 ? <span className="ml-1 opacity-70">+{count - 1}</span> : null}
+      </span>
+      <span className="text-center opacity-75">
+        {state === "incomplete" ? "open" : formatHoursMinutes(hours)}
+      </span>
+    </>
+  );
+}
+
+function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string {
+  if (state === "inactive") return "Inactive employee";
+  if (list.length === 0) return "No punches — missed day";
+  const lines = list.map((p) => {
+    const inS = formatTimeShort(p.clockIn, tz);
+    const outS = p.clockOut ? formatTimeShort(p.clockOut, tz) : "still open";
+    return `${inS} to ${outS}`;
+  });
+  return lines.join("; ");
 }

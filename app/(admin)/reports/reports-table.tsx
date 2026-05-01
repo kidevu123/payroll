@@ -111,11 +111,17 @@ export function ReportsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {reports.map((r) => {
+            {reports.map((r, idx) => {
               const pushedHaute = r.zohoPushes.find((p) => p.orgId === haute?.id);
               const pushedBoomin = r.zohoPushes.find((p) => p.orgId === boomin?.id);
               const published = r.publishedToPortalAt !== null;
               const isLegacy = r.source === "LEGACY_IMPORT";
+              // Show the temp-labor sub-line only on the first row for each
+              // period — temp totals are per-period, not per-run, so dupes
+              // would mislead. Reports come back sorted desc by post date.
+              const prev = idx > 0 ? reports[idx - 1] : null;
+              const showTemp = r.tempLaborCents > 0 && prev?.periodId !== r.periodId;
+              const periodGrandTotal = r.amountCents + r.tempLaborCents;
               return (
                 <tr key={r.id} className="hover:bg-surface/40 transition-colors">
                   <td className="py-3 pl-4 pr-3">
@@ -128,6 +134,16 @@ export function ReportsTable({
                   </td>
                   <td className="py-3 px-3 text-right font-mono tabular-nums font-semibold text-text">
                     <MoneyDisplay cents={r.amountCents} />
+                    {showTemp && (
+                      <div className="text-[10px] font-normal text-text-muted">
+                        + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
+                      </div>
+                    )}
+                    {showTemp && (
+                      <div className="text-[10px] font-medium text-text">
+                        = <MoneyDisplay cents={periodGrandTotal} monospace={false} /> total
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 px-3 text-text-muted">
                     {r.scheduleName ?? <span className="italic">unassigned</span>}

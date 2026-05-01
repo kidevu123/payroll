@@ -27,6 +27,8 @@ import { taskPayLineItems, payrollRuns, paySchedules } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { LockButtons } from "./lock-buttons";
 import { PublishPortalButton } from "./publish-portal-button";
+import { TempWorkersSection } from "./temp-workers-section";
+import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -68,13 +70,14 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
     getSetting("payPeriod"),
     getSetting("company"),
     db.select().from(paySchedules),
+    listTempWorkers({ periodId }),
   ]);
   const tz = company.timezone ?? "America/New_York";
 
@@ -391,10 +394,27 @@ export default async function PeriodReviewPage({
         </CardContent>
       </Card>
 
+      <TempWorkersSection
+        periodId={periodId}
+        initialEntries={tempWorkers}
+        locked={period.state === "PAID"}
+      />
+
       <LockButtons period={period} />
 
       <p className="text-xs text-text-muted">
         Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.
+        {tempWorkers.length > 0 && (
+          <>
+            {" "}
+            Period grand total includes{" "}
+            <MoneyDisplay
+              cents={tempWorkers.reduce((acc, e) => acc + e.amountCents, 0)}
+              monospace={false}
+            />{" "}
+            in temp / manual labor.
+          </>
+        )}
       </p>
     </div>
   );

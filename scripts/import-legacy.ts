@@ -258,8 +258,16 @@ type EmpPlan = {
 
 async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");
+  // Conservative default: imported periods land as LOCKED, not PAID. The
+  // admin explicitly marks paid via the UI when payment was actually sent.
+  // Pass --assume-paid only when you know the source is true historical
+  // paid data and you want every period stamped with paidAt = file mtime.
+  const assumePaid = process.argv.includes("--assume-paid");
   console.log(`legacy-import: ${apply ? "APPLY" : "DRY RUN"}`);
   console.log(`legacy-import: source=${LEGACY_ROOT}`);
+  console.log(
+    `legacy-import: period-state=${assumePaid ? "PAID (--assume-paid)" : "LOCKED (default)"}`,
+  );
 
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -519,17 +527,23 @@ async function main(): Promise<void> {
         .select()
         .from(payPeriods)
         .where(eq(payPeriods.startDate, r.startDate));
+      const importedState: "PAID" | "LOCKED" = assumePaid ? "PAID" : "LOCKED";
       let periodId: string;
       if (existingPeriod) {
         periodId = existingPeriod.id;
-        // Sync end_date / state if drifted.
-        if (
-          existingPeriod.endDate !== r.endDate ||
-          existingPeriod.state !== "PAID"
-        ) {
+        // Don't downgrade an existing PAID period back to LOCKED — admins may
+        // have marked it paid manually. Only sync end_date drift, and only
+        // promote LOCKED→PAID when --assume-paid is set.
+        const updates: { endDate?: string; state?: "PAID" | "LOCKED"; paidAt?: Date } = {};
+        if (existingPeriod.endDate !== r.endDate) updates.endDate = r.endDate;
+        if (assumePaid && existingPeriod.state !== "PAID") {
+          updates.state = "PAID";
+          updates.paidAt = new Date(r.mtime * 1000);
+        }
+        if (Object.keys(updates).length > 0) {
           await db
             .update(payPeriods)
-            .set({ endDate: r.endDate, state: "PAID" })
+            .set(updates)
             .where(eq(payPeriods.id, periodId));
         }
       } else {
@@ -538,8 +552,8 @@ async function main(): Promise<void> {
           .values({
             startDate: r.startDate,
             endDate: r.endDate,
-            state: "PAID",
-            paidAt: new Date(r.mtime * 1000),
+            state: importedState,
+            paidAt: assumePaid ? new Date(r.mtime * 1000) : null,
           })
           .returning();
         if (!row) throw new Error("legacy-import: period insert returned no row");

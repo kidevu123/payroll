@@ -22,6 +22,7 @@ import {
   payrollRunStateEnum,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import { sumByPeriod as sumTempByPeriod } from "@/lib/db/queries/temp-workers";
 
 export type Actor = {
   id: string;
@@ -67,7 +68,11 @@ export type ReportRow = {
   source: PayrollRun["source"];
   state: PayrollRun["state"];
   scheduleName: string | null;
+  /** Run amount (payslips or stamped totalAmountCents). Excludes temp labor. */
   amountCents: number;
+  /** Sum of (non-deleted) temp_worker_entries for the period. Same value for
+   *  every run sharing a period; UI is responsible for displaying once. */
+  tempLaborCents: number;
   createdByDisplay: string;
   postedAt: Date;
   publishedToPortalAt: Date | null;
@@ -153,6 +158,10 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     pushesByRun.set(p.payrollRunId, list);
   }
 
+  // Bulk-load temp-labor totals per period.
+  const periodIds = [...new Set(rows.map((r) => r.periodId))];
+  const tempByPeriod = await sumTempByPeriod(periodIds);
+
   return rows.map((r) => ({
     id: r.id,
     periodId: r.periodId,
@@ -162,6 +171,7 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     state: r.state,
     scheduleName: r.scheduleName,
     amountCents: r.totalAmount ?? r.payslipSum,
+    tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,
     createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
     postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
     publishedToPortalAt: r.publishedToPortalAt,
@@ -265,11 +275,17 @@ export async function createRun(
   periodId: string,
   scheduledFor: Date,
   actor: Actor | null = null,
+  options: { payScheduleId?: string | null } = {},
 ): Promise<PayrollRun> {
   return db.transaction(async (tx) => {
     const [row] = await tx
       .insert(payrollRuns)
-      .values({ periodId, scheduledFor, state: "SCHEDULED" })
+      .values({
+        periodId,
+        scheduledFor,
+        state: "SCHEDULED",
+        payScheduleId: options.payScheduleId ?? null,
+      })
       .returning();
     if (!row) throw new Error("createRun: insert returned no row");
     await writeAudit(

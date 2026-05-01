@@ -76,6 +76,82 @@ export async function lockPeriod(id: string, actor: Actor): Promise<PayPeriod> {
   });
 }
 
+export async function markPaid(
+  id: string,
+  actor: Actor,
+): Promise<PayPeriod> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(payPeriods)
+      .where(eq(payPeriods.id, id));
+    if (!before) throw new Error(`markPaid: ${id} not found`);
+    if (before.state === "PAID") return before;
+    if (before.state !== "LOCKED") {
+      throw new Error("markPaid: period must be LOCKED first");
+    }
+    const [row] = await tx
+      .update(payPeriods)
+      .set({ state: "PAID", paidAt: new Date(), paidById: actor.id })
+      .where(eq(payPeriods.id, id))
+      .returning();
+    if (!row) throw new Error("markPaid: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "period.mark_paid",
+        targetType: "PayPeriod",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+/**
+ * Demote PAID → LOCKED. Used when a period was marked paid by mistake (or
+ * by a legacy bulk import) and the admin needs to roll it back. Audit row
+ * captures the reason for traceability.
+ */
+export async function unmarkPaid(
+  id: string,
+  reason: string,
+  actor: Actor,
+): Promise<PayPeriod> {
+  if (!reason.trim()) throw new Error("unmarkPaid: reason is required");
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(payPeriods)
+      .where(eq(payPeriods.id, id));
+    if (!before) throw new Error(`unmarkPaid: ${id} not found`);
+    if (before.state !== "PAID") return before;
+    const [row] = await tx
+      .update(payPeriods)
+      .set({ state: "LOCKED", paidAt: null, paidById: null })
+      .where(eq(payPeriods.id, id))
+      .returning();
+    if (!row) throw new Error("unmarkPaid: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "period.unmark_paid",
+        targetType: "PayPeriod",
+        targetId: id,
+        before,
+        after: { ...row, reason },
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
 export async function unlockPeriod(
   id: string,
   reason: string,

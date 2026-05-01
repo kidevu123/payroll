@@ -386,6 +386,44 @@ export const taskPayLineItems = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Temp / manual labor entries
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// People who don't punch in (one-off contractors, day-labor) but whose pay
+// must show in the period total. Distinct from taskPayLineItems because
+// those are keyed to a real Employee row; temp workers are free-text.
+
+export const tempWorkerEntries = pgTable(
+  "temp_worker_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => payPeriods.id, { onDelete: "restrict" }),
+    workerName: text("worker_name").notNull(),
+    description: text("description"),
+    // Optional. Many temp jobs are flat-fee with no hour record.
+    hours: numeric("hours", { precision: 6, scale: 2 }),
+    amountCents: integer("amount_cents").notNull(),
+    notes: text("notes"),
+    createdById: uuid("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id").references(() => users.id),
+  },
+  (t) => [
+    index("temp_worker_period_idx").on(t.periodId),
+    index("temp_worker_active_idx")
+      .on(t.periodId)
+      .where(sql`${t.deletedAt} IS NULL`),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Missed-punch alerts + employee-submitted requests
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -850,3 +888,5 @@ export type ZohoOrganization = typeof zohoOrganizations.$inferSelect;
 export type NewZohoOrganization = typeof zohoOrganizations.$inferInsert;
 export type ZohoPush = typeof zohoPushes.$inferSelect;
 export type NewZohoPush = typeof zohoPushes.$inferInsert;
+export type TempWorkerEntry = typeof tempWorkerEntries.$inferSelect;
+export type NewTempWorkerEntry = typeof tempWorkerEntries.$inferInsert;

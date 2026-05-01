@@ -57,8 +57,14 @@ export async function handlePayrollRunPublish(data: {
   const { join } = await import(/* webpackIgnore: true */ "path");
   const { writeFile } = await import(/* webpackIgnore: true */ "fs/promises");
 
+  // Cohort filter: a run that targets a specific pay schedule only includes
+  // employees on that schedule. Runs without a schedule (legacy / back-compat)
+  // include everyone, matching prior behavior.
+  const employeeFilter = run.payScheduleId
+    ? { payScheduleId: run.payScheduleId }
+    : {};
   const [employees, punches, payRules, company, shifts] = await Promise.all([
-    listEmployees(),
+    listEmployees(employeeFilter),
     listPunches({ periodId: period.id }),
     getSetting("payRules"),
     getSetting("company"),

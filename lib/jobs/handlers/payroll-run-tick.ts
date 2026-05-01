@@ -7,6 +7,7 @@
 import { logger } from "@/lib/telemetry";
 import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { createRun } from "@/lib/db/queries/payroll-runs";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
 
 function todayInTimezone(tz: string): string {
@@ -29,7 +30,18 @@ export async function handlePayrollRunTick(boss: {
     logger.warn("payroll.run.tick: no current period after ensure; skipping");
     return;
   }
-  const run = await createRun(period.id, new Date());
-  logger.info({ runId: run.id, periodId: period.id }, "payroll.run.tick: scheduled run");
+  // The default tick fires on the weekly cron, so attach the WEEKLY pay
+  // schedule to its run when one exists. Without this, weekly runs would
+  // include semi-monthly employees too. Per-schedule crons are a future
+  // refinement; this keeps the immediate cohort correct.
+  const schedules = await listSchedules({ includeInactive: false });
+  const weekly = schedules.find((s) => s.periodKind === "WEEKLY") ?? null;
+  const run = await createRun(period.id, new Date(), null, {
+    payScheduleId: weekly?.id ?? null,
+  });
+  logger.info(
+    { runId: run.id, periodId: period.id, payScheduleId: weekly?.id ?? null },
+    "payroll.run.tick: scheduled run",
+  );
   await boss.send("ngteco.import", { runId: run.id });
 }
