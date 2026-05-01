@@ -66,8 +66,20 @@ export function parse(csv: string, timezone: string): ParseResult {
     }
     return -1;
   };
-  const empIdIdx = indexOf("employee_id", "id", "emp_id", "ngteco_employee_id", "ref");
+  // NGTeco's actual export uses "Person ID" + "First Name" + "Last Name".
+  // Legacy CSV exports use the same. The aliases below cover NGTeco, the
+  // legacy Flask app's processing, and a few generic forms we've seen.
+  const empIdIdx = indexOf(
+    "person_id",
+    "employee_id",
+    "id",
+    "emp_id",
+    "ngteco_employee_id",
+    "ref",
+  );
   const empNameIdx = indexOf("employee_name", "name", "display_name");
+  const firstNameIdx = indexOf("first_name", "firstname");
+  const lastNameIdx = indexOf("last_name", "lastname", "surname");
   const dateIdx = indexOf("date", "punch_date", "work_date");
   const inIdx = indexOf("punch_in", "in", "clock_in", "clockin", "time_in");
   const outIdx = indexOf("punch_out", "out", "clock_out", "clockout", "time_out");
@@ -83,7 +95,11 @@ export function parse(csv: string, timezone: string): ParseResult {
     for (let j = 0; j < header.length; j++) {
       raw[header[j]!] = (cells[j] ?? "").trim();
     }
-    const empId = empIdIdx >= 0 ? cells[empIdIdx]?.trim() ?? "" : "";
+    const empIdRaw = empIdIdx >= 0 ? cells[empIdIdx]?.trim() ?? "" : "";
+    // NGTeco emits IDs with leading zeros ("01", "011"); the legacy app and
+    // our import script normalize these to "1" / "11". Keep the raw value
+    // available for forensic display, but index against the normalized form.
+    const empId = normalizePersonId(empIdRaw);
     const date = dateIdx >= 0 ? cells[dateIdx]?.trim() ?? "" : "";
     const inRaw = inIdx >= 0 ? cells[inIdx]?.trim() ?? "" : "";
     const outRaw = outIdx >= 0 ? cells[outIdx]?.trim() ?? "" : "";
@@ -140,9 +156,18 @@ export function parse(csv: string, timezone: string): ParseResult {
       continue;
     }
     seenHashes.add(hash);
+    // Display name: prefer "Employee Name" / "Name" / "Display Name", else
+    // compose from "First Name" + "Last Name" (the NGTeco shape).
+    const directName = empNameIdx >= 0 ? cells[empNameIdx]?.trim() || "" : "";
+    const composedName = (() => {
+      const f = firstNameIdx >= 0 ? cells[firstNameIdx]?.trim() ?? "" : "";
+      const l = lastNameIdx >= 0 ? cells[lastNameIdx]?.trim() ?? "" : "";
+      const joined = `${f} ${l}`.trim();
+      return joined || null;
+    })();
     candidates.push({
       ngtecoEmployeeRef: empId,
-      ngtecoEmployeeName: empNameIdx >= 0 ? cells[empNameIdx]?.trim() || null : null,
+      ngtecoEmployeeName: directName || composedName,
       clockIn,
       clockOut,
       ngtecoRecordHash: hash,
@@ -161,15 +186,44 @@ function normalizeHeader(h: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+function normalizePersonId(raw: string): string {
+  if (!raw) return "";
+  if (raw.startsWith("TEMP_")) return raw;
+  // Strip leading zeros ("01" → "1") so NGTeco IDs match the canonical form
+  // we store in employees.ngteco_employee_ref.
+  const numeric = Number(raw.replace(/^0+/, "") || "0");
+  if (Number.isFinite(numeric) && /^\d+(\.0)?$/.test(raw.replace(/^0+/, "") || "0")) {
+    return String(Math.trunc(numeric));
+  }
+  return raw;
+}
+
 function normalizeDate(s: string): string | null {
-  // ISO YYYY-MM-DD already.
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // US M/D/YYYY.
-  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  // ISO YYYY-MM-DD already (allow trailing time we'll drop).
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  // US M/D/YYYY or M/D/YY.
+  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s);
   if (us) {
     const m = us[1]!.padStart(2, "0");
     const d = us[2]!.padStart(2, "0");
-    return `${us[3]}-${m}-${d}`;
+    let y = us[3]!;
+    if (y.length === 2) {
+      // Pivot 2-digit years against the current year. If 20YY would land
+      // more than 6 months in the future, treat it as 19YY instead. Catches
+      // the common typo "12/27/25" → 2025 even when the current year is 2026.
+      const now = new Date();
+      const candidate = 2000 + Number(y);
+      const candidateDate = new Date(`${candidate}-${m}-${d}T12:00:00Z`);
+      const sixMonthsFromNow =
+        now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000;
+      if (candidateDate.getTime() > sixMonthsFromNow) {
+        y = String(candidate - 100);
+      } else {
+        y = String(candidate);
+      }
+    }
+    return `${y}-${m}-${d}`;
   }
   return null;
 }
