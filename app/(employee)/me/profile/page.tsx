@@ -1,9 +1,9 @@
-// Employee profile — view + edit, language toggle, sign out. Phase 5
-// adds notification preferences. Sensitive-field flow (legal name, email)
-// also lands in Phase 5; today they're read-only.
+// Employee profile — view + edit, language toggle, sign out. Sensitive
+// fields (legal name, email) are read-only here; admins update them
+// from the Employee detail page.
 
 import { getTranslations } from "next-intl/server";
-import { LogOut } from "lucide-react";
+import { LogOut, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,14 @@ import { Label } from "@/components/ui/label";
 import { requireSession } from "@/lib/auth-guards";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { signOutAction } from "@/components/admin/sign-out-action";
+import { LanguageSwitcher } from "@/components/admin/language-switcher";
+import { resolveLocale } from "@/lib/i18n";
 import { ProfileForm } from "./profile-form";
 
 export default async function EmployeeProfile() {
   const session = await requireSession();
   const t = await getTranslations("employee.profile");
+  const locale = await resolveLocale();
   if (!session.user.employeeId) {
     return (
       <main className="px-4 py-6 space-y-4">
@@ -57,6 +60,20 @@ export default async function EmployeeProfile() {
       </Card>
 
       <ProfileForm employee={employee} />
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Languages className="h-4 w-4 text-brand-700" />
+            English / Español
+          </CardTitle>
+          <LanguageSwitcher current={locale} />
+        </CardHeader>
+        <CardContent className="text-xs text-text-muted">
+          Switches the language on this device immediately. Your saved
+          preference (above) is what other devices use until they switch too.
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-4 space-y-3 text-sm">
