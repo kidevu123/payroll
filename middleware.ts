@@ -27,6 +27,15 @@ export default function middleware(req: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/cron") ||
     pathname === "/favicon.ico" ||
+    // Icon routes must be reachable without auth — the login page itself
+    // and the iOS bookmark fetcher both pull these. Same for the manifest
+    // and the public branding endpoints.
+    pathname === "/icon" ||
+    pathname === "/apple-icon" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/api/branding/favicon" ||
+    pathname === "/api/branding/logo" ||
+    pathname.startsWith("/api/branding/icon/") ||
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))
   ) {
     return NextResponse.next();
