@@ -6,7 +6,10 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     <div
       ref={ref}
       className={cn(
-        "rounded-card border border-border bg-surface shadow-card",
+        // surface-2 lifts cards two stops above the page background (surface
+        // is ~1 stop; the v1.2 polish pass bumps it to make hierarchy obvious
+        // in dark mode).
+        "rounded-card border border-border bg-surface-2 shadow-card-strong",
         className,
       )}
       {...props}
