@@ -30,12 +30,21 @@ AUTHED_PATHS=(
   "/employees"
   "/payroll"
   "/reports"
+  "/run-payroll"
+  "/run-payroll/upload"
   "/audit"
+  "/settings/company"
+  "/settings/branding"
+  "/settings/pay-schedules"
+  "/settings/zoho"
+  "/settings/holidays"
+  "/settings/automation"
+  "/settings/notifications"
   "/me/home"
   "/me/pay"
   "/me/profile"
 )
-ERROR_PATTERNS='Application error|server-side exception|next-intl config|Internal Server Error|invalid_type'
+ERROR_PATTERNS='Application error|server-side exception|next-intl config|Internal Server Error|invalid_type|Lands in Phase|Phase 5'
 
 cookie_jar="$(mktemp)"
 trap 'rm -f "${cookie_jar}"' EXIT
