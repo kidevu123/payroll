@@ -70,5 +70,6 @@ VOLUME ["/data"]
 
 EXPOSE 3000
 
-# Migrate then seed then start. compose's healthcheck will hit /api/health.
-CMD ["sh", "-c", "node ./node_modules/tsx/dist/cli.mjs scripts/migrate.ts && node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts && node server.js"]
+# Migrate, seed, idempotent legacy import (no-op if /data/legacy is absent),
+# then start. compose's healthcheck will hit /api/health.
+CMD ["sh", "-c", "node ./node_modules/tsx/dist/cli.mjs scripts/migrate.ts && node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts && node ./node_modules/tsx/dist/cli.mjs scripts/import-legacy.ts --apply && node server.js"]

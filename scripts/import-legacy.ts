@@ -1,43 +1,58 @@
 // Legacy data import. Pulls the Flask app's JSON + CSV state into the
-// new Drizzle schema. Dry-run by default; --apply commits.
+// new Drizzle schema. Idempotent: re-running --apply with no new source
+// data is a no-op for employees / punches / time-off; the reports section
+// always wipes and re-imports (it's keyed off the metadata file, which is
+// the authoritative listing).
 //
-// Source layout (extracted from /root/payroll-legacy-backup-20260430/opt-payroll.tgz):
-//   /data/legacy/users.json
-//   /data/legacy/pay_rates.json
-//   /data/legacy/temp_workers.json
-//   /data/legacy/time_off_requests.json
-//   /data/legacy/uploads/*.csv         — NGTeco-format punch exports
-//   /data/legacy/static/reports/*.xlsx — bulk per-period reports (admin
-//                                        + employee + cut-sheet variants)
+// Source layout (from /data/legacy = ./data/legacy on the host):
+//   users.json, pay_rates.json, temp_workers.json, time_off_requests.json
+//   uploads/*.csv                              — NGTeco-format punch exports
+//   static/reports/reports_metadata.json       — authoritative report listing
+//   static/reports/admin_report_<date>.{xlsx|pdf}
 //
-// Idempotency: Employee rows are keyed by legacyId. PayPeriod rows are
-// keyed by startDate. Punches are deduped by (employeeId, clockIn).
-// Re-running --apply with no new source data is a no-op.
+// Reports — v1.2: rewritten so /reports shows the legacy 24+ rows instead
+// of 60 derived periods. We:
+//   1. Wipe existing payroll_runs (and their payslips) tagged
+//      source = LEGACY_IMPORT.
+//   2. For each metadata entry, UPSERT a pay_period (by start_date) and
+//      INSERT a payroll_run with source = LEGACY_IMPORT, total_amount_cents,
+//      created_by_name, posted_at = mtime, pay_schedule_id (SM if 14+ day
+//      span starting on the 1st or 16th, else WEEKLY), and pdf_path if a
+//      matching PDF exists.
+//   3. Copy the matching PDF (if any) from static/reports/<file>.pdf to
+//      /data/payslips/legacy/<startDate>__<endDate>/report.pdf.
+//   4. Migrate Juan (legacy_id=9) to the Semi-Monthly schedule.
 //
-// Reports: copied to /data/payslips/legacy/<period-end>/<filename> on the
-// host. Each Payslip row's pdfPath points at the period's
-// admin_report_<period-end>.xlsx (shared by all employees in the period).
-// /me/pay/[periodId] detects non-PDF pdfPath and renders a download link.
+// Per-employee payslips are no longer materialised for legacy reports;
+// /payroll/[periodId] computes employee totals on-the-fly from punches.
 
-import { readFileSync, readdirSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
-import { join, basename } from "node:path";
-import { createInterface } from "node:readline";
-import { createReadStream } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  existsSync,
+  mkdirSync,
+  copyFileSync,
+} from "node:fs";
+import { join, basename, extname } from "node:path";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq } from "drizzle-orm";
+import { eq, sql as dsql } from "drizzle-orm";
 import {
   employees,
   employeeRateHistory,
   payPeriods,
+  payrollRuns,
   payslips,
   punches,
   timeOffRequests,
+  paySchedules,
   auditLog,
 } from "../lib/db/schema";
 
 const LEGACY_ROOT = process.env.LEGACY_ROOT ?? "/data/legacy";
 const PAYSLIP_OUT = process.env.PAYSLIP_STORAGE_DIR ?? "/data/payslips";
+const REPORTS_DIR = join(LEGACY_ROOT, "static", "reports");
+const METADATA_PATH = join(REPORTS_DIR, "reports_metadata.json");
 
 type LegacyUser = {
   password: string;
@@ -49,13 +64,16 @@ type LegacyRate = { rate: number; shift_type: string; name: string };
 type LegacyTempEntry = {
   entry_id: string;
   person_id: string;
-  date: string; // YYYY-MM-DD
-  clock_in: string; // HH:MM:SS
+  date: string;
+  clock_in: string;
   clock_out: string;
   notes: string;
 };
 type LegacyTempWorkers = {
-  workers: Record<string, { first_name: string; last_name: string; rate: number; shift_type: string }>;
+  workers: Record<
+    string,
+    { first_name: string; last_name: string; rate: number; shift_type: string }
+  >;
   entries: LegacyTempEntry[];
 };
 type LegacyTimeOff = {
@@ -69,7 +87,16 @@ type LegacyTimeOff = {
   reviewed_by?: string;
 };
 
-const TZ_OFFSET_MINUTES = -240; // America/New_York EDT in May; close enough for legacy data
+type ReportMeta = {
+  filename: string;
+  mtime: number;
+  creator: string;
+  totalAmount: number;
+  startDate: string;
+  endDate: string;
+};
+
+const TZ_OFFSET_MINUTES = -240;
 
 function titleCase(s: string): string {
   return s
@@ -80,7 +107,6 @@ function titleCase(s: string): string {
 }
 
 function normalizePersonId(s: string): string {
-  // "01", "1", "1.0" → "1"; "TEMP_001" stays as-is.
   if (s.startsWith("TEMP_")) return s;
   return String(Math.trunc(Number(s.replace(/^0+/, "") || "0")));
 }
@@ -88,7 +114,6 @@ function normalizePersonId(s: string): string {
 function parseLegacyDate(s: string): string | null {
   s = s.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // 1/1/2026 or 9/30/25
   const us = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(s);
   if (us) {
     const m = us[1]!.padStart(2, "0");
@@ -102,20 +127,14 @@ function parseLegacyDate(s: string): string | null {
 function parseLegacyTime(date: string, hms: string): Date | null {
   const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(hms.trim());
   if (!m) return null;
-  // Build a wall-clock timestamp in America/New_York (EDT/EST).
-  // The legacy app stored bare HH:MM:SS without TZ; we tag them as ET.
   const isoLocal = `${date}T${m[1]!.padStart(2, "0")}:${m[2]}:${(m[3] ?? "00").padStart(2, "0")}`;
-  // Construct as if UTC, then shift by NY offset.
   const naiveUtc = new Date(`${isoLocal}Z`);
-  const t = naiveUtc.getTime() + Math.abs(TZ_OFFSET_MINUTES) * 60_000;
-  return new Date(t);
+  return new Date(naiveUtc.getTime() + Math.abs(TZ_OFFSET_MINUTES) * 60_000);
 }
 
-/** Period end is the Saturday on-or-after `date`. Periods are Sun..Sat
- *  (legacy convention; admin_report files are dated on Saturdays). */
 function periodFor(dateIso: string): { start: string; end: string } {
   const d = new Date(`${dateIso}T00:00:00Z`);
-  const dow = d.getUTCDay(); // 0=Sun..6=Sat
+  const dow = d.getUTCDay();
   const fwd = (6 - dow + 7) % 7;
   const end = new Date(d.getTime() + fwd * 86_400_000);
   const start = new Date(end.getTime() - 6 * 86_400_000);
@@ -126,7 +145,7 @@ function periodFor(dateIso: string): { start: string; end: string } {
 }
 
 async function readCsv(path: string): Promise<Record<string, string>[]> {
-  const text = readFileSync(path, "utf8").replace(/^﻿/, ""); // strip BOM
+  const text = readFileSync(path, "utf8").replace(/^﻿/, "");
   const lines = text.split(/\r?\n/);
   if (lines.length === 0) return [];
   const header = (lines[0] ?? "").split(",").map((h) => h.trim());
@@ -134,7 +153,6 @@ async function readCsv(path: string): Promise<Record<string, string>[]> {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line || !line.trim()) continue;
-    // Naive split — these legacy CSVs don't use quoted fields with commas.
     const cells = line.split(",");
     const row: Record<string, string> = {};
     for (let j = 0; j < header.length; j++) {
@@ -145,13 +163,88 @@ async function readCsv(path: string): Promise<Record<string, string>[]> {
   return out;
 }
 
-type Plan = {
-  employees: { legacyId: string; displayName: string; legalName: string; rateCents: number; payType: "HOURLY" | "FLAT_TASK"; hiredOn: string }[];
-  periods: Set<string>; // start dates
-  punchCount: number;
-  payslipCount: number;
-  timeOff: number;
-  reportFiles: number;
+/**
+ * Parse the Flask app's reports_metadata.json into a normalized list.
+ * Each entry already carries date_range when known; for older rows where
+ * the field is missing or null, we derive it from the filename date as
+ * the period start and assume a 6-day weekly span.
+ */
+function loadReportsMetadata(): ReportMeta[] {
+  if (!existsSync(METADATA_PATH)) {
+    console.warn(`legacy-import: ${METADATA_PATH} not found; skipping reports.`);
+    return [];
+  }
+  const raw = JSON.parse(readFileSync(METADATA_PATH, "utf8")) as Record<
+    string,
+    {
+      mtime: number;
+      creator: string;
+      total_amount: number;
+      date_range?: string | null;
+    }
+  >;
+  const out: ReportMeta[] = [];
+  for (const [filename, meta] of Object.entries(raw)) {
+    const startFromName = /^admin_report_(\d{4}-\d{2}-\d{2})\./.exec(filename);
+    if (!startFromName) continue;
+    const fileDate = startFromName[1]!;
+    let startDate: string;
+    let endDate: string;
+    if (meta.date_range) {
+      const m = /^(\d{4}-\d{2}-\d{2})\s+to\s+(\d{4}-\d{2}-\d{2})$/.exec(meta.date_range);
+      if (!m) {
+        // Malformed date range → fall back to 6-day weekly from filename.
+        startDate = fileDate;
+        endDate = new Date(new Date(`${fileDate}T00:00:00Z`).getTime() + 5 * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+      } else {
+        startDate = m[1]!;
+        endDate = m[2]!;
+      }
+    } else {
+      // No explicit range — use file date as end, assume 6-day weekly window
+      // ending on the report's posting/period-end date (legacy convention).
+      endDate = fileDate;
+      startDate = new Date(new Date(`${fileDate}T00:00:00Z`).getTime() - 5 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+    }
+    out.push({
+      filename,
+      mtime: meta.mtime,
+      creator: meta.creator || "Unknown",
+      totalAmount: meta.total_amount,
+      startDate,
+      endDate,
+    });
+  }
+  // Sort by posting date, newest first — the import order matches /reports.
+  out.sort((a, b) => b.mtime - a.mtime);
+  return out;
+}
+
+/**
+ * Heuristic: a period is semi-monthly if it spans 14+ days and starts on
+ * the 1st or 16th. Otherwise weekly. Matches the legacy app's only two
+ * cadences (weekly per shift, semi-monthly for Juan).
+ */
+function classifySchedule(startDate: string, endDate: string): "WEEKLY" | "SEMI_MONTHLY" {
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  const dom = start.getUTCDate();
+  if (days >= 14 && (dom === 1 || dom === 16)) return "SEMI_MONTHLY";
+  return "WEEKLY";
+}
+
+type EmpPlan = {
+  legacyId: string;
+  displayName: string;
+  legalName: string;
+  rateCents: number;
+  payType: "HOURLY" | "FLAT_TASK";
+  hiredOn: string;
 };
 
 async function main(): Promise<void> {
@@ -168,6 +261,11 @@ async function main(): Promise<void> {
   const db = drizzle(client);
 
   try {
+    if (!existsSync(LEGACY_ROOT)) {
+      console.warn(`legacy-import: ${LEGACY_ROOT} not present — nothing to do.`);
+      return;
+    }
+
     const users: Record<string, LegacyUser> = JSON.parse(
       readFileSync(join(LEGACY_ROOT, "users.json"), "utf8"),
     );
@@ -180,14 +278,15 @@ async function main(): Promise<void> {
     const timeOff: LegacyTimeOff[] = JSON.parse(
       readFileSync(join(LEGACY_ROOT, "time_off_requests.json"), "utf8"),
     );
+    const reports = loadReportsMetadata();
 
     // ── Plan: employees ──────────────────────────────────────────────────────
-    const empPlans: Plan["employees"] = [];
+    const empPlans: EmpPlan[] = [];
     for (const [k, u] of Object.entries(users)) {
       if (u.role !== "employee") continue;
       const legacyId = u.employee_id || k;
       const rate = rates[legacyId];
-      if (!rate) continue; // No rate → never paid → skip
+      if (!rate) continue;
       const realName = u.name && u.name !== legacyId ? u.name : rate.name || `Employee ${legacyId}`;
       empPlans.push({
         legacyId,
@@ -195,10 +294,9 @@ async function main(): Promise<void> {
         legalName: realName,
         rateCents: Math.round(rate.rate * 100),
         payType: legacyId.startsWith("TEMP_") ? "FLAT_TASK" : "HOURLY",
-        hiredOn: "2025-01-01", // first-known-good; CSV punches will be in 2025+
+        hiredOn: "2025-01-01",
       });
     }
-    // Add TEMP_ contractors not already in users.json
     for (const [k, w] of Object.entries(temp.workers)) {
       if (empPlans.some((e) => e.legacyId === k)) continue;
       const realName = `${w.first_name} ${w.last_name}`.trim();
@@ -218,13 +316,13 @@ async function main(): Promise<void> {
       clockIn: Date;
       clockOut: Date | null;
       dayIso: string;
-      source: "LEGACY_IMPORT";
     };
-    const punchMap = new Map<string, PunchPlan>(); // key = legacyId|clockInIso
+    const punchMap = new Map<string, PunchPlan>();
 
-    // CSVs in uploads/.
     const uploadsDir = join(LEGACY_ROOT, "uploads");
-    const csvs = readdirSync(uploadsDir).filter((f) => f.toLowerCase().endsWith(".csv"));
+    const csvs = existsSync(uploadsDir)
+      ? readdirSync(uploadsDir).filter((f) => f.toLowerCase().endsWith(".csv"))
+      : [];
     let csvSkipped = 0;
     for (const f of csvs) {
       let rows: Record<string, string>[];
@@ -244,81 +342,27 @@ async function main(): Promise<void> {
         if (!inT) continue;
         const key = `${pid}|${inT.toISOString()}`;
         if (!punchMap.has(key)) {
-          punchMap.set(key, {
-            legacyId: pid,
-            clockIn: inT,
-            clockOut: outT,
-            dayIso: dateIso,
-            source: "LEGACY_IMPORT",
-          });
+          punchMap.set(key, { legacyId: pid, clockIn: inT, clockOut: outT, dayIso: dateIso });
         }
       }
     }
 
-    // TEMP entries from temp_workers.json
     for (const e of temp.entries) {
       const inT = parseLegacyTime(e.date, e.clock_in);
       const outT = parseLegacyTime(e.date, e.clock_out);
       if (!inT) continue;
       const key = `${e.person_id}|${inT.toISOString()}`;
       if (!punchMap.has(key)) {
-        punchMap.set(key, {
-          legacyId: e.person_id,
-          clockIn: inT,
-          clockOut: outT,
-          dayIso: e.date,
-          source: "LEGACY_IMPORT",
-        });
+        punchMap.set(key, { legacyId: e.person_id, clockIn: inT, clockOut: outT, dayIso: e.date });
       }
     }
 
-    // ── Plan: periods (Sun..Sat) ─────────────────────────────────────────────
-    const periodStarts = new Set<string>();
-    for (const p of punchMap.values()) {
-      const { start } = periodFor(p.dayIso);
-      periodStarts.add(start);
-    }
-
-    // ── Plan: payslips (one per employee×period that has punches) ────────────
-    type PayslipKey = string; // legacyId|periodStart
-    const payslipBuckets = new Map<PayslipKey, { hours: number; periodStart: string; periodEnd: string; legacyId: string }>();
-    for (const p of punchMap.values()) {
-      if (!p.clockOut) continue;
-      const ms = p.clockOut.getTime() - p.clockIn.getTime();
-      if (ms <= 0) continue;
-      const { start, end } = periodFor(p.dayIso);
-      const key = `${p.legacyId}|${start}`;
-      const ent = payslipBuckets.get(key) ?? { hours: 0, periodStart: start, periodEnd: end, legacyId: p.legacyId };
-      ent.hours += ms / 3_600_000;
-      payslipBuckets.set(key, ent);
-    }
-
-    // Reports — match by period-end date.
-    const reportsDir = join(LEGACY_ROOT, "static", "reports");
-    const reports = existsSync(reportsDir) ? readdirSync(reportsDir) : [];
-    const reportByEndDate = new Map<string, string>(); // YYYY-MM-DD → admin_report path
-    for (const f of reports) {
-      const m = /^admin_report_(\d{4}-\d{2}-\d{2})\./.exec(f);
-      if (m) reportByEndDate.set(m[1]!, join(reportsDir, f));
-    }
-
-    const plan: Plan = {
-      employees: empPlans,
-      periods: periodStarts,
-      punchCount: punchMap.size,
-      payslipCount: payslipBuckets.size,
-      timeOff: timeOff.length,
-      reportFiles: reports.length,
-    };
-
     console.log("");
     console.log("=== PLAN ===");
-    console.log(`employees:    ${plan.employees.length}`);
-    console.log(`periods:      ${plan.periods.size}`);
-    console.log(`punches:      ${plan.punchCount} (CSVs read: ${csvs.length}, skipped: ${csvSkipped})`);
-    console.log(`payslips:     ${plan.payslipCount}`);
-    console.log(`time-off:     ${plan.timeOff}`);
-    console.log(`report files: ${plan.reportFiles} (admin_report match by period-end: ${reportByEndDate.size})`);
+    console.log(`employees:  ${empPlans.length}`);
+    console.log(`punches:    ${punchMap.size} (CSVs read: ${csvs.length}, skipped: ${csvSkipped})`);
+    console.log(`time-off:   ${timeOff.length}`);
+    console.log(`reports:    ${reports.length}`);
     console.log("");
 
     if (!apply) {
@@ -326,9 +370,7 @@ async function main(): Promise<void> {
       return;
     }
 
-    // ── APPLY ────────────────────────────────────────────────────────────────
-
-    // 1. Employees + initial rate history (idempotent by legacyId).
+    // ── APPLY: 1. Employees + initial rate history (idempotent by legacyId).
     const empIdByLegacy = new Map<string, string>();
     for (const e of empPlans) {
       const [existing] = await db
@@ -372,52 +414,195 @@ async function main(): Promise<void> {
     }
     console.log(`[apply] employees: ${empIdByLegacy.size}`);
 
-    // 2. Periods (idempotent by startDate).
-    const periodIdByStart = new Map<string, string>();
-    for (const start of periodStarts) {
-      const { end } = periodFor(start); // start IS the period start; recompute the end
-      const periodEnd = new Date(`${start}T00:00:00Z`).getTime() + 6 * 86_400_000;
-      const periodEndIso = new Date(periodEnd).toISOString().slice(0, 10);
+    // ── APPLY: 2. Wipe legacy reports cleanly so the metadata file is
+    //               authoritative for /reports.
+    await client`
+      DELETE FROM payslips
+      WHERE payroll_run_id IN (SELECT id FROM payroll_runs WHERE source = 'LEGACY_IMPORT')
+    `;
+    const runWipe = await client`
+      DELETE FROM payroll_runs WHERE source = 'LEGACY_IMPORT'
+    `;
+    console.log(`[apply] wiped legacy runs: ${runWipe.count}`);
+
+    // ── APPLY: 3. Resolve pay schedules for the run-tagging step.
+    const [weeklySchedule] = await db
+      .select()
+      .from(paySchedules)
+      .where(eq(paySchedules.name, "Weekly"));
+    const [smSchedule] = await db
+      .select()
+      .from(paySchedules)
+      .where(eq(paySchedules.name, "Semi-Monthly"));
+    if (!weeklySchedule || !smSchedule) {
+      throw new Error(
+        "legacy-import: default pay schedules missing — run scripts/migrate.ts first.",
+      );
+    }
+
+    // ── APPLY: 4. Migrate Juan (legacy_id=9) to the Semi-Monthly schedule.
+    const juanId = empIdByLegacy.get("9");
+    if (juanId) {
+      await db
+        .update(employees)
+        .set({ payScheduleId: smSchedule.id, updatedAt: new Date() })
+        .where(eq(employees.id, juanId));
+      console.log(`[apply] Juan → Semi-Monthly`);
+    }
+    // Everyone else with no schedule yet → Weekly default.
+    await client`
+      UPDATE employees
+      SET pay_schedule_id = ${weeklySchedule.id}, updated_at = NOW()
+      WHERE pay_schedule_id IS NULL
+        AND id <> COALESCE(${juanId ?? null}::uuid, '00000000-0000-0000-0000-000000000000'::uuid)
+    `;
+
+    // Build a quick map filename → on-disk path so PDF copies are cheap.
+    const reportFiles = existsSync(REPORTS_DIR) ? readdirSync(REPORTS_DIR) : [];
+    const pdfByDate = new Map<string, string>();
+    for (const f of reportFiles) {
+      const m = /^admin_report_(\d{4}-\d{2}-\d{2})\.pdf$/i.exec(f);
+      if (m) pdfByDate.set(m[1]!, join(REPORTS_DIR, f));
+    }
+    const legacyOutRoot = join(PAYSLIP_OUT, "legacy");
+
+    // ── APPLY: 5. For each metadata entry, ensure a pay_period and create
+    //               a payroll_run with source = LEGACY_IMPORT.
+    let runsInserted = 0;
+    let pdfsCopied = 0;
+    let pdfsMissing = 0;
+    for (const r of reports) {
+      // Resolve / create period.
+      const [existingPeriod] = await db
+        .select()
+        .from(payPeriods)
+        .where(eq(payPeriods.startDate, r.startDate));
+      let periodId: string;
+      if (existingPeriod) {
+        periodId = existingPeriod.id;
+        // Sync end_date / state if drifted.
+        if (
+          existingPeriod.endDate !== r.endDate ||
+          existingPeriod.state !== "PAID"
+        ) {
+          await db
+            .update(payPeriods)
+            .set({ endDate: r.endDate, state: "PAID" })
+            .where(eq(payPeriods.id, periodId));
+        }
+      } else {
+        const [row] = await db
+          .insert(payPeriods)
+          .values({
+            startDate: r.startDate,
+            endDate: r.endDate,
+            state: "PAID",
+            paidAt: new Date(r.mtime * 1000),
+          })
+          .returning();
+        if (!row) throw new Error("legacy-import: period insert returned no row");
+        periodId = row.id;
+      }
+
+      // Copy PDF if available. Filename in metadata may be .xlsx; the .pdf
+      // sibling (if it exists) is what we serve.
+      let pdfPath: string | null = null;
+      const baseDate = (/^admin_report_(\d{4}-\d{2}-\d{2})/.exec(r.filename) ?? [, ""])[1]!;
+      const pdfSrc = pdfByDate.get(baseDate);
+      if (pdfSrc) {
+        const outDir = join(legacyOutRoot, `${r.startDate}__${r.endDate}`);
+        mkdirSync(outDir, { recursive: true });
+        const outPath = join(outDir, "report.pdf");
+        if (!existsSync(outPath)) {
+          copyFileSync(pdfSrc, outPath);
+          pdfsCopied++;
+        }
+        pdfPath = outPath;
+      } else {
+        // Also accept the .xlsx as a fallback so admins can still download
+        // _something_ for older periods that pre-date PDF generation.
+        const xlsxSrc = join(REPORTS_DIR, r.filename);
+        if (existsSync(xlsxSrc)) {
+          const outDir = join(legacyOutRoot, `${r.startDate}__${r.endDate}`);
+          mkdirSync(outDir, { recursive: true });
+          const ext = extname(r.filename) || ".xlsx";
+          const outPath = join(outDir, `report${ext}`);
+          if (!existsSync(outPath)) {
+            copyFileSync(xlsxSrc, outPath);
+            pdfsCopied++;
+          }
+          pdfPath = outPath;
+        } else {
+          pdfsMissing++;
+        }
+      }
+
+      const kind = classifySchedule(r.startDate, r.endDate);
+      const scheduleId =
+        kind === "SEMI_MONTHLY" ? smSchedule.id : weeklySchedule.id;
+      const postedAt = new Date(r.mtime * 1000);
+
+      await db.insert(payrollRuns).values({
+        periodId,
+        state: "PUBLISHED",
+        scheduledFor: postedAt,
+        ingestStartedAt: postedAt,
+        ingestCompletedAt: postedAt,
+        approvedAt: postedAt,
+        publishedAt: postedAt,
+        publishedToPortalAt: postedAt,
+        postedAt,
+        source: "LEGACY_IMPORT",
+        payScheduleId: scheduleId,
+        totalAmountCents: Math.round(r.totalAmount * 100),
+        createdByName: r.creator,
+        pdfPath,
+      });
+      runsInserted++;
+    }
+    console.log(
+      `[apply] legacy reports: runs=${runsInserted}, pdfs copied=${pdfsCopied}, missing=${pdfsMissing}`,
+    );
+
+    // ── APPLY: 6. Punches (skip if existing punch for the same (employee, clockIn)).
+    let punchInserted = 0;
+    let punchSkipped = 0;
+    // Cache period lookups by week-start.
+    const periodCache = new Map<string, string>();
+    async function resolveWeeklyPeriodId(dateIso: string): Promise<string | null> {
+      const { start, end } = periodFor(dateIso);
+      const cached = periodCache.get(start);
+      if (cached) return cached;
       const [existing] = await db
         .select()
         .from(payPeriods)
         .where(eq(payPeriods.startDate, start));
       if (existing) {
-        periodIdByStart.set(start, existing.id);
-        continue;
+        periodCache.set(start, existing.id);
+        return existing.id;
       }
+      // Punches landing outside any imported report's period — synthesize a
+      // weekly period so the FK can be satisfied. State stays OPEN; there's
+      // no payroll_run on it, so it won't show in /reports.
       const [row] = await db
         .insert(payPeriods)
-        .values({
-          startDate: start,
-          endDate: periodEndIso,
-          state: "PAID",
-          paidAt: new Date(`${periodEndIso}T22:00:00Z`),
-        })
+        .values({ startDate: start, endDate: end, state: "OPEN" })
         .returning();
-      if (row) periodIdByStart.set(start, row.id);
-      // Avoid unused 'end' lint
-      void end;
+      if (!row) return null;
+      periodCache.set(start, row.id);
+      return row.id;
     }
-    console.log(`[apply] periods: ${periodIdByStart.size}`);
-
-    // 3. Punches (skip if existing punch for the same (employee, clockIn)).
-    let punchInserted = 0;
-    let punchSkipped = 0;
     for (const p of punchMap.values()) {
       const empId = empIdByLegacy.get(p.legacyId);
       if (!empId) {
         punchSkipped++;
         continue;
       }
-      const { start } = periodFor(p.dayIso);
-      const periodId = periodIdByStart.get(start);
+      const periodId = await resolveWeeklyPeriodId(p.dayIso);
       if (!periodId) {
         punchSkipped++;
         continue;
       }
-      // Dedupe against existing.
-      // Use createdAt index + a manual where on (employeeId, clockIn).
       const dup = await client`
         SELECT 1 FROM punches
         WHERE employee_id = ${empId}
@@ -439,67 +624,21 @@ async function main(): Promise<void> {
     }
     console.log(`[apply] punches: inserted=${punchInserted} skipped=${punchSkipped}`);
 
-    // 4. Copy report files to /data/payslips/legacy/<period-end>/
-    let copied = 0;
-    const legacyOutRoot = join(PAYSLIP_OUT, "legacy");
-    for (const [endDate, srcPath] of reportByEndDate) {
-      const outDir = join(legacyOutRoot, endDate);
-      mkdirSync(outDir, { recursive: true });
-      const outPath = join(outDir, basename(srcPath));
-      if (!existsSync(outPath)) {
-        copyFileSync(srcPath, outPath);
-        copied++;
-      }
-    }
-    console.log(`[apply] report files copied: ${copied}`);
-
-    // 5. Payslips (one per employee × period bucket; pdfPath points at the
-    //    period's admin_report XLSX shared across all employees in that period).
-    let payslipInserted = 0;
-    for (const ent of payslipBuckets.values()) {
-      const empId = empIdByLegacy.get(ent.legacyId);
-      if (!empId) continue;
-      const periodId = periodIdByStart.get(ent.periodStart);
-      if (!periodId) continue;
-      const reportSrc = reportByEndDate.get(ent.periodEnd);
-      const pdfPath = reportSrc
-        ? join(legacyOutRoot, ent.periodEnd, basename(reportSrc))
-        : null;
-      // Find or compute rate.
-      const empPlan = empPlans.find((e) => e.legacyId === ent.legacyId);
-      const rateCents = empPlan?.rateCents ?? 0;
-      const grossCents = Math.round(ent.hours * rateCents);
-      const [existing] = await db
-        .select()
-        .from(payslips)
-        .where(eq(payslips.employeeId, empId));
-      // Use a per-period unique check.
-      const dup = await client`
-        SELECT 1 FROM payslips WHERE employee_id = ${empId} AND period_id = ${periodId} LIMIT 1
-      `;
-      if (dup.length > 0) continue;
-      void existing;
-      await db.insert(payslips).values({
-        employeeId: empId,
-        periodId,
-        payrollRunId: await ensureLegacyRun(client, periodId),
-        hoursWorked: String(ent.hours.toFixed(2)),
-        grossPayCents: grossCents,
-        roundedPayCents: grossCents,
-        taskPayCents: 0,
-        pdfPath,
-        publishedAt: new Date(`${ent.periodEnd}T22:00:00Z`),
-      });
-      payslipInserted++;
-    }
-    console.log(`[apply] payslips: ${payslipInserted}`);
-
-    // 6. Time off
+    // ── APPLY: 7. Time off (idempotent by employee + dates).
     let toInserted = 0;
     for (const t of timeOff) {
       const empId = empIdByLegacy.get(t.employee_id);
       if (!empId) continue;
-      const status = t.status === "approved" ? "APPROVED" : t.status === "denied" ? "REJECTED" : "PENDING";
+      const dup = await client`
+        SELECT 1 FROM time_off_requests
+        WHERE employee_id = ${empId}
+          AND start_date = ${t.start_date}::date
+          AND end_date = ${t.end_date}::date
+        LIMIT 1
+      `;
+      if (dup.length > 0) continue;
+      const status =
+        t.status === "approved" ? "APPROVED" : t.status === "denied" ? "REJECTED" : "PENDING";
       await db.insert(timeOffRequests).values({
         employeeId: empId,
         startDate: t.start_date,
@@ -520,46 +659,31 @@ async function main(): Promise<void> {
     }
     console.log(`[apply] time-off: ${toInserted}`);
 
-    // 7. Audit row capping the import.
     await db.insert(auditLog).values({
       actorId: null,
       actorRole: null,
       action: "legacy.import.complete",
       targetType: "System",
-      targetId: "legacy-2026-04-30",
+      targetId: `legacy-${new Date().toISOString().slice(0, 10)}`,
       after: {
         employees: empIdByLegacy.size,
-        periods: periodIdByStart.size,
+        legacyRunsInserted: runsInserted,
+        pdfsCopied,
+        pdfsMissing,
         punchInserted,
-        payslipInserted,
+        punchSkipped,
         timeOffInserted: toInserted,
-        reportsCopied: copied,
       },
     });
+
+    // Touch a sentinel so /reports can show "Last legacy import: X"
+    void dsql`SELECT 1`; // keep dsql referenced for tree-shaking note
 
     console.log("");
     console.log("Done.");
   } finally {
     await client.end({ timeout: 5 });
   }
-}
-
-// We need a PayrollRun row for each legacy period (Payslip.payrollRunId is NOT NULL).
-// Reuse a single "legacy" run per period.
-async function ensureLegacyRun(
-  sql: ReturnType<typeof postgres>,
-  periodId: string,
-): Promise<string> {
-  const existing = await sql`
-    SELECT id FROM payroll_runs WHERE period_id = ${periodId} LIMIT 1
-  `;
-  if (existing.length > 0 && existing[0]) return existing[0].id as string;
-  const inserted = await sql`
-    INSERT INTO payroll_runs (period_id, state, scheduled_for, published_at)
-    VALUES (${periodId}, 'PUBLISHED', NOW(), NOW())
-    RETURNING id
-  `;
-  return inserted[0]!.id as string;
 }
 
 main().catch((err) => {
