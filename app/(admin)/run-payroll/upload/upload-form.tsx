@@ -333,6 +333,16 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                               Salaried — paystub upload only
                             </span>
                           )}
+                          {e.unmatched && (
+                            <Link
+                              href={`/employees/new?ngtecoRef=${encodeURIComponent(e.ngtecoRef)}&displayName=${encodeURIComponent(e.displayName)}`}
+                              target="_blank"
+                              rel="noopener"
+                              className="ml-2 text-[10px] text-brand-700 underline"
+                            >
+                              + Add as new
+                            </Link>
+                          )}
                         </p>
                         <p className="text-xs text-text-muted">
                           {e.dayCount} day{e.dayCount === 1 ? "" : "s"} · {e.totalHours.toFixed(2)} h

@@ -8,9 +8,28 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createEmployeeAction, updateEmployeeAction } from "./actions";
 
+type EmployeePrefill = {
+  displayName?: string;
+  legalName?: string;
+  ngtecoEmployeeRef?: string;
+};
+
 type Props =
-  | { mode: "create"; shifts: Shift[]; schedules: PaySchedule[]; employee?: undefined }
-  | { mode: "edit"; shifts: Shift[]; schedules: PaySchedule[]; employee: Employee };
+  | {
+      mode: "create";
+      shifts: Shift[];
+      schedules: PaySchedule[];
+      employee?: undefined;
+      /** Optional prefill from query string (e.g. CSV upload "Add as new"). */
+      prefill?: EmployeePrefill;
+    }
+  | {
+      mode: "edit";
+      shifts: Shift[];
+      schedules: PaySchedule[];
+      employee: Employee;
+      prefill?: undefined;
+    };
 
 export function EmployeeForm(props: Props) {
   const [error, setError] = React.useState<string | null>(null);
@@ -28,6 +47,7 @@ export function EmployeeForm(props: Props) {
   }
 
   const e = props.mode === "edit" ? props.employee : undefined;
+  const prefill = props.mode === "create" ? props.prefill ?? {} : {};
 
   return (
     <form
@@ -40,7 +60,7 @@ export function EmployeeForm(props: Props) {
           <Input
             id="displayName"
             name="displayName"
-            defaultValue={e?.displayName ?? ""}
+            defaultValue={e?.displayName ?? prefill.displayName ?? ""}
             required
             maxLength={120}
           />
@@ -72,6 +92,23 @@ export function EmployeeForm(props: Props) {
             defaultValue={e?.phone ?? ""}
             placeholder="+15551234567"
           />
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <Label htmlFor="ngtecoEmployeeRef">
+            NGTeco / CSV employee ref
+          </Label>
+          <Input
+            id="ngtecoEmployeeRef"
+            name="ngtecoEmployeeRef"
+            defaultValue={e?.ngtecoEmployeeRef ?? prefill.ngtecoEmployeeRef ?? ""}
+            placeholder="e.g. 9 (matches the Person ID column in the NGTeco CSV)"
+            maxLength={64}
+          />
+          <p className="text-xs text-text-muted">
+            Binds this employee to a row in the NGTeco / punch-CSV exports.
+            Without it, CSV uploads show this person as &ldquo;No
+            match&rdquo; on preview.
+          </p>
         </div>
         {props.mode === "create" && (
           <div className="space-y-1">

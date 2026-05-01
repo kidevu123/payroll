@@ -25,7 +25,7 @@ export function RunActions({
   runId: string;
   state: string;
   unresolvedAlerts: number;
-  totals: { employees: number; gross: number };
+  totals: { employees: number; gross: number; rounded: number };
 }) {
   const [confirming, setConfirming] = React.useState(false);
   const [pending, setPending] = React.useState(false);
@@ -83,7 +83,16 @@ export function RunActions({
             }}
           >
             <p className="text-sm font-medium">
-              Publishing payroll for {totals.employees} employee{totals.employees === 1 ? "" : "s"} —{" "}
+              Publishing payroll for {totals.employees} employee{totals.employees === 1 ? "" : "s"}
+            </p>
+            <p className="text-sm mt-1">
+              Net (rounded ‒ what gets paid):{" "}
+              <span className="font-semibold text-base">
+                <MoneyDisplay cents={totals.rounded} monospace={false} />
+              </span>
+            </p>
+            <p className="text-xs text-text-muted">
+              Gross (before rounding):{" "}
               <MoneyDisplay cents={totals.gross} monospace={false} />
             </p>
             <p className="text-xs text-text-muted mt-1 mb-3">

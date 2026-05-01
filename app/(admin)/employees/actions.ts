@@ -29,6 +29,10 @@ const createSchema = z.object({
   language: z.enum(["en", "es"]).default("en"),
   notes: z.string().max(2000).optional().nullable(),
   requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
+  ngtecoEmployeeRef: z
+    .union([z.string().max(64), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function createEmployeeAction(
@@ -48,6 +52,7 @@ export async function createEmployeeAction(
     language: formData.get("language") || "en",
     notes: formData.get("notes") || null,
     requiresW2Upload: formData.get("requiresW2Upload") || "0",
+    ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -66,6 +71,7 @@ export async function createEmployeeAction(
       language: d.language,
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",
+      ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
       ...(d.initialHourlyRateCents !== undefined && d.initialHourlyRateCents !== null
         ? { initialHourlyRateCents: d.initialHourlyRateCents }
         : {}),
@@ -87,6 +93,10 @@ const updateSchema = z.object({
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),
   requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
+  ngtecoEmployeeRef: z
+    .union([z.string().max(64), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function updateEmployeeAction(
@@ -106,6 +116,7 @@ export async function updateEmployeeAction(
     language: formData.get("language"),
     notes: formData.get("notes") || null,
     requiresW2Upload: formData.get("requiresW2Upload") || "0",
+    ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -124,6 +135,7 @@ export async function updateEmployeeAction(
       language: d.language,
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",
+      ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
     },
     { id: session.user.id, role: session.user.role },
   );

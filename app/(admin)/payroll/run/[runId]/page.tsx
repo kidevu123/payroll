@@ -407,7 +407,11 @@ export default async function RunReviewPage({
         runId={run.id}
         state={run.state}
         unresolvedAlerts={unresolvedAlerts}
-        totals={{ employees: rendered.length, gross: totals.gross }}
+        totals={{
+          employees: rendered.length,
+          gross: totals.gross,
+          rounded: totals.rounded,
+        }}
       />
 
       <p className="text-xs text-text-muted">
