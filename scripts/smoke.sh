@@ -1,18 +1,31 @@
 #!/usr/bin/env bash
-# Page-load smoke test. Pass the base URL (e.g. http://localhost:3000 or
-# https://digitz.duckdns.org) as the first argument. Exits 0 if every
-# required path returns 200 AND the body has no error sentinel; 1 otherwise.
+# Page-load smoke test. Two modes:
 #
-# Health 200 alone is insufficient — /api/health only checks DB + pg-boss
-# reachability, not page-render failures. Use this script after every
-# deploy, alongside curl /api/health.
+#   bash scripts/smoke.sh <BASE>
+#     Anonymous-only: hits public + protected paths without auth. Protected
+#     paths redirect to /login (200). Catches render errors that fire even
+#     before middleware (e.g. layout-level crashes, next-intl config).
+#
+#   bash scripts/smoke.sh <BASE> <EMAIL> <PASSWORD>
+#     Authenticated: signs in via Auth.js credentials, then loads the same
+#     paths with the session cookie. Catches render errors on authed routes
+#     (e.g. dashboard's getSetting('company') Zod throw).
+#
+# Health 200 alone is insufficient — /api/health checks DB + pg-boss
+# reachability, not page-render failures.
 
 set -uo pipefail
 
 BASE="${1:-http://localhost:3000}"
-PATHS=(
+EMAIL="${2:-}"
+PASSWORD="${3:-}"
+
+PUBLIC_PATHS=(
   "/login"
   "/setup"
+)
+AUTHED_PATHS=(
+  "/"
   "/dashboard"
   "/employees"
   "/payroll"
@@ -22,7 +35,10 @@ PATHS=(
   "/me/pay"
   "/me/profile"
 )
-ERROR_PATTERNS='Application error|server-side exception|next-intl config'
+ERROR_PATTERNS='Application error|server-side exception|next-intl config|Internal Server Error|invalid_type'
+
+cookie_jar="$(mktemp)"
+trap 'rm -f "${cookie_jar}"' EXIT
 
 fail=0
 echo "Smoke test against ${BASE}"
@@ -37,27 +53,69 @@ else
   echo "OK    /api/health  http=${hc}"
 fi
 
-# Page-load checks. We follow redirects but record the final code; an
-# unauth user gets bounced to /login (200) which is fine for the auth-only
-# paths. The error-sentinel grep is what catches a server-rendered crash.
-for p in "${PATHS[@]}"; do
+probe() {
+  local p="$1"
+  local label="$2"
   body_file=$(mktemp)
-  code=$(curl -sL --max-time 10 -o "${body_file}" -w '%{http_code}' "${BASE}${p}" || echo 000)
+  code=$(curl -sL -k --max-time 10 -b "${cookie_jar}" -c "${cookie_jar}" \
+    -o "${body_file}" -w '%{http_code}' "${BASE}${p}" || echo 000)
   if [[ "${code}" != "200" ]]; then
-    echo "FAIL  ${p}  http=${code}"
+    echo "FAIL  ${label}${p}  http=${code}"
     fail=1
     rm -f "${body_file}"
-    continue
+    return
   fi
   if grep -qE "${ERROR_PATTERNS}" "${body_file}"; then
     matched=$(grep -oE "${ERROR_PATTERNS}" "${body_file}" | head -1)
-    echo "FAIL  ${p}  http=${code}  body matched: ${matched}"
+    echo "FAIL  ${label}${p}  http=${code}  body matched: ${matched}"
     fail=1
   else
-    echo "OK    ${p}  http=${code}"
+    echo "OK    ${label}${p}  http=${code}"
   fi
   rm -f "${body_file}"
+}
+
+# Public paths (no session yet).
+for p in "${PUBLIC_PATHS[@]}"; do
+  probe "${p}" "anon "
 done
+
+# Authed paths anonymously — they should redirect to /login (final 200) with
+# no error sentinels. This catches early-render crashes.
+for p in "${AUTHED_PATHS[@]}"; do
+  probe "${p}" "anon "
+done
+
+# Optional: sign in and re-test the authed paths with a session.
+if [[ -n "${EMAIL}" && -n "${PASSWORD}" ]]; then
+  echo "--"
+  echo "signing in as ${EMAIL}…"
+  # Auth.js credentials sign-in: 1) fetch CSRF, 2) POST credentials.
+  csrf_json=$(curl -s -k -b "${cookie_jar}" -c "${cookie_jar}" "${BASE}/api/auth/csrf" || echo "{}")
+  csrf=$(printf '%s' "${csrf_json}" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+  if [[ -z "${csrf}" ]]; then
+    echo "FAIL  could not fetch csrf token"
+    exit 1
+  fi
+  signin_code=$(curl -s -k -L -o /dev/null -w '%{http_code}' \
+    -b "${cookie_jar}" -c "${cookie_jar}" \
+    -X POST "${BASE}/api/auth/callback/credentials" \
+    -d "csrfToken=${csrf}" \
+    -d "email=${EMAIL}" \
+    -d "password=${PASSWORD}" \
+    -d "callbackUrl=${BASE}/" \
+    --header "Content-Type: application/x-www-form-urlencoded")
+  # Verify a session cookie landed.
+  if ! grep -q -E "(authjs|next-auth)\.session-token" "${cookie_jar}"; then
+    echo "FAIL  sign-in did not produce a session cookie (http=${signin_code})"
+    fail=1
+  else
+    echo "OK    sign-in cookie present (http=${signin_code})"
+    for p in "${AUTHED_PATHS[@]}"; do
+      probe "${p}" "auth "
+    done
+  fi
+fi
 
 echo "--"
 if [[ "${fail}" -eq 0 ]]; then

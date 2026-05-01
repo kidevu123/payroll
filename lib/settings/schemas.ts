@@ -10,8 +10,15 @@ import { z } from "zod";
 
 // ─── Company ─────────────────────────────────────────────────────────────────
 
+// Company has a default name ("My Company") so that getSetting("company")
+// never throws when the settings row is missing — schema.parse({}) returns a
+// usable object. Setup + Settings UI still validate user input as min(1)
+// since the form submits an explicit value (a deliberate empty string is
+// rejected by .min(1)). Tightening this further would require either making
+// every getSetting callsite null-aware, or seeding a placeholder row at
+// install time; the default is the smaller change.
 export const companySchema = z.object({
-  name: z.string().min(1).max(120),
+  name: z.string().min(1).max(120).default("My Company"),
   address: z.string().max(500).default(""),
   logoPath: z.string().nullable().default(null),
   brandColorHex: z
