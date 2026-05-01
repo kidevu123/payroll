@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth-guards";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
+import { AppFooter } from "@/components/app-footer";
 import { unreadCount } from "@/lib/notifications/in-app";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           unreadCount={unread}
         />
         <main className="flex-1 p-6 lg:p-8 max-w-screen-2xl w-full mx-auto">{children}</main>
+        <AppFooter />
       </div>
     </div>
   );

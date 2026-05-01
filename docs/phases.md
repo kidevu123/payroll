@@ -501,10 +501,12 @@ A phase is shippable when:
 
 ## Per-phase deploy
 
-After the wrap-up commit lands on `rebuild/foundation`, the LX120 systemd timer pulls it within 60 seconds and rebuilds. Verify by polling `/api/health` until 200, then run a quick smoke test:
+After the wrap-up commit lands on `rebuild/foundation`, the LX120 systemd timer pulls it within 60 seconds and rebuilds. The verify loop has TWO gates — both must pass:
 
 ```bash
 LXC_IP=$(ssh root@192.168.1.190 'pct exec 120 -- hostname -I | awk "{print \$1}"' | tr -d '\r\n')
+
+# Gate 1 — health probe
 for i in $(seq 1 24); do
   status=$(curl -s -o /dev/null -w "%{http_code}" "http://${LXC_IP}:3000/api/health")
   echo "[$i/24] /api/health → $status"
@@ -512,6 +514,15 @@ for i in $(seq 1 24); do
   sleep 5
 done
 curl -s "http://${LXC_IP}:3000/api/health" | jq
+
+# Gate 2 — page-load smoke. Health 200 alone is insufficient because
+# /api/health only checks DB + pg-boss; it doesn't catch render errors
+# (e.g. a missing next-intl config produces a digest=NNNN exception that
+# never reaches the health route). The smoke script loads every nav target
+# and greps the body for known error sentinels.
+bash scripts/smoke.sh "http://${LXC_IP}:3000"
 ```
 
-If green, post a brief progress message in chat and proceed to the next phase. If red, stop, surface logs, fix.
+`scripts/smoke.sh` exits non-zero on any HTTP != 200 OR any response body containing `Application error`, `server-side exception`, or `next-intl config`. Add new sentinels to the script if a new error class shows up.
+
+If both gates green, post a brief progress message in chat and proceed to the next phase. If either is red — even a single page — STOP, surface logs (`docker compose logs app --tail=2000`), find the root cause, fix it. Do not paper over a render error with a try/catch that hides it.

@@ -5,6 +5,7 @@
 import { requireSession } from "@/lib/auth-guards";
 import { BottomNav } from "@/components/employee/bottom-nav";
 import { ServiceWorkerRegister } from "@/components/employee/sw-register";
+import { AppFooter } from "@/components/app-footer";
 
 export default async function EmployeeLayout({
   children,
@@ -16,6 +17,7 @@ export default async function EmployeeLayout({
     <div className="min-h-dvh pb-16 bg-[--surface-2]/50">
       <ServiceWorkerRegister />
       <div className="max-w-md mx-auto">{children}</div>
+      <AppFooter className="pb-2 max-w-md mx-auto" />
       <BottomNav />
     </div>
   );

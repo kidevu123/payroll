@@ -1,9 +1,12 @@
 // Next.js configuration.
 // Most behavior lives in /admin/settings; this file is intentionally lean.
 
+import createNextIntlPlugin from 'next-intl/plugin';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -90,4 +93,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);
