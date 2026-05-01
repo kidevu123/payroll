@@ -21,6 +21,7 @@ import {
   settingsRegistry,
   type SettingKey,
   type SettingValue,
+  type SettingInput,
   type CompanySettings,
 } from "./schemas";
 
@@ -47,7 +48,7 @@ export const getSetting = cache(async <K extends SettingKey>(
  */
 export async function setSetting<K extends SettingKey>(
   key: K,
-  value: SettingValue<K>,
+  value: SettingInput<K>,
   ctx: { actorId: string; actorRole: "OWNER" | "ADMIN" | "EMPLOYEE" },
 ): Promise<void> {
   const schema = settingsRegistry[key];

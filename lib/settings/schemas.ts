@@ -21,6 +21,11 @@ export const companySchema = z.object({
   name: z.string().min(1).max(120).default("My Company"),
   address: z.string().max(500).default(""),
   logoPath: z.string().nullable().default(null),
+  faviconPath: z.string().nullable().default(null),
+  // Stamp updated whenever the icon-generator successfully writes new
+  // PWA icons (icon-192/512/maskable-512). Used as a cache-buster on
+  // /api/branding/icon/[size] and as a manifest revision marker.
+  iconsGeneratedAt: z.string().nullable().default(null),
   brandColorHex: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a 6-digit hex color")
@@ -172,3 +177,5 @@ export const settingsRegistry = {
 
 export type SettingKey = keyof typeof settingsRegistry;
 export type SettingValue<K extends SettingKey> = z.infer<(typeof settingsRegistry)[K]>;
+/** Input shape (allows omitting fields that have schema defaults). */
+export type SettingInput<K extends SettingKey> = z.input<(typeof settingsRegistry)[K]>;
