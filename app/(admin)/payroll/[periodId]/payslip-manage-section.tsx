@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw, X } from "lucide-react";
+import { Calculator, RotateCcw, X } from "lucide-react";
 import type { Payslip, Employee } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import {
+  recomputePayslipAction,
   unvoidPayslipAction,
   voidPayslipAction,
 } from "../actions";
@@ -117,13 +118,34 @@ function PayslipRow({ row }: { row: Row }) {
               </Button>
             </form>
           ) : !confirming ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirming(true)}
-            >
-              <X className="h-3.5 w-3.5 text-red-600" /> Remove
-            </Button>
+            <div className="inline-flex items-center gap-1">
+              <form
+                action={async () => {
+                  setPending(true);
+                  setError(null);
+                  const r = await recomputePayslipAction(row.payslip.id);
+                  setPending(false);
+                  if (r?.error) setError(r.error);
+                }}
+              >
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="ghost"
+                  disabled={pending}
+                  title="Recompute hours + pay from current punches"
+                >
+                  <Calculator className="h-3.5 w-3.5" />
+                </Button>
+              </form>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirming(true)}
+              >
+                <X className="h-3.5 w-3.5 text-red-600" /> Remove
+              </Button>
+            </div>
           ) : null}
         </td>
       </tr>

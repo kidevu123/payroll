@@ -22,6 +22,12 @@ const createSchema = z.object({
   shiftId: z.string().uuid().optional().nullable(),
   payType: z.enum(["HOURLY", "FLAT_TASK", "SALARIED"]),
   payScheduleId: z.string().uuid().optional().nullable(),
+  /** Dollar amount as the admin types it; converted to integer cents. */
+  initialHourlyRateDollars: z
+    .union([z.coerce.number().min(0), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+  /** Legacy back-compat — older callers passed cents directly. */
   initialHourlyRateCents: z
     .union([z.coerce.number().int().min(0), z.literal("").transform(() => null)])
     .nullable()
@@ -48,6 +54,7 @@ export async function createEmployeeAction(
     shiftId: formData.get("shiftId") || null,
     payType: formData.get("payType") || "HOURLY",
     payScheduleId: formData.get("payScheduleId") || null,
+    initialHourlyRateDollars: formData.get("initialHourlyRateDollars"),
     initialHourlyRateCents: formData.get("initialHourlyRateCents"),
     language: formData.get("language") || "en",
     notes: formData.get("notes") || null,
@@ -72,9 +79,12 @@ export async function createEmployeeAction(
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
-      ...(d.initialHourlyRateCents !== undefined && d.initialHourlyRateCents !== null
-        ? { initialHourlyRateCents: d.initialHourlyRateCents }
-        : {}),
+      // Prefer the dollar field; fall back to cents for legacy callers.
+      ...(d.initialHourlyRateDollars !== undefined && d.initialHourlyRateDollars !== null
+        ? { initialHourlyRateCents: Math.round(d.initialHourlyRateDollars * 100) }
+        : d.initialHourlyRateCents !== undefined && d.initialHourlyRateCents !== null
+          ? { initialHourlyRateCents: d.initialHourlyRateCents }
+          : {}),
     },
     { id: session.user.id, role: session.user.role },
   );
@@ -165,7 +175,14 @@ export async function archiveEmployeeAction(
 
 const rateSchema = z.object({
   effectiveFrom: z.string().date(),
-  hourlyRateCents: z.coerce.number().int().min(0),
+  /**
+   * Dollar amount as the admin types it (e.g. "25" or "25.50"). Stored
+   * internally as integer cents — money is always integer cents per the
+   * spec convention. Accept the legacy `hourlyRateCents` field too for
+   * back-compat with any older callers, but the form now sends dollars.
+   */
+  hourlyRateDollars: z.coerce.number().min(0).optional(),
+  hourlyRateCents: z.coerce.number().int().min(0).optional(),
   reason: z.string().max(500).optional().nullable(),
 });
 
@@ -177,17 +194,31 @@ export async function addRateAction(
   if (!idSchema.safeParse(employeeId).success) return { error: "Invalid id." };
   const parsed = rateSchema.safeParse({
     effectiveFrom: formData.get("effectiveFrom"),
+    hourlyRateDollars: formData.get("hourlyRateDollars"),
     hourlyRateCents: formData.get("hourlyRateCents"),
     reason: formData.get("reason") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  // Prefer the new dollars field; fall back to cents only if dollars wasn't
+  // supplied (back-compat for any older callers).
+  let cents: number;
+  if (
+    parsed.data.hourlyRateDollars !== undefined &&
+    !Number.isNaN(parsed.data.hourlyRateDollars)
+  ) {
+    cents = Math.round(parsed.data.hourlyRateDollars * 100);
+  } else if (parsed.data.hourlyRateCents !== undefined) {
+    cents = parsed.data.hourlyRateCents;
+  } else {
+    return { error: "Hourly rate is required." };
+  }
   await addRate(
     employeeId,
     {
       effectiveFrom: parsed.data.effectiveFrom,
-      hourlyRateCents: parsed.data.hourlyRateCents,
+      hourlyRateCents: cents,
       ...(parsed.data.reason ? { reason: parsed.data.reason } : {}),
     },
     { id: session.user.id, role: session.user.role },

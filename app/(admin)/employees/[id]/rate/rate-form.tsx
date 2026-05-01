@@ -38,16 +38,19 @@ export function RateForm({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="hourlyRateCents">Hourly rate (cents)</Label>
+          <Label htmlFor="hourlyRateDollars">Hourly rate ($)</Label>
           <Input
-            id="hourlyRateCents"
-            name="hourlyRateCents"
+            id="hourlyRateDollars"
+            name="hourlyRateDollars"
             type="number"
             min={0}
-            step={1}
+            step={0.01}
             required
-            placeholder="2500 = $25.00/hr"
+            placeholder="25.00"
           />
+          <p className="text-xs text-text-muted">
+            Type the dollar amount, e.g. 25 or 25.50.
+          </p>
         </div>
       </div>
       <div className="space-y-1">

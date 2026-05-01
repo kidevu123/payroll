@@ -143,6 +143,28 @@ async function PayslipBody({
   }
   const days = Array.from(byDay.keys()).sort();
 
+  // Compute the actual hours from the deduped punch list. If this disagrees
+  // with what's stored on the payslip by more than half an hour, surface
+  // both figures with a "this is a legacy import" callout so the employee
+  // (and the admin) can see the discrepancy. Otherwise just show the
+  // payslip totals as before.
+  const dedupedFlat = dedupNearDuplicatePunches(inRange);
+  let liveHoursMs = 0;
+  for (const p of dedupedFlat) {
+    if (!p.clockOut) continue;
+    const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+    const outT = p.clockOut instanceof Date ? p.clockOut : new Date(p.clockOut);
+    const diff = outT.getTime() - inT.getTime();
+    if (diff > 0) liveHoursMs += diff;
+  }
+  const liveHours = liveHoursMs / 3_600_000;
+  const storedHours = Number(payslip.hoursWorked);
+  const liveCents =
+    rateCents !== null && payType === "HOURLY"
+      ? Math.round(liveHours * rateCents)
+      : payslip.grossPayCents;
+  const discrepancy = Math.abs(storedHours - liveHours) > 0.5;
+
   return (
     <>
       <Card>
@@ -156,19 +178,52 @@ async function PayslipBody({
               : "Published — please review and acknowledge."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-          <Stat label="Hours">
-            <HoursDisplay
-              hours={Number(payslip.hoursWorked)}
-              decimals={payRules.hoursDecimalPlaces}
-            />
-          </Stat>
-          <Stat label="Gross">
-            <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
-          </Stat>
-          <Stat label="Net (rounded)">
-            <MoneyDisplay cents={payslip.roundedPayCents} monospace={false} />
-          </Stat>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <Stat label="Hours">
+              <HoursDisplay
+                hours={storedHours}
+                decimals={payRules.hoursDecimalPlaces}
+              />
+            </Stat>
+            <Stat label="Gross">
+              <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
+            </Stat>
+            <Stat label="Net (rounded)">
+              <MoneyDisplay cents={payslip.roundedPayCents} monospace={false} />
+            </Stat>
+          </div>
+
+          {discrepancy && (
+            <div className="rounded-card border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+              <p className="font-medium">
+                Heads-up: the stored payslip total and the daily breakdown
+                disagree.
+              </p>
+              <p>
+                <span className="font-medium">Per the report:</span>{" "}
+                <HoursDisplay
+                  hours={storedHours}
+                  decimals={payRules.hoursDecimalPlaces}
+                />{" "}
+                · <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
+              </p>
+              <p>
+                <span className="font-medium">Per recorded punches:</span>{" "}
+                <HoursDisplay
+                  hours={liveHours}
+                  decimals={payRules.hoursDecimalPlaces}
+                />{" "}
+                · <MoneyDisplay cents={liveCents} monospace={false} />
+              </p>
+              <p>
+                Most often this happens on legacy-imported records where the
+                old report&apos;s total was copied over but only some of the
+                original punches survived the migration. Ask admin to
+                reconcile if it matters.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

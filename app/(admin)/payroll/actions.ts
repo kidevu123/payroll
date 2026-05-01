@@ -11,7 +11,11 @@ import {
 } from "@/lib/db/queries/pay-periods";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
-import { voidPayslip, unvoidPayslip } from "@/lib/db/queries/payslips";
+import {
+  recomputePayslip,
+  unvoidPayslip,
+  voidPayslip,
+} from "@/lib/db/queries/payslips";
 import {
   findDuplicatePunchClusters,
   mergeDuplicatePunches,
@@ -170,6 +174,32 @@ export async function unvoidPayslipAction(
   revalidatePath("/reports");
   revalidatePath("/payroll");
   return;
+}
+
+/**
+ * Re-stamp a single payslip's hours / gross / rounded from the current
+ * punches. Use case: legacy-imported payslip whose stored totals
+ * disagree with the actual punch sum, or post-edit recompute after
+ * voiding/moving punches.
+ */
+export async function recomputePayslipAction(
+  payslipId: string,
+): Promise<{ error?: string; ok?: true }> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(payslipId).success) return { error: "Invalid id." };
+  try {
+    await recomputePayslip(payslipId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not recompute.",
+    };
+  }
+  revalidatePath("/payroll");
+  revalidatePath("/reports");
+  return { ok: true };
 }
 
 /**

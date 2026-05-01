@@ -215,6 +215,94 @@ export async function voidPayslip(
 }
 
 /** Reverse voidPayslip — for "I removed the wrong person, put them back". */
+/**
+ * Re-stamp a payslip's hoursWorked / grossPayCents / roundedPayCents from
+ * the current set of (deduped, non-voided) punches in its period. Used
+ * when historical data was imported with a stale total or after admin
+ * voids/moves punches that should have changed the totals. Calls the
+ * pure computePay so rounding rules match the publish handler.
+ */
+export async function recomputePayslip(
+  id: string,
+  actor: Actor,
+): Promise<Payslip> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`recomputePayslip: ${id} not found`);
+    if (before.voidedAt) throw new Error("recomputePayslip: payslip is voided");
+
+    // Lazy-load to avoid pulling computePay's transitive deps into edge bundles.
+    const { listPunches } = await import("@/lib/db/queries/punches");
+    const { listRates } = await import("@/lib/db/queries/rate-history");
+    const { computePay } = await import("@/lib/payroll/computePay");
+    const { dedupNearDuplicatePunches } = await import("@/lib/punches/dedup");
+    const { getEmployee } = await import("@/lib/db/queries/employees");
+    const { getSetting } = await import("@/lib/settings/runtime");
+
+    const [employee, payRules, allPunches, rates] = await Promise.all([
+      getEmployee(before.employeeId),
+      getSetting("payRules"),
+      listPunches({ employeeId: before.employeeId, periodId: before.periodId }),
+      listRates(before.employeeId),
+    ]);
+    if (!employee) throw new Error("recomputePayslip: employee not found");
+    const punches = dedupNearDuplicatePunches(allPunches);
+
+    const result = computePay({
+      punches,
+      rateAt: (p) => {
+        const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
+          .toISOString()
+          .slice(0, 10);
+        for (const r of rates) {
+          if (r.effectiveFrom <= day) return r.hourlyRateCents;
+        }
+        return employee.hourlyRateCents ?? 0;
+      },
+      taskPay: [],
+      rules: {
+        rounding: payRules.rounding,
+        hoursDecimalPlaces: payRules.hoursDecimalPlaces,
+        ...(payRules.overtime.enabled
+          ? {
+              overtime: {
+                thresholdHours: payRules.overtime.thresholdHours,
+                multiplier: payRules.overtime.multiplier,
+              },
+            }
+          : {}),
+      },
+    });
+
+    const [row] = await tx
+      .update(payslips)
+      .set({
+        hoursWorked: String(result.totalHours),
+        grossPayCents: result.grossCents,
+        roundedPayCents: result.roundedCents,
+        taskPayCents: result.taskCents,
+        generatedAt: new Date(),
+      })
+      .where(eq(payslips.id, id))
+      .returning();
+    if (!row) throw new Error("recomputePayslip: returning() empty");
+    await recomputeRunTotal(tx, before.payrollRunId);
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.recompute",
+        targetType: "Payslip",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
 export async function unvoidPayslip(
   id: string,
   actor: Actor,

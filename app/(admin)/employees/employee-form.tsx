@@ -215,15 +215,18 @@ export function EmployeeForm(props: Props) {
         </div>
         {props.mode === "create" && (
           <div className="space-y-1">
-            <Label htmlFor="initialHourlyRateCents">Initial hourly rate (cents)</Label>
+            <Label htmlFor="initialHourlyRateDollars">Initial hourly rate ($)</Label>
             <Input
-              id="initialHourlyRateCents"
-              name="initialHourlyRateCents"
+              id="initialHourlyRateDollars"
+              name="initialHourlyRateDollars"
               type="number"
               min={0}
-              step={1}
-              placeholder="2000 = $20.00/hr"
+              step={0.01}
+              placeholder="20.00"
             />
+            <p className="text-xs text-text-muted">
+              Type the dollar amount, e.g. 20 or 20.50.
+            </p>
           </div>
         )}
         <div className="space-y-1">
