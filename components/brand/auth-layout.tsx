@@ -32,13 +32,16 @@ export async function AuthLayout({
   const company = await loadCompany();
   return (
     <div className="min-h-dvh grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] bg-page">
-      {/* Brand panel — gradient, geometric, no animated illustration. */}
+      {/* Brand panel — single-tone wash derived from brand-700 so a runtime
+          accent override (company.brandColorHex on <html>) tints the whole
+          panel coherently instead of mixing tenant-overridden brand-700 with
+          the @theme default brand-600/800. */}
       <aside
         aria-hidden="true"
         className="hidden lg:flex relative flex-col justify-between p-12 overflow-hidden text-brand-fg"
         style={{
           backgroundImage:
-            "linear-gradient(135deg, var(--color-brand-800) 0%, var(--color-brand-700) 55%, var(--color-brand-600) 100%)",
+            "linear-gradient(135deg, color-mix(in oklab, var(--color-brand-700) 100%, black 20%) 0%, var(--color-brand-700) 55%, color-mix(in oklab, var(--color-brand-700) 100%, white 6%) 100%)",
         }}
       >
         {/* Soft geometric overlay — pure CSS, no JS animation. */}
