@@ -83,11 +83,21 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // ── payroll.run.tick — wired to automation.payrollRun.cron ─────────────
   await boss.createQueue("payroll.run.tick");
   await boss.work("payroll.run.tick", async () => {
+    // Check the flag every fire — toggling enabled=false in /admin/settings
+    // immediately stops the work even if pg-boss has a stale schedule.
+    const auto = await getSetting("automation").catch(() => null);
+    if (!auto?.payrollRun.enabled) {
+      logger.info("payroll.run.tick: disabled in settings; skipping");
+      return;
+    }
     await handlePayrollRunTick(boss);
   });
   const automation = await getSetting("automation").catch(() => null);
   if (automation?.payrollRun.enabled) {
     await boss.schedule("payroll.run.tick", automation.payrollRun.cron);
+  } else {
+    // Tear down any stale schedule from a prior boot when automation was on.
+    await boss.unschedule("payroll.run.tick").catch(() => undefined);
   }
 
   // ── payroll.run.detect-exceptions ──────────────────────────────────────
@@ -125,6 +135,11 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // playwright scraper) don't enter the edge bundle for instrumentation.ts.
   await boss.createQueue("ngteco.punch.poll");
   await boss.work("ngteco.punch.poll", async () => {
+    const auto = await getSetting("automation").catch(() => null);
+    if (!auto?.ngtecoPunchPoll?.enabled) {
+      logger.info("ngteco.punch.poll: disabled in settings; skipping");
+      return;
+    }
     const { runPollAndLog } = await import("./handlers/punch-poll-runner");
     await runPollAndLog({ triggeredBy: "CRON" });
   });
@@ -133,6 +148,8 @@ async function registerJobs(boss: PgBoss): Promise<void> {
       "ngteco.punch.poll",
       automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
     );
+  } else {
+    await boss.unschedule("ngteco.punch.poll").catch(() => undefined);
   }
 }
 
