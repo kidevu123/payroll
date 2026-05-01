@@ -659,6 +659,83 @@ async function main(): Promise<void> {
     }
     console.log(`[apply] time-off: ${toInserted}`);
 
+    // ── APPLY: 8. Materialize per-employee payslips for every LEGACY_IMPORT
+    //               run so /me/pay shows historical paychecks. Per-employee
+    //               hours come from punches that fall in [start, end]; rate
+    //               is the employee's current hourlyRateCents (close enough
+    //               for legacy data — the Flask app didn't track rate
+    //               history per-period either).
+    const legacyRuns = await client<{
+      id: string;
+      pay_schedule_id: string | null;
+      start_date: string;
+      end_date: string;
+      period_id: string;
+    }[]>`
+      SELECT r.id, r.pay_schedule_id, p.start_date, p.end_date, r.period_id
+      FROM payroll_runs r
+      JOIN pay_periods p ON p.id = r.period_id
+      WHERE r.source = 'LEGACY_IMPORT'
+    `;
+    let payslipsInserted = 0;
+    for (const r of legacyRuns) {
+      const empsOnSchedule = r.pay_schedule_id
+        ? await client<{
+            id: string;
+            display_name: string;
+            hourly_rate_cents: number | null;
+          }[]>`
+            SELECT id, display_name, hourly_rate_cents
+            FROM employees
+            WHERE pay_schedule_id = ${r.pay_schedule_id}
+          `
+        : await client<{
+            id: string;
+            display_name: string;
+            hourly_rate_cents: number | null;
+          }[]>`
+            SELECT id, display_name, hourly_rate_cents FROM employees
+          `;
+      for (const e of empsOnSchedule) {
+        // Hours from punches in [start_date, end_date].
+        const hoursRow = await client<{ hours: number | null }[]>`
+          SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (clock_out - clock_in)) / 3600.0), 0)::float8 AS hours
+          FROM punches
+          WHERE employee_id = ${e.id}
+            AND clock_out IS NOT NULL
+            AND voided_at IS NULL
+            AND clock_in >= ${r.start_date}::date
+            AND clock_in < (${r.end_date}::date + INTERVAL '1 day')
+        `;
+        const hours = Number(hoursRow[0]?.hours ?? 0);
+        if (hours <= 0) continue;
+        const rate = e.hourly_rate_cents ?? 0;
+        const gross = Math.round(hours * rate);
+        // ON CONFLICT on (employee_id, period_id) — overwrites payroll_run_id
+        // and re-syncs hours/gross.
+        await client`
+          INSERT INTO payslips (
+            employee_id, period_id, payroll_run_id,
+            hours_worked, gross_pay_cents, rounded_pay_cents, task_pay_cents,
+            published_at
+          )
+          VALUES (
+            ${e.id}, ${r.period_id}, ${r.id},
+            ${hours.toFixed(2)}, ${gross}, ${gross}, 0,
+            NOW()
+          )
+          ON CONFLICT (employee_id, period_id) DO UPDATE
+          SET payroll_run_id = EXCLUDED.payroll_run_id,
+              hours_worked = EXCLUDED.hours_worked,
+              gross_pay_cents = EXCLUDED.gross_pay_cents,
+              rounded_pay_cents = EXCLUDED.rounded_pay_cents,
+              published_at = COALESCE(payslips.published_at, EXCLUDED.published_at)
+        `;
+        payslipsInserted++;
+      }
+    }
+    console.log(`[apply] legacy payslips materialized: ${payslipsInserted}`);
+
     await db.insert(auditLog).values({
       actorId: null,
       actorRole: null,
