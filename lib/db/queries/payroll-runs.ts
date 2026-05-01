@@ -6,7 +6,7 @@
 // AWAITING_ADMIN_REVIEW) → APPROVED → PUBLISHED, plus terminal failure
 // states. transitionRun gates on the legal-edge table.
 
-import { desc, eq, and, sql } from "drizzle-orm";
+import { desc, eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   payrollRuns,
@@ -111,7 +111,10 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     )
     .limit(limit);
 
-  // Bulk-load zoho pushes per run to avoid an N+1.
+  // Bulk-load zoho pushes per run to avoid an N+1. Use Drizzle's `inArray`
+  // helper which expands to `IN (...)` — the prior `${runIds}::uuid[]`
+  // template fragment fails Postgres parse with "cannot cast type record
+  // to uuid[]" because postgres.js binds JS arrays as records, not text.
   const runIds = rows.map((r) => r.id);
   const pushes = runIds.length
     ? await db
@@ -129,7 +132,10 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
           eq(zohoPushes.organizationId, zohoOrganizations.id),
         )
         .where(
-          sql`${zohoPushes.payrollRunId} = ANY(${runIds}::uuid[]) AND ${zohoPushes.status} = 'OK'`,
+          and(
+            inArray(zohoPushes.payrollRunId, runIds),
+            eq(zohoPushes.status, "OK"),
+          ),
         )
     : [];
   const pushesByRun = new Map<
