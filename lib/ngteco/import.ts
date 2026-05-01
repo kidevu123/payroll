@@ -23,7 +23,7 @@ import {
 import { open as vaultOpen } from "@/lib/crypto/vault";
 import { getSetting } from "@/lib/settings/runtime";
 import { logger } from "@/lib/telemetry";
-import { parse, type ParseError, type PunchCandidate } from "./parser";
+import { parse, type ParseError, type PunchCandidate } from "@/lib/punches/parser";
 import { scrape, type ScrapeOutput } from "./scraper";
 
 export type ImportSummary = {

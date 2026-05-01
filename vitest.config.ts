@@ -29,7 +29,7 @@ export default defineConfig({
         },
         // Phase 2: the NGTeco CSV parser has the same bar — it shapes
         // every Punch we ingest and a wrong dedupe hash silently doubles pay.
-        "lib/ngteco/parser.ts": {
+        "lib/punches/parser.ts": {
           lines: 100,
           functions: 100,
           branches: 100,
