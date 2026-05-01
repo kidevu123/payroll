@@ -419,7 +419,10 @@ async function main(): Promise<void> {
       // Dedupe against existing.
       // Use createdAt index + a manual where on (employeeId, clockIn).
       const dup = await client`
-        SELECT 1 FROM punches WHERE employee_id = ${empId} AND clock_in = ${p.clockIn} LIMIT 1
+        SELECT 1 FROM punches
+        WHERE employee_id = ${empId}
+          AND clock_in = ${p.clockIn.toISOString()}::timestamptz
+        LIMIT 1
       `;
       if (dup.length > 0) {
         punchSkipped++;
