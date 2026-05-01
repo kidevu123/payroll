@@ -9,13 +9,28 @@
   },
   "navigation": {
     "reportsLink": "text=/Reports?/i",
-    "punchReportLink": "text=/Punch.*Report/i"
+    "punchReportLink": "text=/Punch.*Report/i",
+    "attendanceMenu": "text=/Attendance/i",
+    "viewAttendancePunchLink": "text=/View Attendance Punch/i"
   },
   "report": {
     "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
     "toDate": "input[name='toDate'], input[type='date']:nth-of-type(2)",
     "applyButton": "button:has-text(/Apply|Search|Run/i)",
     "exportCsvButton": "button:has-text(/Export.*CSV/i), a:has-text(/Export.*CSV/i)"
+  },
+  "viewPunch": {
+    "tableLandmark": "text=/View Attendance Punch/i",
+    "rowsContainer": "table tbody tr, [role='row']:not([role='columnheader'])",
+    "personNameCell": "td:nth-child(1), [role='cell']:nth-child(1)",
+    "personIdCell": "td:nth-child(2), [role='cell']:nth-child(2)",
+    "punchDateCell": "td:nth-child(3), [role='cell']:nth-child(3)",
+    "punchTimeCell": "td:nth-child(4), [role='cell']:nth-child(4)",
+    "verifyTypeCell": "td:nth-child(5), [role='cell']:nth-child(5)",
+    "timezoneCell": "td:nth-child(6), [role='cell']:nth-child(6)",
+    "sourceCell": "td:nth-child(7), [role='cell']:nth-child(7)",
+    "nextPageButton": "button[aria-label*='next' i], button:has-text(/›|Next/i)",
+    "pageInfo": "text=/of \\d+/i"
   },
   "challenge": {
     "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",

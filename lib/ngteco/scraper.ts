@@ -18,14 +18,61 @@ const STORAGE_ROOT = process.env.NGTECO_STORAGE_DIR ?? "/data/ngteco";
 
 type Selectors = {
   login: { url: string; username: string; password: string; submit: string; loggedInLandmark: string };
-  navigation: { reportsLink: string; punchReportLink: string };
+  navigation: {
+    reportsLink: string;
+    punchReportLink: string;
+    attendanceMenu?: string;
+    viewAttendancePunchLink?: string;
+  };
   report: {
     fromDate: string;
     toDate: string;
     applyButton: string;
     exportCsvButton: string;
   };
+  viewPunch?: {
+    tableLandmark: string;
+    rowsContainer: string;
+    personNameCell: string;
+    personIdCell: string;
+    punchDateCell: string;
+    punchTimeCell: string;
+    verifyTypeCell: string;
+    timezoneCell: string;
+    sourceCell: string;
+    nextPageButton: string;
+    pageInfo: string;
+  };
   challenge: { twoFactorLandmark: string; captchaLandmark: string };
+};
+
+export type RawPunchEvent = {
+  /** NGTeco "Person ID" — typically a numeric string, sometimes leading-zero. */
+  personId: string;
+  /** Display name from the Person Name column. */
+  personName: string;
+  /** Wall-clock punch instant in the device's timezone, ISO with offset. */
+  punchAt: string;
+  /** "Fingerprint" / "Face" / "Manual" / etc. */
+  verifyType: string;
+  /** Device serial (e.g. NMR2241400323) from the Source column. */
+  source: string;
+};
+
+export type PollScrapeInput = {
+  portalUrl: string;
+  username: string;
+  password: string;
+  headless: boolean;
+  /** Used to bucket failure artifacts; usually a poll-tick id. */
+  runId: string;
+  /** Hard cap on rows. Default 1000. */
+  maxRows?: number;
+};
+
+export type PollScrapeOutput = {
+  events: RawPunchEvent[];
+  durationMs: number;
 };
 
 export type ScrapeInput = {
@@ -60,8 +107,8 @@ export class ScrapeFailure extends Error {
 }
 
 async function loadSelectors(): Promise<Selectors> {
-  const { readFileSync } = await import("fs");
-  const { join } = await import("path");
+  const { readFileSync } = await import(/* webpackIgnore: true */ "node:fs");
+  const { join } = await import(/* webpackIgnore: true */ "node:path");
   const p = join(process.cwd(), "lib", "ngteco", "selectors.json");
   const raw = readFileSync(p, "utf8");
   return JSON.parse(raw) as Selectors;
@@ -77,8 +124,8 @@ async function loadSelectors(): Promise<Selectors> {
  * the import job's worker actually loads this module.
  */
 export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
-  const { mkdirSync, existsSync } = await import("fs");
-  const { join } = await import("path");
+  const { mkdirSync, existsSync } = await import(/* webpackIgnore: true */ "node:fs");
+  const { join } = await import(/* webpackIgnore: true */ "node:path");
   const PROFILE_DIR = join(STORAGE_ROOT, "profile");
   const FAILURES_DIR = join(STORAGE_ROOT, "failures");
   const sel = await loadSelectors();
@@ -102,7 +149,7 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
     try {
       await page.screenshot({ path: screenshotPath, fullPage: true });
       const html = await page.content();
-      const { writeFileSync } = await import("fs");
+      const { writeFileSync } = await import(/* webpackIgnore: true */ "node:fs");
       writeFileSync(htmlPath, html);
     } catch {
       /* best-effort */
@@ -165,4 +212,188 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
       err instanceof Error ? err.message : String(err),
     );
   }
+}
+
+/**
+ * Real-time per-punch scrape against the View Attendance Punch view. Runs
+ * on a short interval (5–15 min) and pulls the most recent punches the
+ * device has uploaded. Returns raw events; the importer pairs them into
+ * in/out per employee per day.
+ *
+ * Defaults to "no date filter" — the view itself shows the most recent
+ * page (today's punches first). For backfill scenarios the caller can
+ * raise maxRows; the loop pages forward until either maxRows hits or no
+ * Next button appears.
+ */
+export async function scrapeViewAttendance(
+  input: PollScrapeInput,
+): Promise<PollScrapeOutput> {
+  const { mkdirSync, existsSync } = await import(/* webpackIgnore: true */ "node:fs");
+  const { join } = await import(/* webpackIgnore: true */ "node:path");
+  const PROFILE_DIR = join(STORAGE_ROOT, "profile");
+  const FAILURES_DIR = join(STORAGE_ROOT, "failures");
+  const sel = await loadSelectors();
+  if (!sel.viewPunch) {
+    throw new ScrapeFailure("selectors.viewPunch not configured", {});
+  }
+  if (!sel.navigation.viewAttendancePunchLink) {
+    throw new ScrapeFailure(
+      "selectors.navigation.viewAttendancePunchLink not configured",
+      {},
+    );
+  }
+  const t0 = Date.now();
+  if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
+  const failureDir = join(FAILURES_DIR, input.runId);
+  const maxRows = input.maxRows ?? 1000;
+
+  const { chromium } = (await import("playwright")) as typeof import("playwright");
+  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+    headless: input.headless,
+    viewport: { width: 1280, height: 900 },
+    locale: "en-US",
+  });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20_000);
+
+  const captureFailure = async (reason: string): Promise<never> => {
+    if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
+    const screenshotPath = join(failureDir, "page.png");
+    const htmlPath = join(failureDir, "page.html");
+    try {
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      const html = await page.content();
+      const { writeFileSync } = await import(/* webpackIgnore: true */ "node:fs");
+      writeFileSync(htmlPath, html);
+    } catch {
+      /* best-effort */
+    }
+    await ctx.close();
+    throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
+  };
+
+  try {
+    await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
+
+    // Challenge gates first.
+    if ((await page.locator(sel.challenge.twoFactorLandmark).count()) > 0) {
+      await ctx.close();
+      throw new ChallengeDetectedError("TWO_FACTOR");
+    }
+    if ((await page.locator(sel.challenge.captchaLandmark).count()) > 0) {
+      await ctx.close();
+      throw new ChallengeDetectedError("CAPTCHA");
+    }
+
+    // Login if needed.
+    const needsLogin = (await page.locator(sel.login.username).count()) > 0;
+    if (needsLogin) {
+      await page.fill(sel.login.username, input.username);
+      await page.fill(sel.login.password, input.password);
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+        page.click(sel.login.submit),
+      ]);
+      await page.waitForSelector(sel.login.loggedInLandmark, { timeout: 15_000 });
+    }
+
+    // Expand Attendance menu if collapsed, then click View Attendance Punch.
+    if (sel.navigation.attendanceMenu) {
+      try {
+        await page.click(sel.navigation.attendanceMenu, { timeout: 5_000 });
+      } catch {
+        // Menu may already be expanded; ignore.
+      }
+    }
+    await page.click(sel.navigation.viewAttendancePunchLink);
+    await page.waitForSelector(sel.viewPunch.tableLandmark, { timeout: 15_000 });
+
+    const events: RawPunchEvent[] = [];
+    const seenKeys = new Set<string>();
+    let pages = 0;
+    while (events.length < maxRows && pages < 50) {
+      pages++;
+      // Snapshot the table.
+      const rows = page.locator(sel.viewPunch.rowsContainer);
+      const rowCount = await rows.count();
+      for (let i = 0; i < rowCount; i++) {
+        const row = rows.nth(i);
+        const cells = await Promise.all([
+          row.locator(sel.viewPunch.personNameCell).first().textContent(),
+          row.locator(sel.viewPunch.personIdCell).first().textContent(),
+          row.locator(sel.viewPunch.punchDateCell).first().textContent(),
+          row.locator(sel.viewPunch.punchTimeCell).first().textContent(),
+          row.locator(sel.viewPunch.verifyTypeCell).first().textContent(),
+          row.locator(sel.viewPunch.timezoneCell).first().textContent(),
+          row.locator(sel.viewPunch.sourceCell).first().textContent(),
+        ]);
+        const personName = (cells[0] ?? "").trim();
+        const personId = (cells[1] ?? "").trim();
+        const dateRaw = (cells[2] ?? "").trim();
+        const timeRaw = (cells[3] ?? "").trim();
+        const verifyType = (cells[4] ?? "").trim();
+        const tzRaw = (cells[5] ?? "").trim();
+        const source = (cells[6] ?? "").trim();
+        if (!personId || !dateRaw || !timeRaw) continue;
+        const punchAt = composeIso(dateRaw, timeRaw, tzRaw);
+        if (!punchAt) continue;
+        const key = `${personId}|${punchAt}`;
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        events.push({ personId, personName, punchAt, verifyType, source });
+      }
+      // Try to advance.
+      const next = page.locator(sel.viewPunch.nextPageButton).first();
+      const visible = (await next.count()) > 0 && (await next.isEnabled().catch(() => false));
+      if (!visible) break;
+      await Promise.all([
+        page.waitForTimeout(400), // small debounce for the pagination redraw
+        next.click().catch(() => {}),
+      ]);
+    }
+
+    await ctx.close();
+    return { events, durationMs: Date.now() - t0 };
+  } catch (err) {
+    if (err instanceof ChallengeDetectedError) throw err;
+    return await captureFailure(
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+/**
+ * Compose an ISO timestamp from NGTeco's display strings. Date is
+ * MM/DD/YYYY or YYYY-MM-DD; time is HH:MM:SS; tz is `±HH:MM`.
+ */
+function composeIso(
+  dateRaw: string,
+  timeRaw: string,
+  tzRaw: string,
+): string | null {
+  let dateIso: string;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+    dateIso = dateRaw;
+  } else {
+    const us = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(dateRaw);
+    if (!us) return null;
+    const m = us[1]!.padStart(2, "0");
+    const d = us[2]!.padStart(2, "0");
+    let y = us[3]!;
+    if (y.length === 2) {
+      const candidate = 2000 + Number(y);
+      const candidateMs = new Date(`${candidate}-${m}-${d}T12:00:00Z`).getTime();
+      const sixMonths = Date.now() + 6 * 30 * 24 * 60 * 60 * 1000;
+      y = String(candidateMs > sixMonths ? candidate - 100 : candidate);
+    }
+    dateIso = `${y}-${m}-${d}`;
+  }
+  const tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(timeRaw);
+  if (!tm) return null;
+  const hh = tm[1]!.padStart(2, "0");
+  const mm = tm[2]!;
+  const ss = (tm[3] ?? "00").padStart(2, "0");
+  // Default tz to America/New_York EDT (-04:00) when the page strips it.
+  const tz = /^[+-]\d{2}:\d{2}$/.test(tzRaw) ? tzRaw : "-04:00";
+  return `${dateIso}T${hh}:${mm}:${ss}${tz}`;
 }
