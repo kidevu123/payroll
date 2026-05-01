@@ -1,10 +1,18 @@
-// Serves the PDF for a single Payslip. Auth-gated: the payslip's owner OR
-// any admin/owner. Streams from disk (the publish job wrote it during
-// payroll.run.publish).
+// Serves the PDF for a single Payslip. Authz layered:
+//   1. requireSession (login)
+//   2. Admin/owner sees any payslip.
+//   3. Otherwise: payslip.employee_id must match session.user.employeeId
+//      AND the underlying payroll_run must be published_to_portal_at IS
+//      NOT NULL — admin pre-publish drafts stay invisible to employees.
+// Negative cases land 403 (different employee) or 404 (unpublished /
+// non-existent). Tested in the matching .test.ts.
 
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth-guards";
-import { getPayslip } from "@/lib/db/queries/payslips";
+import {
+  getPayslip,
+  isPayslipPublishedToPortal,
+} from "@/lib/db/queries/payslips";
 
 export async function GET(
   _req: Request,
@@ -18,6 +26,10 @@ export async function GET(
   const isOwner = session.user.employeeId === payslip.employeeId;
   if (!isAdmin && !isOwner) {
     return new NextResponse("forbidden", { status: 403 });
+  }
+  if (!isAdmin) {
+    const published = await isPayslipPublishedToPortal(id);
+    if (!published) return new NextResponse("not found", { status: 404 });
   }
   if (!payslip.pdfPath) {
     return new NextResponse("not generated", { status: 404 });

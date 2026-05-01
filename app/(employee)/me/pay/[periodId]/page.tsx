@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
-import { getPayslipForEmployeePeriod } from "@/lib/db/queries/payslips";
+import { getPublishedPayslipForEmployeePeriod } from "@/lib/db/queries/payslips";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getSetting } from "@/lib/settings/runtime";
 import { AcknowledgeButton } from "./acknowledge-button";
@@ -33,7 +33,7 @@ export default async function EmployeePayslipViewer({
       </div>
     );
   }
-  const payslip = await getPayslipForEmployeePeriod(
+  const payslip = await getPublishedPayslipForEmployeePeriod(
     session.user.employeeId,
     periodId,
   );

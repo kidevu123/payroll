@@ -1,12 +1,12 @@
-// Employee Pay tab — list of past periods. Phase 4 will dress this up
-// with the bottom-nav layout; today it's a functional list.
+// Employee Pay tab — list of payslips on runs the admin has published to
+// the portal (payroll_runs.published_to_portal_at IS NOT NULL). Internal
+// runs never appear here.
 
-import Link from "next/link";
 import { Wallet } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PayslipCard } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
-import { listPayslipsForEmployee } from "@/lib/db/queries/payslips";
+import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getSetting } from "@/lib/settings/runtime";
 
@@ -21,7 +21,7 @@ export default async function EmployeePayList() {
       </div>
     );
   }
-  const payslips = await listPayslipsForEmployee(session.user.employeeId);
+  const payslips = await listPublishedPayslipsForEmployee(session.user.employeeId);
   const payRules = await getSetting("payRules");
   const periods = await Promise.all(payslips.map((p) => getPeriodById(p.periodId)));
 
