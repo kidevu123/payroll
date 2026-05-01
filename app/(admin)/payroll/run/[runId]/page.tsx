@@ -136,7 +136,7 @@ export default async function RunReviewPage({
           <h1 className="text-2xl font-semibold font-mono">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Period: {period.startDate} – {period.endDate} · {employees.length} employees ·{" "}
           {unresolvedAlerts} unresolved alert{unresolvedAlerts === 1 ? "" : "s"}
         </p>
@@ -148,44 +148,44 @@ export default async function RunReviewPage({
         </CardHeader>
         <CardContent>
           {rendered.length === 0 ? (
-            <p className="text-sm text-[--text-muted]">No punches, tasks, or alerts on this run.</p>
+            <p className="text-sm text-text-muted">No punches, tasks, or alerts on this run.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-xs text-[--text-muted]">
+                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
                   <tr>
-                    <th className="py-2 pr-3 font-medium">Employee</th>
-                    <th className="py-2 px-3 font-medium text-right">Hours</th>
-                    <th className="py-2 px-3 font-medium text-right">Gross</th>
-                    <th className="py-2 px-3 font-medium text-right">Rounded</th>
-                    <th className="py-2 px-3 font-medium">Alerts</th>
-                    <th className="py-2 px-3 font-medium">Payslip</th>
+                    <th className="py-2.5 pr-3 font-medium">Employee</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Hours</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Gross</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Rounded</th>
+                    <th className="py-2.5 px-3 font-medium">Alerts</th>
+                    <th className="py-2.5 px-3 font-medium">Payslip</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {rendered.map(({ employee, result, alerts: eAlerts, payslip }) => (
-                    <tr key={employee.id} className="border-t border-[--border]">
-                      <td className="py-2 pr-3">
+                    <tr key={employee.id} className="hover:bg-surface-2/40 transition-colors">
+                      <td className="py-2.5 pr-3">
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="hover:underline"
+                          className="font-medium hover:text-brand-700 hover:underline underline-offset-2"
                         >
                           {employee.displayName}
                         </Link>
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <HoursDisplay
                           hours={result.totalHours}
                           decimals={payRules.hoursDecimalPlaces}
                         />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <MoneyDisplay cents={result.grossCents} />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <MoneyDisplay cents={result.roundedCents} />
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3">
                         <div className="flex flex-wrap gap-1">
                           {eAlerts
                             .filter((a) => !a.resolvedAt)
@@ -193,25 +193,25 @@ export default async function RunReviewPage({
                               <ExceptionBadge key={a.id} issue={a.issue} />
                             ))}
                           {eAlerts.filter((a) => !a.resolvedAt).length === 0 && (
-                            <span className="text-xs text-[--text-muted]">—</span>
+                            <span className="text-xs text-text-subtle">—</span>
                           )}
                         </div>
                       </td>
-                      <td className="py-2 px-3 text-xs">
+                      <td className="py-2.5 px-3 text-xs">
                         {payslip ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700">
+                          <span className="inline-flex items-center gap-1 text-success-700 font-medium">
                             <CircleCheck className="h-3.5 w-3.5" />
                             {payslip.acknowledgedAt ? "ack" : "published"}
                           </span>
                         ) : (
-                          <span className="text-[--text-muted]">—</span>
+                          <span className="text-text-subtle">—</span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="text-sm font-medium">
-                  <tr className="border-t-2 border-[--border]">
+                  <tr className="border-t-2 border-border">
                     <td className="py-2 pr-3">Totals</td>
                     <td className="py-2 px-3 text-right">
                       <HoursDisplay
@@ -241,7 +241,7 @@ export default async function RunReviewPage({
         totals={{ employees: rendered.length, gross: totals.gross }}
       />
 
-      <p className="text-xs text-[--text-muted]">
+      <p className="text-xs text-text-muted">
         Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.
       </p>
     </div>

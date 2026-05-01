@@ -49,7 +49,7 @@ export function TimeOffForm() {
           id="type"
           name="type"
           defaultValue="PERSONAL"
-          className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+          className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
         >
           <option value="UNPAID">Unpaid</option>
           <option value="SICK">Sick</option>
@@ -64,7 +64,7 @@ export function TimeOffForm() {
           name="reason"
           maxLength={500}
           rows={3}
-          className="w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 py-2 text-sm"
+          className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}

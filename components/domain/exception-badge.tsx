@@ -10,22 +10,22 @@ type Issue = "MISSING_IN" | "MISSING_OUT" | "NO_PUNCH" | "SUSPICIOUS_DURATION";
 const META: Record<Issue, { label: string; tone: string; Icon: React.ComponentType<{ className?: string }> }> = {
   NO_PUNCH: {
     label: "No punch",
-    tone: "bg-red-50 text-red-700 border-red-200",
+    tone: "bg-danger-50 text-danger-700 border-danger-200",
     Icon: MinusCircle,
   },
   MISSING_IN: {
     label: "Missing in",
-    tone: "bg-amber-50 text-amber-800 border-amber-200",
+    tone: "bg-warn-50 text-warn-700 border-warn-200",
     Icon: AlertCircle,
   },
   MISSING_OUT: {
     label: "Missing out",
-    tone: "bg-amber-50 text-amber-800 border-amber-200",
+    tone: "bg-warn-50 text-warn-700 border-warn-200",
     Icon: Clock3,
   },
   SUSPICIOUS_DURATION: {
     label: "Suspicious",
-    tone: "bg-yellow-50 text-yellow-800 border-yellow-200",
+    tone: "bg-warn-50 text-warn-700 border-warn-200",
     Icon: AlertTriangle,
   },
 };
@@ -42,7 +42,7 @@ export function ExceptionBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-[--radius-chip] border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-xs font-medium",
         m.tone,
         className,
       )}

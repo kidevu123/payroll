@@ -55,15 +55,15 @@ export default async function NotificationsPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {recent.length === 0 ? (
-            <p className="text-[--text-muted]">Nothing yet.</p>
+            <p className="text-text-muted">Nothing yet.</p>
           ) : (
             recent.map((n) => (
               <div
                 key={n.id}
-                className="rounded-[--radius-input] border border-[--border] px-3 py-2"
+                className="rounded-input border border-border px-3 py-2"
               >
                 <div className="text-xs font-mono">{n.kind}</div>
-                <div className="text-xs text-[--text-muted]">
+                <div className="text-xs text-text-muted">
                   {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
                 </div>
               </div>

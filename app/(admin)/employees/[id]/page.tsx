@@ -47,9 +47,9 @@ export default async function EmployeeDetailPage({
             <StatusPill status={employee.status} />
           </h1>
           {employee.legalName !== employee.displayName && (
-            <p className="text-sm text-[--text-muted]">Legal: {employee.legalName}</p>
+            <p className="text-sm text-text-muted">Legal: {employee.legalName}</p>
           )}
-          <p className="text-sm text-[--text-muted]">{employee.email}</p>
+          <p className="text-sm text-text-muted">{employee.email}</p>
         </div>
         <div className="flex items-center gap-2">
           {shift ? <ShiftChip name={shift.name} colorHex={shift.colorHex} archived={!!shift.archivedAt} /> : null}
@@ -87,7 +87,7 @@ export default async function EmployeeDetailPage({
             />
             {employee.notes && (
               <div className="sm:col-span-2 space-y-1">
-                <div className="text-xs text-[--text-muted]">Notes</div>
+                <div className="text-xs text-text-muted">Notes</div>
                 <p className="whitespace-pre-wrap text-sm">{employee.notes}</p>
               </div>
             )}
@@ -119,7 +119,7 @@ export default async function EmployeeDetailPage({
         </CardHeader>
         <CardContent className="space-y-2">
           {lastTen.length === 0 ? (
-            <p className="text-sm text-[--text-muted]">No punches yet.</p>
+            <p className="text-sm text-text-muted">No punches yet.</p>
           ) : (
             lastTen.map((p) => (
               <PunchRow key={p.id} punch={p} timezone={company?.timezone ?? "America/New_York"} />
@@ -138,7 +138,7 @@ export default async function EmployeeDetailPage({
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs text-[--text-muted]">{label}</div>
+      <div className="text-xs text-text-muted">{label}</div>
       <div>{value}</div>
     </div>
   );

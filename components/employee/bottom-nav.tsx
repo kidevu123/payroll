@@ -1,5 +1,6 @@
 // Bottom-nav for the employee PWA. Lucide icons, no emoji. Active state
-// uses the brand accent.
+// uses the brand accent and a 2px notch above the icon — a tiny touch that
+// makes the active tab feel anchored without an animated underline.
 
 "use client";
 
@@ -17,11 +18,11 @@ const TABS = [
 ] as const;
 
 export function BottomNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   return (
     <nav
       aria-label="Employee navigation"
-      className="fixed bottom-0 inset-x-0 z-30 border-t border-[--border] bg-[--surface]/95 backdrop-blur supports-[backdrop-filter]:bg-[--surface]/80"
+      className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="grid grid-cols-4 max-w-md mx-auto">
         {TABS.map(({ href, label, icon: Icon }) => {
@@ -31,11 +32,23 @@ export function BottomNav() {
               <Link
                 href={href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 py-2 text-xs",
-                  active ? "text-[--color-brand-700]" : "text-[--text-muted]",
+                  "relative flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] transition-colors",
+                  active ? "text-brand-700 font-medium" : "text-text-subtle hover:text-text",
                 )}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
+                {active ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-brand-700"
+                  />
+                ) : null}
+                <Icon
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    active ? "scale-110" : "",
+                  )}
+                  aria-hidden="true"
+                />
                 <span>{label}</span>
               </Link>
             </li>

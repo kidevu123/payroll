@@ -28,7 +28,7 @@ export default async function RequestsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Requests</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           {missedPunches.length} missed-punch · {timeOff.length} time-off
         </p>
       </div>
@@ -51,18 +51,18 @@ export default async function RequestsPage() {
               return (
                 <div
                   key={r.id}
-                  className="rounded-[--radius-card] border border-[--border] bg-[--surface] p-4 space-y-2"
+                  className="rounded-card border border-border bg-surface p-4 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="font-medium text-sm">
                         {emp?.displayName ?? r.employeeId}
                       </div>
-                      <div className="text-xs text-[--text-muted]">
+                      <div className="text-xs text-text-muted">
                         {r.date} · submitted {shortDate(r.createdAt)}
                       </div>
                     </div>
-                    <div className="text-xs font-mono text-[--text-muted]">
+                    <div className="text-xs font-mono text-text-muted">
                       {r.claimedClockIn ? r.claimedClockIn.toISOString().slice(11, 16) : "—"} →{" "}
                       {r.claimedClockOut ? r.claimedClockOut.toISOString().slice(11, 16) : "—"}
                     </div>
@@ -94,18 +94,18 @@ export default async function RequestsPage() {
               return (
                 <div
                   key={r.id}
-                  className="rounded-[--radius-card] border border-[--border] bg-[--surface] p-4 space-y-2"
+                  className="rounded-card border border-border bg-surface p-4 space-y-2"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="font-medium text-sm">
                         {emp?.displayName ?? r.employeeId}
                       </div>
-                      <div className="text-xs text-[--text-muted]">
+                      <div className="text-xs text-text-muted">
                         {r.startDate} – {r.endDate} · {r.type.toLowerCase()}
                       </div>
                     </div>
-                    <div className="text-xs text-[--text-muted]">
+                    <div className="text-xs text-text-muted">
                       submitted {shortDate(r.createdAt)}
                     </div>
                   </div>

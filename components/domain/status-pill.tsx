@@ -65,11 +65,11 @@ const STYLES: Record<StatusKind, Style> = {
 };
 
 const KIND_CLASSES: Record<Kind, string> = {
-  neutral: "bg-[--surface-2] text-[--text] border-[--border]",
-  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  warn: "bg-amber-50 text-amber-800 border-amber-200",
-  danger: "bg-red-50 text-red-700 border-red-200",
-  info: "bg-sky-50 text-sky-700 border-sky-200",
+  neutral: "bg-surface-2 text-text-muted border-border",
+  success: "bg-success-50 text-success-700 border-success-200",
+  warn: "bg-warn-50 text-warn-700 border-warn-200",
+  danger: "bg-danger-50 text-danger-700 border-danger-200",
+  info: "bg-info-50 text-info-700 border-info-200",
 };
 
 export function StatusPill({
@@ -84,7 +84,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-[--radius-chip] border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-xs font-medium",
         KIND_CLASSES[s.kind],
         className,
       )}

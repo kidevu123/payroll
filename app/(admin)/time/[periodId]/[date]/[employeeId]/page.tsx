@@ -45,7 +45,7 @@ export default async function PunchEditorPage({
       </Button>
       <div>
         <h1 className="text-2xl font-semibold">{employee.displayName}</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           {date} · period {period.startDate} – {period.endDate}
         </p>
       </div>

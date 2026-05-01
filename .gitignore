@@ -40,6 +40,7 @@ drizzle/meta/_journal.json.bak
 playwright-report
 test-results
 .playwright
+/screenshots
 
 # python tooling sometimes leaks in
 __pycache__

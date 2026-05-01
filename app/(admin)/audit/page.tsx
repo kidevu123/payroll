@@ -54,7 +54,7 @@ export default async function AuditPage({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Audit log</h1>
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             Owner-only. Newest first. Showing {rows.length}.
           </p>
         </div>
@@ -70,37 +70,37 @@ export default async function AuditPage({
       <form
         method="GET"
         action="/audit"
-        className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded-[--radius-card] border border-[--border] bg-[--surface] p-3 text-sm"
+        className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded-card border border-border bg-surface p-3 text-sm"
       >
         <input
           name="actor"
           defaultValue={params.actor ?? ""}
           placeholder="Actor user id"
-          className="h-9 md:col-span-2 rounded-[--radius-input] border border-[--border] bg-[--surface] px-3"
+          className="h-9 md:col-span-2 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="type"
           defaultValue={params.type ?? ""}
           placeholder="Target type (Employee, Shift, …)"
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-3"
+          className="h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="action"
           defaultValue={params.action ?? ""}
           placeholder="Action keyword"
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-3"
+          className="h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="from"
           type="date"
           defaultValue={params.from ?? ""}
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-3"
+          className="h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="to"
           type="date"
           defaultValue={params.to ?? ""}
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-3"
+          className="h-9 rounded-input border border-border bg-surface px-3"
         />
         <div className="md:col-span-6 flex justify-end gap-2">
           <Button type="submit" size="sm" variant="secondary">

@@ -6,7 +6,7 @@ export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDi
     <div
       ref={ref}
       className={cn(
-        "rounded-[--radius-card] border border-[--border] bg-[--surface] shadow-sm",
+        "rounded-card border border-border bg-surface shadow-card",
         className,
       )}
       {...props}
@@ -17,7 +17,7 @@ Card.displayName = "Card";
 
 export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 border-b border-[--border]", className)} {...props} />
+    <div ref={ref} className={cn("p-6 border-b border-border", className)} {...props} />
   ),
 );
 CardHeader.displayName = "CardHeader";
@@ -31,7 +31,7 @@ CardTitle.displayName = "CardTitle";
 
 export const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-sm text-[--text-muted]", className)} {...props} />
+    <p ref={ref} className={cn("text-sm text-text-muted", className)} {...props} />
   ),
 );
 CardDescription.displayName = "CardDescription";
@@ -45,7 +45,7 @@ CardContent.displayName = "CardContent";
 
 export const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 border-t border-[--border]", className)} {...props} />
+    <div ref={ref} className={cn("p-6 border-t border-border", className)} {...props} />
   ),
 );
 CardFooter.displayName = "CardFooter";

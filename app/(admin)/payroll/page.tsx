@@ -12,7 +12,7 @@ export default async function PayrollPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Payroll</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           {periods.length} {periods.length === 1 ? "period" : "periods"}, newest first
         </p>
       </div>
@@ -39,7 +39,7 @@ export default async function PayrollPage() {
                 </div>
                 <StatusPill status={p.state} />
               </CardHeader>
-              <CardContent className="flex items-center justify-between p-4 pt-2 text-xs text-[--text-muted]">
+              <CardContent className="flex items-center justify-between p-4 pt-2 text-xs text-text-muted">
                 <div>
                   {p.lockedAt ? <>Locked {p.lockedAt.toISOString().slice(0, 10)}</> : "Open"}
                   {p.paidAt ? <> · Paid {p.paidAt.toISOString().slice(0, 10)}</> : null}

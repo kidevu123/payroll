@@ -11,7 +11,7 @@ export default function OfflinePage() {
     <main className="min-h-dvh flex items-center justify-center px-6 text-center">
       <div className="space-y-2">
         <h1 className="text-xl font-semibold">You&apos;re offline</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Reconnect and try again. Your sign-in stays active.
         </p>
       </div>

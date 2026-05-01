@@ -14,9 +14,9 @@ export default async function EmployeeLayout({
 }) {
   await requireSession();
   return (
-    <div className="min-h-dvh pb-16 bg-[--surface-2]/50">
+    <div className="min-h-dvh pb-20 bg-page">
       <ServiceWorkerRegister />
-      <div className="max-w-md mx-auto">{children}</div>
+      <div className="max-w-md mx-auto page-enter">{children}</div>
       <AppFooter className="pb-2 max-w-md mx-auto" />
       <BottomNav />
     </div>

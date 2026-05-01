@@ -29,17 +29,17 @@ const META: Record<
 > = {
   pending: {
     label: "Pending review",
-    tone: "border-[--border] bg-[--surface]",
+    tone: "border-border bg-surface",
     Icon: Clock3,
   },
   published: {
     label: "Published",
-    tone: "border-[--color-brand-700] bg-[--surface]",
+    tone: "border-brand-700 bg-surface",
     Icon: FileText,
   },
   acknowledged: {
     label: "Acknowledged",
-    tone: "border-emerald-200 bg-emerald-50/40",
+    tone: "border-success-200 bg-success-50/40",
     Icon: CircleCheck,
   },
 };
@@ -50,29 +50,29 @@ export function PayslipCard(props: PayslipCardProps) {
   return (
     <div
       className={cn(
-        "rounded-[--radius-card] border-2 p-5 flex items-center gap-4",
+        "rounded-card border-2 p-5 flex items-center gap-4",
         m.tone,
         props.className,
       )}
     >
-      <Icon className="h-8 w-8 shrink-0 text-[--color-brand-700]" aria-hidden="true" />
+      <Icon className="h-8 w-8 shrink-0 text-brand-700" aria-hidden="true" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold">
             {props.periodStart} – {props.periodEnd}
           </span>
-          <span className="text-xs text-[--text-muted]">{m.label}</span>
+          <span className="text-xs text-text-muted">{m.label}</span>
         </div>
         <div className="mt-1 text-sm flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <span>
-            <span className="text-[--text-muted]">Hours: </span>
+            <span className="text-text-muted">Hours: </span>
             <HoursDisplay
               hours={props.hours}
               decimals={props.hoursDecimalPlaces ?? 2}
             />
           </span>
           <span>
-            <span className="text-[--text-muted]">Net: </span>
+            <span className="text-text-muted">Net: </span>
             <MoneyDisplay cents={props.roundedCents} monospace={false} />
           </span>
         </div>

@@ -35,7 +35,7 @@ export default async function ReportsPage({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Reports</h1>
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             Year-to-date totals + period trends. CSV exports below.
           </p>
         </div>
@@ -48,7 +48,7 @@ export default async function ReportsPage({
               defaultValue={year}
               min={2020}
               max={2100}
-              className="h-9 w-24 rounded-[--radius-input] border border-[--border] bg-[--surface] px-2"
+              className="h-9 w-24 rounded-input border border-border bg-surface px-2"
             />
           </label>
           <Button type="submit" size="sm" variant="secondary">
@@ -68,17 +68,17 @@ export default async function ReportsPage({
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm max-h-[24rem] overflow-y-auto">
             {ytd.length === 0 ? (
-              <p className="text-[--text-muted]">No published payslips for {year}.</p>
+              <p className="text-text-muted">No published payslips for {year}.</p>
             ) : (
               ytd.map((row) => {
                 const e = empById.get(row.employeeId);
                 return (
                   <div
                     key={row.employeeId}
-                    className="flex items-center justify-between gap-3 border-b border-[--border] last:border-b-0 py-1"
+                    className="flex items-center justify-between gap-3 border-b border-border last:border-b-0 py-1"
                   >
                     <span className="truncate">{e?.displayName ?? row.employeeId}</span>
-                    <span className="text-right text-xs text-[--text-muted]">
+                    <span className="text-right text-xs text-text-muted">
                       <HoursDisplay
                         hours={row.hours}
                         decimals={payRules.hoursDecimalPlaces}
@@ -100,7 +100,7 @@ export default async function ReportsPage({
           </CardHeader>
           <CardContent>
             {totals.length === 0 ? (
-              <p className="text-sm text-[--text-muted]">
+              <p className="text-sm text-text-muted">
                 Trends light up once payroll publishes its first period.
               </p>
             ) : (
@@ -119,7 +119,7 @@ export default async function ReportsPage({
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <Download className="h-5 w-5 text-[--color-brand-700]" />
+          <Download className="h-5 w-5 text-brand-700" />
           <CardTitle className="text-base">CSV exports</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">

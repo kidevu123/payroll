@@ -33,7 +33,7 @@ export default async function EmployeesPage({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Employees</h1>
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             {employees.length} {employees.length === 1 ? "person" : "people"}
           </p>
         </div>
@@ -47,18 +47,18 @@ export default async function EmployeesPage({
       <form
         action="/employees"
         method="GET"
-        className="flex flex-wrap items-end gap-2 rounded-[--radius-card] border border-[--border] bg-[--surface] p-3"
+        className="flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface p-3"
       >
         <input
           name="q"
           defaultValue={params.q ?? ""}
           placeholder="Search name or email"
-          className="h-9 flex-1 min-w-[12rem] rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+          className="h-9 flex-1 min-w-[12rem] rounded-input border border-border bg-surface px-3 text-sm"
         />
         <select
           name="status"
           defaultValue={params.status ?? ""}
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-2 text-sm"
+          className="h-9 rounded-input border border-border bg-surface px-2 text-sm"
         >
           <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>
@@ -68,7 +68,7 @@ export default async function EmployeesPage({
         <select
           name="shift"
           defaultValue={params.shift ?? ""}
-          className="h-9 rounded-[--radius-input] border border-[--border] bg-[--surface] px-2 text-sm"
+          className="h-9 rounded-input border border-border bg-surface px-2 text-sm"
         >
           <option value="">All shifts</option>
           {shifts.map((s) => (

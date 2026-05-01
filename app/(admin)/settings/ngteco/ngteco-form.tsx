@@ -135,7 +135,7 @@ export function NgtecoForm({
               <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
             </Button>
             {!hasCredentials && (
-              <p className="mt-2 text-xs text-[--text-muted]">
+              <p className="mt-2 text-xs text-text-muted">
                 Save credentials first.
               </p>
             )}

@@ -19,7 +19,7 @@ export function ShiftChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-[--radius-chip] border border-[--border] bg-[--surface-2] px-2 py-0.5 text-xs font-medium text-[--text]",
+        "inline-flex items-center gap-1.5 rounded-chip border border-border bg-surface-2 px-2 py-0.5 text-xs font-medium text-text",
         archived && "line-through opacity-60",
         className,
       )}

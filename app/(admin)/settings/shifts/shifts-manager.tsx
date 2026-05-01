@@ -77,7 +77,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
         )}
 
         {items.length === 0 ? (
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             No shifts yet. Add one above.
           </p>
         ) : (
@@ -85,7 +85,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
             {items.map((s, i) => (
               <li
                 key={s.id}
-                className="flex items-center gap-3 rounded-[--radius-card] border border-[--border] bg-[--surface] p-3"
+                className="flex items-center gap-3 rounded-card border border-border bg-surface p-3"
               >
                 <div className="flex flex-col gap-0.5">
                   <button
@@ -93,7 +93,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move up"
                     onClick={() => move(i, -1)}
                     disabled={i === 0 || pending}
-                    className="rounded p-0.5 text-[--text-muted] hover:bg-[--surface-2] disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
@@ -102,7 +102,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move down"
                     onClick={() => move(i, 1)}
                     disabled={i === items.length - 1 || pending}
-                    className="rounded p-0.5 text-[--text-muted] hover:bg-[--surface-2] disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
@@ -129,7 +129,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                           archived={!!s.archivedAt}
                         />
                         {s.defaultStart || s.defaultEnd ? (
-                          <span className="text-xs text-[--text-muted]">
+                          <span className="text-xs text-text-muted">
                             {s.defaultStart ?? "—"} → {s.defaultEnd ?? "—"}
                           </span>
                         ) : null}

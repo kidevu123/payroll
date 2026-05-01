@@ -139,7 +139,7 @@ export default async function DashboardPage() {
       <header className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             One place, one source of truth for the current payroll run.
           </p>
         </div>
@@ -196,10 +196,10 @@ export default async function DashboardPage() {
                   <li key={r.id}>
                     <Link
                       href={`/payroll/run/${r.id}`}
-                      className="flex items-center justify-between rounded-[--radius-input] border border-[--border] px-3 py-2 hover:bg-[--surface-2]"
+                      className="flex items-center justify-between rounded-input border border-border px-3 py-2 hover:bg-surface-2"
                     >
                       <span className="font-mono text-xs">{r.id.slice(0, 8)}…</span>
-                      <span className="text-[--text-muted]">{r.state}</span>
+                      <span className="text-text-muted">{r.state}</span>
                     </Link>
                   </li>
                 ))}

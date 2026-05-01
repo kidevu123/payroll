@@ -17,7 +17,7 @@ export function AlertCard({
   return (
     <Link
       href={`/me/home/missed-punch/${alertId}`}
-      className="rounded-[--radius-card] border border-[--border] bg-[--surface] p-3 flex items-center justify-between gap-3 hover:bg-[--surface-2]"
+      className="rounded-card border border-border bg-surface p-3 flex items-center justify-between gap-3 hover:bg-surface-2"
     >
       <div className="min-w-0">
         <div className="text-sm font-medium">{date}</div>
@@ -25,7 +25,7 @@ export function AlertCard({
           <ExceptionBadge issue={issue} />
         </div>
       </div>
-      <span className="text-xs text-[--color-brand-700]">Fix this</span>
+      <span className="text-xs text-brand-700">Fix this</span>
     </Link>
   );
 }

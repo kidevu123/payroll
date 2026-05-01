@@ -42,7 +42,7 @@ function cellClasses(state: CellState): string {
     case "missed":
       return "bg-red-50 text-red-700 border-red-200";
     case "inactive":
-      return "bg-[--surface-2] text-[--text-muted] border-[--border]";
+      return "bg-surface-2 text-text-muted border-border";
   }
 }
 
@@ -93,7 +93,7 @@ export default async function TimePage() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Time</h1>
-          <p className="text-sm text-[--text-muted]">
+          <p className="text-sm text-text-muted">
             Current period: {period.startDate} to {period.endDate}
           </p>
         </div>
@@ -104,13 +104,13 @@ export default async function TimePage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-[--radius-card] border border-[--border] bg-[--surface]">
+      <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="min-w-full text-xs">
-          <thead className="sticky top-0 bg-[--surface-2] text-[--text-muted]">
+          <thead className="sticky top-0 bg-surface-2/80 backdrop-blur text-text-subtle uppercase text-[10px] tracking-wider">
             <tr>
-              <th className="text-left p-2 font-medium">Employee</th>
+              <th className="text-left px-3 py-2.5 font-medium">Employee</th>
               {days.map((d) => (
-                <th key={d} className="p-2 font-medium">
+                <th key={d} className="px-2 py-2.5 font-medium font-mono tabular-nums">
                   {new Intl.DateTimeFormat("en-US", {
                     weekday: "short",
                     month: "numeric",
@@ -122,8 +122,8 @@ export default async function TimePage() {
           </thead>
           <tbody>
             {employees.map((e) => (
-              <tr key={e.id} className="border-t border-[--border]">
-                <td className="p-2 font-medium">{e.displayName}</td>
+              <tr key={e.id} className="border-t border-border hover:bg-surface-2/40 transition-colors">
+                <td className="px-3 py-2 font-medium">{e.displayName}</td>
                 {days.map((d) => {
                   const list = grid.get(e.id)?.get(d) ?? [];
                   let state: CellState;
@@ -135,7 +135,7 @@ export default async function TimePage() {
                     <td key={d} className="p-1 align-middle">
                       <Link
                         href={`/time/${period.id}/${d}/${e.id}`}
-                        className={`flex items-center justify-center rounded-[--radius-chip] border h-9 w-full ${cellClasses(state)} hover:brightness-95`}
+                        className={`flex items-center justify-center rounded-chip border h-9 w-full ${cellClasses(state)} hover:brightness-95`}
                       >
                         {list.length > 0 ? `${list.length}` : "—"}
                       </Link>
@@ -153,7 +153,7 @@ export default async function TimePage() {
 
 function Legend({ label, state }: { label: string; state: CellState }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-[--radius-chip] border px-2 py-0.5 ${cellClasses(state)}`}>
+    <span className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 ${cellClasses(state)}`}>
       <span className="h-2 w-2 rounded-full bg-current opacity-60" /> {label}
     </span>
   );

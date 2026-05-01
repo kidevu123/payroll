@@ -47,7 +47,7 @@ export function SetupForm() {
           minLength={12}
           aria-describedby="password-hint"
         />
-        <p id="password-hint" className="text-xs text-[--text-subtle]">
+        <p id="password-hint" className="text-xs text-text-subtle">
           Use at least 12 characters. A password manager is recommended.
         </p>
       </div>

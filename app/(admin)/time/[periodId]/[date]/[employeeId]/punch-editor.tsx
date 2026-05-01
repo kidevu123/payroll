@@ -53,7 +53,7 @@ export function PunchEditor({
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Existing punches</h2>
         {punches.length === 0 ? (
-          <p className="text-sm text-[--text-muted]">No punches recorded for this day.</p>
+          <p className="text-sm text-text-muted">No punches recorded for this day.</p>
         ) : (
           punches.map((p) => (
             <EditablePunch
@@ -67,9 +67,9 @@ export function PunchEditor({
       </div>
 
       {!periodLocked && (
-        <div className="space-y-2 rounded-[--radius-card] border border-dashed border-[--border] bg-[--surface] p-5">
+        <div className="space-y-2 rounded-card border border-dashed border-border bg-surface p-5">
           <h2 className="text-lg font-semibold">Add manual punch</h2>
-          <p className="text-xs text-[--text-muted]">
+          <p className="text-xs text-text-muted">
             Source will be MANUAL_ADMIN. Editing later preserves the original
             timestamps and requires a reason.
           </p>
@@ -84,7 +84,7 @@ export function PunchEditor({
         </div>
       )}
       {periodLocked && (
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Period is locked. Unlock from Payroll to make changes.
         </p>
       )}
@@ -177,7 +177,7 @@ function EditablePunch({
       <PunchRow
         punch={punch}
         timezone={timezone}
-        rightSlot={<span className="text-xs text-[--text-muted]">voided</span>}
+        rightSlot={<span className="text-xs text-text-muted">voided</span>}
       />
     );
   }
@@ -214,7 +214,7 @@ function EditablePunch({
           if (result?.error) setError(result.error);
           else setVoidOpen(false);
         }}
-        className="space-y-2 rounded-[--radius-card] border border-red-200 bg-red-50/40 p-3 text-sm"
+        className="space-y-2 rounded-card border border-red-200 bg-red-50/40 p-3 text-sm"
       >
         <p className="font-medium">Void this punch?</p>
         <Input name="reason" required minLength={1} maxLength={500} placeholder="Reason for void" />
@@ -241,7 +241,7 @@ function EditablePunch({
         if (result?.error) setError(result.error);
         else setEditing(false);
       }}
-      className="space-y-2 rounded-[--radius-card] border border-amber-200 bg-amber-50/40 p-3 text-sm"
+      className="space-y-2 rounded-card border border-amber-200 bg-amber-50/40 p-3 text-sm"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">

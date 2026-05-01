@@ -12,11 +12,11 @@ export function ArchiveEmployeeButton({ id, name }: { id: string; name: string }
 
   if (!open) {
     return (
-      <div className="rounded-[--radius-card] border border-dashed border-red-200 bg-red-50/40 p-4">
+      <div className="rounded-card border border-dashed border-red-200 bg-red-50/40 p-4">
         <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
           <Trash2 className="h-4 w-4" /> Archive employee
         </Button>
-        <p className="mt-2 text-xs text-[--text-muted]">
+        <p className="mt-2 text-xs text-text-muted">
           Soft-delete: status flips to TERMINATED and the row stays in the
           database for historical reports.
         </p>
@@ -33,9 +33,9 @@ export function ArchiveEmployeeButton({ id, name }: { id: string; name: string }
         setPending(false);
         if (result?.error) setError(result.error);
       }}
-      className="space-y-2 rounded-[--radius-card] border border-red-200 bg-red-50/40 p-4"
+      className="space-y-2 rounded-card border border-red-200 bg-red-50/40 p-4"
     >
-      <p className="text-sm font-medium text-[--text]">
+      <p className="text-sm font-medium text-text">
         Archive {name}? Provide a reason for the audit log.
       </p>
       <input
@@ -44,7 +44,7 @@ export function ArchiveEmployeeButton({ id, name }: { id: string; name: string }
         minLength={1}
         maxLength={500}
         placeholder="e.g. Voluntary departure 2026-04-30"
-        className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+        className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
       />
       {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex items-center gap-2">

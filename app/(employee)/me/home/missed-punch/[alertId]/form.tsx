@@ -56,7 +56,7 @@ export function MissedPunchForm({
           minLength={1}
           maxLength={500}
           rows={3}
-          className="w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 py-2 text-sm"
+          className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}

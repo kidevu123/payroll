@@ -32,7 +32,7 @@ export function EmployeeForm(props: Props) {
   return (
     <form
       action={onSubmit}
-      className="space-y-4 rounded-[--radius-card] border border-[--border] bg-[--surface] p-5"
+      className="space-y-4 rounded-card border border-border bg-surface p-5"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">
@@ -91,7 +91,7 @@ export function EmployeeForm(props: Props) {
             id="shiftId"
             name="shiftId"
             defaultValue={e?.shiftId ?? ""}
-            className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
             <option value="">Unassigned</option>
             {props.shifts.map((s) => (
@@ -107,7 +107,7 @@ export function EmployeeForm(props: Props) {
             id="payType"
             name="payType"
             defaultValue={e?.payType ?? "HOURLY"}
-            className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
             <option value="HOURLY">Hourly</option>
             <option value="FLAT_TASK">Flat / task</option>
@@ -132,7 +132,7 @@ export function EmployeeForm(props: Props) {
             id="language"
             name="language"
             defaultValue={e?.language ?? "en"}
-            className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
             <option value="en">English</option>
             <option value="es">Español</option>
@@ -147,7 +147,7 @@ export function EmployeeForm(props: Props) {
           defaultValue={e?.notes ?? ""}
           rows={3}
           maxLength={2000}
-          className="w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 py-2 text-sm"
+          className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}

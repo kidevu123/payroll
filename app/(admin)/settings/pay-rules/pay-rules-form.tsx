@@ -79,7 +79,7 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
             />
           </div>
 
-          <fieldset className="space-y-2 rounded-[--radius-card] border border-[--border] bg-[--surface-2]/50 p-4">
+          <fieldset className="space-y-2 rounded-card border border-border bg-surface-2/50 p-4">
             <legend className="text-sm font-medium px-1">Overtime</legend>
             <label className="flex items-center gap-2 text-sm">
               <input

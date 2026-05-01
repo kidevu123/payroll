@@ -57,7 +57,7 @@ export function ProfileForm({ employee }: { employee: Employee }) {
               id="language"
               name="language"
               defaultValue={employee.language}
-              className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+              className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
             >
               <option value="en">{t("languageEn")}</option>
               <option value="es">{t("languageEs")}</option>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { hasAnyUser } from "@/lib/db/queries/users";
+import { AuthLayout } from "@/components/brand/auth-layout";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
@@ -10,20 +11,20 @@ export default async function LoginPage() {
   if (session) redirect("/");
 
   return (
-    <main className="min-h-dvh flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold mb-1">Sign in</h1>
-        <p className="text-sm text-[--text-muted] mb-6">
-          Welcome back. Use the email and password your administrator gave you.
-        </p>
-        <LoginForm />
-        <p className="mt-6 text-xs text-[--text-subtle]">
+    <AuthLayout
+      eyebrow="Sign in"
+      title="Welcome back"
+      description="Use the email and password your administrator gave you."
+      footer={
+        <>
           Forgot your password?{" "}
-          <Link href="/login/reset" className="underline underline-offset-2">
+          <Link href="/login/reset" className="text-brand-700 underline underline-offset-2 hover:text-brand-800">
             Reset it
           </Link>
-        </p>
-      </div>
-    </main>
+        </>
+      }
+    >
+      <LoginForm />
+    </AuthLayout>
   );
 }

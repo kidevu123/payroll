@@ -76,7 +76,7 @@ export function PayPeriodForm({
                 id="startDayOfWeek"
                 name="startDayOfWeek"
                 defaultValue={settings.startDayOfWeek}
-                className="h-10 w-full rounded-[--radius-input] border border-[--border] bg-[--surface] px-3 text-sm"
+                className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
               >
                 {DAYS.map((d) => (
                   <option key={d.v} value={d.v}>
@@ -93,7 +93,7 @@ export function PayPeriodForm({
               {DAYS.map((d) => (
                 <label
                   key={d.v}
-                  className="flex items-center gap-1 rounded-[--radius-chip] border border-[--border] bg-[--surface] px-3 py-1 text-sm"
+                  className="flex items-center gap-1 rounded-chip border border-border bg-surface px-3 py-1 text-sm"
                 >
                   <input
                     type="checkbox"
@@ -117,14 +117,14 @@ export function PayPeriodForm({
               disabled={periodCount > 0}
             />
             {periodCount > 0 ? (
-              <p className="text-xs text-[--text-muted]">
+              <p className="text-xs text-text-muted">
                 Locked because {periodCount}{" "}
                 {periodCount === 1 ? "period" : "periods"} already exist.
                 Resetting requires owner confirmation and a one-shot reset
                 flow (not yet wired).
               </p>
             ) : (
-              <p className="text-xs text-[--text-muted]">
+              <p className="text-xs text-text-muted">
                 Anchors period zero. Without it, periods align to the
                 most-recent start-of-week occurrence.
               </p>

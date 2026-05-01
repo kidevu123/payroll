@@ -1,76 +1,193 @@
 /* Tailwind v4: one import pulls in everything. */
 @import "tailwindcss";
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Design tokens (§9 of spec). Restrained palette, one signal accent.         */
-/* Brand color is overridden at runtime from Setting('company.brandColorHex') */
-/* via inline style on <html>; --brand-* below are sensible defaults.         */
-/* ────────────────────────────────────────────────────────────────────────── */
+/*
+  Design tokens for Phase 6.5 visual quality pass.
+
+  EVERYTHING the UI cares about lives in @theme so Tailwind v4 emits proper
+  utility classes (bg-surface, text-text-muted, bg-brand-700, shadow-card,
+  rounded-card, font-mono, …). Arbitrary-value syntax like
+  `bg-[--color-brand-700]` is BANNED — Tailwind v4 emits it as a literal
+  string in the compiled CSS rather than wrapping it in var(), which is
+  what produced the invisible login button on the v6 deploy.
+
+  Brand color is overridable at runtime via inline style on <html> in
+  app/layout.tsx — the @theme value is just the default. Every utility
+  class compiles to var(--color-brand-700), so the inline override on the
+  root element flows through the cascade automatically.
+*/
 
 @theme {
-  /* Type — Inter for UI, JetBrains Mono for numerics. */
+  /* ── Type scale (§9 spec) ──────────────────────────────────────────── */
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
     Menlo, Consolas, monospace;
 
-  /* Radii (consistent — §9). */
-  --radius-card: 0.75rem;     /* 12px */
-  --radius-input: 0.5rem;     /* 8px */
-  --radius-chip: 0.375rem;    /* 6px */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.02em;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-title--letter-spacing: -0.015em;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.5rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
 
-  /* Brand accent (default teal — overridable by Settings). */
+  /* ── Radii ─────────────────────────────────────────────────────────── */
+  --radius-card: 0.75rem;
+  --radius-input: 0.5rem;
+  --radius-chip: 0.375rem;
+
+  /* ── Shadow scale ──────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04),
+    0 6px 16px -4px rgb(15 23 42 / 0.06);
+  --shadow-card-hover: 0 2px 4px 0 rgb(15 23 42 / 0.06),
+    0 12px 28px -6px rgb(15 23 42 / 0.10);
+  --shadow-pop: 0 12px 32px -6px rgb(15 23 42 / 0.16),
+    0 4px 8px -2px rgb(15 23 42 / 0.08);
+
+  /* ── Brand accent ──────────────────────────────────────────────────── */
   --color-brand-50: #f0fdfa;
   --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
   --color-brand-500: #14b8a6;
   --color-brand-600: #0d9488;
   --color-brand-700: #0f766e;
   --color-brand-800: #115e59;
   --color-brand-900: #134e4a;
+  --color-brand-fg: #ffffff;
+
+  /* ── Page surfaces ─────────────────────────────────────────────────── */
+  --color-page: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f0ed;
+  --color-surface-3: #e8e6e1;
+  --color-border: #e2e0db;
+  --color-border-strong: #c8c5be;
+
+  /* ── Text ──────────────────────────────────────────────────────────── */
+  --color-text: #18181b;
+  --color-text-muted: #525057;
+  --color-text-subtle: #76747c;
+
+  /* ── Semantic tints (light surface) ────────────────────────────────── */
+  --color-success-50: #ecfdf5;
+  --color-success-200: #a7f3d0;
+  --color-success-700: #047857;
+  --color-warn-50: #fffbeb;
+  --color-warn-200: #fde68a;
+  --color-warn-700: #b45309;
+  --color-danger-50: #fef2f2;
+  --color-danger-200: #fecaca;
+  --color-danger-700: #b91c1c;
+  --color-info-50: #eff6ff;
+  --color-info-200: #bfdbfe;
+  --color-info-700: #1d4ed8;
 }
 
-/* Base. Stone neutrals + dark-friendly. */
-:root {
-  color-scheme: light;
-  --bg: #fafaf9;          /* stone-50 */
-  --surface: #ffffff;
-  --surface-2: #f5f5f4;   /* stone-100 */
-  --border: #e7e5e4;      /* stone-200 */
-  --text: #1c1917;        /* stone-900 */
-  --text-muted: #57534e;  /* stone-600 */
-  --text-subtle: #78716c; /* stone-500 */
-
-  --status-info: #2563eb;
-  --status-ok: #16a34a;
-  --status-warn: #d97706;
-  --status-bad: #dc2626;
-}
-
+/*
+  Dark mode. Override the @theme-emitted CSS variables so every utility
+  retargets without compile-time changes. Card vs page contrast is pushed
+  more than v6 — surface is two stops above page, surface-2 above surface,
+  so cards visibly float on the dark background.
+*/
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #0c0a09;          /* stone-950 */
-    --surface: #1c1917;     /* stone-900 */
-    --surface-2: #292524;   /* stone-800 */
-    --border: #292524;      /* stone-800 */
-    --text: #fafaf9;        /* stone-50 */
-    --text-muted: #a8a29e;  /* stone-400 */
-    --text-subtle: #78716c; /* stone-500 */
+    --color-page: #09090b;
+    --color-surface: #18181b;
+    --color-surface-2: #27272a;
+    --color-surface-3: #3f3f46;
+    --color-border: #27272a;
+    --color-border-strong: #3f3f46;
+    --color-text: #fafaf9;
+    --color-text-muted: #a1a1aa;
+    --color-text-subtle: #71717a;
+    /*
+      Brand stays the same teal in dark mode — pale-mint tints (brand-50,
+      brand-100) read as a deliberate highlight on a near-black page, and
+      keeping brand-700 unchanged means the primary button keeps its
+      contrast with text-white. Don't retune unless WCAG fails on a
+      specific surface — verify there first, override there second.
+    */
+    --color-success-50: #022c22;
+    --color-success-200: #064e3b;
+    --color-success-700: #34d399;
+    --color-warn-50: #2c1e02;
+    --color-warn-200: #5a3a06;
+    --color-warn-700: #fbbf24;
+    --color-danger-50: #2c0a0a;
+    --color-danger-200: #5a1414;
+    --color-danger-700: #fca5a5;
+    --color-info-50: #0a1f3d;
+    --color-info-200: #14315c;
+    --color-info-700: #93c5fd;
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5),
+      0 6px 16px -4px rgb(0 0 0 / 0.6);
+    --shadow-card-hover: 0 2px 4px 0 rgb(0 0 0 / 0.5),
+      0 12px 28px -6px rgb(0 0 0 / 0.65);
+    --shadow-pop: 0 12px 32px -6px rgb(0 0 0 / 0.7),
+      0 4px 8px -2px rgb(0 0 0 / 0.5);
   }
 }
 
-html, body {
-  background: var(--bg);
-  color: var(--text);
+html,
+body {
+  background: var(--color-page);
+  color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tabular numerics everywhere they matter. */
-.tabnum, td.num, .num {
+/* Tabular numerics in the same JetBrains Mono used by tables and stats. */
+.tabnum,
+td.num,
+.num {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
+}
+
+/*
+  Page transition: a 150ms fade-in on the route's <main> element so route
+  changes feel grounded without animated illustrations.
+*/
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: page-enter 150ms ease-out both;
+}
+
+/*
+  Reduced motion: respect the user's preference. We don't animate much, but
+  the page-enter slide and the AWAITING-state pulse should stop entirely.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Print stylesheet — referenced by §10 PDFs and the in-browser preview. */
@@ -79,6 +196,11 @@ html, body {
     size: letter;
     margin: 0.5in;
   }
-  body { background: #fff; color: #000; }
-  .no-print { display: none !important; }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .no-print {
+    display: none !important;
+  }
 }

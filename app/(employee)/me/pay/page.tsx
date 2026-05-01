@@ -15,7 +15,7 @@ export default async function EmployeePayList() {
   if (!session.user.employeeId) {
     return (
       <div className="p-6 max-w-xl mx-auto">
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Your account is not linked to an employee record.
         </p>
       </div>

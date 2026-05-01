@@ -27,7 +27,7 @@ export default async function EditEmployeePage({
       </Button>
       <div>
         <h1 className="text-2xl font-semibold">Edit employee</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Rate changes are tracked separately so historical pay computations
           don&apos;t shift.
         </p>

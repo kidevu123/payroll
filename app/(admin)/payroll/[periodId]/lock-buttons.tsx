@@ -14,7 +14,7 @@ export function LockButtons({ period }: { period: PayPeriod }) {
 
   if (period.state === "PAID") {
     return (
-      <p className="text-sm text-[--text-muted]">
+      <p className="text-sm text-text-muted">
         Period is paid. Pay records are immutable.
       </p>
     );
@@ -32,7 +32,7 @@ export function LockButtons({ period }: { period: PayPeriod }) {
         <Button type="submit" disabled={pending}>
           <Lock className="h-4 w-4" /> {pending ? "Locking…" : "Lock period"}
         </Button>
-        <p className="mt-2 text-xs text-[--text-muted]">
+        <p className="mt-2 text-xs text-text-muted">
           Locking marks the period ready for review. You can unlock with a
           reason if you need to make corrections.
         </p>
@@ -59,7 +59,7 @@ export function LockButtons({ period }: { period: PayPeriod }) {
         if (result?.error) setError(result.error);
         else setUnlockOpen(false);
       }}
-      className="space-y-2 rounded-[--radius-card] border border-amber-200 bg-amber-50/40 p-4"
+      className="space-y-2 rounded-card border border-amber-200 bg-amber-50/40 p-4"
     >
       <p className="text-sm font-medium">Unlock {period.startDate}? Reason will be audited.</p>
       <Input name="reason" required minLength={1} maxLength={500} placeholder="Correction reason" />

@@ -28,7 +28,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Every operational behavior lives here. Change a value, the system follows.
         </p>
       </header>
@@ -39,7 +39,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               <li key={href}>
                 <Link
                   href={href}
-                  className="flex items-center gap-3 px-3 py-2 rounded-[--radius-input] text-sm text-[--text-muted] hover:bg-[--surface-2] hover:text-[--text]"
+                  className="flex items-center gap-3 px-3 py-2 rounded-input text-sm text-text-muted hover:bg-surface-2 hover:text-text"
                 >
                   <Icon className="h-4 w-4" aria-hidden />
                   {label}

@@ -11,7 +11,7 @@ export function AppFooter({ className }: { className?: string }) {
   return (
     <footer
       className={
-        "py-4 text-center text-[11px] text-[--text-muted] flex items-center justify-center gap-1.5 " +
+        "py-4 text-center text-[11px] text-text-muted flex items-center justify-center gap-1.5 " +
         (className ?? "")
       }
     >

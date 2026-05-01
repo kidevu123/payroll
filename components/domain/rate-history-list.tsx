@@ -14,7 +14,7 @@ export function RateHistoryList({
 }) {
   if (rates.length === 0) {
     return (
-      <p className={cn("text-sm text-[--text-muted]", className)}>
+      <p className={cn("text-sm text-text-muted", className)}>
         No rate history yet.
       </p>
     );
@@ -22,7 +22,7 @@ export function RateHistoryList({
   return (
     <ol
       className={cn(
-        "relative space-y-3 border-l border-[--border] pl-5",
+        "relative space-y-3 border-l border-border pl-5",
         className,
       )}
     >
@@ -32,7 +32,7 @@ export function RateHistoryList({
             aria-hidden="true"
             className={cn(
               "absolute -left-[1.4rem] top-1.5 h-2 w-2 rounded-full",
-              i === 0 ? "bg-[--color-brand-700]" : "bg-[--border]",
+              i === 0 ? "bg-brand-700" : "bg-border",
             )}
           />
           <div className="flex items-baseline justify-between gap-3">
@@ -40,12 +40,12 @@ export function RateHistoryList({
               <span className="font-medium">
                 <MoneyDisplay cents={r.hourlyRateCents} monospace={false} />/hr
               </span>
-              <span className="ml-2 text-[--text-muted]">
+              <span className="ml-2 text-text-muted">
                 effective {r.effectiveFrom}
               </span>
             </div>
             {r.reason ? (
-              <span className="truncate text-xs text-[--text-muted]">{r.reason}</span>
+              <span className="truncate text-xs text-text-muted">{r.reason}</span>
             ) : null}
           </div>
         </li>

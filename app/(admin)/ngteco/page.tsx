@@ -27,7 +27,7 @@ export default async function NgtecoRunsPage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">NGTeco runs</h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Last {runs.length} import attempts, newest first.
         </p>
       </div>
@@ -58,7 +58,7 @@ export default async function NgtecoRunsPage() {
                     status={(r.state === "INGEST_FAILED" ? "INGEST_FAILED" : r.state) as never}
                   />
                 </CardHeader>
-                <CardContent className="flex items-center justify-between p-4 pt-2 text-xs text-[--text-muted]">
+                <CardContent className="flex items-center justify-between p-4 pt-2 text-xs text-text-muted">
                   <div>
                     Period: {p?.startDate} – {p?.endDate} · Duration {durationOf(r)} ·
                     {" "}Started {r.ingestStartedAt?.toISOString().slice(0, 19)}Z

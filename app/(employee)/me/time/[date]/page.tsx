@@ -66,23 +66,23 @@ export default async function EmployeeDay({
         </CardHeader>
         <CardContent className="space-y-2">
           {dayPunches.length === 0 ? (
-            <p className="text-sm text-[--text-muted]">{t("noPunches")}</p>
+            <p className="text-sm text-text-muted">{t("noPunches")}</p>
           ) : (
             dayPunches.map((p) => (
               <div
                 key={p.id}
-                className={`flex items-center justify-between text-sm rounded-[--radius-input] border border-[--border] px-3 py-2 ${
+                className={`flex items-center justify-between text-sm rounded-input border border-border px-3 py-2 ${
                   p.voidedAt ? "opacity-50 line-through" : ""
                 }`}
               >
                 <span>
-                  <span className="text-[--text-muted]">{t("in")}: </span>
+                  <span className="text-text-muted">{t("in")}: </span>
                   <span className="font-mono">{fmtTime(p.clockIn, company.timezone)}</span>
-                  <span className="text-[--text-muted] ml-3">{t("out")}: </span>
+                  <span className="text-text-muted ml-3">{t("out")}: </span>
                   <span className="font-mono">{fmtTime(p.clockOut, company.timezone)}</span>
                 </span>
                 {p.editedAt ? (
-                  <span className="flex items-center gap-1 text-xs text-[--text-muted]">
+                  <span className="flex items-center gap-1 text-xs text-text-muted">
                     <Pencil className="h-3 w-3" /> {t("edited")}
                   </span>
                 ) : null}

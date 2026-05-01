@@ -59,34 +59,34 @@ export function AuditRowDiff({
   const hasPayload = before !== null || after !== null;
   const changed = hasPayload ? diffKeys(before, after) : [];
   return (
-    <div className="rounded-[--radius-card] border border-[--border] bg-[--surface]">
+    <div className="rounded-card border border-border bg-surface">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={!hasPayload}
         className={cn(
           "w-full flex items-start gap-3 p-3 text-left text-xs",
-          hasPayload ? "hover:bg-[--surface-2]" : "opacity-90 cursor-default",
+          hasPayload ? "hover:bg-surface-2" : "opacity-90 cursor-default",
         )}
       >
-        <span className="shrink-0 text-[--text-muted]">
+        <span className="shrink-0 text-text-muted">
           {hasPayload ? (
             open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
           ) : (
             <span className="block h-4 w-4" />
           )}
         </span>
-        <span className="font-mono text-[11px] text-[--text-muted] w-44 shrink-0">{when}</span>
+        <span className="font-mono text-[11px] text-text-muted w-44 shrink-0">{when}</span>
         <span className="font-medium w-48 shrink-0 truncate">{action}</span>
         <span className="flex-1 truncate">
           {targetType}
-          <span className="ml-1 text-[--text-muted]">{targetId}</span>
+          <span className="ml-1 text-text-muted">{targetId}</span>
         </span>
-        <span className="w-32 shrink-0 truncate text-[--text-muted]">
+        <span className="w-32 shrink-0 truncate text-text-muted">
           {actorRole ?? "—"}
           {actorId ? ` ${actorId.slice(0, 8)}…` : ""}
         </span>
-        <span className="w-24 shrink-0 truncate text-[--text-muted]">{ip ?? "—"}</span>
+        <span className="w-24 shrink-0 truncate text-text-muted">{ip ?? "—"}</span>
         {changed.length > 0 ? (
           <span className="rounded bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5">
             {changed.length} change{changed.length === 1 ? "" : "s"}
@@ -94,20 +94,20 @@ export function AuditRowDiff({
         ) : null}
       </button>
       {open && hasPayload && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-[--border] p-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-border p-3">
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[--text-muted] mb-1">
+            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">
               Before
             </div>
-            <pre className="text-[11px] bg-[--surface-2] rounded p-2 overflow-auto max-h-72">
+            <pre className="text-[11px] bg-surface-2 rounded p-2 overflow-auto max-h-72">
               {fmt(before)}
             </pre>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-[--text-muted] mb-1">
+            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">
               After
             </div>
-            <pre className="text-[11px] bg-[--surface-2] rounded p-2 overflow-auto max-h-72">
+            <pre className="text-[11px] bg-surface-2 rounded p-2 overflow-auto max-h-72">
               {fmt(after)}
             </pre>
           </div>

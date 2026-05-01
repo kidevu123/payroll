@@ -40,7 +40,7 @@ export default async function EmployeeTime() {
     return (
       <main className="px-4 py-6">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-[--text-muted] mt-2">
+        <p className="text-sm text-text-muted mt-2">
           Account not linked to an employee.
         </p>
       </main>
@@ -75,7 +75,7 @@ export default async function EmployeeTime() {
     <main className="px-4 py-6 space-y-4">
       <header>
         <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-[--text-muted]">{t("subtitle")}</p>
+        <p className="text-sm text-text-muted">{t("subtitle")}</p>
       </header>
 
       {recent.length === 0 ? (
@@ -95,7 +95,7 @@ export default async function EmployeeTime() {
                     {t("weekOf", { date: wk })}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="divide-y divide-[--border]">
+                <CardContent className="divide-y divide-border">
                   {[...days.keys()].sort().map((d) => {
                     const list = days.get(d)!;
                     let totalMs = 0;
@@ -109,10 +109,10 @@ export default async function EmployeeTime() {
                       <Link
                         key={d}
                         href={`/me/time/${d}`}
-                        className="flex items-center justify-between py-2 text-sm hover:bg-[--surface-2] -mx-2 px-2 rounded"
+                        className="flex items-center justify-between py-2 text-sm hover:bg-surface-2 -mx-2 px-2 rounded"
                       >
                         <span className="font-medium">{d}</span>
-                        <span className="flex items-center gap-3 text-xs text-[--text-muted]">
+                        <span className="flex items-center gap-3 text-xs text-text-muted">
                           {edited ? <span>{t("edited")}</span> : null}
                           <HoursDisplay
                             hours={totalMs / MS_PER_HOUR}

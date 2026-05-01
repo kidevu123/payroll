@@ -124,58 +124,58 @@ export default async function PeriodReviewPage({
         </CardHeader>
         <CardContent>
           {rendered.length === 0 ? (
-            <p className="text-sm text-[--text-muted]">
+            <p className="text-sm text-text-muted">
               No punches or task pay recorded yet.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-xs text-[--text-muted]">
+                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
                   <tr>
-                    <th className="py-2 pr-3 font-medium">Employee</th>
-                    <th className="py-2 px-3 font-medium text-right">Hours</th>
-                    <th className="py-2 px-3 font-medium text-right">Gross</th>
-                    <th className="py-2 px-3 font-medium text-right">Rounded</th>
-                    <th className="py-2 px-3 font-medium text-right">Issues</th>
+                    <th className="py-2.5 pr-3 font-medium">Employee</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Hours</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Gross</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Rounded</th>
+                    <th className="py-2.5 px-3 font-medium text-right">Issues</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {rendered.map(({ employee, result, incomplete }) => (
-                    <tr key={employee.id} className="border-t border-[--border]">
-                      <td className="py-2 pr-3">
+                    <tr key={employee.id} className="hover:bg-surface-2/40 transition-colors">
+                      <td className="py-2.5 pr-3">
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="hover:underline"
+                          className="font-medium hover:text-brand-700 hover:underline underline-offset-2"
                         >
                           {employee.displayName}
                         </Link>
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <HoursDisplay
                           hours={result.totalHours}
                           decimals={payRules.hoursDecimalPlaces}
                         />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <MoneyDisplay cents={result.grossCents} />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
                         <MoneyDisplay cents={result.roundedCents} />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-2.5 px-3 text-right">
                         {incomplete > 0 ? (
-                          <span className="text-amber-700">
+                          <span className="text-warn-700">
                             {incomplete} incomplete
                           </span>
                         ) : (
-                          <span className="text-[--text-muted]">—</span>
+                          <span className="text-text-subtle">—</span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot className="text-sm font-medium">
-                  <tr className="border-t-2 border-[--border]">
+                  <tr className="border-t-2 border-border">
                     <td className="py-2 pr-3">Totals</td>
                     <td className="py-2 px-3 text-right">
                       <HoursDisplay
@@ -200,7 +200,7 @@ export default async function PeriodReviewPage({
 
       <LockButtons period={period} />
 
-      <p className="text-xs text-[--text-muted]">
+      <p className="text-xs text-text-muted">
         Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.
       </p>
     </div>

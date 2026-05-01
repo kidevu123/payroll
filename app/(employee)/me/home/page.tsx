@@ -34,7 +34,7 @@ export default async function EmployeeHome() {
         <h1 className="text-xl font-semibold">
           {t("greeting", { name: session.user.email })}
         </h1>
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Your account is not linked to an employee record.
         </p>
       </main>
@@ -117,7 +117,7 @@ export default async function EmployeeHome() {
         </CardHeader>
         <CardContent className="space-y-2">
           {alerts.length === 0 ? (
-            <p className="text-sm text-[--text-muted]">{t("alertsEmpty")}</p>
+            <p className="text-sm text-text-muted">{t("alertsEmpty")}</p>
           ) : (
             alerts.map((a) => (
               <AlertCard key={a.id} alertId={a.id} date={a.date} issue={a.issue} />

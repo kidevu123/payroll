@@ -40,7 +40,7 @@ export function WeekStatsCard({
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-wide text-[--text-muted]">
+      <div className="text-[11px] uppercase tracking-wide text-text-muted">
         {label}
       </div>
       <div className="text-lg font-semibold mt-1">{children}</div>

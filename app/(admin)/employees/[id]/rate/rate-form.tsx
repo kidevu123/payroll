@@ -24,7 +24,7 @@ export function RateForm({
         setPending(false);
         if (result?.error) setError(result.error);
       }}
-      className="space-y-4 rounded-[--radius-card] border border-[--border] bg-[--surface] p-5"
+      className="space-y-4 rounded-card border border-border bg-surface p-5"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1">

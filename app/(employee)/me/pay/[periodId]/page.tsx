@@ -27,7 +27,7 @@ export default async function EmployeePayslipViewer({
   if (!session.user.employeeId) {
     return (
       <div className="p-6 max-w-xl mx-auto">
-        <p className="text-sm text-[--text-muted]">
+        <p className="text-sm text-text-muted">
           Your account is not linked to an employee record.
         </p>
       </div>
@@ -58,7 +58,7 @@ export default async function EmployeePayslipViewer({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-[--text-muted]">
+            <p className="text-sm text-text-muted">
               When the run publishes, a PDF lands here automatically.
             </p>
           </CardContent>
@@ -100,7 +100,7 @@ export default async function EmployeePayslipViewer({
                 <iframe
                   title={`Payslip ${period.startDate}`}
                   src={`/api/payslips/${payslip.id}/pdf`}
-                  className="w-full h-[70vh] rounded-[--radius-card] border border-[--border] bg-[--surface]"
+                  className="w-full h-[70vh] rounded-card border border-border bg-surface"
                 />
               );
             }
@@ -139,7 +139,7 @@ export default async function EmployeePayslipViewer({
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-xs text-[--text-muted]">{label}</div>
+      <div className="text-xs text-text-muted">{label}</div>
       <div className="font-semibold text-base">{children}</div>
     </div>
   );

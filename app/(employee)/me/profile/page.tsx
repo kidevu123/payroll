@@ -20,7 +20,7 @@ export default async function EmployeeProfile() {
     return (
       <main className="px-4 py-6 space-y-4">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-[--text-muted]">{t("noEmployeeRecord")}</p>
+        <p className="text-sm text-text-muted">{t("noEmployeeRecord")}</p>
         <form action={signOutAction}>
           <Button type="submit" variant="secondary">
             <LogOut className="h-4 w-4" /> {t("signOut")}
@@ -52,7 +52,7 @@ export default async function EmployeeProfile() {
               <Input value={employee.legalName} readOnly />
             </div>
           </div>
-          <p className="text-xs text-[--text-muted]">{t("changesNeedApproval")}</p>
+          <p className="text-xs text-text-muted">{t("changesNeedApproval")}</p>
         </CardContent>
       </Card>
 

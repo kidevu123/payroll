@@ -49,7 +49,7 @@ export function SecurityForm({ settings }: { settings: SecuritySettings }) {
             />
             <span>
               <span className="font-medium">Require 2FA for admin accounts</span>
-              <span className="block text-xs text-[--text-muted]">
+              <span className="block text-xs text-text-muted">
                 Recommended for production, off by default per the rebuild
                 contract.
               </span>

@@ -36,7 +36,7 @@ export default async function NgtecoRunDetail({
         <h1 className="text-2xl font-semibold font-mono">{run.id}</h1>
         <StatusPill status={run.state as never} />
       </div>
-      <p className="text-sm text-[--text-muted]">
+      <p className="text-sm text-text-muted">
         Period {period?.startDate} – {period?.endDate}
       </p>
 
@@ -48,12 +48,12 @@ export default async function NgtecoRunDetail({
           <CardContent>
             <p className="font-mono text-xs whitespace-pre-wrap">{run.lastError}</p>
             {run.ingestScreenshotPath && (
-              <p className="mt-2 text-xs text-[--text-muted]">
+              <p className="mt-2 text-xs text-text-muted">
                 Screenshot on the LXC: <span className="font-mono">{run.ingestScreenshotPath}</span>
               </p>
             )}
             {run.ingestLogPath && (
-              <p className="text-xs text-[--text-muted]">
+              <p className="text-xs text-text-muted">
                 Page HTML: <span className="font-mono">{run.ingestLogPath}</span>
               </p>
             )}
@@ -96,25 +96,25 @@ function ExceptionCard({
       <CardHeader>
         <CardTitle className="text-base">
           {title}{" "}
-          <span className="text-sm font-normal text-[--text-muted]">{rows.length}</span>
+          <span className="text-sm font-normal text-text-muted">{rows.length}</span>
         </CardTitle>
-        <p className="text-xs text-[--text-muted]">{subtitle}</p>
+        <p className="text-xs text-text-muted">{subtitle}</p>
       </CardHeader>
       <CardContent className="space-y-1.5">
         {rows.length === 0 ? (
-          <p className="text-xs text-[--text-muted]">None.</p>
+          <p className="text-xs text-text-muted">None.</p>
         ) : (
           rows.slice(0, 8).map((r) => (
             <div
               key={r.id}
-              className="rounded-[--radius-input] border border-[--border] bg-[--surface-2]/50 px-2 py-1 text-xs"
+              className="rounded-input border border-border bg-surface-2/50 px-2 py-1 text-xs"
             >
               <span className="font-mono">{r.ngtecoEmployeeRef ?? "(no ref)"}</span>
             </div>
           ))
         )}
         {rows.length > 8 && (
-          <p className="text-xs text-[--text-muted]">
+          <p className="text-xs text-text-muted">
             +{rows.length - 8} more.
           </p>
         )}
