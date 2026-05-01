@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listShifts } from "@/lib/db/queries/shifts";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { EmployeeForm } from "../../employee-form";
 
 export default async function EditEmployeePage({
@@ -12,9 +13,10 @@ export default async function EditEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [employee, shifts] = await Promise.all([
+  const [employee, shifts, schedules] = await Promise.all([
     getEmployee(id),
     listShifts({ includeArchived: false }),
+    listSchedules({ includeInactive: true }),
   ]);
   if (!employee) notFound();
 
@@ -32,7 +34,12 @@ export default async function EditEmployeePage({
           don&apos;t shift.
         </p>
       </div>
-      <EmployeeForm shifts={shifts} mode="edit" employee={employee} />
+      <EmployeeForm
+        shifts={shifts}
+        schedules={schedules}
+        mode="edit"
+        employee={employee}
+      />
     </div>
   );
 }

@@ -2,15 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { Employee, Shift } from "@/lib/db/schema";
+import type { Employee, PaySchedule, Shift } from "@/lib/db/schema";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createEmployeeAction, updateEmployeeAction } from "./actions";
 
 type Props =
-  | { mode: "create"; shifts: Shift[]; employee?: undefined }
-  | { mode: "edit"; shifts: Shift[]; employee: Employee };
+  | { mode: "create"; shifts: Shift[]; schedules: PaySchedule[]; employee?: undefined }
+  | { mode: "edit"; shifts: Shift[]; schedules: PaySchedule[]; employee: Employee };
 
 export function EmployeeForm(props: Props) {
   const [error, setError] = React.useState<string | null>(null);
@@ -110,7 +110,26 @@ export function EmployeeForm(props: Props) {
             className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
           >
             <option value="HOURLY">Hourly</option>
-            <option value="FLAT_TASK">Flat / task</option>
+            <option value="FLAT_TASK">Flat / task (per-task contractor)</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="payScheduleId">Pay schedule</Label>
+          <select
+            id="payScheduleId"
+            name="payScheduleId"
+            defaultValue={e?.payScheduleId ?? ""}
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+          >
+            <option value="">Unassigned (no scheduled run)</option>
+            {props.schedules
+              .filter((s) => s.active || s.id === e?.payScheduleId)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.active ? "" : " (inactive)"}
+                </option>
+              ))}
           </select>
         </div>
         {props.mode === "create" && (

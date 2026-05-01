@@ -21,6 +21,7 @@ const createSchema = z.object({
   hiredOn: z.string().date(),
   shiftId: z.string().uuid().optional().nullable(),
   payType: z.enum(["HOURLY", "FLAT_TASK"]),
+  payScheduleId: z.string().uuid().optional().nullable(),
   initialHourlyRateCents: z
     .union([z.coerce.number().int().min(0), z.literal("").transform(() => null)])
     .nullable()
@@ -41,6 +42,7 @@ export async function createEmployeeAction(
     hiredOn: formData.get("hiredOn"),
     shiftId: formData.get("shiftId") || null,
     payType: formData.get("payType") || "HOURLY",
+    payScheduleId: formData.get("payScheduleId") || null,
     initialHourlyRateCents: formData.get("initialHourlyRateCents"),
     language: formData.get("language") || "en",
     notes: formData.get("notes") || null,
@@ -58,6 +60,7 @@ export async function createEmployeeAction(
       hiredOn: d.hiredOn,
       shiftId: d.shiftId ?? null,
       payType: d.payType,
+      payScheduleId: d.payScheduleId ?? null,
       language: d.language,
       notes: d.notes ?? null,
       ...(d.initialHourlyRateCents !== undefined && d.initialHourlyRateCents !== null
@@ -77,6 +80,7 @@ const updateSchema = z.object({
   phone: z.string().max(40).optional().nullable(),
   shiftId: z.string().uuid().optional().nullable(),
   payType: z.enum(["HOURLY", "FLAT_TASK"]),
+  payScheduleId: z.string().uuid().optional().nullable(),
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),
 });
@@ -94,6 +98,7 @@ export async function updateEmployeeAction(
     phone: formData.get("phone") || null,
     shiftId: formData.get("shiftId") || null,
     payType: formData.get("payType"),
+    payScheduleId: formData.get("payScheduleId") || null,
     language: formData.get("language"),
     notes: formData.get("notes") || null,
   });
@@ -110,6 +115,7 @@ export async function updateEmployeeAction(
       phone: d.phone ?? null,
       shiftId: d.shiftId ?? null,
       payType: d.payType,
+      payScheduleId: d.payScheduleId ?? null,
       language: d.language,
       notes: d.notes ?? null,
     },

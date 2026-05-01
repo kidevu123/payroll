@@ -12,6 +12,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listShifts } from "@/lib/db/queries/shifts";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listPunches } from "@/lib/db/queries/punches";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
 
@@ -24,13 +25,17 @@ export default async function EmployeeDetailPage({
   const employee = await getEmployee(id);
   if (!employee) notFound();
 
-  const [allShifts, rates, recentPunches, company] = await Promise.all([
+  const [allShifts, rates, recentPunches, company, schedules] = await Promise.all([
     listShifts({ includeArchived: true }),
     listRates(employee.id),
     listPunches({ employeeId: employee.id, includeVoided: false }),
     getSetting("company"),
+    listSchedules({ includeInactive: true }),
   ]);
   const shift = employee.shiftId ? allShifts.find((s) => s.id === employee.shiftId) : null;
+  const schedule = employee.payScheduleId
+    ? schedules.find((s) => s.id === employee.payScheduleId)
+    : null;
   const lastTen = recentPunches.slice(-10).reverse();
 
   return (
@@ -71,14 +76,21 @@ export default async function EmployeeDetailPage({
             <Field label="Hired on" value={employee.hiredOn} />
             <Field label="Pay type" value={employee.payType === "HOURLY" ? "Hourly" : "Flat / task"} />
             <Field
-              label="Current rate"
+              label={employee.payType === "FLAT_TASK" ? "Default flat rate" : "Current rate"}
               value={
                 employee.hourlyRateCents !== null ? (
-                  <span><MoneyDisplay cents={employee.hourlyRateCents} monospace={false} />/hr</span>
+                  <span>
+                    <MoneyDisplay cents={employee.hourlyRateCents} monospace={false} />
+                    {employee.payType === "FLAT_TASK" ? " per task" : "/hr"}
+                  </span>
                 ) : (
                   "—"
                 )
               }
+            />
+            <Field
+              label="Pay schedule"
+              value={schedule ? schedule.name : "Unassigned"}
             />
             <Field label="Language" value={employee.language === "en" ? "English" : "Español"} />
             <Field

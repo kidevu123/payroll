@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Building2,
   CalendarRange,
+  CalendarClock,
   Calculator,
   Layers,
   Workflow,
@@ -9,15 +10,20 @@ import {
   ShieldCheck,
   PartyPopper,
   Clock4,
+  Image as ImageIcon,
+  CircleDollarSign,
 } from "lucide-react";
 
 const TABS = [
   { href: "/settings/company", label: "Company", icon: Building2 },
+  { href: "/settings/branding", label: "Branding", icon: ImageIcon },
   { href: "/settings/pay-periods", label: "Pay periods", icon: CalendarRange },
+  { href: "/settings/pay-schedules", label: "Pay schedules", icon: CalendarClock },
   { href: "/settings/pay-rules", label: "Pay rules", icon: Calculator },
   { href: "/settings/shifts", label: "Shifts", icon: Layers },
   { href: "/settings/automation", label: "Automation", icon: Clock4 },
   { href: "/settings/ngteco", label: "NGTeco", icon: Workflow },
+  { href: "/settings/zoho", label: "Zoho", icon: CircleDollarSign },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/security", label: "Security", icon: ShieldCheck },
   { href: "/settings/holidays", label: "Holidays", icon: PartyPopper },

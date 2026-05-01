@@ -1,8 +1,12 @@
 import { listActiveShifts } from "@/lib/db/queries/shifts";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { EmployeeForm } from "../employee-form";
 
 export default async function NewEmployeePage() {
-  const shifts = await listActiveShifts();
+  const [shifts, schedules] = await Promise.all([
+    listActiveShifts(),
+    listSchedules(),
+  ]);
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -11,7 +15,7 @@ export default async function NewEmployeePage() {
           Hourly rate becomes the first row in the rate-history timeline.
         </p>
       </div>
-      <EmployeeForm shifts={shifts} mode="create" />
+      <EmployeeForm shifts={shifts} schedules={schedules} mode="create" />
     </div>
   );
 }
