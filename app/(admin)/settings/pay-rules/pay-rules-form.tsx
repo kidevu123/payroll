@@ -4,19 +4,12 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { PayRulesSettings } from "@/lib/settings/schemas";
 import { savePayRules } from "./actions";
 
 const RULES = [
   { value: "NONE", label: "None — pay exact computed amount" },
-  { value: "NEAREST_DOLLAR", label: "Nearest dollar (banker's)" },
+  { value: "NEAREST_DOLLAR", label: "Nearest dollar (half-up)" },
   { value: "NEAREST_QUARTER", label: "Nearest $0.25" },
   { value: "NEAREST_FIFTEEN_MIN_HOURS", label: "Nearest 0.25h hours per day" },
 ];
@@ -28,15 +21,9 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
   const [otEnabled, setOtEnabled] = React.useState(settings.overtime.enabled);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pay rules</CardTitle>
-        <CardDescription>
-          Rounding, decimal places, optional overtime.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Pay rules</h2>
+      <form
           action={async (form) => {
             setPending(true);
             setError(null);
@@ -128,7 +115,6 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
