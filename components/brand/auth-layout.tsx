@@ -38,35 +38,46 @@ export async function AuthLayout({
           the @theme default brand-600/800. */}
       <aside
         aria-hidden="true"
-        className="hidden lg:flex relative flex-col justify-between p-12 overflow-hidden text-brand-fg"
+        className="hidden lg:flex relative flex-col justify-between p-14 overflow-hidden text-brand-fg"
         style={{
           backgroundImage:
-            "linear-gradient(135deg, color-mix(in oklab, var(--color-brand-700) 100%, black 20%) 0%, var(--color-brand-700) 55%, color-mix(in oklab, var(--color-brand-700) 100%, white 6%) 100%)",
+            "radial-gradient(at 25% 15%, color-mix(in oklab, var(--color-brand-700) 100%, white 10%) 0%, transparent 55%), radial-gradient(at 80% 90%, color-mix(in oklab, var(--color-brand-700) 100%, black 25%) 0%, transparent 60%), linear-gradient(135deg, color-mix(in oklab, var(--color-brand-700) 100%, black 18%) 0%, var(--color-brand-700) 55%, color-mix(in oklab, var(--color-brand-700) 100%, black 12%) 100%)",
         }}
       >
-        {/* Soft geometric overlay — pure CSS, no JS animation. */}
+        {/* Mesh dot overlay — premium subtle texture. */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 opacity-[0.08] pointer-events-none"
+          className="absolute inset-0 opacity-[0.07] pointer-events-none"
           style={{
             backgroundImage:
               "radial-gradient(circle at 20% 20%, white 1px, transparent 1px), radial-gradient(circle at 80% 60%, white 1px, transparent 1px)",
             backgroundSize: "32px 32px, 48px 48px",
           }}
         />
+        {/* Soft glow accents */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-32 -left-32 h-80 w-80 rounded-full blur-3xl opacity-30 pointer-events-none"
+          style={{ background: "color-mix(in oklab, var(--color-brand-700) 100%, white 35%)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-40 -right-24 h-96 w-96 rounded-full blur-3xl opacity-25 pointer-events-none"
+          style={{ background: "color-mix(in oklab, var(--color-brand-700) 100%, black 30%)" }}
+        />
         <div className="relative">
-          <Wordmark name={company.name} logoPath={company.logoPath} size="lg" />
+          <Wordmark name={company.name} logoPath={company.logoPath} size="2xl" />
         </div>
         <div className="relative max-w-md">
-          <p className="text-2xl font-semibold leading-snug tracking-tight">
-            Payroll, in five minutes a week.
+          <p className="text-3xl font-semibold leading-tight tracking-tight">
+            Where every hour is accounted for.
           </p>
-          <p className="mt-3 text-sm leading-relaxed opacity-85">
-            One screen. One button. The rest is automatic — punches, payslips,
-            and the right notification at the right time.
+          <p className="mt-4 text-sm leading-relaxed opacity-85">
+            Punches, payslips, and approvals — all in one place. Built for the
+            team that runs the floor, not the spreadsheet.
           </p>
         </div>
-        <div className="relative text-xs opacity-70 font-mono">
+        <div className="relative text-xs opacity-70 font-mono tracking-wider uppercase">
           {company.name}
         </div>
       </aside>
@@ -75,8 +86,8 @@ export async function AuthLayout({
       <main className="flex flex-col items-center justify-center px-6 py-10 sm:px-10 page-enter">
         <div className="w-full max-w-sm">
           {/* Mobile-only brand row */}
-          <div className="mb-8 lg:hidden">
-            <Wordmark name={company.name} logoPath={company.logoPath} size="md" />
+          <div className="mb-10 lg:hidden flex justify-center">
+            <Wordmark name={company.name} logoPath={company.logoPath} size="xl" />
           </div>
           {eyebrow ? (
             <p className="text-caption uppercase tracking-wide text-text-subtle mb-2">

@@ -152,6 +152,60 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+  Premium ambient page background. Two soft brand-tinted radial washes plus
+  a faint diagonal gradient on top of --color-page, painted via a fixed
+  pseudo-element so it doesn't scroll with content and never affects layout.
+  Opacity is intentionally low — content surfaces (cards) still sit on the
+  flat --color-surface tone, this just lifts the negative space around them.
+*/
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(at 12% 10%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 86%) 0%, transparent 45%),
+    radial-gradient(at 88% 92%, color-mix(in oklab, var(--color-brand-900) 100%, transparent 88%) 0%, transparent 50%),
+    linear-gradient(135deg, transparent 0%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 96%) 100%);
+}
+
+/* Subtle grain/dot mesh — adds depth without screaming. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--color-text) 100%, transparent 92%) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body::before {
+    background-image:
+      radial-gradient(at 12% 10%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 80%) 0%, transparent 45%),
+      radial-gradient(at 88% 92%, color-mix(in oklab, var(--color-brand-900) 100%, transparent 75%) 0%, transparent 50%),
+      linear-gradient(135deg, transparent 0%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 92%) 100%);
+  }
+  body::after {
+    opacity: 0.5;
+    background-image:
+      radial-gradient(circle at 1px 1px, color-mix(in oklab, white 100%, transparent 94%) 1px, transparent 0);
+  }
+}
+
+/* Print: kill ambient background completely. */
+@media print {
+  body::before,
+  body::after {
+    display: none !important;
+  }
+}
+
 /* Tabular numerics in the same JetBrains Mono used by tables and stats. */
 .tabnum,
 td.num,

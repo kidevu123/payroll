@@ -40,9 +40,11 @@ async function snap(ctx: BrowserContext, base: string, shot: Shot, outDir: strin
   await page.setViewportSize(VIEWPORT[shot.viewport]);
   const url = base + shot.path;
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 20000 });
-    // Wait for fonts so the wordmark doesn't render in fallback Inter.
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+    // Wait for fonts so the wordmark doesn't render in fallback Inter, and
+    // give the page a beat to settle visual transitions (page-enter is 150ms).
     await page.evaluate(() => (document as Document & { fonts?: { ready: Promise<void> } }).fonts?.ready);
+    await page.waitForTimeout(400);
     const out = join(outDir, `${shot.name}.png`);
     await page.screenshot({ path: out, fullPage: shot.viewport === "desktop" });
     console.log(`OK  ${shot.name}  ${url}  -> ${out}`);
@@ -62,7 +64,7 @@ async function signIn(
 ): Promise<boolean> {
   const page = await ctx.newPage();
   try {
-    await page.goto(base + "/login", { waitUntil: "networkidle", timeout: 20000 });
+    await page.goto(base + "/login", { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.fill('input[name="email"]', email);
     await page.fill('input[name="password"]', password);
     await Promise.all([

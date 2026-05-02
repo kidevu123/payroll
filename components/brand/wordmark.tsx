@@ -14,15 +14,17 @@ import { cn } from "@/lib/utils";
 export type WordmarkProps = {
   name: string;
   logoPath?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   showName?: boolean;
   className?: string;
 };
 
 const SIZES = {
   sm: { box: "h-6 w-6", logoH: "h-7", text: "text-sm", radius: "rounded-md" },
-  md: { box: "h-8 w-8", logoH: "h-9", text: "text-base", radius: "rounded-lg" },
-  lg: { box: "h-10 w-10", logoH: "h-11", text: "text-lg", radius: "rounded-xl" },
+  md: { box: "h-8 w-8", logoH: "h-12", text: "text-base", radius: "rounded-lg" },
+  lg: { box: "h-10 w-10", logoH: "h-16", text: "text-lg", radius: "rounded-xl" },
+  xl: { box: "h-14 w-14", logoH: "h-24", text: "text-2xl", radius: "rounded-2xl" },
+  "2xl": { box: "h-20 w-20", logoH: "h-36", text: "text-3xl", radius: "rounded-2xl" },
 } as const;
 
 function initialsFor(name: string): string {
