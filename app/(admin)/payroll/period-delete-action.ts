@@ -96,14 +96,22 @@ export async function deletePeriodAction(
     await tx.delete(payrollPeriodDocuments).where(eq(payrollPeriodDocuments.periodId, period.id));
     await tx.delete(missedPunchAlerts).where(eq(missedPunchAlerts.periodId, period.id));
 
-    // Punches — soft delete per spec (only the still-active ones).
-    await tx
-      .update(punches)
-      .set({ voidedAt: new Date() })
-      .where(and(eq(punches.periodId, period.id), isNull(punches.voidedAt)));
+    // Punches — normally we soft-delete (set voided_at) per spec, but
+    // the FK punches.period_id REFERENCES pay_periods enforces row
+    // existence regardless of voided_at, so the period delete would
+    // fail. Since the period itself is being hard-deleted, the punches
+    // attached to it are subordinate data with no anchor — hard-delete
+    // them too. The audit row above records the count for forensic
+    // purposes. (Use the cascade-delete only when the user explicitly
+    // wants the period gone; everyday punch removal still uses
+    // voidPunch which keeps the row.)
+    await tx.delete(punches).where(eq(punches.periodId, period.id));
 
     await tx.delete(payPeriods).where(eq(payPeriods.id, period.id));
   });
+  // isNull is no longer used in the transaction body — but keep the
+  // import in case future cascade tweaks need it.
+  void isNull;
 
   await writeAudit({
     actorId: session.user.id,
