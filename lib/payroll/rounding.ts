@@ -18,18 +18,23 @@ export type RoundingRule =
   | "NEAREST_FIFTEEN_MIN_HOURS";
 
 /**
- * Round cents to a quantum (in cents, ≥ 2) using banker's rounding
- * (half-to-even). Banker's matches the "NEAREST_DOLLAR" rule's payroll
- * convention so a stream of $0.50-half rounds doesn't bias the total upward.
+ * Round cents to a quantum (in cents, ≥ 2) using **half-up** rounding —
+ * the rule the owner's legacy admin reports use. We previously used
+ * banker's (half-to-even), which silently underpaid by $1 every time a
+ * gross landed on an exact $0.50 (e.g. $580.50 → $580 banker's vs $581
+ * half-up). Half-up is the conventional payroll expectation in the US
+ * for "round to whole dollars" and matches the legacy reference output.
  */
-function bankersRound(cents: number, quantum: number): number {
-  const q = Math.trunc(cents / quantum);
-  const remainder = cents - q * quantum;
+function halfUpRound(cents: number, quantum: number): number {
+  // Math.trunc + sign handling so we round AWAY from zero on .5 (which
+  // for cents is always positive in our domain, but kept defensive).
+  const sign = cents < 0 ? -1 : 1;
+  const abs = Math.abs(cents);
+  const q = Math.trunc(abs / quantum);
+  const remainder = abs - q * quantum;
   const half = quantum / 2;
-  if (remainder > half) return (q + 1) * quantum;
-  if (remainder < half) return q * quantum;
-  // Exactly half — pick the even multiple.
-  return (q % 2 === 0 ? q : q + 1) * quantum;
+  // half-up: ≥ half rounds up.
+  return sign * (remainder >= half ? (q + 1) * quantum : q * quantum);
 }
 
 /**
@@ -43,9 +48,9 @@ export function roundCents(cents: number, rule: RoundingRule): number {
     case "NEAREST_FIFTEEN_MIN_HOURS":
       return cents;
     case "NEAREST_DOLLAR":
-      return bankersRound(cents, 100);
+      return halfUpRound(cents, 100);
     case "NEAREST_QUARTER":
-      return bankersRound(cents, 25);
+      return halfUpRound(cents, 25);
   }
 }
 

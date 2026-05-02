@@ -199,54 +199,53 @@ export default async function PeriodReviewPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/reports">
-              <ArrowLeft className="h-4 w-4" /> All reports
-            </Link>
-          </Button>
-          <div className="mt-2 flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {formatRange(period.startDate, period.endDate)}
-            </h1>
-            <StatusPill status={period.state} />
-            {runSchedule && (
-              <span className="rounded-input bg-surface-3 px-2 py-0.5 text-xs text-text-muted">
-                {runSchedule.name}
-              </span>
-            )}
-          </div>
-          {run && (
-            <p className="mt-1 text-sm text-text-muted">
-              Created by{" "}
-              <span className="font-medium text-text">
-                {run.createdByName ?? "system"}
-              </span>
-              {run.postedAt
-                ? ` · Posted ${run.postedAt.toISOString().slice(0, 10)}`
-                : null}
-              {" · "}
-              <MoneyDisplay
-                cents={run.totalAmountCents ?? totals.rounded}
-                monospace={false}
-              />
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {run?.pdfPath && (
-            <Button asChild variant="secondary" size="sm">
-              <Link
-                href={`/api/reports/${run.id}/pdf`}
-                target="_blank"
-                rel="noopener"
-              >
-                <Download className="h-4 w-4" /> Download PDF
+      {/* Sticky action bar — keeps state pill, totals, primary CTAs visible
+          even on long period pages. The lock/mark-paid action used to live at
+          page bottom, requiring 3000px of scroll on busy weeks. */}
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-page/95 backdrop-blur border-b border-border">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <Button asChild variant="ghost" size="sm" className="-ml-2 mb-1">
+              <Link href="/reports">
+                <ArrowLeft className="h-4 w-4" /> All reports
               </Link>
             </Button>
-          )}
-          {run && <PublishPortalButton run={run} />}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-semibold tracking-tight">
+                {formatRange(period.startDate, period.endDate)}
+              </h1>
+              <StatusPill status={period.state} />
+              {runSchedule && (
+                <span className="rounded-input bg-surface-3 px-2 py-0.5 text-xs text-text-muted">
+                  {runSchedule.name}
+                </span>
+              )}
+              <span className="text-sm text-text-muted">
+                {rendered.length} emp ·{" "}
+                <span className="font-medium text-text">
+                  <MoneyDisplay
+                    cents={run?.totalAmountCents ?? totals.rounded}
+                    monospace={false}
+                  />
+                </span>
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {run?.pdfPath && (
+              <Button asChild variant="secondary" size="sm">
+                <Link
+                  href={`/api/reports/${run.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Download className="h-4 w-4" /> PDF
+                </Link>
+              </Button>
+            )}
+            {run && <PublishPortalButton run={run} />}
+            <LockButtons period={period} />
+          </div>
         </div>
       </div>
 
@@ -470,8 +469,6 @@ export default async function PeriodReviewPage({
         initialDocs={payrollDocs}
         locked={period.state === "PAID"}
       />
-
-      <LockButtons period={period} />
 
       <p className="text-xs text-text-muted">
         Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.

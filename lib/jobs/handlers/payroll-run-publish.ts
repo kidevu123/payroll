@@ -205,15 +205,18 @@ export async function handlePayrollRunPublish(data: {
     const result = computePay({
       punches: ePunches,
       rateAt: (p) => {
-        const dayKey = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
-          .toISOString()
-          .slice(0, 10);
+        // Compare in company timezone — toISOString() is UTC, which would
+        // give the wrong day for a late-evening ET punch and retroactively
+        // apply a same-day rate change.
+        const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+        const dayKey = tzDayKey(d, company.timezone);
         for (const r of rates) {
           if (r.effectiveFrom <= dayKey) return r.hourlyRateCents;
         }
         return e.hourlyRateCents ?? 0;
       },
       taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
+      timezone: company.timezone,
       rules: {
         rounding: payRules.rounding,
         hoursDecimalPlaces: payRules.hoursDecimalPlaces,

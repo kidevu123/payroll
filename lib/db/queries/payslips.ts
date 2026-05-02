@@ -239,9 +239,10 @@ export async function recomputePayslip(
     const { getEmployee } = await import("@/lib/db/queries/employees");
     const { getSetting } = await import("@/lib/settings/runtime");
 
-    const [employee, payRules, allPunches, rates] = await Promise.all([
+    const [employee, payRules, company, allPunches, rates] = await Promise.all([
       getEmployee(before.employeeId),
       getSetting("payRules"),
+      getSetting("company"),
       listPunches({ employeeId: before.employeeId, periodId: before.periodId }),
       listRates(before.employeeId),
     ]);
@@ -251,15 +252,19 @@ export async function recomputePayslip(
     const result = computePay({
       punches,
       rateAt: (p) => {
-        const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
-          .toISOString()
-          .slice(0, 10);
+        // Compare in company tz, not UTC, so a late-night ET punch doesn't
+        // pick up a next-day rate change retroactively.
+        const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+        const day = new Intl.DateTimeFormat("en-CA", {
+          timeZone: company.timezone,
+        }).format(d);
         for (const r of rates) {
           if (r.effectiveFrom <= day) return r.hourlyRateCents;
         }
         return employee.hourlyRateCents ?? 0;
       },
       taskPay: [],
+      timezone: company.timezone,
       rules: {
         rounding: payRules.rounding,
         hoursDecimalPlaces: payRules.hoursDecimalPlaces,

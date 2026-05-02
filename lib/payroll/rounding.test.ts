@@ -12,38 +12,38 @@ describe("roundCents", () => {
     expect(roundCents(12345, "NEAREST_FIFTEEN_MIN_HOURS")).toBe(12345);
   });
 
-  it("NEAREST_DOLLAR rounds to whole dollars with banker's tie-break", () => {
+  it("NEAREST_DOLLAR rounds to whole dollars half-up", () => {
     expect(roundCents(0, "NEAREST_DOLLAR")).toBe(0);
     expect(roundCents(149, "NEAREST_DOLLAR")).toBe(100);
     expect(roundCents(151, "NEAREST_DOLLAR")).toBe(200);
-    // Exactly half — even multiple wins.
-    expect(roundCents(150, "NEAREST_DOLLAR")).toBe(200); // 1.50 -> 2 (even)
-    expect(roundCents(250, "NEAREST_DOLLAR")).toBe(200); // 2.50 -> 2 (even)
-    expect(roundCents(350, "NEAREST_DOLLAR")).toBe(400); // 3.50 -> 4 (even)
-    expect(roundCents(450, "NEAREST_DOLLAR")).toBe(400); // 4.50 -> 4 (even)
+    // Exactly half — half-up always rounds away from zero.
+    expect(roundCents(150, "NEAREST_DOLLAR")).toBe(200); // 1.50 -> 2
+    expect(roundCents(250, "NEAREST_DOLLAR")).toBe(300); // 2.50 -> 3
+    expect(roundCents(350, "NEAREST_DOLLAR")).toBe(400); // 3.50 -> 4
+    expect(roundCents(450, "NEAREST_DOLLAR")).toBe(500); // 4.50 -> 5
   });
 
-  it("NEAREST_QUARTER rounds to nearest $0.25 with banker's tie-break", () => {
+  it("NEAREST_QUARTER rounds to nearest $0.25 half-up", () => {
     expect(roundCents(0, "NEAREST_QUARTER")).toBe(0);
     expect(roundCents(11, "NEAREST_QUARTER")).toBe(0);
     expect(roundCents(13, "NEAREST_QUARTER")).toBe(25);
     expect(roundCents(36, "NEAREST_QUARTER")).toBe(25);
     expect(roundCents(38, "NEAREST_QUARTER")).toBe(50);
-    // Exactly half (12.5 cents into a 25-quantum) — even multiple wins.
-    // 12 -> nearest is 0 since 12 < 12.5; 13 -> 25.
-    // For exact 12.5 we'd need fractional cents; integer cents make exact-half rare,
-    // but exercise the path: 75 vs 50 at remainder 12.5 only happens at 62 or 87.
-    // 62: q=2 (50), remainder 12 (< half 12.5) -> stays 50.
+    // Integer-cent quantum=25 has half=12.5 which integers can't hit exactly,
+    // so the half-up vs banker's distinction doesn't show here; just confirm
+    // straightforward boundaries.
     expect(roundCents(62, "NEAREST_QUARTER")).toBe(50);
     expect(roundCents(63, "NEAREST_QUARTER")).toBe(75);
   });
 
-  it("bankersRound's even-tie path is exercised when the half is integral", () => {
-    // Use NEAREST_DOLLAR (quantum=100, half=50) where remainder == half is reachable.
-    expect(roundCents(50, "NEAREST_DOLLAR")).toBe(0); // q=0 (even)
-    expect(roundCents(150, "NEAREST_DOLLAR")).toBe(200); // q=1 (odd) -> 2
-    expect(roundCents(2050, "NEAREST_DOLLAR")).toBe(2000); // q=20 (even)
-    expect(roundCents(2150, "NEAREST_DOLLAR")).toBe(2200); // q=21 (odd) -> 22
+  it("half-up always rounds .50 up (not to even)", () => {
+    // The rule we just switched away from (banker's) would round 50, 250,
+    // 2050 down to 0, 200, 2000. Half-up rounds them up. This is the
+    // "underpay by $1 every $0.50" bug we shipped a fix for.
+    expect(roundCents(50, "NEAREST_DOLLAR")).toBe(100);
+    expect(roundCents(150, "NEAREST_DOLLAR")).toBe(200);
+    expect(roundCents(2050, "NEAREST_DOLLAR")).toBe(2100);
+    expect(roundCents(2150, "NEAREST_DOLLAR")).toBe(2200);
   });
 });
 

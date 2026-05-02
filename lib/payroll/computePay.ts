@@ -39,6 +39,13 @@ export type ComputePayInput = {
   /** Returns the rate (in cents/hour) effective at the given punch's clockIn. */
   rateAt: (p: ComputeInputPunch) => number;
   taskPay: ComputeInputTask[];
+  /**
+   * IANA tz (e.g. "America/New_York") that day-keys are computed in. A punch
+   * at 22:00 ET on Sunday converts to 02:00 UTC Monday — without explicit
+   * timezone here we'd bucket those hours on Monday. Defaults to UTC for
+   * back-compat with old fixtures.
+   */
+  timezone?: string;
   rules: {
     rounding: RoundingRule;
     hoursDecimalPlaces: number;
@@ -69,10 +76,14 @@ function toDate(v: string | Date): Date {
   return v instanceof Date ? v : new Date(v);
 }
 
-function dayKey(d: Date): string {
-  // Use UTC fields — caller has already pre-shifted to company-tz wall-clock
-  // for fixture data, or a Date in UTC for production. This keeps the
-  // function deterministic across host TZs.
+function dayKey(d: Date, timezone: string | undefined): string {
+  // When a timezone is supplied, format the wall-clock calendar day in that
+  // zone via Intl. Without one, fall back to UTC for legacy fixtures (a 22:00
+  // ET punch lands on the wrong day in production unless the caller passes
+  // the company timezone).
+  if (timezone) {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
+  }
   const y = d.getUTCFullYear();
   const m = `${d.getUTCMonth() + 1}`.padStart(2, "0");
   const day = `${d.getUTCDate()}`.padStart(2, "0");
@@ -85,7 +96,7 @@ function roundHours(hours: number, decimals: number): number {
 }
 
 export function computePay(input: ComputePayInput): ComputePayResult {
-  const { punches, rateAt, taskPay, rules } = input;
+  const { punches, rateAt, taskPay, rules, timezone } = input;
 
   type DayBucket = { date: string; hours: number; cents: number };
   const buckets = new Map<string, DayBucket & { rateSum: number; rateWeight: number }>();
@@ -100,7 +111,7 @@ export function computePay(input: ComputePayInput): ComputePayResult {
     const ms = outT.getTime() - inT.getTime();
     if (ms <= 0) continue;
     const rawHours = ms / MS_PER_HOUR;
-    const date = dayKey(inT);
+    const date = dayKey(inT, timezone);
     const rate = rateAt(p);
     const bucket = buckets.get(date) ?? {
       date,
