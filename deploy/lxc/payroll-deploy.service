@@ -9,7 +9,11 @@ Type=oneshot
 Environment=PAYROLL_DIR=/opt/payroll
 Environment=PAYROLL_BRANCH=rebuild/foundation
 WorkingDirectory=/opt/payroll
-# Pull, and only rebuild + recreate if HEAD actually changed.
+# Pull, then rebuild iff (a) git HEAD changed OR (b) the running
+# container's stamped /app/.git-sha doesn't match git HEAD. The second
+# condition catches the historical silent-fail trap: a build error left
+# the timer thinking "no changes" forever even though the container was
+# stale.
 ExecStart=/bin/bash -c '\
   set -euo pipefail; \
   cd "$PAYROLL_DIR"; \
@@ -17,12 +21,16 @@ ExecStart=/bin/bash -c '\
   before=$(git rev-parse HEAD); \
   git reset --hard --quiet "origin/$PAYROLL_BRANCH"; \
   after=$(git rev-parse HEAD); \
-  if [ "$before" = "$after" ]; then \
-    echo "no changes ($after); ensuring services are up"; \
-    /usr/bin/docker compose up -d; \
-  else \
+  running=$(/usr/bin/docker compose exec -T app cat /app/.git-sha 2>/dev/null | tr -d "[:space:]" || true); \
+  if [ "$before" != "$after" ]; then \
     echo "deploying $before -> $after"; \
     /usr/bin/docker compose up -d --build; \
+  elif [ -n "$running" ] && [ "$running" != "$after" ]; then \
+    echo "container drift detected (running=$running, head=$after) — rebuilding"; \
+    /usr/bin/docker compose up -d --build; \
+  else \
+    echo "no changes ($after); ensuring services are up"; \
+    /usr/bin/docker compose up -d; \
   fi'
 
 [Install]

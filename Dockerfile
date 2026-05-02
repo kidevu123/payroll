@@ -42,11 +42,18 @@ COPY . .
 # Stamp the build with the git SHA + UTC timestamp. .git is in the build
 # context (see .dockerignore); if missing for any reason, fall back to
 # "unknown" rather than failing the build.
+#
+# The SHA is also written to /app/.git-sha so the deploy script can
+# compare the RUNNING container's SHA against git HEAD — without that,
+# a single failed build leaves the timer in "no changes" mode forever
+# (it compares HEAD-before-fetch vs HEAD-after-reset, both equal once
+# the failed reset already landed). See deploy/lxc/payroll-deploy.service.
 RUN GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
     && BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
     && echo "Building $GIT_SHA at $BUILD_AT" \
     && NEXT_PUBLIC_GIT_SHA=$GIT_SHA NEXT_PUBLIC_BUILD_AT=$BUILD_AT \
-       npm run build
+       npm run build \
+    && echo "$GIT_SHA" > /app/.git-sha
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: run
