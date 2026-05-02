@@ -253,7 +253,10 @@ export default async function PeriodReviewPage({
         </div>
       </div>
 
-      {/* TOP HALF: Employee totals */}
+      {/* Per-employee summary — each row expands inline to show that
+          employee's punches. Drops the separate Punches card so the
+          period detail page no longer requires scrolling past every
+          employee twice. */}
       <Card>
         <CardHeader>
           <CardTitle>Employee totals</CardTitle>
@@ -264,162 +267,84 @@ export default async function PeriodReviewPage({
               No punches or task pay recorded for this period.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-                  <tr>
-                    <th className="py-2.5 pr-3 font-medium">Employee</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Hours</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Gross</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Rounded</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Issues</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {rendered.map(({ employee, result, incomplete }) => (
-                    <tr key={employee.id} className="hover:bg-surface-2/40 transition-colors">
-                      <td className="py-2.5 pr-3">
-                        <Link
-                          href={`/employees/${employee.id}`}
-                          className="font-semibold hover:text-brand-700 hover:underline underline-offset-2"
-                        >
-                          {employee.displayName}
-                        </Link>
-                        <div className="text-xs text-text-muted">
-                          {employee.payType === "FLAT_TASK"
-                            ? `Per task · ${employee.hourlyRateCents !== null ? `$${(employee.hourlyRateCents / 100).toFixed(2)}` : "—"}`
-                            : employee.hourlyRateCents !== null
-                              ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
-                              : "—"}
+            <div className="space-y-0.5">
+              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                <div></div>
+                <div>Employee</div>
+                <div className="text-right">Hours</div>
+                <div className="text-right">Gross</div>
+                <div className="text-right">Rounded</div>
+                <div className="text-right">Issues</div>
+              </div>
+              <div className="divide-y divide-border">
+                {rendered.map(({ employee, result, incomplete, punches }) => {
+                  const ePunches = punches.filter((p) => !p.voidedAt);
+                  return (
+                    <details key={employee.id} className="group">
+                      <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
+                        <span className="text-text-subtle group-open:rotate-90 transition-transform">
+                          ▸
+                        </span>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/employees/${employee.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-semibold hover:text-brand-700 hover:underline underline-offset-2 truncate block"
+                          >
+                            {employee.displayName}
+                          </Link>
+                          <div className="text-xs text-text-muted">
+                            {employee.payType === "FLAT_TASK"
+                              ? `Per task · ${employee.hourlyRateCents !== null ? `$${(employee.hourlyRateCents / 100).toFixed(2)}` : "—"}`
+                              : employee.hourlyRateCents !== null
+                                ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
+                                : "—"}
+                          </div>
                         </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        <HoursDisplay
-                          hours={result.totalHours}
-                          decimals={payRules.hoursDecimalPlaces}
-                        />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        <MoneyDisplay cents={result.grossCents} />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums font-semibold">
-                        <MoneyDisplay cents={result.roundedCents} />
-                      </td>
-                      <td className="py-2.5 px-3 text-right">
-                        {incomplete > 0 ? (
-                          <span className="text-warn-700">{incomplete} incomplete</span>
-                        ) : (
-                          <span className="text-text-subtle">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="text-sm font-medium">
-                  <tr className="border-t-2 border-border">
-                    <td className="py-2 pr-3">Totals</td>
-                    <td className="py-2 px-3 text-right font-mono tabular-nums">
-                      <HoursDisplay
-                        hours={totals.hours}
-                        decimals={payRules.hoursDecimalPlaces}
-                      />
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono tabular-nums">
-                      <MoneyDisplay cents={totals.gross} />
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono tabular-nums">
-                      <MoneyDisplay cents={totals.rounded} />
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
+                        <span className="text-right font-mono tabular-nums">
+                          <HoursDisplay
+                            hours={result.totalHours}
+                            decimals={payRules.hoursDecimalPlaces}
+                          />
+                        </span>
+                        <span className="text-right font-mono tabular-nums">
+                          <MoneyDisplay cents={result.grossCents} />
+                        </span>
+                        <span className="text-right font-mono tabular-nums font-semibold">
+                          <MoneyDisplay cents={result.roundedCents} />
+                        </span>
+                        <span className="text-right">
+                          {incomplete > 0 ? (
+                            <span className="text-warn-700 text-xs">{incomplete} incomplete</span>
+                          ) : (
+                            <span className="text-text-subtle">—</span>
+                          )}
+                        </span>
+                      </summary>
+                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} />
+                    </details>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
+                <div></div>
+                <div>Totals</div>
+                <div className="text-right font-mono tabular-nums">
+                  <HoursDisplay
+                    hours={totals.hours}
+                    decimals={payRules.hoursDecimalPlaces}
+                  />
+                </div>
+                <div className="text-right font-mono tabular-nums">
+                  <MoneyDisplay cents={totals.gross} />
+                </div>
+                <div className="text-right font-mono tabular-nums">
+                  <MoneyDisplay cents={totals.rounded} />
+                </div>
+                <div></div>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* BOTTOM HALF: Punches per employee, chronologically */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Punches</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {rendered.map(({ employee, punches }) => {
-            // Group punches by day (in employee's display tz).
-            const byDay = new Map<string, typeof punches>();
-            for (const p of punches) {
-              if (p.voidedAt) continue;
-              const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
-                p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
-              );
-              const list = byDay.get(day) ?? [];
-              list.push(p);
-              byDay.set(day, list);
-            }
-            const days = Array.from(byDay.entries()).sort((a, b) =>
-              a[0].localeCompare(b[0]),
-            );
-            return (
-              <div key={employee.id} className="space-y-2">
-                <div className="flex items-center gap-2 border-b border-border pb-1">
-                  <Link
-                    href={`/employees/${employee.id}`}
-                    className="font-semibold text-sm hover:text-brand-700 hover:underline"
-                  >
-                    {employee.displayName}
-                  </Link>
-                </div>
-                {days.length === 0 ? (
-                  <p className="text-xs text-text-muted">No punches.</p>
-                ) : (
-                  <table className="min-w-full text-sm">
-                    <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle">
-                      <tr>
-                        <th className="py-1 pr-3 font-medium">Day</th>
-                        <th className="py-1 px-3 font-medium">In</th>
-                        <th className="py-1 px-3 font-medium">Out</th>
-                        <th className="py-1 px-3 font-medium text-right">Hours</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {days.flatMap(([day, ps]) =>
-                        ps
-                          .sort((a, b) => {
-                            const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
-                            const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
-                            return ai.getTime() - bi.getTime();
-                          })
-                          .map((p, i) => {
-                            const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-                            const outT = p.clockOut
-                              ? p.clockOut instanceof Date
-                                ? p.clockOut
-                                : new Date(p.clockOut)
-                              : null;
-                            const hours = outT
-                              ? (outT.getTime() - inT.getTime()) / 3_600_000
-                              : null;
-                            return (
-                              <tr key={p.id} className="hover:bg-surface-2/30">
-                                <td className="py-1 pr-3 text-text-muted">
-                                  {i === 0 ? formatDayLabel(day, tz) : ""}
-                                </td>
-                                <td className="py-1 px-3 font-mono">{formatHm(inT, tz)}</td>
-                                <td className="py-1 px-3 font-mono">{formatHm(outT, tz)}</td>
-                                <td className="py-1 px-3 text-right font-mono tabular-nums">
-                                  {hours !== null ? hours.toFixed(2) : "—"}
-                                </td>
-                              </tr>
-                            );
-                          }),
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            );
-          })}
         </CardContent>
       </Card>
 
@@ -493,3 +418,75 @@ export default async function PeriodReviewPage({
 }
 
 export const dynamic = "force-dynamic";
+
+function PunchSubTable({
+  punches,
+  tz,
+  formatHm,
+  formatDayLabel,
+}: {
+  punches: { id: string; clockIn: Date | string; clockOut: Date | string | null }[];
+  tz: string;
+  formatHm: (d: Date | null, tz: string) => string;
+  formatDayLabel: (dateIso: string, tz: string) => string;
+}) {
+  if (punches.length === 0) {
+    return <div className="px-9 pb-3 text-xs text-text-muted">No punches.</div>;
+  }
+  const byDay = new Map<string, typeof punches>();
+  for (const p of punches) {
+    const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    const list = byDay.get(day) ?? [];
+    list.push(p);
+    byDay.set(day, list);
+  }
+  const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  return (
+    <div className="px-9 pb-3 pt-1">
+      <table className="min-w-full text-xs">
+        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+          <tr>
+            <th className="py-1 pr-3 font-medium">Day</th>
+            <th className="py-1 px-3 font-medium">In</th>
+            <th className="py-1 px-3 font-medium">Out</th>
+            <th className="py-1 px-3 font-medium text-right">Hours</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/40">
+          {days.flatMap(([day, ps]) =>
+            ps
+              .sort((a, b) => {
+                const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
+                const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+                return ai.getTime() - bi.getTime();
+              })
+              .map((p, i) => {
+                const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+                const outT = p.clockOut
+                  ? p.clockOut instanceof Date
+                    ? p.clockOut
+                    : new Date(p.clockOut)
+                  : null;
+                const hours = outT
+                  ? (outT.getTime() - inT.getTime()) / 3_600_000
+                  : null;
+                return (
+                  <tr key={p.id} className="hover:bg-surface-2/30">
+                    <td className="py-0.5 pr-3 text-text-muted">
+                      {i === 0 ? formatDayLabel(day, tz) : ""}
+                    </td>
+                    <td className="py-0.5 px-3 font-mono">{formatHm(inT, tz)}</td>
+                    <td className="py-0.5 px-3 font-mono">{formatHm(outT, tz)}</td>
+                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                      {hours !== null ? hours.toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                );
+              }),
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}

@@ -23,8 +23,8 @@ import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
-import { taskPayLineItems } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { taskPayLineItems, tempWorkerEntries } from "@/lib/db/schema";
+import { eq, isNull, and } from "drizzle-orm";
 import { AlertTriangle } from "lucide-react";
 import { RunActions } from "./run-actions";
 
@@ -69,6 +69,16 @@ export default async function RunReviewPage({
     .select()
     .from(taskPayLineItems)
     .where(eq(taskPayLineItems.periodId, period.id));
+
+  const tempWorkers = await db
+    .select()
+    .from(tempWorkerEntries)
+    .where(eq(tempWorkerEntries.periodId, period.id))
+    .orderBy(tempWorkerEntries.workerName);
+  // Refs to keep the import surface honest; both eq + isNull stay imported
+  // in case future filtering needs them.
+  void isNull;
+  void and;
 
   const punchesByE = new Map<string, typeof punches>();
   for (const p of punches) {
@@ -142,6 +152,17 @@ export default async function RunReviewPage({
     { hours: 0, gross: 0, rounded: 0 },
   );
 
+  // Roll temp-worker totals into the run's summary so the grand total
+  // matches what the period total displays. Hours field is the sum of
+  // (hours * 1 if defined else 0) — usually most temp rows have no hours.
+  for (const tw of tempWorkers) {
+    totals.gross += tw.amountCents;
+    totals.rounded += tw.amountCents;
+    if (tw.hours !== null) {
+      totals.hours += Number(tw.hours);
+    }
+  }
+
   const unresolvedAlerts = alerts.filter((a) => !a.resolvedAt).length;
 
   return (
@@ -170,43 +191,47 @@ export default async function RunReviewPage({
           {rendered.length === 0 ? (
             <p className="text-sm text-text-muted">No punches, tasks, or alerts on this run.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-                  <tr>
-                    <th className="py-2.5 pr-3 font-medium">Employee</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Hours</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Gross</th>
-                    <th className="py-2.5 px-3 font-medium text-right">Rounded</th>
-                    <th className="py-2.5 px-3 font-medium">Alerts</th>
-                    <th className="py-2.5 px-3 font-medium">Payslip</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {rendered.map(({ employee, result, alerts: eAlerts, payslip }) => (
-                    <tr key={employee.id} className="hover:bg-surface-2/40 transition-colors">
-                      <td className="py-2.5 pr-3">
+            <div className="space-y-0.5">
+              {/* Header row — kept in sync with the summary grid below. */}
+              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                <div></div>
+                <div>Employee</div>
+                <div className="text-right">Hours</div>
+                <div className="text-right">Gross</div>
+                <div className="text-right">Rounded</div>
+                <div>Alerts</div>
+                <div>Payslip</div>
+              </div>
+              <div className="divide-y divide-border">
+                {rendered.map(({ employee, result, alerts: eAlerts, payslip }) => {
+                  const ePunches = (punchesByE.get(employee.id) ?? []).filter((p) => !p.voidedAt);
+                  return (
+                    <details key={employee.id} className="group">
+                      <summary className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
+                        {/* Caret rotates on open. */}
+                        <span className="text-text-subtle group-open:rotate-90 transition-transform">
+                          ▸
+                        </span>
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="font-medium hover:text-brand-700 hover:underline underline-offset-2"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium hover:text-brand-700 hover:underline underline-offset-2 truncate"
                         >
                           {employee.displayName}
                         </Link>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        <HoursDisplay
-                          hours={result.totalHours}
-                          decimals={payRules.hoursDecimalPlaces}
-                        />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        <MoneyDisplay cents={result.grossCents} />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        <MoneyDisplay cents={result.roundedCents} />
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="flex flex-wrap gap-1">
+                        <span className="text-right font-mono tabular-nums">
+                          <HoursDisplay
+                            hours={result.totalHours}
+                            decimals={payRules.hoursDecimalPlaces}
+                          />
+                        </span>
+                        <span className="text-right font-mono tabular-nums">
+                          <MoneyDisplay cents={result.grossCents} />
+                        </span>
+                        <span className="text-right font-mono tabular-nums font-semibold">
+                          <MoneyDisplay cents={result.roundedCents} />
+                        </span>
+                        <span className="flex flex-wrap gap-1">
                           {eAlerts
                             .filter((a) => !a.resolvedAt)
                             .map((a) => (
@@ -215,40 +240,78 @@ export default async function RunReviewPage({
                           {eAlerts.filter((a) => !a.resolvedAt).length === 0 && (
                             <span className="text-xs text-text-subtle">—</span>
                           )}
+                        </span>
+                        <span className="text-xs">
+                          {payslip ? (
+                            <span className="inline-flex items-center gap-1 text-success-700 font-medium">
+                              <CircleCheck className="h-3.5 w-3.5" />
+                              {payslip.acknowledgedAt ? "ack" : "published"}
+                            </span>
+                          ) : (
+                            <span className="text-text-subtle">—</span>
+                          )}
+                        </span>
+                      </summary>
+                      {/* Inline punches — only rendered when the row is open. */}
+                      <RunPunchTable punches={ePunches} tz={tz} />
+                    </details>
+                  );
+                })}
+                {/* Temp / manual labor rows — these don't have a real
+                    Employee record so they live in temp_worker_entries.
+                    Render alongside employees so the grand total covers
+                    both. */}
+                {tempWorkers.map((tw) => (
+                  <div
+                    key={tw.id}
+                    className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2.5 text-sm bg-amber-50/30"
+                    title={tw.description ?? ""}
+                  >
+                    <span className="text-amber-700 text-xs">★</span>
+                    <div className="min-w-0">
+                      <span className="font-medium truncate">{tw.workerName}</span>
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700">
+                        Temp
+                      </span>
+                      {tw.description && (
+                        <div className="text-xs text-text-muted truncate">
+                          {tw.description}
                         </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-xs">
-                        {payslip ? (
-                          <span className="inline-flex items-center gap-1 text-success-700 font-medium">
-                            <CircleCheck className="h-3.5 w-3.5" />
-                            {payslip.acknowledgedAt ? "ack" : "published"}
-                          </span>
-                        ) : (
-                          <span className="text-text-subtle">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="text-sm font-medium">
-                  <tr className="border-t-2 border-border">
-                    <td className="py-2 pr-3">Totals</td>
-                    <td className="py-2 px-3 text-right">
-                      <HoursDisplay
-                        hours={totals.hours}
-                        decimals={payRules.hoursDecimalPlaces}
-                      />
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      <MoneyDisplay cents={totals.gross} />
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      <MoneyDisplay cents={totals.rounded} />
-                    </td>
-                    <td colSpan={2} />
-                  </tr>
-                </tfoot>
-              </table>
+                      )}
+                    </div>
+                    <span className="text-right font-mono tabular-nums text-text-muted">
+                      {tw.hours !== null ? Number(tw.hours).toFixed(2) : "—"}
+                    </span>
+                    <span className="text-right font-mono tabular-nums">
+                      <MoneyDisplay cents={tw.amountCents} />
+                    </span>
+                    <span className="text-right font-mono tabular-nums font-semibold">
+                      <MoneyDisplay cents={tw.amountCents} />
+                    </span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                ))}
+              </div>
+              {/* Totals footer. */}
+              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
+                <div></div>
+                <div>Totals</div>
+                <div className="text-right font-mono tabular-nums">
+                  <HoursDisplay
+                    hours={totals.hours}
+                    decimals={payRules.hoursDecimalPlaces}
+                  />
+                </div>
+                <div className="text-right font-mono tabular-nums">
+                  <MoneyDisplay cents={totals.gross} />
+                </div>
+                <div className="text-right font-mono tabular-nums">
+                  <MoneyDisplay cents={totals.rounded} />
+                </div>
+                <div></div>
+                <div></div>
+              </div>
             </div>
           )}
         </CardContent>
@@ -321,111 +384,6 @@ export default async function RunReviewPage({
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Punches</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {rendered.length === 0 ? (
-            <p className="text-sm text-text-muted">
-              No punches landed on this run yet.
-            </p>
-          ) : (
-            rendered.map(({ employee }) => {
-              const ePunches = punchesByE.get(employee.id) ?? [];
-              const byDay = new Map<string, typeof ePunches>();
-              for (const p of ePunches) {
-                if (p.voidedAt) continue;
-                const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
-                  p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
-                );
-                const list = byDay.get(day) ?? [];
-                list.push(p);
-                byDay.set(day, list);
-              }
-              const days = Array.from(byDay.entries()).sort((a, b) =>
-                a[0].localeCompare(b[0]),
-              );
-              return (
-                <div key={employee.id} className="space-y-2">
-                  <div className="font-semibold text-sm border-b border-border pb-1">
-                    {employee.displayName}
-                  </div>
-                  {days.length === 0 ? (
-                    <p className="text-xs text-text-muted">No punches.</p>
-                  ) : (
-                    <table className="min-w-full text-sm">
-                      <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle">
-                        <tr>
-                          <th className="py-1 pr-3 font-medium">Day</th>
-                          <th className="py-1 px-3 font-medium">In</th>
-                          <th className="py-1 px-3 font-medium">Out</th>
-                          <th className="py-1 px-3 font-medium text-right">Hours</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {days.flatMap(([day, ps]) =>
-                          ps
-                            .sort((a, b) => {
-                              const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
-                              const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
-                              return ai.getTime() - bi.getTime();
-                            })
-                            .map((p, i) => {
-                              const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-                              const outT = p.clockOut
-                                ? p.clockOut instanceof Date
-                                  ? p.clockOut
-                                  : new Date(p.clockOut)
-                                : null;
-                              const hours = outT
-                                ? (outT.getTime() - inT.getTime()) / 3_600_000
-                                : null;
-                              return (
-                                <tr key={p.id} className="hover:bg-surface-2/30">
-                                  <td className="py-1 pr-3 text-text-muted">
-                                    {i === 0
-                                      ? new Intl.DateTimeFormat("en-US", {
-                                          weekday: "short",
-                                          month: "short",
-                                          day: "numeric",
-                                          timeZone: tz,
-                                        }).format(new Date(`${day}T12:00:00Z`))
-                                      : ""}
-                                  </td>
-                                  <td className="py-1 px-3 font-mono">
-                                    {new Intl.DateTimeFormat("en-US", {
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                      timeZone: tz,
-                                    }).format(inT)}
-                                  </td>
-                                  <td className="py-1 px-3 font-mono">
-                                    {outT
-                                      ? new Intl.DateTimeFormat("en-US", {
-                                          hour: "numeric",
-                                          minute: "2-digit",
-                                          timeZone: tz,
-                                        }).format(outT)
-                                      : "—"}
-                                  </td>
-                                  <td className="py-1 px-3 text-right font-mono tabular-nums">
-                                    {hours !== null ? hours.toFixed(2) : "—"}
-                                  </td>
-                                </tr>
-                              );
-                            }),
-                        )}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
-
       <RunActions
         runId={run.id}
         state={run.state}
@@ -440,6 +398,101 @@ export default async function RunReviewPage({
       <p className="text-xs text-text-muted">
         Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Inline punch breakdown rendered inside an employee's expanded
+ * <details> in the per-employee summary. Groups by day in company tz,
+ * sorts within day by clockIn. Hidden when there are zero non-voided
+ * punches (e.g. task-only employees).
+ */
+function RunPunchTable({
+  punches,
+  tz,
+}: {
+  punches: { id: string; clockIn: Date | string; clockOut: Date | string | null; voidedAt?: Date | string | null }[];
+  tz: string;
+}) {
+  if (punches.length === 0) {
+    return (
+      <div className="px-9 pb-3 text-xs text-text-muted">No punches for this employee.</div>
+    );
+  }
+  const byDay = new Map<string, typeof punches>();
+  for (const p of punches) {
+    const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    const list = byDay.get(day) ?? [];
+    list.push(p);
+    byDay.set(day, list);
+  }
+  const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  return (
+    <div className="px-9 pb-3 pt-1">
+      <table className="min-w-full text-xs">
+        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+          <tr>
+            <th className="py-1 pr-3 font-medium">Day</th>
+            <th className="py-1 px-3 font-medium">In</th>
+            <th className="py-1 px-3 font-medium">Out</th>
+            <th className="py-1 px-3 font-medium text-right">Hours</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/40">
+          {days.flatMap(([day, ps]) =>
+            ps
+              .sort((a, b) => {
+                const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
+                const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+                return ai.getTime() - bi.getTime();
+              })
+              .map((p, i) => {
+                const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+                const outT = p.clockOut
+                  ? p.clockOut instanceof Date
+                    ? p.clockOut
+                    : new Date(p.clockOut)
+                  : null;
+                const hours = outT ? (outT.getTime() - inT.getTime()) / 3_600_000 : null;
+                return (
+                  <tr key={p.id} className="hover:bg-surface-2/30">
+                    <td className="py-0.5 pr-3 text-text-muted">
+                      {i === 0
+                        ? new Intl.DateTimeFormat("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            timeZone: tz,
+                          }).format(new Date(`${day}T12:00:00Z`))
+                        : ""}
+                    </td>
+                    <td className="py-0.5 px-3 font-mono">
+                      {new Intl.DateTimeFormat("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        timeZone: tz,
+                      }).format(inT)}
+                    </td>
+                    <td className="py-0.5 px-3 font-mono">
+                      {outT
+                        ? new Intl.DateTimeFormat("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            timeZone: tz,
+                          }).format(outT)
+                        : "—"}
+                    </td>
+                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                      {hours !== null ? hours.toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                );
+              }),
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }
