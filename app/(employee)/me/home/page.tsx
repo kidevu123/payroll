@@ -12,6 +12,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
+import { listRecentForEmployee } from "@/lib/db/queries/time-off";
 import {
   ensureNextPeriod,
   getCurrentPeriod,
@@ -61,6 +62,10 @@ export default async function EmployeeHome() {
   const today = todayInTz(company.timezone);
   await ensureNextPeriod(today);
   const period = await getCurrentPeriod(today);
+
+  // Recent time-off request history for this employee — visible to all
+  // classifications (salaried + hourly all submit requests).
+  const recentTimeOff = await listRecentForEmployee(employee.id, 5);
 
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
@@ -183,6 +188,67 @@ export default async function EmployeeHome() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">My time off</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recentTimeOff.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No requests yet. Submit one with the &ldquo;Request time off&rdquo; button above.
+            </p>
+          ) : (
+            <ul className="space-y-1.5 text-sm">
+              {recentTimeOff.map((r) => {
+                const status =
+                  r.status === "APPROVED"
+                    ? "approved"
+                    : r.status === "REJECTED"
+                      ? "rejected"
+                      : "pending";
+                const statusClass =
+                  status === "approved"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : status === "rejected"
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200";
+                const typeLabel =
+                  r.type === "PERSONAL"
+                    ? "PTO / Vacation"
+                    : r.type === "SICK"
+                      ? "Sick"
+                      : r.type === "UNPAID"
+                        ? "Unpaid"
+                        : "Other";
+                return (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 rounded-input border border-border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">
+                        {typeLabel} · {r.startDate}
+                        {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                      </p>
+                      {r.reason && (
+                        <p className="text-xs text-text-muted truncate">
+                          {r.reason}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-input border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusClass}`}
+                    >
+                      {status}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

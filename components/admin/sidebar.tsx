@@ -21,6 +21,7 @@ import {
   Settings2,
   Circle,
   Briefcase,
+  CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const SECTIONS: { heading: string; items: NavItem[] }[] = [
       { href: "/time", label: "Time", icon: CalendarDays },
       { href: "/payroll", label: "Payroll", icon: Wallet },
       { href: "/salaried", label: "Salaried", icon: Briefcase },
+      { href: "/calendar", label: "Calendar", icon: CalendarRange },
       { href: "/requests", label: "Requests", icon: MessageSquareWarning },
     ],
   },

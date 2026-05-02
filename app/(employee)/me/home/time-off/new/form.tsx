@@ -51,9 +51,9 @@ export function TimeOffForm() {
           defaultValue="PERSONAL"
           className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
         >
-          <option value="UNPAID">Unpaid</option>
-          <option value="SICK">Sick</option>
-          <option value="PERSONAL">Personal</option>
+          <option value="PERSONAL">PTO / Vacation (paid time off)</option>
+          <option value="SICK">Sick day</option>
+          <option value="UNPAID">Unpaid leave</option>
           <option value="OTHER">Other</option>
         </select>
       </div>
