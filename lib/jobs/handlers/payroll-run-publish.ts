@@ -177,17 +177,20 @@ export async function handlePayrollRunPublish(data: {
     logger.warn({ err, periodDir }, "publish: mkdir failed (best effort)");
   }
 
-  // Lazy-load the renderer + the PDF documents at runtime so webpack's
-  // edge-runtime bundle of instrumentation.ts doesn't try to compile them.
+  // Lazy-load the renderer + the PDF documents at runtime. Previously
+  // these used /* webpackIgnore: true */ to keep @react-pdf out of the
+  // edge-runtime bundle, but the relative-path imports broke in
+  // production because the bundled chunk lives at /app/.next/server/
+  // chunks/<hash>.js — `../../pdf/payslip.js` resolved to the
+  // non-existent /app/.next/pdf/payslip.js. Letting webpack bundle
+  // them via @/-aliased imports is fine because this handler only
+  // runs in the Node runtime (registered in lib/jobs/index.ts via
+  // boss.work, never in edge).
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const payslipDoc = (await import(
-    /* webpackIgnore: true */ "../../pdf/payslip.js"
-  )) as typeof import("@/lib/pdf/payslip");
-  const signatureDoc = (await import(
-    /* webpackIgnore: true */ "../../pdf/signature-report.js"
-  )) as typeof import("@/lib/pdf/signature-report");
+  const payslipDoc = await import("@/lib/pdf/payslip");
+  const signatureDoc = await import("@/lib/pdf/signature-report");
 
   const sigRows: SignatureReportInput["rows"] = [];
 
