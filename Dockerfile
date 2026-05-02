@@ -55,6 +55,27 @@ RUN GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
        npm run build \
     && echo "$GIT_SHA" > /app/.git-sha
 
+# Pre-compile the PDF documents to plain JS at a stable path. The
+# publish-job handler dynamically imports them at runtime via
+# /* webpackIgnore: true */ "/app/.next/pdf/*.js". They can't be
+# webpack-bundled because @react-pdf/renderer imports React hooks
+# that the RSC-mode bundle of `react` doesn't expose (useState/useRef
+# etc. fail at build time). Compiling them as a side-step keeps the
+# job handler in the bundle while the PDF docs sit at a known
+# runtime-resolvable absolute path.
+RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx \
+    --bundle \
+    --platform=node \
+    --target=node20 \
+    --format=cjs \
+    --jsx=automatic \
+    --external:@react-pdf/renderer \
+    --external:react \
+    --external:react-dom \
+    --outdir=/app/.next/pdf \
+    --out-extension:.js=.js \
+    && ls -la /app/.next/pdf/
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: run
 # ──────────────────────────────────────────────────────────────────────────────
@@ -71,6 +92,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Copy the standalone bundle and static files from the build stage.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Pre-compiled PDF docs that the publish job dynamic-imports at
+# /app/.next/pdf/*.js (see lib/jobs/handlers/payroll-run-publish.ts).
+COPY --from=build /app/.next/pdf ./.next/pdf
 COPY --from=build /app/public ./public
 
 # Drizzle and the migrate/seed scripts live outside the standalone bundle.

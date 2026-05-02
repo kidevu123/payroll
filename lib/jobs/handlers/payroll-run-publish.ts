@@ -177,20 +177,30 @@ export async function handlePayrollRunPublish(data: {
     logger.warn({ err, periodDir }, "publish: mkdir failed (best effort)");
   }
 
-  // Lazy-load the renderer + the PDF documents at runtime. Previously
-  // these used /* webpackIgnore: true */ to keep @react-pdf out of the
-  // edge-runtime bundle, but the relative-path imports broke in
-  // production because the bundled chunk lives at /app/.next/server/
-  // chunks/<hash>.js — `../../pdf/payslip.js` resolved to the
-  // non-existent /app/.next/pdf/payslip.js. Letting webpack bundle
-  // them via @/-aliased imports is fine because this handler only
-  // runs in the Node runtime (registered in lib/jobs/index.ts via
-  // boss.work, never in edge).
+  // Lazy-load the renderer + the PDF documents at runtime. The
+  // /* webpackIgnore: true */ keeps @react-pdf and its React-hook
+  // imports out of the server bundle (RSC mode strips useState etc.
+  // from the bundled `react`, breaking the build). The PDF modules
+  // are pre-compiled to /app/.next/pdf/*.js by the Dockerfile (see
+  // the `tsc` step after `next build`), so the absolute path resolves
+  // at runtime even though the importing chunk lives in
+  // /app/.next/server/chunks/.
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const payslipDoc = await import("@/lib/pdf/payslip");
-  const signatureDoc = await import("@/lib/pdf/signature-report");
+  // The absolute paths exist at runtime (the Dockerfile pre-compiles
+  // them via esbuild to /app/.next/pdf/*.js) but the compiler can't
+  // type-check a deploy-time-emitted file from source. Use string
+  // expressions so TS doesn't try to resolve them as static imports;
+  // the casts pin the public shape we depend on.
+  const PAYSLIP_DOC_PATH = "/app/.next/pdf/payslip.js";
+  const SIG_DOC_PATH = "/app/.next/pdf/signature-report.js";
+  const payslipDoc = (await import(
+    /* webpackIgnore: true */ PAYSLIP_DOC_PATH
+  )) as typeof import("@/lib/pdf/payslip");
+  const signatureDoc = (await import(
+    /* webpackIgnore: true */ SIG_DOC_PATH
+  )) as typeof import("@/lib/pdf/signature-report");
 
   const sigRows: SignatureReportInput["rows"] = [];
 
