@@ -158,6 +158,21 @@ export type NotificationsSettings = z.infer<typeof notificationsSchema>;
 
 // ─── Security ────────────────────────────────────────────────────────────────
 
+// ─── Google Calendar ──────────────────────────────────────────────────────
+// Phase 1: scaffold the calendar id + status. The OAuth dance + event-push
+// implementation is queued — this lets the owner save the target calendar
+// id ahead of that work landing so config doesn't have to be reentered.
+
+export const googleCalendarSchema = z.object({
+  /** Target Google Calendar ID (e.g. "primary" or a UUID@group.calendar.google.com). */
+  calendarId: z.string().max(200).default(""),
+  /** Display label of the connected Google account (set after OAuth lands). */
+  connectedEmail: z.string().nullable().default(null),
+  /** ISO timestamp of the last successful event push (set when push lands). */
+  lastPushedAt: z.string().nullable().default(null),
+});
+export type GoogleCalendarSettings = z.infer<typeof googleCalendarSchema>;
+
 export const securitySchema = z.object({
   adminTwoFactorRequired: z.boolean().default(false), // §21 #10 — off by default
   sessionTimeoutDays: z.number().int().min(1).max(180).default(30),
@@ -182,6 +197,7 @@ export const settingsRegistry = {
   ngteco: ngtecoSchema,
   notifications: notificationsSchema,
   security: securitySchema,
+  googleCalendar: googleCalendarSchema,
 } as const;
 
 export type SettingKey = keyof typeof settingsRegistry;

@@ -19,6 +19,7 @@ const SETTINGS_TARGETS: CommandTarget[] = [
   { id: "set-automation", label: "Settings · Automation", href: "/settings/automation", group: "settings" },
   { id: "set-notifications", label: "Settings · Notifications", href: "/settings/notifications", group: "settings" },
   { id: "set-security", label: "Settings · Security", href: "/settings/security", group: "settings" },
+  { id: "set-google-calendar", label: "Settings · Google Calendar", href: "/settings/google-calendar", group: "settings" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
