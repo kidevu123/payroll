@@ -21,6 +21,7 @@ import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import { InFlightRow } from "./in-flight-row";
+import { PeriodDeleteButton } from "./period-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -187,16 +188,21 @@ export default async function PayrollPage() {
             <p className="text-sm text-text-muted">No periods yet.</p>
           ) : (
             openPeriods.map((p) => (
-              <Link
+              <div
                 key={p.id}
-                href={`/payroll/${p.id}`}
                 className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
               >
-                <div className="font-medium">
-                  {p.startDate} – {p.endDate}
-                </div>
-                <StatusPill status={p.state} />
-              </Link>
+                <Link
+                  href={`/payroll/${p.id}`}
+                  className="flex items-center gap-3 font-medium flex-1 min-w-0"
+                >
+                  <span>
+                    {p.startDate} – {p.endDate}
+                  </span>
+                  <StatusPill status={p.state} />
+                </Link>
+                <PeriodDeleteButton periodId={p.id} state={p.state} />
+              </div>
             ))
           )}
         </CardContent>
