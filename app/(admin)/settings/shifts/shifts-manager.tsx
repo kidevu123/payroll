@@ -6,13 +6,6 @@ import type { Shift } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { ShiftChip } from "@/components/domain/shift-chip";
 import {
   archiveShiftAction,
@@ -48,22 +41,16 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
-        <div>
-          <CardTitle>Shifts</CardTitle>
-          <CardDescription>
-            Reorder, edit color, archive (soft-delete). Single &quot;Day&quot; shift is
-            seeded by default.
-          </CardDescription>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">Shifts</h2>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> Add shift
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         {creating && (
           <ShiftForm
             mode="create"
@@ -165,8 +152,8 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
         )}
 
         {error && <p className="text-sm text-red-700">{error}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

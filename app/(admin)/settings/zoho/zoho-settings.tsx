@@ -14,13 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   createOrgAction,
   deleteOrgAction,
   testConnectionAction,
@@ -35,22 +28,22 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
   const [pending, setPending] = React.useState<string | null>(null);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <CardTitle>Zoho Books</CardTitle>
-          <CardDescription>
-            One organization per company you push expenses to (Haute, Boomin, …).
-            Refresh tokens are sealed via the AES-GCM vault and never logged.
-          </CardDescription>
+          <h2 className="text-lg font-semibold tracking-tight">Zoho Books</h2>
+          <p className="text-xs text-text-muted">
+            One organization per company you push expenses to. Refresh tokens
+            are sealed via the AES-GCM vault.
+          </p>
         </div>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> Add organization
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         {creating && (
           <OrgForm
             mode="create"
@@ -191,8 +184,8 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
         )}
 
         {error && <p className="text-sm text-red-700">{error}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

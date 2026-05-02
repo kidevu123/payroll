@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   createHolidayAction,
   deleteHolidayAction,
 } from "./actions";
@@ -23,15 +16,8 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
   const [pending, setPending] = React.useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Holidays</CardTitle>
-        <CardDescription>
-          Observed holidays. Suppresses missed-punch alerts and informs
-          default time-off behavior.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Holidays</h2>
         <form
           action={async (form) => {
             setPending(true);
@@ -91,7 +77,6 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
         )}
 
         {error && <p className="text-sm text-red-700">{error}</p>}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

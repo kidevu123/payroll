@@ -6,13 +6,6 @@ import type { CompanySettings } from "@/lib/settings/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Wordmark } from "@/components/brand/wordmark";
 import {
   regenerateIconsAction,
@@ -39,15 +32,14 @@ export function BrandingForm({ company }: { company: CompanySettings }) {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Branding</CardTitle>
-          <CardDescription>
-            Logo, favicon, and brand color. Logo cascades to the sidebar
-            wordmark, login page, payslip PDFs, and PWA app icon.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Branding</h2>
+        <p className="text-xs text-text-muted">
+          Logo cascades to the sidebar, login page, payslip PDFs, and PWA app
+          icon.
+        </p>
+      </div>
+      <div className="space-y-6">
           <PreviewTile
             company={company}
             color={color}
@@ -174,8 +166,7 @@ export function BrandingForm({ company }: { company: CompanySettings }) {
           </div>
 
           {error && <p className="text-sm text-red-700">{error}</p>}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

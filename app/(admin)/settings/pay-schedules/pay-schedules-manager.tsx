@@ -8,13 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CronPicker } from "@/components/admin/cron-picker";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   createScheduleAction,
   toggleActiveAction,
   updateScheduleAction,
@@ -43,22 +36,22 @@ export function PaySchedulesManager({
   const [error, setError] = React.useState<string | null>(null);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <CardTitle>Pay schedules</CardTitle>
-          <CardDescription>
-            Each employee is assigned to one schedule. The payroll run-tick job
-            fires per schedule&apos;s cron and only includes its employees.
-          </CardDescription>
+          <h2 className="text-lg font-semibold tracking-tight">Pay schedules</h2>
+          <p className="text-xs text-text-muted">
+            Each employee is assigned to one. Run-tick fires per
+            schedule&apos;s cron and includes only its employees.
+          </p>
         </div>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> Add schedule
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </div>
+      <div className="space-y-3">
         {creating && (
           <ScheduleForm
             mode="create"
@@ -151,8 +144,8 @@ export function PaySchedulesManager({
         )}
 
         {error && <p className="text-sm text-red-700">{error}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
