@@ -52,6 +52,8 @@ export default async function EmployeeHome() {
     );
   }
 
+  const isSalaried = employee.payType === "SALARIED";
+
   const [company, payRules] = await Promise.all([
     getSetting("company"),
     getSetting("payRules"),
@@ -62,7 +64,7 @@ export default async function EmployeeHome() {
 
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
-  if (period) {
+  if (period && !isSalaried) {
     const [punches, rates, openAlerts] = await Promise.all([
       listPunches({ periodId: period.id, employeeId: employee.id }),
       listRates(employee.id),
@@ -104,42 +106,58 @@ export default async function EmployeeHome() {
         </h1>
       </header>
 
-      <WeekStatsCard
-        hours={stats.hours}
-        projectedCents={stats.projected}
-        daysLeft={stats.daysLeft}
-        decimals={payRules.hoursDecimalPlaces}
-      />
+      {!isSalaried && (
+        <WeekStatsCard
+          hours={stats.hours}
+          projectedCents={stats.projected}
+          daysLeft={stats.daysLeft}
+          decimals={payRules.hoursDecimalPlaces}
+        />
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("alertsTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {alerts.length === 0 ? (
-            <p className="text-sm text-text-muted">{t("alertsEmpty")}</p>
-          ) : (
-            alerts.map((a) => (
-              <AlertCard key={a.id} alertId={a.id} date={a.date} issue={a.issue} />
-            ))
-          )}
-        </CardContent>
-      </Card>
+      {!isSalaried && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{t("alertsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.length === 0 ? (
+              <p className="text-sm text-text-muted">{t("alertsEmpty")}</p>
+            ) : (
+              alerts.map((a) => (
+                <AlertCard
+                  key={a.id}
+                  alertId={a.id}
+                  date={a.date}
+                  issue={a.issue}
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("quickActions")}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-2">
-          <Button asChild variant="secondary" className="justify-start" disabled={alerts.length === 0}>
-            <Link
-              href={
-                alerts[0] ? `/me/home/missed-punch/${alerts[0].id}` : "#"
-              }
+          {!isSalaried && (
+            <Button
+              asChild
+              variant="secondary"
+              className="justify-start"
+              disabled={alerts.length === 0}
             >
-              <Wrench className="h-4 w-4" /> {t("fixMissedPunch")}
-            </Link>
-          </Button>
+              <Link
+                href={
+                  alerts[0] ? `/me/home/missed-punch/${alerts[0].id}` : "#"
+                }
+              >
+                <Wrench className="h-4 w-4" /> {t("fixMissedPunch")}
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="secondary" className="justify-start">
             <Link href="/me/home/time-off/new">
               <CalendarPlus className="h-4 w-4" /> {t("requestTimeOff")}
@@ -147,6 +165,24 @@ export default async function EmployeeHome() {
           </Button>
         </CardContent>
       </Card>
+
+      {isSalaried && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Salaried account</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-text-muted">
+            <p>
+              You&apos;re on a salaried plan. Your paystubs and W2 documents
+              appear under <Link href="/me/pay" className="text-brand-700 underline">Pay</Link>.
+            </p>
+            <p className="mt-2">
+              Use the &ldquo;Request time off&rdquo; button above for vacation
+              or sick days.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

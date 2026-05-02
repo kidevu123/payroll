@@ -4,12 +4,15 @@
 
 import Link from "next/link";
 import { Download, FileText, Wallet } from "lucide-react";
+import { inArray } from "drizzle-orm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PayslipCard } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
+import { db } from "@/lib/db";
+import { payrollRuns } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 
 export default async function EmployeePayList() {
@@ -29,12 +32,63 @@ export default async function EmployeePayList() {
     listEmployeeVisibleDocs(session.user.employeeId),
   ]);
   const periods = await Promise.all(payslips.map((p) => getPeriodById(p.periodId)));
+  // Pull each payslip's parent run source so we can prefer non-legacy
+  // when collapsing overlapping payslips.
+  const runIds = [...new Set(payslips.map((p) => p.payrollRunId))];
+  const runs = runIds.length
+    ? await db
+        .select({ id: payrollRuns.id, source: payrollRuns.source })
+        .from(payrollRuns)
+        .where(inArray(payrollRuns.id, runIds))
+    : [];
+  const sourceByRun = new Map(runs.map((r) => [r.id, r.source]));
 
-  // Sort newest first.
-  const rows = payslips
-    .map((p, i) => ({ payslip: p, period: periods[i] }))
-    .filter((r): r is { payslip: typeof payslips[number]; period: NonNullable<typeof periods[number]> } => r.period !== null && r.period !== undefined)
-    .sort((a, b) => (a.period.startDate < b.period.startDate ? 1 : -1));
+  type Row = {
+    payslip: (typeof payslips)[number];
+    period: NonNullable<(typeof periods)[number]>;
+    source: string;
+  };
+
+  const allRows: Row[] = payslips
+    .map((p, i) => {
+      const period = periods[i];
+      if (!period) return null;
+      return {
+        payslip: p,
+        period,
+        source: sourceByRun.get(p.payrollRunId) ?? "UNKNOWN",
+      };
+    })
+    .filter((r): r is Row => r !== null);
+
+  // Score each row by preferred-ness within an overlap cluster:
+  //   non-legacy + has PDF > non-legacy > legacy + has PDF > legacy.
+  // Higher score wins. Ties broken by latest startDate (newer record).
+  function score(r: Row): number {
+    let s = 0;
+    if (r.source !== "LEGACY_IMPORT") s += 10;
+    if (r.payslip.pdfPath) s += 1;
+    return s;
+  }
+
+  // Greedy overlap-collapse: walk rows sorted by descending score, keep
+  // the first row in each [start, end] interval cluster, drop overlaps.
+  const sorted = [...allRows].sort((a, b) => {
+    const ds = score(b) - score(a);
+    if (ds !== 0) return ds;
+    return a.period.startDate < b.period.startDate ? 1 : -1;
+  });
+  const rows: Row[] = [];
+  for (const r of sorted) {
+    const overlaps = rows.some(
+      (kept) =>
+        r.period.startDate <= kept.period.endDate &&
+        r.period.endDate >= kept.period.startDate,
+    );
+    if (!overlaps) rows.push(r);
+  }
+  // Final sort: newest period first, like before.
+  rows.sort((a, b) => (a.period.startDate < b.period.startDate ? 1 : -1));
 
   return (
     <div className="space-y-6 p-4 max-w-3xl mx-auto">

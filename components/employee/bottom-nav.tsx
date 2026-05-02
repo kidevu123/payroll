@@ -1,6 +1,10 @@
 // Bottom-nav for the employee PWA. Lucide icons, no emoji. Active state
 // uses the brand accent and a 2px notch above the icon — a tiny touch that
 // makes the active tab feel anchored without an animated underline.
+//
+// Salaried employees don't punch in/out — their Time tab would show empty
+// state forever, so we hide it via the `hideTime` flag the layout passes
+// in based on the session user's payType.
 
 "use client";
 
@@ -10,22 +14,25 @@ import { usePathname } from "next/navigation";
 import { Home, Calendar, Wallet, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TABS = [
+const ALL_TABS = [
   { href: "/me/home", label: "Home", icon: Home },
   { href: "/me/time", label: "Time", icon: Calendar },
   { href: "/me/pay", label: "Pay", icon: Wallet },
   { href: "/me/profile", label: "Profile", icon: User },
 ] as const;
 
-export function BottomNav() {
+export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
+  const tabs = hideTime
+    ? ALL_TABS.filter((t) => t.href !== "/me/time")
+    : ALL_TABS;
   const pathname = usePathname() ?? "";
   return (
     <nav
       aria-label="Employee navigation"
       className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="grid grid-cols-4 max-w-md mx-auto">
-        {TABS.map(({ href, label, icon: Icon }) => {
+      <ul className={cn("grid max-w-md mx-auto", hideTime ? "grid-cols-3" : "grid-cols-4")}>
+        {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={href}>
