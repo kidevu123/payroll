@@ -296,29 +296,41 @@ export async function uploadCsvAction(
     cohortIds = cohortIds.filter((id) => allowedIds.has(id));
   }
 
-  // UPSERT period by (pay_schedule_id, start_date). The pay_schedule_id
-  // segregates overlapping schedules so weekly + semi-monthly periods
-  // can share calendar dates without trampling each other.
-  const scheduleFilter = parsed.data.payScheduleId
-    ? eq(payPeriods.payScheduleId, parsed.data.payScheduleId)
-    : sql`${payPeriods.payScheduleId} IS NULL`;
-  const [existingPeriod] = await db
+  // UPSERT period by start_date with schedule reconciliation:
+  //   1. Pull every period that already starts on this date.
+  //   2. Prefer one that matches the chosen pay_schedule_id exactly.
+  //   3. If none match exactly but one has a NULL schedule, "claim"
+  //      it by stamping the chosen pay_schedule_id onto it. Avoids
+  //      creating a duplicate every time the admin re-uploads with
+  //      a schedule selected against an existing un-tagged period.
+  //   4. Only create a brand-new period when nothing fits — which is
+  //      the legit "two schedules with same start_date" case
+  //      (weekly + semi-monthly happen to align that day).
+  const candidates = await db
     .select()
     .from(payPeriods)
-    .where(
-      and(
-        eq(payPeriods.startDate, parsed.data.startDate),
-        scheduleFilter,
-      ),
-    );
+    .where(eq(payPeriods.startDate, parsed.data.startDate));
   let periodId: string;
-  if (existingPeriod) {
-    periodId = existingPeriod.id;
-    if (existingPeriod.endDate !== parsed.data.endDate) {
-      await db
-        .update(payPeriods)
-        .set({ endDate: parsed.data.endDate })
-        .where(eq(payPeriods.id, periodId));
+  const exact = candidates.find(
+    (p) => p.payScheduleId === parsed.data.payScheduleId,
+  );
+  const claimable =
+    !exact && parsed.data.payScheduleId
+      ? candidates.find((p) => p.payScheduleId === null)
+      : undefined;
+  const matched = exact ?? claimable ?? null;
+  if (matched) {
+    periodId = matched.id;
+    const updates: Record<string, unknown> = {};
+    if (matched.endDate !== parsed.data.endDate) {
+      updates.endDate = parsed.data.endDate;
+    }
+    if (claimable) {
+      // Claim the previously-untagged period for this schedule.
+      updates.payScheduleId = parsed.data.payScheduleId;
+    }
+    if (Object.keys(updates).length > 0) {
+      await db.update(payPeriods).set(updates).where(eq(payPeriods.id, periodId));
     }
   } else {
     const [row] = await db
