@@ -39,8 +39,16 @@ export default async function RunReviewPage({
   const period = await getPeriodById(run.periodId);
   if (!period) notFound();
 
-  const [employees, punches, payRules, payPeriod, alerts, payslips, company, exceptions] = await Promise.all([
-    listEmployees(),
+  // Three-tier cohort filter mirrors lib/jobs/handlers/payroll-run-publish.ts:131-146
+  // and app/(admin)/payroll/[periodId]/page.tsx. Without this the run review
+  // listed every employee with punches in the period — including ones the
+  // admin explicitly unchecked from the manual-CSV cohort, because their
+  // pre-existing punches from a prior run still live in the period.
+  const employeeFilter = run.payScheduleId
+    ? { payScheduleId: run.payScheduleId }
+    : {};
+  const [allEmployees, punches, payRules, payPeriod, alerts, payslips, company, exceptions] = await Promise.all([
+    listEmployees(employeeFilter),
     listPunches({ periodId: period.id }),
     getSetting("payRules"),
     getSetting("payPeriod"),
@@ -49,6 +57,12 @@ export default async function RunReviewPage({
     getSetting("company"),
     listExceptions(runId),
   ]);
+  const cohort: Set<string> | null = Array.isArray(run.cohortEmployeeIds)
+    ? new Set(run.cohortEmployeeIds)
+    : null;
+  const employees = cohort
+    ? allEmployees.filter((e) => cohort.has(e.id))
+    : allEmployees;
   const tz = company.timezone ?? "America/New_York";
 
   const tasks = await db
@@ -86,13 +100,15 @@ export default async function RunReviewPage({
       const result = computePay({
         punches: ePunches,
         rateAt: (p) => {
-          const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
-            .toISOString()
-            .slice(0, 10);
+          // Resolve the punch's calendar day in company tz, not UTC, so a
+          // late-evening ET punch doesn't pick up a next-day rate change.
+          const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+          const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
           for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
           return e.hourlyRateCents ?? 0;
         },
         taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
+        timezone: tz,
         rules: {
           rounding: payRules.rounding,
           hoursDecimalPlaces: payRules.hoursDecimalPlaces,

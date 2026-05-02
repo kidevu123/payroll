@@ -157,8 +157,11 @@ export default async function PeriodReviewPage({
       const result = computePay({
         punches: ePunches,
         rateAt: (p) => {
+          // Same fix as the publish handler — resolve the punch day in
+          // company tz, not UTC, so a late-evening ET punch can't grab a
+          // next-day rate change.
           const day = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "UTC",
+            timeZone: tz,
           }).format(p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn));
           for (const r of rates) {
             if (r.effectiveFrom <= day) return r.hourlyRateCents;
@@ -166,6 +169,7 @@ export default async function PeriodReviewPage({
           return e.hourlyRateCents ?? 0;
         },
         taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
+        timezone: tz,
         rules: {
           rounding: payRules.rounding,
           hoursDecimalPlaces: payRules.hoursDecimalPlaces,
