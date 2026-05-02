@@ -21,6 +21,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { Download, FileText } from "lucide-react";
 import { ArchiveEmployeeButton } from "./archive-button";
 import { AccountSection } from "./account-section";
+import { RecomputePayslipsButton } from "./recompute-button";
 
 export default async function EmployeeDetailPage({
   params,
@@ -155,11 +156,16 @@ export default async function EmployeeDetailPage({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Payslips</CardTitle>
-          <CardDescription>
-            Every non-voided payslip generated for this employee. Latest first.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-3">
+          <div>
+            <CardTitle>Payslips</CardTitle>
+            <CardDescription>
+              Every non-voided payslip generated for this employee. Latest first.
+            </CardDescription>
+          </div>
+          {payslipsWithPeriods.length > 0 && (
+            <RecomputePayslipsButton employeeId={employee.id} />
+          )}
         </CardHeader>
         <CardContent className="space-y-1">
           {payslipsWithPeriods.length === 0 ? (

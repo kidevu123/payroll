@@ -3,13 +3,17 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { and, eq, isNull } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
+import { db } from "@/lib/db";
+import { payslips } from "@/lib/db/schema";
 import {
   archiveEmployee,
   createEmployee,
   updateEmployee,
 } from "@/lib/db/queries/employees";
 import { addRate } from "@/lib/db/queries/rate-history";
+import { recomputePayslip } from "@/lib/db/queries/payslips";
 
 const idSchema = z.string().uuid();
 
@@ -225,4 +229,46 @@ export async function addRateAction(
   );
   revalidatePath(`/employees/${employeeId}`);
   redirect(`/employees/${employeeId}`);
+}
+
+/**
+ * Re-stamp every non-voided payslip for this employee using the current
+ * (deduped) punches + current rate-history. Use case: after fixing a bad
+ * rate-history row, the existing payslips still show the old computed
+ * totals — this restamps them all in one call. Per-payslip recompute
+ * already exists; this is the bulk wrapper.
+ */
+export async function recomputeAllPayslipsForEmployeeAction(
+  employeeId: string,
+): Promise<
+  | { error: string }
+  | { ok: true; recomputed: number; skipped: number }
+> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(employeeId).success) {
+    return { error: "Invalid employee id." };
+  }
+  const slips = await db
+    .select()
+    .from(payslips)
+    .where(
+      and(eq(payslips.employeeId, employeeId), isNull(payslips.voidedAt)),
+    );
+  let recomputed = 0;
+  let skipped = 0;
+  for (const p of slips) {
+    try {
+      await recomputePayslip(p.id, {
+        id: session.user.id,
+        role: session.user.role,
+      });
+      recomputed++;
+    } catch {
+      skipped++;
+    }
+  }
+  revalidatePath(`/employees/${employeeId}`);
+  revalidatePath("/payroll");
+  revalidatePath("/reports");
+  return { ok: true, recomputed, skipped };
 }
