@@ -191,3 +191,36 @@ export async function createExpense(
   }
   return { expenseId: json.expense.expense_id };
 }
+
+/**
+ * Attach a file (paystub PDF, scanned receipt, etc.) to an existing
+ * Zoho expense as its receipt. Uses multipart/form-data per the Zoho
+ * Books API docs (POST /expenses/{id}/receipt).
+ *
+ * `bytes` must already be in memory; we wrap it in a Blob to satisfy
+ * the FormData type without piping through a temp file.
+ */
+export async function attachReceipt(input: {
+  org: ZohoOrganization;
+  expenseId: string;
+  filename: string;
+  mime: string;
+  bytes: Uint8Array;
+}): Promise<void> {
+  const { org, expenseId, filename, mime, bytes } = input;
+  const token = await getAccessToken(org);
+  const url = `${org.apiDomain}/books/v3/expenses/${encodeURIComponent(expenseId)}/receipt?organization_id=${org.organizationId}`;
+  const form = new FormData();
+  form.set("receipt", new Blob([bytes as BlobPart], { type: mime }), filename);
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+    body: form,
+  });
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(
+      `Zoho expense receipt attach failed: ${resp.status} ${text.slice(0, 300)}`,
+    );
+  }
+}

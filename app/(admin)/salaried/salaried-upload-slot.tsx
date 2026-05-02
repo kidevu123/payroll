@@ -2,13 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Download, FileText, Trash2, Upload } from "lucide-react";
+import { CheckCircle2, Download, FileText, PlugZap, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   deleteSalariedDocAction,
+  listZohoOrgsAction,
+  pushDocToZohoAction,
   uploadSalariedDocAction,
+  type ZohoOrgChoice,
 } from "./actions";
 
 type DocLite = {
@@ -19,6 +22,7 @@ type DocLite = {
   payPeriodStart: string | null;
   payPeriodEnd: string | null;
   amountCents: number | null;
+  zohoExpenseId: string | null;
 };
 
 function formatRange(start: string | null, end: string | null): string | null {
@@ -184,6 +188,7 @@ function DocRow({ doc }: { doc: DocLite }) {
             <Download className="h-3.5 w-3.5" /> View
           </Link>
         </Button>
+        <ZohoPushButton doc={doc} />
         <form
           action={async () => {
             if (removing) return;
@@ -209,5 +214,102 @@ function DocRow({ doc }: { doc: DocLite }) {
         <span className="text-xs text-red-700 ml-auto">{error}</span>
       )}
     </li>
+  );
+}
+
+function ZohoPushButton({ doc }: { doc: DocLite }) {
+  const [orgs, setOrgs] = React.useState<ZohoOrgChoice[] | null>(null);
+  const [picking, setPicking] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [pushedExpenseId, setPushedExpenseId] = React.useState<string | null>(
+    doc.zohoExpenseId,
+  );
+
+  // Don't show the push button for W2 docs (legal record, not an expense).
+  if (doc.kind === "W2") return null;
+
+  if (pushedExpenseId) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-input bg-emerald-50 text-emerald-700 px-1.5 py-0.5 text-[10px]"
+        title={`Pushed to Zoho: expense ${pushedExpenseId}`}
+      >
+        <CheckCircle2 className="h-3 w-3" /> Zoho
+      </span>
+    );
+  }
+
+  return (
+    <span className="relative">
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={pending}
+        title="Push to Zoho Books as an expense"
+        onClick={async () => {
+          setError(null);
+          if (!orgs) {
+            const list = await listZohoOrgsAction();
+            setOrgs(list);
+            if (list.length === 0) {
+              setError(
+                "No active Zoho orgs. Connect one in /settings/zoho first.",
+              );
+              return;
+            }
+            if (list.length === 1) {
+              // One org → push directly without picker UI.
+              setPending(true);
+              const r = await pushDocToZohoAction(doc.id, list[0]!.id);
+              setPending(false);
+              if ("error" in r) setError(r.error);
+              else setPushedExpenseId(r.expenseId);
+              return;
+            }
+            setPicking(true);
+            return;
+          }
+          if (orgs.length === 1) {
+            setPending(true);
+            const r = await pushDocToZohoAction(doc.id, orgs[0]!.id);
+            setPending(false);
+            if ("error" in r) setError(r.error);
+            else setPushedExpenseId(r.expenseId);
+            return;
+          }
+          setPicking((p) => !p);
+        }}
+      >
+        <PlugZap className="h-3.5 w-3.5" /> Zoho
+      </Button>
+      {picking && orgs && orgs.length > 1 && (
+        <div className="absolute right-0 top-full z-10 mt-1 rounded-card border border-border bg-surface shadow-card text-xs min-w-40">
+          {orgs.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              className="block w-full text-left px-3 py-2 hover:bg-surface-2"
+              onClick={async () => {
+                setPicking(false);
+                setPending(true);
+                setError(null);
+                const r = await pushDocToZohoAction(doc.id, o.id);
+                setPending(false);
+                if ("error" in r) setError(r.error);
+                else setPushedExpenseId(r.expenseId);
+              }}
+            >
+              Push to {o.name}
+            </button>
+          ))}
+        </div>
+      )}
+      {error && (
+        <span className="absolute right-0 top-full mt-1 text-[10px] text-red-700 whitespace-nowrap">
+          {error}
+        </span>
+      )}
+    </span>
   );
 }

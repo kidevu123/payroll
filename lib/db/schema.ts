@@ -479,6 +479,14 @@ export const payrollPeriodDocuments = pgTable(
     /** Net amount on the paystub, integer cents. Nullable for non-paystub
      *  uploads (W2, OTHER) where amount doesn't apply. */
     amountCents: integer("amount_cents"),
+    /** When this doc was successfully pushed to a Zoho expense, the
+     *  expense ID. NULL means no push has happened yet (or the last
+     *  push failed). Used for idempotency on the "Push to Zoho" button. */
+    zohoExpenseId: text("zoho_expense_id"),
+    zohoOrganizationId: uuid("zoho_organization_id").references(
+      () => zohoOrganizations.id,
+    ),
+    zohoPushedAt: timestamp("zoho_pushed_at", { withTimezone: true }),
     uploadedById: uuid("uploaded_by_id")
       .notNull()
       .references(() => users.id),

@@ -12,13 +12,15 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  employees,
+  payrollPeriodDocuments,
   payrollRuns,
   payslips,
   zohoOrganizations,
   zohoPushes,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
-import { createExpense, validateConnection } from "./client";
+import { attachReceipt, createExpense, validateConnection } from "./client";
 
 export type Actor = {
   id: string;
@@ -114,6 +116,102 @@ export async function pushReportToZoho(
     });
     throw err;
   }
+}
+
+/**
+ * Push a salaried-employee paystub upload to Zoho Books as an expense
+ * with the original PDF attached as the receipt. Idempotent: a previous
+ * successful push (zohoExpenseId + zohoPushedAt populated on the doc
+ * row) returns the existing expense ID without re-creating it.
+ */
+export async function pushPaystubToZoho(
+  documentId: string,
+  organizationId: string,
+  actor: Actor,
+): Promise<PushResult> {
+  const [doc] = await db
+    .select()
+    .from(payrollPeriodDocuments)
+    .where(eq(payrollPeriodDocuments.id, documentId));
+  if (!doc) throw new Error("Document not found.");
+  if (doc.deletedAt) throw new Error("Document is deleted.");
+  if (doc.zohoExpenseId) {
+    return { expenseId: doc.zohoExpenseId, alreadyExists: true };
+  }
+  if (!doc.amountCents || doc.amountCents <= 0) {
+    throw new Error(
+      "Document has no positive amount. Set the net amount on upload before pushing.",
+    );
+  }
+  const [org] = await db
+    .select()
+    .from(zohoOrganizations)
+    .where(eq(zohoOrganizations.id, organizationId));
+  if (!org) throw new Error("Zoho organization not found.");
+  if (!org.active) throw new Error("Zoho organization is inactive.");
+
+  // Pull employee for a useful expense reference like "Paystub — Juan J".
+  const [employee] = await db
+    .select()
+    .from(employees)
+    .where(eq(employees.id, doc.employeeId));
+  const empName = employee?.displayName ?? "Salaried staff";
+  const periodLabel = doc.payPeriodStart && doc.payPeriodEnd
+    ? `${doc.payPeriodStart}..${doc.payPeriodEnd}`
+    : doc.uploadedAt.toISOString().slice(0, 10);
+  const reference = `${doc.kind} — ${empName} ${periodLabel}`.slice(0, 100);
+
+  // Read the PDF (or whatever file kind) into memory so we can multipart it.
+  const { readFile } = await import("fs/promises");
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(doc.filePath);
+  } catch (err) {
+    throw new Error(
+      `Document file is missing on disk (${doc.filePath}). Re-upload before pushing.`,
+    );
+  }
+
+  const expense = await createExpense({
+    org,
+    amountCents: doc.amountCents,
+    reference,
+    date:
+      doc.payPeriodEnd ??
+      doc.uploadedAt.toISOString().slice(0, 10),
+  });
+  // Attach the file as the expense receipt. If this fails, the expense
+  // already exists — log + bail; user can re-attach manually in Zoho.
+  await attachReceipt({
+    org,
+    expenseId: expense.expenseId,
+    filename: doc.originalFilename,
+    mime: doc.mime,
+    bytes: new Uint8Array(bytes),
+  });
+
+  await db
+    .update(payrollPeriodDocuments)
+    .set({
+      zohoExpenseId: expense.expenseId,
+      zohoOrganizationId: org.id,
+      zohoPushedAt: new Date(),
+    })
+    .where(eq(payrollPeriodDocuments.id, documentId));
+
+  await writeAudit({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: "payroll_period_document.zoho_push",
+    targetType: "PayrollPeriodDocument",
+    targetId: documentId,
+    after: {
+      expenseId: expense.expenseId,
+      organizationId: org.id,
+    },
+  });
+
+  return { expenseId: expense.expenseId, alreadyExists: false };
 }
 
 export async function testZohoConnection(

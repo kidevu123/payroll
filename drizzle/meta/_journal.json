@@ -92,6 +92,13 @@
       "when": 1777682682258,
       "tag": "0012_gigantic_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777682992037,
+      "tag": "0013_slow_jackal",
+      "breakpoints": true
     }
   ]
 }

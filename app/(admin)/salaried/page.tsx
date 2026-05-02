@@ -99,6 +99,7 @@ export default async function SalariedPage() {
                   payPeriodStart: d.payPeriodStart,
                   payPeriodEnd: d.payPeriodEnd,
                   amountCents: d.amountCents,
+                  zohoExpenseId: d.zohoExpenseId,
                 }))}
               />
             </CardContent>

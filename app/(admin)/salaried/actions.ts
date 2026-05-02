@@ -7,6 +7,8 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { createDoc, deleteDoc, getDoc } from "@/lib/db/queries/payroll-documents";
+import { pushPaystubToZoho } from "@/lib/zoho/push";
+import { listOrgs } from "@/lib/db/queries/zoho";
 
 const idSchema = z.string().uuid();
 
@@ -182,5 +184,46 @@ function mimeToExt(mime: string): string {
       return ".xlsx";
     default:
       return "";
+  }
+}
+
+export type ZohoOrgChoice = { id: string; name: string };
+
+export async function listZohoOrgsAction(): Promise<ZohoOrgChoice[]> {
+  await requireAdmin();
+  const orgs = await listOrgs();
+  return orgs
+    .filter((o) => o.active)
+    .map((o) => ({ id: o.id, name: o.name }));
+}
+
+/**
+ * Push an uploaded paystub doc to Zoho Books as an expense with the
+ * file attached as the receipt. Idempotent — re-clicking after a
+ * successful push returns the existing expense without re-creating.
+ */
+export async function pushDocToZohoAction(
+  docId: string,
+  organizationId: string,
+): Promise<
+  | { error: string }
+  | { ok: true; expenseId: string; alreadyExists: boolean }
+> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(docId).success) return { error: "Invalid doc id." };
+  if (!idSchema.safeParse(organizationId).success) {
+    return { error: "Invalid Zoho org id." };
+  }
+  try {
+    const result = await pushPaystubToZoho(docId, organizationId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/salaried");
+    return { ok: true, ...result };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Push failed.",
+    };
   }
 }
