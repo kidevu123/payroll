@@ -22,10 +22,33 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 const kindSchema = z.enum(["W2", "PAYSTUB", "OTHER"]);
 
+const metaSchema = z.object({
+  payPeriodStart: z
+    .union([z.string().date(), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+  payPeriodEnd: z
+    .union([z.string().date(), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+  /** Dollars as the admin types ($2,143.20). Stored as integer cents. */
+  amountDollars: z
+    .union([
+      z.string().regex(/^\d+(\.\d{1,2})?$/, "Amount must be a number"),
+      z.literal("").transform(() => null),
+    ])
+    .nullable()
+    .optional(),
+});
+
 /**
  * Salaried-employee document upload. Decoupled from any payroll period
  * (period_id stays NULL on the row) — these are W2s / external paystubs
  * that arrive on their own cadence, not tied to a punch-driven run.
+ *
+ * Optional metadata (pay period dates + net amount) gets persisted on
+ * the document row so the salaried tab card can render "Apr 16–30 ·
+ * $2,143" without the admin having to open the PDF.
  */
 export async function uploadSalariedDocAction(
   employeeId: string,
@@ -36,6 +59,14 @@ export async function uploadSalariedDocAction(
   const kindRaw = formData.get("kind");
   const kind = kindSchema.safeParse(kindRaw);
   if (!kind.success) return { error: "Invalid document kind." };
+  const meta = metaSchema.safeParse({
+    payPeriodStart: formData.get("payPeriodStart") || "",
+    payPeriodEnd: formData.get("payPeriodEnd") || "",
+    amountDollars: formData.get("amountDollars") || "",
+  });
+  if (!meta.success) {
+    return { error: meta.error.issues[0]?.message ?? "Invalid metadata." };
+  }
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a file to upload." };
@@ -46,6 +77,17 @@ export async function uploadSalariedDocAction(
   if (!ACCEPT_MIME.has(file.type)) {
     return { error: "Only PDF, PNG, JPG, or XLSX files are accepted." };
   }
+  if (
+    meta.data.payPeriodStart &&
+    meta.data.payPeriodEnd &&
+    meta.data.payPeriodEnd < meta.data.payPeriodStart
+  ) {
+    return { error: "Pay period end can't be before start." };
+  }
+  const amountCents =
+    meta.data.amountDollars && meta.data.amountDollars !== ""
+      ? Math.round(Number(meta.data.amountDollars) * 100)
+      : null;
   // Verify the employee exists and is actually salaried.
   const [employee] = await db
     .select()
@@ -86,6 +128,9 @@ export async function uploadSalariedDocAction(
         sizeBytes: file.size,
         visibleToEmployee: true,
         uploadedById: session.user.id,
+        payPeriodStart: meta.data.payPeriodStart ?? null,
+        payPeriodEnd: meta.data.payPeriodEnd ?? null,
+        amountCents,
       },
       { id: session.user.id, role: session.user.role },
     );

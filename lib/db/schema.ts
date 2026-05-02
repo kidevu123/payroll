@@ -471,6 +471,14 @@ export const payrollPeriodDocuments = pgTable(
     originalFilename: text("original_filename").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
     visibleToEmployee: boolean("visible_to_employee").notNull().default(true),
+    /** Pay period the document covers — populated for salaried paystubs so
+     *  the employee + admin see "this is for the 4/16–4/30 cycle" without
+     *  having to open the PDF. Free-form when periodId isn't set. */
+    payPeriodStart: date("pay_period_start"),
+    payPeriodEnd: date("pay_period_end"),
+    /** Net amount on the paystub, integer cents. Nullable for non-paystub
+     *  uploads (W2, OTHER) where amount doesn't apply. */
+    amountCents: integer("amount_cents"),
     uploadedById: uuid("uploaded_by_id")
       .notNull()
       .references(() => users.id),

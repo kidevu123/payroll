@@ -96,6 +96,9 @@ export default async function SalariedPage() {
                   originalFilename: d.originalFilename,
                   kind: d.kind,
                   uploadedAt: d.uploadedAt.toISOString(),
+                  payPeriodStart: d.payPeriodStart,
+                  payPeriodEnd: d.payPeriodEnd,
+                  amountCents: d.amountCents,
                 }))}
               />
             </CardContent>

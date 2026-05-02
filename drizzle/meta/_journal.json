@@ -85,6 +85,13 @@
       "when": 1777692000000,
       "tag": "0011_repair_doc_period_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777682682258,
+      "tag": "0012_gigantic_metal_master",
+      "breakpoints": true
     }
   ]
 }

@@ -112,7 +112,14 @@ export default async function EmployeePayList() {
                       {d.originalFilename}
                     </p>
                     <p className="text-xs text-text-muted">
-                      {d.kind} · uploaded{" "}
+                      {d.kind}
+                      {d.payPeriodStart && d.payPeriodEnd
+                        ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
+                        : ""}
+                      {d.amountCents !== null && d.amountCents > 0
+                        ? ` · $${(d.amountCents / 100).toFixed(2)}`
+                        : ""}
+                      {" · uploaded "}
                       {d.uploadedAt.toLocaleDateString(undefined, {
                         year: "numeric",
                         month: "short",

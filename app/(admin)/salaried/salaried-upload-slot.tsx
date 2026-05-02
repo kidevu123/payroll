@@ -16,7 +16,25 @@ type DocLite = {
   originalFilename: string;
   kind: "W2" | "PAYSTUB" | "OTHER";
   uploadedAt: string;
+  payPeriodStart: string | null;
+  payPeriodEnd: string | null;
+  amountCents: number | null;
 };
+
+function formatRange(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null;
+  const a = new Date(`${start}T12:00:00Z`);
+  const b = new Date(`${end}T12:00:00Z`);
+  const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
+  const left = `${m[a.getUTCMonth()]} ${a.getUTCDate()}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
+  const right = `${m[b.getUTCMonth()]} ${b.getUTCDate()}, ${b.getUTCFullYear()}`;
+  return `${left} – ${right}`;
+}
+
+function formatMoney(cents: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
 
 export function SalariedUploadSlot({
   employeeId,
@@ -46,36 +64,82 @@ export function SalariedUploadSlot({
           setPending(false);
           if (r?.error) setError(r.error);
         }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end"
+        className="space-y-2"
       >
-        <div className="space-y-1 sm:col-span-2">
-          <Label htmlFor={`file-${employeeId}`} className="text-xs">
-            Upload PDF / PNG / JPG / XLSX (max 10 MB)
-          </Label>
-          <Input
-            id={`file-${employeeId}`}
-            name="file"
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.xlsx"
-            required
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor={`file-${employeeId}`} className="text-xs">
+              Upload PDF / PNG / JPG / XLSX (max 10 MB)
+            </Label>
+            <Input
+              id={`file-${employeeId}`}
+              name="file"
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.xlsx"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`kind-${employeeId}`} className="text-xs">
+              Kind
+            </Label>
+            <select
+              id={`kind-${employeeId}`}
+              name="kind"
+              defaultValue="PAYSTUB"
+              className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+            >
+              <option value="PAYSTUB">Paystub</option>
+              <option value="W2">W2</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor={`kind-${employeeId}`} className="text-xs">
-            Kind
-          </Label>
-          <select
-            id={`kind-${employeeId}`}
-            name="kind"
-            defaultValue="PAYSTUB"
-            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
-          >
-            <option value="PAYSTUB">Paystub</option>
-            <option value="W2">W2</option>
-            <option value="OTHER">Other</option>
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <Label
+              htmlFor={`pps-${employeeId}`}
+              className="text-xs text-text-muted"
+            >
+              Pay period start (optional)
+            </Label>
+            <Input
+              id={`pps-${employeeId}`}
+              name="payPeriodStart"
+              type="date"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label
+              htmlFor={`ppe-${employeeId}`}
+              className="text-xs text-text-muted"
+            >
+              Pay period end (optional)
+            </Label>
+            <Input
+              id={`ppe-${employeeId}`}
+              name="payPeriodEnd"
+              type="date"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label
+              htmlFor={`amt-${employeeId}`}
+              className="text-xs text-text-muted"
+            >
+              Net amount $ (optional)
+            </Label>
+            <Input
+              id={`amt-${employeeId}`}
+              name="amountDollars"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="2143.20"
+            />
+          </div>
         </div>
-        <div className="sm:col-span-3 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Button type="submit" size="sm" disabled={pending}>
             <Upload className="h-3.5 w-3.5" />
             {pending ? "Uploading…" : "Upload"}
@@ -97,7 +161,16 @@ function DocRow({ doc }: { doc: DocLite }) {
         <div className="min-w-0">
           <p className="font-medium truncate">{doc.originalFilename}</p>
           <p className="text-xs text-text-muted">
-            {doc.kind} · uploaded {doc.uploadedAt.slice(0, 10)}
+            {doc.kind}
+            {(() => {
+              const range = formatRange(doc.payPeriodStart, doc.payPeriodEnd);
+              return range ? ` · ${range}` : "";
+            })()}
+            {doc.amountCents !== null && doc.amountCents > 0
+              ? ` · ${formatMoney(doc.amountCents)}`
+              : ""}
+            {" · uploaded "}
+            {doc.uploadedAt.slice(0, 10)}
           </p>
         </div>
       </div>
