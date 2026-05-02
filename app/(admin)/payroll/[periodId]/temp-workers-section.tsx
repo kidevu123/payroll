@@ -35,6 +35,23 @@ export function TempWorkersSection({
 
   const total = initialEntries.reduce((acc, e) => acc + e.amountCents, 0);
 
+  // Collapsed default when there's nothing to show. The owner found the
+  // full empty-state card too noisy on every period page; keep it as a
+  // thin one-liner that expands on demand instead. When entries exist or
+  // the form is open, render the full card.
+  const hasEntries = initialEntries.length > 0;
+  if (!hasEntries && !open) {
+    if (locked) return null;
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-card border border-dashed border-border bg-surface-2/30 px-4 py-2 text-sm text-text-muted">
+        <span>No temp / manual labor for this period.</span>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+          <Plus className="h-4 w-4" /> Add temp worker
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0">

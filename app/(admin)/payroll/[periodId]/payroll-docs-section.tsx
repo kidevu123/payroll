@@ -35,11 +35,10 @@ export function PayrollDocsSection({
   initialDocs: PayrollPeriodDocument[];
   locked: boolean;
 }) {
-  // Anyone flagged as W2 upload required, plus anyone on SALARIED pay
-  // type (they're externally paid by definition).
-  const w2Employees = employees.filter(
-    (e) => e.requiresW2Upload || e.payType === "SALARIED",
-  );
+  // Only employees explicitly opted-in via the per-employee
+  // requiresW2Upload flag. Pay-type alone is too broad (most SALARIED
+  // employees are paid in-house); admin must flip the flag deliberately.
+  const w2Employees = employees.filter((e) => e.requiresW2Upload);
 
   if (w2Employees.length === 0) {
     return null;

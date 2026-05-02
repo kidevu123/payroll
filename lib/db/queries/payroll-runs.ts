@@ -241,6 +241,16 @@ export async function publishToPortal(
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, id));
     if (!before) throw new Error(`publishToPortal: ${id} not found`);
+    // Don't let admins flip the visibility flag on a run whose payslip
+    // generation hasn't completed yet. Without this guard, an APPROVED
+    // run where the pg-boss job failed/never ran could be marked
+    // "Published" with zero payslips — which is exactly the bug we hit
+    // with the 583a12ba shell run.
+    if (before.state !== "PUBLISHED") {
+      throw new Error(
+        `publishToPortal: run ${id} is in state ${before.state}; payslip generation has not completed yet. Approve the run again or use Retry publish.`,
+      );
+    }
     if (before.publishedToPortalAt) return before;
     const now = new Date();
     const [row] = await tx
