@@ -82,6 +82,7 @@ export const missedPunchIssueEnum = pgEnum("missed_punch_issue", [
   "MISSING_OUT",
   "NO_PUNCH",
   "SUSPICIOUS_DURATION",
+  "INVERTED_TIMES",
 ]);
 
 export const requestStatusEnum = pgEnum("request_status", [

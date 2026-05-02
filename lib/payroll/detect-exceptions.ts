@@ -49,7 +49,12 @@ export type DetectInput = {
 export type DetectedAlert = {
   employeeId: string;
   date: string; // YYYY-MM-DD in company tz
-  issue: "NO_PUNCH" | "MISSING_OUT" | "MISSING_IN" | "SUSPICIOUS_DURATION";
+  issue:
+    | "NO_PUNCH"
+    | "MISSING_OUT"
+    | "MISSING_IN"
+    | "SUSPICIOUS_DURATION"
+    | "INVERTED_TIMES";
 };
 
 /** Iterate days from startDate to endDate inclusive, both YYYY-MM-DD strings. */
@@ -98,7 +103,13 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
   const workingSet = new Set(input.workingDays);
 
   // Bucket non-voided punches by employee × day-in-company-tz.
-  type Bucket = { complete: { ms: number }[]; incomplete: { clockIn: Date }[]; outOnly: number };
+  type Bucket = {
+    complete: { ms: number }[];
+    incomplete: { clockIn: Date }[];
+    outOnly: number;
+    /** clockOut < clockIn — produces 0 hours and silently underpays. */
+    inverted: number;
+  };
   const byEmpDay = new Map<string, Map<string, Bucket>>();
   for (const p of input.punches) {
     if (p.voidedAt) continue;
@@ -108,12 +119,22 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
       perEmp = new Map();
       byEmpDay.set(p.employeeId, perEmp);
     }
-    const bucket = perEmp.get(day) ?? { complete: [], incomplete: [], outOnly: 0 };
+    const bucket = perEmp.get(day) ?? {
+      complete: [],
+      incomplete: [],
+      outOnly: 0,
+      inverted: 0,
+    };
     if (p.clockOut === null) {
       bucket.incomplete.push({ clockIn: p.clockIn });
     } else if (p.clockOut.getTime() === p.clockIn.getTime()) {
       // Sentinel for an imported "clock-out without clock-in" record.
       bucket.outOnly += 1;
+    } else if (p.clockOut.getTime() < p.clockIn.getTime()) {
+      // Inverted: clock-out is before clock-in. computePay drops these
+      // (ms <= 0 short-circuits) so the employee silently gets zero
+      // hours. Surface as an exception so the admin can fix.
+      bucket.inverted += 1;
     } else {
       bucket.complete.push({ ms: p.clockOut.getTime() - p.clockIn.getTime() });
     }
@@ -156,6 +177,10 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
 
       if (bucket.outOnly > 0) {
         alerts.push({ employeeId: e.id, date: day, issue: "MISSING_IN" });
+      }
+
+      if (bucket.inverted > 0) {
+        alerts.push({ employeeId: e.id, date: day, issue: "INVERTED_TIMES" });
       }
 
       // SUSPICIOUS_DURATION — any complete punch below short or above long.

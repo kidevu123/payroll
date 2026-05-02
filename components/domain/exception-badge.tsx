@@ -2,10 +2,15 @@
 // Used in the period review screen and on employee Home cards.
 
 import * as React from "react";
-import { AlertCircle, AlertTriangle, Clock3, MinusCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Clock3, MinusCircle, Repeat } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Issue = "MISSING_IN" | "MISSING_OUT" | "NO_PUNCH" | "SUSPICIOUS_DURATION";
+type Issue =
+  | "MISSING_IN"
+  | "MISSING_OUT"
+  | "NO_PUNCH"
+  | "SUSPICIOUS_DURATION"
+  | "INVERTED_TIMES";
 
 const META: Record<Issue, { label: string; tone: string; Icon: React.ComponentType<{ className?: string }> }> = {
   NO_PUNCH: {
@@ -27,6 +32,11 @@ const META: Record<Issue, { label: string; tone: string; Icon: React.ComponentTy
     label: "Suspicious",
     tone: "bg-warn-50 text-warn-700 border-warn-200",
     Icon: AlertTriangle,
+  },
+  INVERTED_TIMES: {
+    label: "Inverted times",
+    tone: "bg-danger-50 text-danger-700 border-danger-200",
+    Icon: Repeat,
   },
 };
 

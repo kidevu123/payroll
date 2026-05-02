@@ -12,7 +12,12 @@ export function AlertCard({
 }: {
   alertId: string;
   date: string;
-  issue: "MISSING_IN" | "MISSING_OUT" | "NO_PUNCH" | "SUSPICIOUS_DURATION";
+  issue:
+    | "MISSING_IN"
+    | "MISSING_OUT"
+    | "NO_PUNCH"
+    | "SUSPICIOUS_DURATION"
+    | "INVERTED_TIMES";
 }) {
   return (
     <Link
