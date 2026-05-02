@@ -240,24 +240,30 @@ export default async function RunReviewPage({
 
       {exceptions.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-700" />
-              Skipped rows ({exceptions.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-                  <tr>
-                    <th className="py-2 pr-3 font-medium">Type</th>
-                    <th className="py-2 px-3 font-medium">Ref</th>
-                    <th className="py-2 px-3 font-medium">Reason / details</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {exceptions.slice(0, 50).map((e) => {
+          <details>
+            <CardHeader>
+              <summary className="cursor-pointer list-none">
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-700" />
+                  Skipped rows ({exceptions.length})
+                  <span className="ml-auto text-xs text-text-muted font-normal">
+                    Click to expand
+                  </span>
+                </CardTitle>
+              </summary>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                    <tr>
+                      <th className="py-2 pr-3 font-medium">Type</th>
+                      <th className="py-2 px-3 font-medium">Ref</th>
+                      <th className="py-2 px-3 font-medium">Reason / details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {exceptions.slice(0, 50).map((e) => {
                     const raw = (e.rawData ?? {}) as Record<string, unknown>;
                     const reason =
                       typeof raw.reason === "string"
@@ -288,13 +294,14 @@ export default async function RunReviewPage({
                   })}
                 </tbody>
               </table>
-              {exceptions.length > 50 && (
-                <p className="mt-2 text-xs text-text-muted">
-                  Showing first 50 of {exceptions.length}. Resolve in /ngteco/{run.id}.
-                </p>
-              )}
-            </div>
-          </CardContent>
+                {exceptions.length > 50 && (
+                  <p className="mt-2 text-xs text-text-muted">
+                    Showing first 50 of {exceptions.length}. Resolve in /ngteco/{run.id}.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </details>
         </Card>
       )}
 

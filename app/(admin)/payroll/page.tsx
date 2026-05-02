@@ -80,10 +80,6 @@ export default async function PayrollPage() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Play className="h-4 w-4 text-brand-700" /> Pull from NGTeco
             </CardTitle>
-            <CardDescription>
-              Kick the scraper now. Use this to test automation or to catch
-              up after a missed run.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <NgtecoRunNowButton size="md" />
@@ -128,10 +124,6 @@ export default async function PayrollPage() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Upload className="h-4 w-4 text-brand-700" /> Upload CSV instead
             </CardTitle>
-            <CardDescription>
-              For manual backfills or when the NGTeco scraper is offline.
-              Accepts the NGTeco export shape and a permissive legacy fallback.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>

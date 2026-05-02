@@ -228,7 +228,6 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent runs</CardTitle>
-            <CardDescription>Last 3 payroll runs.</CardDescription>
           </CardHeader>
           <CardContent>
             {recentRuns.length === 0 ? (
@@ -259,7 +258,6 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Last NGTeco import</CardTitle>
-          <CardDescription>Status of the most recent automated punch ingest.</CardDescription>
         </CardHeader>
         <CardContent>
           {recentRuns[0] ? (

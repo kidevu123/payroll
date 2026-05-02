@@ -139,10 +139,7 @@ export default async function EmployeeDetailPage({
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div>
-              <CardTitle>Rate history</CardTitle>
-              <CardDescription>Most recent first</CardDescription>
-            </div>
+            <CardTitle>Rate history</CardTitle>
             <Button asChild size="sm" variant="secondary">
               <Link href={`/employees/${employee.id}/rate`}>
                 <Receipt className="h-4 w-4" /> Add rate
@@ -157,12 +154,7 @@ export default async function EmployeeDetailPage({
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between space-y-0 gap-3">
-          <div>
-            <CardTitle>Payslips</CardTitle>
-            <CardDescription>
-              Every non-voided payslip generated for this employee. Latest first.
-            </CardDescription>
-          </div>
+          <CardTitle>Payslips</CardTitle>
           {payslipsWithPeriods.length > 0 && (
             <RecomputePayslipsButton employeeId={employee.id} />
           )}
@@ -263,7 +255,6 @@ export default async function EmployeeDetailPage({
       <Card>
         <CardHeader>
           <CardTitle>Recent punches</CardTitle>
-          <CardDescription>Latest 10 (current period and earlier)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {lastTen.length === 0 ? (

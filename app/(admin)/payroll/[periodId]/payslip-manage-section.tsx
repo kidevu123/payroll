@@ -34,18 +34,27 @@ type Row = {
 
 export function PayslipManageSection({ rows }: { rows: Row[] }) {
   if (rows.length === 0) return null;
+  // Default-collapsed: this is a destructive admin override, not part of
+  // the everyday review flow. Surface the row count in the summary so a
+  // glance says "yes there are payslips to manage" without expanding.
+  const activeCount = rows.filter((r) => r.payslip.voidedAt === null).length;
+  const voidedCount = rows.length - activeCount;
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Manage payslips</CardTitle>
-        <CardDescription>
-          Manual override. Remove a payslip if the employee shouldn&apos;t
-          have been on this run (wrong cohort, wrong schedule, etc.). The
-          run&apos;s total recomputes immediately. Works on published runs.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <table className="min-w-full text-sm">
+      <details>
+        <CardHeader>
+          <summary className="cursor-pointer list-none flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Manage payslips</CardTitle>
+              <CardDescription>
+                Manual override · {activeCount} active
+                {voidedCount > 0 ? ` · ${voidedCount} voided` : ""} · click to expand
+              </CardDescription>
+            </div>
+          </summary>
+        </CardHeader>
+        <CardContent>
+          <table className="min-w-full text-sm">
           <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
             <tr>
               <th className="py-2 pr-3 font-medium">Employee</th>
@@ -55,13 +64,14 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
               <th className="py-2 px-3 font-medium text-right" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <PayslipRow key={r.payslip.id} row={r} />
-            ))}
-          </tbody>
-        </table>
-      </CardContent>
+            <tbody className="divide-y divide-border">
+              {rows.map((r) => (
+                <PayslipRow key={r.payslip.id} row={r} />
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </details>
     </Card>
   );
 }
