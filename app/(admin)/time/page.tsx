@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { listEmployees } from "@/lib/db/queries/employees";
@@ -102,17 +102,24 @@ export default async function TimePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Time</h1>
           <p className="text-sm text-text-muted">
             Current period: {period.startDate} to {period.endDate}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs">
-          <Legend label="Complete" state="complete" />
-          <Legend label="Incomplete" state="incomplete" />
-          <Legend label="Missed" state="missed" />
+        <div className="flex items-center gap-3">
+          <Button asChild size="sm" variant="secondary">
+            <Link href="/punches/new">
+              <Plus className="h-4 w-4" /> Add manual punch
+            </Link>
+          </Button>
+          <div className="flex items-center gap-3 text-xs">
+            <Legend label="Complete" state="complete" />
+            <Legend label="Incomplete" state="incomplete" />
+            <Legend label="Missed" state="missed" />
+          </div>
         </div>
       </div>
 
