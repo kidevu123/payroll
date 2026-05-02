@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Workflow } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -18,7 +17,6 @@ function durationOf(run: { ingestStartedAt: Date | null; ingestCompletedAt: Date
 
 export default async function NgtecoRunsPage() {
   const runs = await listRuns(30);
-  // Pull periods in parallel for display.
   const periods = await Promise.all(
     runs.map((r) => getPeriodById(r.periodId)),
   );
@@ -43,33 +41,50 @@ export default async function NgtecoRunsPage() {
           }
         />
       ) : (
-        <div className="space-y-2">
-          {runs.map((r, i) => {
-            const p = periods[i];
-            return (
-              <Card key={r.id}>
-                <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 p-4 border-b-0">
-                  <div>
-                    <CardTitle className="text-base font-mono">
+        <div className="overflow-x-auto rounded-card border border-border bg-surface">
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border bg-surface-2/60">
+              <tr>
+                <th className="px-3 py-2 font-medium">Run</th>
+                <th className="px-3 py-2 font-medium">State</th>
+                <th className="px-3 py-2 font-medium">Period</th>
+                <th className="px-3 py-2 font-medium text-right">Duration</th>
+                <th className="px-3 py-2 font-medium">Started</th>
+                <th className="px-3 py-2 font-medium text-right" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {runs.map((r, i) => {
+                const p = periods[i];
+                return (
+                  <tr key={r.id} className="hover:bg-surface-2/40">
+                    <td className="px-3 py-2 font-mono text-xs">
                       {r.id.slice(0, 8)}…
-                    </CardTitle>
-                  </div>
-                  <StatusPill
-                    status={(r.state === "INGEST_FAILED" ? "INGEST_FAILED" : r.state) as never}
-                  />
-                </CardHeader>
-                <CardContent className="flex items-center justify-between p-4 pt-2 text-xs text-text-muted">
-                  <div>
-                    Period: {p?.startDate} – {p?.endDate} · Duration {durationOf(r)} ·
-                    {" "}Started {r.ingestStartedAt?.toISOString().slice(0, 19)}Z
-                  </div>
-                  <Button asChild variant="secondary" size="sm">
-                    <Link href={`/ngteco/${r.id}`}>Detail</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </td>
+                    <td className="px-3 py-2">
+                      <StatusPill
+                        status={(r.state === "INGEST_FAILED" ? "INGEST_FAILED" : r.state) as never}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-text-muted">
+                      {p ? `${p.startDate} – ${p.endDate}` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-text-muted">
+                      {durationOf(r)}
+                    </td>
+                    <td className="px-3 py-2 text-text-muted text-xs">
+                      {r.ingestStartedAt?.toISOString().slice(0, 16).replace("T", " ") ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/ngteco/${r.id}`}>Detail</Link>
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
