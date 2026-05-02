@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { getSetting, setSetting } from "@/lib/settings/runtime";
 
 const schema = z.object({
+  cronEnabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
   enabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
   cron: z.string().min(1).max(120).regex(/^[\d*/,\- ]+$/, "Cron must use only digits, *, /, ,, -, and spaces"),
   punchPollEnabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
@@ -24,6 +25,7 @@ export async function updateAutomationAction(
 ): Promise<{ error?: string } | void> {
   const session = await requireAdmin();
   const parsed = schema.safeParse({
+    cronEnabled: formData.get("cronEnabled") ?? "off",
     enabled: formData.get("enabled") ?? "off",
     cron: formData.get("cron"),
     punchPollEnabled: formData.get("punchPollEnabled") ?? "off",
@@ -46,6 +48,7 @@ export async function updateAutomationAction(
     "automation",
     {
       ...current,
+      cronEnabled: v.cronEnabled === true,
       payrollRun: { enabled: v.enabled === true, cron: v.cron },
       ngtecoPunchPoll: {
         enabled: v.punchPollEnabled === true,

@@ -53,19 +53,33 @@ export function getBoss(): Promise<PgBoss> {
 }
 
 async function registerJobs(boss: PgBoss): Promise<void> {
+  // Master kill switch — when automation.cronEnabled === false, every
+  // cron schedule is skipped (and any stale ones get unscheduled). The
+  // owner uses this for full-manual mode while reconciling data.
+  const initialAuto = await getSetting("automation").catch(() => null);
+  const cronEnabled = initialAuto?.cronEnabled ?? true;
+
   // pg-boss v10 removed implicit queue creation; create explicitly first.
   await boss.createQueue("noop.heartbeat");
   await boss.work("noop.heartbeat", async (jobs) => {
     logger.debug({ count: jobs.length }, "heartbeat tick");
   });
-  await boss.schedule("noop.heartbeat", "* * * * *");
+  if (cronEnabled) {
+    await boss.schedule("noop.heartbeat", "* * * * *");
+  } else {
+    await boss.unschedule("noop.heartbeat").catch(() => undefined);
+  }
 
   await boss.createQueue("period.rollover");
   await boss.work("period.rollover", async () => {
     await runPeriodRollover();
   });
   // 00:30 daily; the handler reads company timezone to decide what "today" is.
-  await boss.schedule("period.rollover", "30 0 * * *");
+  if (cronEnabled) {
+    await boss.schedule("period.rollover", "30 0 * * *");
+  } else {
+    await boss.unschedule("period.rollover").catch(() => undefined);
+  }
 
   // ── ngteco.import ──────────────────────────────────────────────────────
   await boss.createQueue("ngteco.import");
@@ -92,8 +106,8 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     }
     await handlePayrollRunTick(boss);
   });
-  const automation = await getSetting("automation").catch(() => null);
-  if (automation?.payrollRun.enabled) {
+  const automation = initialAuto;
+  if (cronEnabled && automation?.payrollRun.enabled) {
     await boss.schedule("payroll.run.tick", automation.payrollRun.cron);
   } else {
     // Tear down any stale schedule from a prior boot when automation was on.
@@ -143,13 +157,17 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     const { runPollAndLog } = await import("./handlers/punch-poll-runner");
     await runPollAndLog({ triggeredBy: "CRON" });
   });
-  if (automation?.ngtecoPunchPoll?.enabled) {
+  if (cronEnabled && automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(
       "ngteco.punch.poll",
       automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
     );
   } else {
     await boss.unschedule("ngteco.punch.poll").catch(() => undefined);
+  }
+
+  if (!cronEnabled) {
+    logger.info("registerJobs: cronEnabled=false — all schedules skipped");
   }
 }
 

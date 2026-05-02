@@ -39,6 +39,29 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
           }}
           className="space-y-4"
         >
+          <div className="rounded-card border-2 border-danger-200 bg-danger-50 p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="cronEnabled"
+                type="checkbox"
+                name="cronEnabled"
+                defaultChecked={automation.cronEnabled}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="cronEnabled" className="font-semibold">
+                Master: cron schedules enabled
+              </Label>
+            </div>
+            <p className="text-xs text-danger-700">
+              When OFF, NO scheduled job fires — including period rollover and
+              the heartbeat. Use this for full-manual mode while reconciling
+              data. After flipping off + saving, also delete the existing
+              pg-boss schedule rows once (Database → pgboss.schedule) so any
+              currently-armed schedules don&apos;t fire one more time before
+              the boss process restarts.
+            </p>
+          </div>
+
           <div className="flex items-center gap-2">
             <input
               id="enabled"

@@ -73,6 +73,14 @@ export type PayRulesSettings = z.infer<typeof payRulesSchema>;
 // ─── Automation ──────────────────────────────────────────────────────────────
 
 export const automationSchema = z.object({
+  /**
+   * Master kill switch for ALL pg-boss cron schedules. When false, no
+   * scheduled work registers — including the always-on noop.heartbeat
+   * and period.rollover. The owner can flip this off when they need a
+   * fully manual mode (e.g. while reconciling/rebuilding data) without
+   * worrying about cron jobs re-creating schedules they just deleted.
+   */
+  cronEnabled: z.boolean().default(true),
   payrollRun: z.object({
     enabled: z.boolean().default(true),
     // Sunday 7pm ET — confirmed default per §21 #6.
