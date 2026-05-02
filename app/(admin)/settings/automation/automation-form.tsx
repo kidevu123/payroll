@@ -6,29 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CronPicker } from "@/components/admin/cron-picker";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { updateAutomationAction } from "./actions";
 
 export function AutomationForm({ automation }: { automation: AutomationSettings }) {
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Automation</CardTitle>
-        <CardDescription>
-          Cron schedule, employee fix window, suspicious-duration thresholds.
-          Each Pay Schedule has its own cron in Settings → Pay schedules; this
-          tab governs the global default.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Automation</h2>
         <form
           action={async (form) => {
             setPending(true);
@@ -158,7 +143,6 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

@@ -5,13 +5,6 @@ import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { runImportNow, saveNgtecoConfig } from "./actions";
 
 export function NgtecoForm({
@@ -31,16 +24,13 @@ export function NgtecoForm({
   const [running, setRunning] = React.useState(false);
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>NGTeco connection</CardTitle>
-          <CardDescription>
-            Credentials are encrypted at rest with AES-GCM. The plaintext only
-            crosses the boundary the moment a Playwright session opens.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="space-y-6">
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold tracking-tight">NGTeco connection</h2>
+        <p className="text-xs text-text-muted">
+          Credentials are encrypted at rest with AES-GCM. Plaintext only
+          crosses the boundary the moment a Playwright session opens.
+        </p>
           <form
             action={async (form) => {
               setPending(true);
@@ -111,37 +101,32 @@ export function NgtecoForm({
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Run import now</CardTitle>
-          <CardDescription>
-            Creates a PayrollRun against the current open period and enqueues
-            ngteco.import. View progress + screenshots on /ngteco.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            action={async () => {
-              setRunning(true);
-              const result = await runImportNow();
-              setRunning(false);
-              if (result?.error) setError(result.error);
-            }}
-          >
-            <Button type="submit" disabled={running || !hasCredentials}>
-              <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
-            </Button>
-            {!hasCredentials && (
-              <p className="mt-2 text-xs text-text-muted">
-                Save credentials first.
-              </p>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+      <div className="space-y-2 pt-4 border-t border-border">
+        <h2 className="text-lg font-semibold tracking-tight">Run import now</h2>
+        <p className="text-xs text-text-muted">
+          Creates a PayrollRun against the current open period and enqueues
+          ngteco.import. View progress + screenshots on /ngteco.
+        </p>
+        <form
+          action={async () => {
+            setRunning(true);
+            const result = await runImportNow();
+            setRunning(false);
+            if (result?.error) setError(result.error);
+          }}
+        >
+          <Button type="submit" disabled={running || !hasCredentials}>
+            <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
+          </Button>
+          {!hasCredentials && (
+            <p className="mt-2 text-xs text-text-muted">
+              Save credentials first.
+            </p>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

@@ -4,13 +4,6 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { SecuritySettings } from "@/lib/settings/schemas";
 import { saveSecurity } from "./actions";
 
@@ -20,14 +13,8 @@ export function SecurityForm({ settings }: { settings: SecuritySettings }) {
   const [pending, setPending] = React.useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Security</CardTitle>
-        <CardDescription>
-          Admin 2FA toggle, session lifetime, login rate limit.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Security</h2>
         <form
           action={async (form) => {
             setPending(true);
@@ -101,7 +88,6 @@ export function SecurityForm({ settings }: { settings: SecuritySettings }) {
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

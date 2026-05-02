@@ -4,13 +4,6 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { PayPeriodSettings } from "@/lib/settings/schemas";
 import { savePayPeriod } from "./actions";
 
@@ -36,15 +29,8 @@ export function PayPeriodForm({
   const [pending, setPending] = React.useState(false);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pay periods</CardTitle>
-        <CardDescription>
-          Length, start-of-week, working days, and (when no periods exist) the
-          first-start anchor.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Pay periods</h2>
         <form
           action={async (form) => {
             setPending(true);
@@ -139,7 +125,6 @@ export function PayPeriodForm({
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }

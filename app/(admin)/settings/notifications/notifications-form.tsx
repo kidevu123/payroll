@@ -3,13 +3,6 @@
 import * as React from "react";
 import type { NotificationsSettings } from "@/lib/settings/schemas";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { updateNotificationsAction } from "./actions";
 
 const KIND_LABELS: Record<string, string> = {
@@ -34,15 +27,8 @@ export function NotificationsForm({
   const kinds = Object.keys(notifications.defaults) as Array<keyof typeof notifications.defaults>;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Notifications</CardTitle>
-        <CardDescription>
-          Per-event-kind channel toggles. In-app and push are on by default;
-          email is disabled per owner direction (see CLAUDE.md §21 #2).
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>
         <form
           action={async (form) => {
             setPending(true);
@@ -110,7 +96,6 @@ export function NotificationsForm({
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
