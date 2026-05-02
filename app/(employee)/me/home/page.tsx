@@ -13,10 +13,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
 import { listRecentForEmployee } from "@/lib/db/queries/time-off";
-import {
-  ensureNextPeriod,
-  getCurrentPeriod,
-} from "@/lib/db/queries/pay-periods";
+import { getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 
@@ -60,7 +57,7 @@ export default async function EmployeeHome() {
     getSetting("payRules"),
   ]);
   const today = todayInTz(company.timezone);
-  await ensureNextPeriod(today);
+  // Read-only — period creation is admin-only via CSV upload.
   const period = await getCurrentPeriod(today);
 
   // Recent time-off request history for this employee — visible to all

@@ -16,7 +16,6 @@ import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import {
-  ensureNextPeriod,
   getCurrentPeriod,
   getMostRecentPeriod,
 } from "@/lib/db/queries/pay-periods";
@@ -42,8 +41,8 @@ function todayInTz(tz: string) {
 export default async function DashboardPage() {
   const company = await getSetting("company");
   const today = todayInTz(company.timezone);
-  await ensureNextPeriod(today);
-
+  // Read-only — never auto-creates a period. Owner directive: only the
+  // CSV upload should kick off period creation.
   const period = (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
   const run = await getCurrentRun();
   const [pendingMissed, pendingTimeOff] = await Promise.all([

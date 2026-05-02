@@ -1,11 +1,15 @@
-// /punches/wipe — owner-only bulk soft-delete (void) of punches by date.
-// Per spec, voided rows stay in the DB but stop counting in compute.
+// /punches/wipe — owner-only data-cleanup tools.
+//   - Bulk soft-delete (void) punches by clock_in date
+//   - Hard-delete OPEN pay periods that have no punches + no runs
+// Per spec, punches are soft-deleted (voided_at). Pay periods are
+// hard-deleted only when they're empty shells.
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { requireOwner } from "@/lib/auth-guards";
 import { WipePunchesPanel } from "./wipe-panel";
+import { WipeEmptyPeriodsPanel } from "./wipe-empty-periods-panel";
 
 export default async function WipePunchesPage() {
   await requireOwner();
@@ -18,15 +22,14 @@ export default async function WipePunchesPage() {
       </Button>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Wipe punches (soft-delete)
+          Data cleanup
         </h1>
         <p className="text-sm text-text-muted">
-          Marks every non-voided punch from the chosen date forward as voided.
-          The rows stay in the database (per spec), but computePay and
-          payslip-recompute will ignore them. Reversible if you have row IDs.
+          Owner-only reset tools. Use sparingly.
         </p>
       </div>
       <WipePunchesPanel />
+      <WipeEmptyPeriodsPanel />
     </div>
   );
 }

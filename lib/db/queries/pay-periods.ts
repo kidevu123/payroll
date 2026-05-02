@@ -197,6 +197,40 @@ export async function unlockPeriod(
  * `today` is a YYYY-MM-DD string in company timezone. The caller is
  * responsible for the conversion.
  */
+/**
+ * Read-only counterpart to `ensureNextPeriod`. Returns the pay period
+ * whose date range contains `today` if one exists; otherwise the most
+ * recent period overall; otherwise null. NEVER creates a row.
+ *
+ * Use this from view paths and informational queries. Only the explicit
+ * create flows (CSV upload, manual punch entry) should call
+ * `ensureNextPeriod` — the owner doesn't want the system silently
+ * creating periods for them anymore.
+ */
+export async function getEffectivePeriod(today: string): Promise<PayPeriod | null> {
+  // Period whose [start_date, end_date] covers today.
+  const [containing] = await db
+    .select()
+    .from(payPeriods)
+    .where(
+      and(
+        sql`${payPeriods.startDate} <= ${today}`,
+        sql`${payPeriods.endDate} >= ${today}`,
+      ),
+    )
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  if (containing) return containing;
+
+  // Fallback: most recent period regardless of date.
+  const [latest] = await db
+    .select()
+    .from(payPeriods)
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  return latest ?? null;
+}
+
 export async function ensureNextPeriod(
   today: string,
   actor: Actor | null = null,

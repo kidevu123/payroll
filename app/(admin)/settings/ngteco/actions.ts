@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-guards";
 import { setNgtecoCredentials } from "@/lib/ngteco/credentials";
-import { getCurrentPeriod, ensureNextPeriod } from "@/lib/db/queries/pay-periods";
+import { getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { createRun } from "@/lib/db/queries/payroll-runs";
 import { getBoss } from "@/lib/jobs";
 import { getSetting } from "@/lib/settings/runtime";
@@ -53,9 +53,15 @@ export async function runImportNow(): Promise<{ error?: string; runId?: string }
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
   }).format(new Date());
-  await ensureNextPeriod(today, { id: session.user.id, role: session.user.role });
+  // Read-only — auto-create disabled per owner directive. CSV upload
+  // is the only path that creates pay periods now.
   const period = await getCurrentPeriod(today);
-  if (!period) return { error: "No current period." };
+  if (!period) {
+    return {
+      error:
+        "No current pay period. Upload a CSV at /run-payroll/upload first to establish the period.",
+    };
+  }
   const run = await createRun(period.id, new Date(), {
     id: session.user.id,
     role: session.user.role,

@@ -11,10 +11,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getBoss } from "@/lib/jobs";
 import { getSetting } from "@/lib/settings/runtime";
-import {
-  ensureNextPeriod,
-  getCurrentPeriod,
-} from "@/lib/db/queries/pay-periods";
+import { getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { createRun } from "@/lib/db/queries/payroll-runs";
 
 export async function POST(): Promise<Response> {
@@ -23,11 +20,15 @@ export async function POST(): Promise<Response> {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
   }).format(new Date());
-  await ensureNextPeriod(today);
+  // Read-only — auto-create disabled. Admin must upload a CSV first
+  // (or add a manual punch) to establish the period.
   const period = await getCurrentPeriod(today);
   if (!period) {
     return NextResponse.json(
-      { error: "No current period to import into." },
+      {
+        error:
+          "No current pay period exists. Upload a CSV at /run-payroll/upload first to establish the period.",
+      },
       { status: 409 },
     );
   }

@@ -4,7 +4,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { listEmployees } from "@/lib/db/queries/employees";
 import {
-  ensureNextPeriod,
   getCurrentPeriod,
   getMostRecentPeriod,
 } from "@/lib/db/queries/pay-periods";
@@ -52,8 +51,8 @@ export default async function TimePage() {
   const company = await getSetting("company");
   const today = todayInTimezone(company.timezone);
 
-  // Make sure a period exists for today (idempotent).
-  await ensureNextPeriod(today);
+  // Read-only — auto-create disabled. Period creation now belongs to
+  // the CSV upload + manual punch flows.
   const period =
     (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
 
@@ -62,10 +61,10 @@ export default async function TimePage() {
       <EmptyState
         icon={CalendarDays}
         title="No pay periods yet"
-        description="The first period is created once an employee is added."
+        description="Upload a CSV from /run-payroll/upload to create the first period, or add a manual punch."
         action={
           <Button asChild>
-            <Link href="/employees/new">Add an employee</Link>
+            <Link href="/run-payroll/upload">Upload CSV</Link>
           </Button>
         }
       />
