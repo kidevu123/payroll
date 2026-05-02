@@ -69,9 +69,6 @@ RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx \
     --target=node20 \
     --format=cjs \
     --jsx=automatic \
-    --external:@react-pdf/renderer \
-    --external:react \
-    --external:react-dom \
     --outdir=/app/.next/pdf \
     --out-extension:.js=.js \
     && ls -la /app/.next/pdf/
