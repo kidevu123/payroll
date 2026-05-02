@@ -322,6 +322,14 @@ export const payPeriods = pgTable(
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
     state: payPeriodStateEnum("state").notNull().default("OPEN"),
+    /**
+     * Pay schedule this period belongs to. NULL = legacy/unassigned
+     * (older imports that predate the schedule discriminator). Without
+     * this column, weekly + semi-monthly periods overlapped on the
+     * same calendar days and the same employee's punches double-paid
+     * — that was the recurring duplicate-row class.
+     */
+    payScheduleId: uuid("pay_schedule_id").references(() => paySchedules.id),
     lockedAt: timestamp("locked_at", { withTimezone: true }),
     lockedById: uuid("locked_by_id").references(() => users.id),
     paidAt: timestamp("paid_at", { withTimezone: true }),
@@ -331,8 +339,16 @@ export const payPeriods = pgTable(
       .defaultNow(),
   },
   (t) => [
-    uniqueIndex("pay_periods_start_unique").on(t.startDate),
+    // Per-schedule uniqueness — same schedule can't have two periods
+    // starting on the same date. NULL pay_schedule_id rows behave per
+    // legacy semantics (we used to have this as a global unique on
+    // start_date, but that broke with multi-schedule deployments).
+    uniqueIndex("pay_periods_schedule_start_unique").on(
+      t.payScheduleId,
+      t.startDate,
+    ),
     index("pay_periods_state_idx").on(t.state),
+    index("pay_periods_schedule_idx").on(t.payScheduleId),
   ],
 );
 

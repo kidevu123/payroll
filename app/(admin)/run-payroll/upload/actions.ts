@@ -255,11 +255,21 @@ export async function uploadCsvAction(
   const csv = await file.text();
   const company = await getSetting("company");
 
-  // UPSERT period by start_date.
+  // UPSERT period by (pay_schedule_id, start_date). The pay_schedule_id
+  // segregates overlapping schedules so weekly + semi-monthly periods
+  // can share calendar dates without trampling each other.
+  const scheduleFilter = parsed.data.payScheduleId
+    ? eq(payPeriods.payScheduleId, parsed.data.payScheduleId)
+    : sql`${payPeriods.payScheduleId} IS NULL`;
   const [existingPeriod] = await db
     .select()
     .from(payPeriods)
-    .where(eq(payPeriods.startDate, parsed.data.startDate));
+    .where(
+      and(
+        eq(payPeriods.startDate, parsed.data.startDate),
+        scheduleFilter,
+      ),
+    );
   let periodId: string;
   if (existingPeriod) {
     periodId = existingPeriod.id;
@@ -276,6 +286,7 @@ export async function uploadCsvAction(
         startDate: parsed.data.startDate,
         endDate: parsed.data.endDate,
         state: "OPEN",
+        payScheduleId: parsed.data.payScheduleId,
       })
       .returning();
     if (!row) return { error: "Could not create pay period." };
