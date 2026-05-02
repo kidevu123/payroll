@@ -51,6 +51,16 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [overlaps, setOverlaps] = React.useState<OverlappingRun[]>([]);
   const [confirmedOverlap, setConfirmedOverlap] = React.useState(false);
   const [tempWorkers, setTempWorkers] = React.useState<TempWorker[]>([]);
+  // A temp worker counts toward the cohort total only when both the
+  // name and a positive amount are filled in (the same filter used to
+  // build the hidden tempWorkersJson).
+  const validTempWorkerCount = React.useMemo(
+    () =>
+      tempWorkers.filter(
+        (t) => t.workerName.trim().length > 0 && Number(t.amountDollars) > 0,
+      ).length,
+    [tempWorkers],
+  );
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Re-check overlaps whenever the date range changes meaningfully.
@@ -653,13 +663,15 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                 pending ||
                 !file ||
                 (overlaps.length > 0 && !confirmedOverlap) ||
-                (preview !== null && preview.selected.size === 0)
+                (preview !== null &&
+                  preview.selected.size === 0 &&
+                  validTempWorkerCount === 0)
               }
             >
               {pending
                 ? "Importing…"
                 : preview
-                  ? `Generate payslips for ${preview.selected.size} selected`
+                  ? `Generate payslips for ${preview.selected.size + validTempWorkerCount} selected`
                   : "Import & open run"}{" "}
               <ArrowRight className="h-4 w-4" />
             </Button>

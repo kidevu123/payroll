@@ -271,32 +271,20 @@ export async function uploadCsvAction(
   const company = await getSetting("company");
 
   // Schedule isolation: when a cohort is set AND a payScheduleId is
-  // chosen, every cohort employee must be on that exact schedule.
-  // Prevents a semi-monthly upload from accidentally sweeping weekly
-  // employees (and vice versa). Owner directive: "if the csv being
-  // uploaded is flagged semi monthly it shouldnt not add to the any
-  // other weekly or anything they should remain two differnt
-  // workflows".
+  // chosen, silently drop any cohort entries whose employee is on a
+  // different schedule. Don't error — just exclude. The two flows
+  // (weekly vs semi-monthly) stay separate by construction.
   if (parsed.data.payScheduleId && cohortIds && cohortIds.length > 0) {
     const cohortEmployees = await db
-      .select({ id: employees.id, name: employees.displayName, payScheduleId: employees.payScheduleId })
+      .select({ id: employees.id, payScheduleId: employees.payScheduleId })
       .from(employees)
       .where(inArray(employees.id, cohortIds));
-    const mismatched = cohortEmployees.filter(
-      (e) => e.payScheduleId !== parsed.data.payScheduleId,
+    const matchingIds = new Set(
+      cohortEmployees
+        .filter((e) => e.payScheduleId === parsed.data.payScheduleId)
+        .map((e) => e.id),
     );
-    if (mismatched.length > 0) {
-      const names = mismatched
-        .slice(0, 3)
-        .map((e) => e.name)
-        .join(", ");
-      const more = mismatched.length > 3 ? ` +${mismatched.length - 3} more` : "";
-      return {
-        error: `Schedule mismatch: ${mismatched.length} selected employee${
-          mismatched.length === 1 ? "" : "s"
-        } (${names}${more}) ${mismatched.length === 1 ? "is" : "are"} not on this pay schedule. Reassign them in /employees first, or uncheck them.`,
-      };
-    }
+    cohortIds = cohortIds.filter((id) => matchingIds.has(id));
   }
 
   // UPSERT period by (pay_schedule_id, start_date). The pay_schedule_id

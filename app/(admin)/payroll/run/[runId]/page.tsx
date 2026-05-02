@@ -214,7 +214,6 @@ export default async function RunReviewPage({
                         </span>
                         <Link
                           href={`/employees/${employee.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="font-medium hover:text-brand-700 hover:underline underline-offset-2 truncate"
                         >
                           {employee.displayName}

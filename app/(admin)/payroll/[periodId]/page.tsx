@@ -288,7 +288,6 @@ export default async function PeriodReviewPage({
                         <div className="min-w-0">
                           <Link
                             href={`/employees/${employee.id}`}
-                            onClick={(e) => e.stopPropagation()}
                             className="font-semibold hover:text-brand-700 hover:underline underline-offset-2 truncate block"
                           >
                             {employee.displayName}
