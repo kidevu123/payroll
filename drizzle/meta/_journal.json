@@ -99,6 +99,13 @@
       "when": 1777682992037,
       "tag": "0013_slow_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777698000000,
+      "tag": "0014_repair_doc_meta_columns",
+      "breakpoints": true
     }
   ]
 }
