@@ -174,9 +174,13 @@ export type NotificationsSettings = z.infer<typeof notificationsSchema>;
 export const googleCalendarSchema = z.object({
   /** Target Google Calendar ID (e.g. "primary" or a UUID@group.calendar.google.com). */
   calendarId: z.string().max(200).default(""),
-  /** Display label of the connected Google account (set after OAuth lands). */
+  /** Display label of the connected Google account. */
   connectedEmail: z.string().nullable().default(null),
-  /** ISO timestamp of the last successful event push (set when push lands). */
+  /** OAuth refresh token, sealed via lib/crypto/vault (AES-GCM). */
+  refreshTokenSealed: z.string().nullable().default(null),
+  /** ISO timestamp the OAuth connection was established. */
+  connectedAt: z.string().nullable().default(null),
+  /** ISO timestamp of the last successful event push. */
   lastPushedAt: z.string().nullable().default(null),
 });
 export type GoogleCalendarSettings = z.infer<typeof googleCalendarSchema>;

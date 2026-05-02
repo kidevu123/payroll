@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-guards";
+import { getSetting } from "@/lib/settings/runtime";
 import {
   approveMissedPunchRequest,
   rejectMissedPunchRequest,
@@ -117,5 +119,52 @@ export async function resolveTimeOffAction(
       },
     ]);
   }
+
+  // Push to Google Calendar on APPROVED, delete on REJECTED (in case
+  // an earlier approval pushed it). Best-effort — a calendar failure
+  // shouldn't block the resolution.
+  try {
+    const cfg = await getSetting("googleCalendar");
+    if (cfg.refreshTokenSealed && cfg.calendarId) {
+      const { db } = await import("@/lib/db");
+      const { timeOffRequests, employees } = await import("@/lib/db/schema");
+      const [details] = await db
+        .select({
+          startDate: timeOffRequests.startDate,
+          endDate: timeOffRequests.endDate,
+          type: timeOffRequests.type,
+          reason: timeOffRequests.reason,
+          employeeName: employees.displayName,
+        })
+        .from(timeOffRequests)
+        .innerJoin(employees, eq(employees.id, timeOffRequests.employeeId))
+        .where(eq(timeOffRequests.id, requestId));
+      if (details) {
+        const { pushTimeOffEvent, deleteTimeOffEvent } = await import(
+          "@/lib/google/calendar"
+        );
+        if (parsed.data.status === "APPROVED") {
+          // Google's all-day "end" is exclusive; bump endDate by 1 day.
+          const end = new Date(`${details.endDate}T00:00:00Z`);
+          end.setUTCDate(end.getUTCDate() + 1);
+          await pushTimeOffEvent({
+            externalId: requestId,
+            summary: `${details.employeeName} — ${details.type.toLowerCase()}`,
+            description: details.reason ?? "",
+            startDate: details.startDate,
+            endDateExclusive: end.toISOString().slice(0, 10),
+          });
+        } else {
+          await deleteTimeOffEvent(requestId);
+        }
+      }
+    }
+  } catch (err) {
+    // Silent on UX path — log only. Owner sees a status pill on
+    // /settings/google-calendar (lastPushedAt) to verify pushes.
+    const { logger } = await import("@/lib/telemetry");
+    logger.warn({ err, requestId }, "google.calendar.push_failed");
+  }
+
   revalidatePath("/requests");
 }

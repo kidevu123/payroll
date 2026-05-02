@@ -13,7 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { saveGoogleCalendarAction } from "./actions";
+import {
+  disconnectGoogleCalendarAction,
+  saveGoogleCalendarAction,
+} from "./actions";
 
 export function GoogleCalendarForm({
   settings,
@@ -89,30 +92,30 @@ export function GoogleCalendarForm({
                 </li>
                 <li>
                   Create an OAuth 2.0 Client ID (type: Web application).
-                  Add this redirect URI:{" "}
+                  Add this redirect URI exactly:{" "}
                   <code className="rounded bg-surface-3 px-1">
-                    https://digitz.duckdns.org/api/google/oauth/callback
+                    https://digitz.duckdns.org/api/google/calendar/callback
                   </code>
                 </li>
                 <li>
-                  Once we ship the connect flow, drop the resulting
-                  client id and client secret into{" "}
+                  Drop the resulting client id and secret into{" "}
                   <code className="rounded bg-surface-3 px-1">
                     /etc/payroll/.env
                   </code>{" "}
                   on the LXC as{" "}
                   <code className="rounded bg-surface-3 px-1">
-                    GOOGLE_OAUTH_CLIENT_ID
+                    GOOGLE_CLIENT_ID
                   </code>{" "}
                   and{" "}
                   <code className="rounded bg-surface-3 px-1">
-                    GOOGLE_OAUTH_CLIENT_SECRET
+                    GOOGLE_CLIENT_SECRET
                   </code>
                   .
                 </li>
                 <li>
-                  Click &ldquo;Connect Google Calendar&rdquo; on this page
-                  (button enables once env vars are present).
+                  Click &ldquo;Connect Google Calendar&rdquo; — you&apos;ll
+                  be redirected to consent, then back here. Refresh
+                  token is sealed via the AES-GCM vault.
                 </li>
               </ol>
             </details>
@@ -159,20 +162,30 @@ export function GoogleCalendarForm({
               <p className="text-sm text-emerald-700">Saved.</p>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button type="submit" size="sm" disabled={pending}>
                 {pending ? "Saving…" : "Save calendar id"}
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled
-                title="OAuth connect flow not implemented yet"
-              >
-                <CalendarRange className="h-4 w-4" /> Connect Google Calendar
-                (coming soon)
-              </Button>
+              {connected ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={async () => {
+                    if (!confirm("Disconnect Google Calendar?")) return;
+                    await disconnectGoogleCalendarAction();
+                    window.location.reload();
+                  }}
+                >
+                  Disconnect
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="secondary">
+                  <a href="/api/google/calendar/connect">
+                    <CalendarRange className="h-4 w-4" /> Connect Google Calendar
+                  </a>
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

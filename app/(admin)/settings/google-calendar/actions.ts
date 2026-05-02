@@ -34,3 +34,27 @@ export async function saveGoogleCalendarAction(
   revalidatePath("/settings/google-calendar");
   return { ok: true };
 }
+
+/**
+ * Drop the stored OAuth refresh token + connected email. The token
+ * itself is not revoked at Google's end (owner can do that at
+ * myaccount.google.com); this just makes our app forget it.
+ */
+export async function disconnectGoogleCalendarAction(): Promise<
+  { error?: string; ok?: true }
+> {
+  const session = await requireAdmin();
+  const current = await getSetting("googleCalendar");
+  await setSetting(
+    "googleCalendar",
+    {
+      ...current,
+      connectedEmail: null,
+      refreshTokenSealed: null,
+      connectedAt: null,
+    },
+    { actorId: session.user.id, actorRole: session.user.role },
+  );
+  revalidatePath("/settings/google-calendar");
+  return { ok: true };
+}
