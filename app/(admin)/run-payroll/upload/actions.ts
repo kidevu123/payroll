@@ -271,20 +271,29 @@ export async function uploadCsvAction(
   const company = await getSetting("company");
 
   // Schedule isolation: when a cohort is set AND a payScheduleId is
-  // chosen, silently drop any cohort entries whose employee is on a
-  // different schedule. Don't error — just exclude. The two flows
-  // (weekly vs semi-monthly) stay separate by construction.
+  // chosen, silently drop cohort entries whose employee has a
+  // DIFFERENT explicit schedule (e.g. semi-monthly trying to ride a
+  // weekly upload). Employees with NULL pay_schedule_id are treated
+  // as wildcards — they ride along on whatever schedule the upload
+  // picks. This matches the existing data shape (most employees were
+  // never explicitly assigned a schedule yet) and keeps the flow
+  // useful while still preventing the cross-schedule pollution that
+  // motivated the filter.
   if (parsed.data.payScheduleId && cohortIds && cohortIds.length > 0) {
     const cohortEmployees = await db
       .select({ id: employees.id, payScheduleId: employees.payScheduleId })
       .from(employees)
       .where(inArray(employees.id, cohortIds));
-    const matchingIds = new Set(
+    const allowedIds = new Set(
       cohortEmployees
-        .filter((e) => e.payScheduleId === parsed.data.payScheduleId)
+        .filter(
+          (e) =>
+            e.payScheduleId === null ||
+            e.payScheduleId === parsed.data.payScheduleId,
+        )
         .map((e) => e.id),
     );
-    cohortIds = cohortIds.filter((id) => matchingIds.has(id));
+    cohortIds = cohortIds.filter((id) => allowedIds.has(id));
   }
 
   // UPSERT period by (pay_schedule_id, start_date). The pay_schedule_id
