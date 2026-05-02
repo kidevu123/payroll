@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Upload, FileText, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, ArrowRight, AlertTriangle, CheckCircle2, Plus, Trash2 } from "lucide-react";
 import type { PaySchedule } from "@/lib/db/schema";
 import type { ManualImportSummary } from "@/lib/punches/manual-import";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,15 @@ type PreviewState = {
   parseErrors: number;
   selected: Set<string>; // employeeIds selected for the run
 };
+type TempWorker = {
+  /** Local-only key for React list reconciliation. */
+  key: string;
+  workerName: string;
+  /** Dollars as a string in the input; converted to cents on submit. */
+  amountDollars: string;
+  hours: string; // optional decimal hours
+  description: string;
+};
 
 export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [error, setError] = React.useState<string | null>(null);
@@ -41,6 +50,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [endDate, setEndDate] = React.useState("");
   const [overlaps, setOverlaps] = React.useState<OverlappingRun[]>([]);
   const [confirmedOverlap, setConfirmedOverlap] = React.useState(false);
+  const [tempWorkers, setTempWorkers] = React.useState<TempWorker[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Re-check overlaps whenever the date range changes meaningfully.
@@ -365,6 +375,172 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                 type="hidden"
                 name="cohortJson"
                 value={JSON.stringify([...preview.selected])}
+              />
+            </div>
+          )}
+
+          {/* Temp / manual labor — only when a preview exists, since
+              that's when we know the period dates + cohort are real.
+              Each row contributes a temp_worker_entries row scoped to
+              the new period. */}
+          {preview && (
+            <div className="space-y-2 rounded-card border border-border bg-surface-2/40 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium">Temp / manual labor</h3>
+                  <p className="text-xs text-text-muted">
+                    One-off contractors, day-labor, or anyone paid this period
+                    who isn&apos;t in the CSV.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() =>
+                    setTempWorkers((prev) => [
+                      ...prev,
+                      {
+                        key: `tw_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                        workerName: "",
+                        amountDollars: "",
+                        hours: "",
+                        description: "",
+                      },
+                    ])
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add temp worker
+                </Button>
+              </div>
+              {tempWorkers.length === 0 ? (
+                <p className="text-xs text-text-subtle">
+                  None added.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {tempWorkers.map((tw, i) => (
+                    <div
+                      key={tw.key}
+                      className="grid grid-cols-1 sm:grid-cols-[1.6fr_0.7fr_0.7fr_2fr_auto] gap-2 items-end"
+                    >
+                      <div className="space-y-0.5">
+                        {i === 0 && (
+                          <Label htmlFor={`tw-name-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                            Worker
+                          </Label>
+                        )}
+                        <Input
+                          id={`tw-name-${tw.key}`}
+                          value={tw.workerName}
+                          onChange={(e) =>
+                            setTempWorkers((prev) =>
+                              prev.map((x) =>
+                                x.key === tw.key ? { ...x, workerName: e.target.value } : x,
+                              ),
+                            )
+                          }
+                          placeholder="Chintu"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        {i === 0 && (
+                          <Label htmlFor={`tw-amount-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                            Amount $
+                          </Label>
+                        )}
+                        <Input
+                          id={`tw-amount-${tw.key}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tw.amountDollars}
+                          onChange={(e) =>
+                            setTempWorkers((prev) =>
+                              prev.map((x) =>
+                                x.key === tw.key ? { ...x, amountDollars: e.target.value } : x,
+                              ),
+                            )
+                          }
+                          placeholder="200.00"
+                          className="h-9 text-sm font-mono"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        {i === 0 && (
+                          <Label htmlFor={`tw-hours-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                            Hours (opt)
+                          </Label>
+                        )}
+                        <Input
+                          id={`tw-hours-${tw.key}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={tw.hours}
+                          onChange={(e) =>
+                            setTempWorkers((prev) =>
+                              prev.map((x) =>
+                                x.key === tw.key ? { ...x, hours: e.target.value } : x,
+                              ),
+                            )
+                          }
+                          placeholder="—"
+                          className="h-9 text-sm font-mono"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        {i === 0 && (
+                          <Label htmlFor={`tw-desc-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                            Description
+                          </Label>
+                        )}
+                        <Input
+                          id={`tw-desc-${tw.key}`}
+                          value={tw.description}
+                          onChange={(e) =>
+                            setTempWorkers((prev) =>
+                              prev.map((x) =>
+                                x.key === tw.key ? { ...x, description: e.target.value } : x,
+                              ),
+                            )
+                          }
+                          placeholder="Loading dock day labor"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          setTempWorkers((prev) => prev.filter((x) => x.key !== tw.key))
+                        }
+                        className="h-9 text-danger-700 hover:bg-danger-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Hidden serialized payload for the action. Filtered to
+                  rows that actually have a name + amount, so empty
+                  scaffolding rows don't insert. */}
+              <input
+                type="hidden"
+                name="tempWorkersJson"
+                value={JSON.stringify(
+                  tempWorkers
+                    .filter((t) => t.workerName.trim() && Number(t.amountDollars) > 0)
+                    .map((t) => ({
+                      workerName: t.workerName.trim(),
+                      amountCents: Math.round(Number(t.amountDollars) * 100),
+                      hours: t.hours ? Number(t.hours) : null,
+                      description: t.description.trim() || null,
+                    })),
+                )}
               />
             </div>
           )}

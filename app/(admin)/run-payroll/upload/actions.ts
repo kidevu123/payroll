@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
-import { employees, payPeriods, payrollRuns } from "@/lib/db/schema";
+import { employees, payPeriods, payrollRuns, tempWorkerEntries } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import {
   runManualCsvImport,
@@ -27,7 +27,21 @@ const schema = z.object({
    * single-step upload behavior. Set means "lock the cohort to these".
    */
   cohortJson: z.string().optional(),
+  /**
+   * JSON-stringified array of temp worker entries to attach to the
+   * resulting period. Each row inserts a temp_worker_entries row.
+   */
+  tempWorkersJson: z.string().optional(),
 });
+
+const tempWorkerSchema = z
+  .object({
+    workerName: z.string().min(1).max(200),
+    amountCents: z.number().int().min(1),
+    hours: z.union([z.number().min(0), z.null()]).optional(),
+    description: z.union([z.string().max(500), z.null()]).optional(),
+  })
+  .strict();
 
 export type OverlappingRun = {
   runId: string;
@@ -228,6 +242,7 @@ export async function uploadCsvAction(
     payScheduleId: formData.get("payScheduleId") || null,
     confirmDuplicate: formData.get("confirmDuplicate") || undefined,
     cohortJson: formData.get("cohortJson") || undefined,
+    tempWorkersJson: formData.get("tempWorkersJson") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -362,6 +377,34 @@ export async function uploadCsvAction(
       })
       .where(eq(payrollRuns.id, run.id));
     return { error: err instanceof Error ? err.message : "Import failed." };
+  }
+
+  // Inline temp / manual labor entries for this period. Each row was
+  // already validated client-side (name + amount > 0); re-validate
+  // server-side against the strict zod schema before insert.
+  if (parsed.data.tempWorkersJson) {
+    try {
+      const arr = JSON.parse(parsed.data.tempWorkersJson);
+      if (Array.isArray(arr) && arr.length > 0) {
+        const validated = arr
+          .map((row) => tempWorkerSchema.safeParse(row))
+          .filter((r): r is { success: true; data: z.infer<typeof tempWorkerSchema> } => r.success)
+          .map((r) => r.data);
+        for (const tw of validated) {
+          await db.insert(tempWorkerEntries).values({
+            periodId,
+            workerName: tw.workerName,
+            amountCents: tw.amountCents,
+            hours: tw.hours != null ? String(tw.hours) : null,
+            description: tw.description ?? null,
+            createdById: session.user.id,
+          });
+        }
+      }
+    } catch {
+      // Malformed payload — skip silently. The form prevents this
+      // shape from being sent; this is just defensive.
+    }
   }
 
   revalidatePath("/payroll");
