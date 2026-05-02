@@ -5,7 +5,7 @@
 // period is PAID the action errors with a clear message.
 
 import Link from "next/link";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
@@ -19,11 +19,18 @@ export default async function ManualPunchPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      <Button asChild variant="ghost" size="sm">
-        <Link href="/time">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/time">
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/punches/wipe" className="text-danger-700">
+            <Trash2 className="h-4 w-4" /> Wipe punches…
+          </Link>
+        </Button>
+      </div>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <Plus className="h-6 w-6 text-brand-700" /> Add manual punch
