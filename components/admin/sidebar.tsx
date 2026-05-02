@@ -22,6 +22,7 @@ import {
   Circle,
   Briefcase,
   CalendarRange,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const SECTIONS: { heading: string; items: NavItem[] }[] = [
       { href: "/ngteco", label: "NGTeco", icon: Workflow },
       { href: "/reports", label: "Reports", icon: BarChart3 },
       { href: "/audit", label: "Audit", icon: ScrollText },
+      { href: "/db", label: "Database", icon: Database },
     ],
   },
 ];
