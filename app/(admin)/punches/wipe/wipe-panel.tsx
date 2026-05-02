@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,10 +31,10 @@ export function WipePunchesPanel() {
         </p>
         <div className="flex gap-2 pt-2">
           <Button asChild variant="secondary" size="sm">
-            <a href="/time">Back to Time</a>
+            <Link href="/time">Back to Time</Link>
           </Button>
           <Button asChild variant="ghost" size="sm">
-            <a href="/punches/new">Add manual punch</a>
+            <Link href="/punches/new">Add manual punch</Link>
           </Button>
         </div>
       </div>
