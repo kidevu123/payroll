@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Download,
-  Eye,
   Send,
   Trash2,
   CheckCircle2,
@@ -30,6 +29,24 @@ function formatRange(startIso: string, endIso: string): string {
   const left = `${MONTH_SHORT[a.getUTCMonth()]} ${String(a.getUTCDate()).padStart(2, "0")}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
   const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
   return `${left} – ${right}`;
+}
+
+/**
+ * The pay week is conceptually 7 days even when the admin pulled
+ * punches early (e.g. Mon-Fri because no work happened Sat-Sun).
+ * For weekly schedules, render the canonical end as start + 6 so the
+ * period reads as "Apr 27 – May 03" (Mon–Sun) instead of the
+ * truncated "Apr 27 – May 01" the upload was scoped to. Falls back
+ * to the stored endDate for semi-monthly + other cadences where the
+ * stored range IS the canonical range.
+ */
+function canonicalEnd(startIso: string, scheduleName: string | null): string | null {
+  if (!scheduleName) return null;
+  const lower = scheduleName.toLowerCase();
+  if (!lower.includes("week")) return null;
+  const start = new Date(`${startIso}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() + 6);
+  return start.toISOString().slice(0, 10);
 }
 
 function formatDate(d: Date | null | undefined): string {
@@ -103,7 +120,6 @@ export function ReportsTable({
             <tr>
               <th className="py-2 pl-4 pr-3 font-medium">Run</th>
               <th className="py-2 px-3 font-medium text-right">Amount</th>
-              <th className="py-2 px-3 font-medium">Schedule</th>
               <th className="py-2 px-3 font-medium">Created by</th>
               <th className="py-2 px-3 font-medium">Posted</th>
               <th className="py-2 px-3 font-medium">Visibility</th>
@@ -129,11 +145,15 @@ export function ReportsTable({
                 <React.Fragment key={r.id}>
                   {newPeriod && (
                     <tr className="bg-surface-3 border-t-[3px] border-brand-700/30">
-                      <td colSpan={7} className="px-4 py-2.5">
+                      <td colSpan={6} className="px-4 py-2.5">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div className="flex items-baseline gap-3">
                             <span className="font-semibold text-text whitespace-nowrap">
-                              {formatRange(r.startDate, r.endDate)}
+                              {formatRange(
+                                r.startDate,
+                                canonicalEnd(r.startDate, r.scheduleName) ??
+                                  r.endDate,
+                              )}
                             </span>
                             <span className="text-[10px] uppercase tracking-wider text-text-subtle">
                               Period total
@@ -174,9 +194,6 @@ export function ReportsTable({
                       </div>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">
-                    {r.scheduleName ?? <span className="italic">unassigned</span>}
-                  </td>
                   <td className="py-2 px-3 text-text-muted whitespace-nowrap">{r.createdByDisplay}</td>
                   <td className="py-2 px-3 text-text-muted whitespace-nowrap">{formatDate(r.postedAt)}</td>
                   <td className="py-3 px-3">
@@ -190,18 +207,8 @@ export function ReportsTable({
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-3 pr-4">
+                  <td className="py-2 px-3 pr-4 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        title="Open admin report"
-                      >
-                        <Link href={`/payroll/${r.periodId}`}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
                       {r.pdfPath ? (
                         <Button
                           asChild

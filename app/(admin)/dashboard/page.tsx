@@ -11,6 +11,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { MoneyDisplay } from "@/components/domain/money-display";
+import { StatusPill } from "@/components/domain/status-pill";
 import { PayrollRunCard } from "@/components/domain/payroll-run-card";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -140,7 +142,33 @@ export default async function DashboardPage() {
     };
   }
 
-  const recentRuns = await listRuns(3);
+  // Enrich the recent-runs strip with period dates + schedule name +
+  // amount so the dashboard speaks human, not UUID. Owner: "what does
+  // 2c5f63cf mean????"
+  const rawRecent = await listRuns(5);
+  const recentRunIds = rawRecent.map((r) => r.id);
+  const periodIds = Array.from(new Set(rawRecent.map((r) => r.periodId)));
+  const scheduleIds = Array.from(
+    new Set(rawRecent.map((r) => r.payScheduleId).filter((s): s is string => Boolean(s))),
+  );
+  const { payPeriods: periodsTable, paySchedules: schedulesTable } = await import("@/lib/db/schema");
+  const { inArray } = await import("drizzle-orm");
+  const [periodRows, scheduleRows] = await Promise.all([
+    periodIds.length
+      ? db.select().from(periodsTable).where(inArray(periodsTable.id, periodIds))
+      : [],
+    scheduleIds.length
+      ? db.select().from(schedulesTable).where(inArray(schedulesTable.id, scheduleIds))
+      : [],
+  ]);
+  const periodById = new Map(periodRows.map((p) => [p.id, p]));
+  const scheduleById = new Map(scheduleRows.map((s) => [s.id, s]));
+  const recentRuns = rawRecent.map((r) => ({
+    ...r,
+    period: periodById.get(r.periodId) ?? null,
+    schedule: r.payScheduleId ? scheduleById.get(r.payScheduleId) ?? null : null,
+  }));
+  void recentRunIds;
 
   return (
     <div className="space-y-8">
@@ -240,11 +268,29 @@ export default async function DashboardPage() {
                 {recentRuns.map((r) => (
                   <li key={r.id}>
                     <Link
-                      href={`/payroll/run/${r.id}`}
-                      className="flex items-center justify-between rounded-input border border-border px-3 py-2 hover:bg-surface-2"
+                      href={r.period ? `/payroll/${r.period.id}` : `/payroll/run/${r.id}`}
+                      className="flex items-center justify-between gap-3 rounded-input border border-border px-3 py-2 hover:bg-surface-2"
                     >
-                      <span className="font-mono text-xs">{r.id.slice(0, 8)}…</span>
-                      <span className="text-text-muted">{r.state}</span>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {r.period
+                            ? `${r.period.startDate} – ${r.period.endDate}`
+                            : `run ${r.id.slice(0, 8)}`}
+                        </div>
+                        <div className="text-xs text-text-muted truncate">
+                          {r.schedule?.name ?? "unassigned"}
+                          {r.totalAmountCents !== null && (
+                            <>
+                              {" · "}
+                              <MoneyDisplay
+                                cents={r.totalAmountCents}
+                                monospace={false}
+                              />
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <StatusPill status={r.state as never} />
                     </Link>
                   </li>
                 ))}
