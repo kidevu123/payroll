@@ -168,6 +168,11 @@ export function ReportsTable({
                   </td>
                   <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-text">
                     <MoneyDisplay cents={r.amountCents} />
+                    {r.tempLaborCents > 0 && (
+                      <div className="text-[10px] font-normal text-text-muted">
+                        + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 px-3 text-text-muted">
                     {r.scheduleName ?? <span className="italic">unassigned</span>}

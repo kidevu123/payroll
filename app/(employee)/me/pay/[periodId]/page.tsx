@@ -13,7 +13,10 @@ import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
-import { getPublishedPayslipForEmployeePeriod } from "@/lib/db/queries/payslips";
+import {
+  getPublishedPayslipForEmployeePeriod,
+  recomputePayslip,
+} from "@/lib/db/queries/payslips";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -58,13 +61,58 @@ export default async function EmployeePayslipViewer({
       </div>
     );
   }
-  const [payslip, payRules, company, employee] = await Promise.all([
+  let [payslip, payRules, company, employee] = await Promise.all([
     getPublishedPayslipForEmployeePeriod(session.user.employeeId, periodId),
     getSetting("payRules"),
     getSetting("company"),
     getEmployee(session.user.employeeId),
   ]);
   const tz = company.timezone ?? "America/New_York";
+
+  // Self-heal: when the stored payslip total disagrees with the live
+  // recompute by more than half an hour AND the period isn't PAID
+  // (PAID is locked per spec — admin must unmark to mutate), trigger
+  // a one-shot recompute server-side. Used to be a "heads-up" banner
+  // that just nagged; the owner correctly pointed out we should fix
+  // detected drift, not flag it.
+  if (payslip && period.state !== "PAID") {
+    const live = await listPunches({
+      employeeId: payslip.employeeId,
+      periodId,
+    });
+    const deduped = dedupNearDuplicatePunches(
+      live.filter((p) => !p.voidedAt),
+    );
+    let liveHoursMs = 0;
+    for (const p of deduped) {
+      if (!p.clockOut) continue;
+      const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+      const outT =
+        p.clockOut instanceof Date ? p.clockOut : new Date(p.clockOut);
+      if (outT.getTime() > inT.getTime()) {
+        liveHoursMs += outT.getTime() - inT.getTime();
+      }
+    }
+    const liveHours = liveHoursMs / 3_600_000;
+    const storedHours = Number(payslip.hoursWorked);
+    if (Math.abs(storedHours - liveHours) > 0.5) {
+      try {
+        await recomputePayslip(payslip.id, {
+          id: session.user.id,
+          role: session.user.role,
+        });
+        // Refetch the now-corrected payslip so the body renders the
+        // updated numbers without a banner.
+        payslip = await getPublishedPayslipForEmployeePeriod(
+          session.user.employeeId,
+          periodId,
+        );
+      } catch {
+        // Recompute failed — fall through to the existing heads-up
+        // banner so the discrepancy is at least visible.
+      }
+    }
+  }
 
   return (
     <div className="space-y-4 p-4 max-w-3xl mx-auto">

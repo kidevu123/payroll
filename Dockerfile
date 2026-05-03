@@ -109,6 +109,11 @@ VOLUME ["/data"]
 
 EXPOSE 3000
 
-# Migrate, seed, idempotent legacy import (no-op if /data/legacy is absent),
-# then start. compose's healthcheck will hit /api/health.
-CMD ["sh", "-c", "node ./node_modules/tsx/dist/cli.mjs scripts/migrate.ts && node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts && node ./node_modules/tsx/dist/cli.mjs scripts/import-legacy.ts --apply && node server.js"]
+# Migrate + seed only. The legacy-import script used to run here too,
+# but it RE-CREATES periods on every restart from whatever it finds in
+# /data/legacy — that resurrected periods the owner had explicitly
+# deleted from /payroll. Keep the script in the image but trigger it
+# manually when needed:
+#   docker compose exec -T app node ./node_modules/tsx/dist/cli.mjs \
+#     scripts/import-legacy.ts --apply
+CMD ["sh", "-c", "node ./node_modules/tsx/dist/cli.mjs scripts/migrate.ts && node ./node_modules/tsx/dist/cli.mjs scripts/seed.ts && node server.js"]
