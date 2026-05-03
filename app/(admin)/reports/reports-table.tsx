@@ -13,6 +13,7 @@ import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
+import { SchedulePill } from "@/components/domain/schedule-pill";
 import {
   deleteReportAction,
   publishReportAction,
@@ -147,7 +148,7 @@ export function ReportsTable({
                     <tr className="bg-surface-3 border-t-[3px] border-brand-700/30">
                       <td colSpan={6} className="px-4 py-2.5">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div className="flex items-baseline gap-3">
+                          <div className="flex items-baseline gap-3 flex-wrap">
                             <span className="font-semibold text-text whitespace-nowrap">
                               {formatRange(
                                 r.startDate,
@@ -155,6 +156,7 @@ export function ReportsTable({
                                   r.endDate,
                               )}
                             </span>
+                            <SchedulePill name={r.scheduleName} />
                             <span className="text-[10px] uppercase tracking-wider text-text-subtle">
                               Period total
                             </span>

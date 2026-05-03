@@ -124,15 +124,27 @@ async function resolveAccountId(
 ): Promise<string | null> {
   if (hint.id) return hint.id;
   if (!hint.name) return null;
-  const resp = await authedFetch(
-    org,
-    `/chartofaccounts?account_name=${encodeURIComponent(hint.name)}`,
-  );
+  // Zoho's /chartofaccounts query parameter for name filtering varies by
+  // tenant — the safest path is to fetch all accounts and match the
+  // configured name case-insensitively. Lists are small (rarely > 200
+  // rows) and we cache nothing, so this stays a single roundtrip per
+  // push, which is fine.
+  const resp = await authedFetch(org, `/chartofaccounts?per_page=200`);
   if (!resp.ok) return null;
   const json = (await resp.json()) as {
     chartofaccounts?: Array<{ account_id: string; account_name: string }>;
   };
-  return json.chartofaccounts?.[0]?.account_id ?? null;
+  const accounts = json.chartofaccounts ?? [];
+  const target = hint.name.trim().toLowerCase();
+  const exact = accounts.find(
+    (a) => a.account_name.trim().toLowerCase() === target,
+  );
+  if (exact) return exact.account_id;
+  // Fall back to a contains-match (e.g. "Payroll" matches "Payroll Expenses").
+  const partial = accounts.find((a) =>
+    a.account_name.toLowerCase().includes(target),
+  );
+  return partial?.account_id ?? null;
 }
 
 export type CreateExpenseInput = {
@@ -156,7 +168,7 @@ export async function createExpense(
   });
   if (!accountId) {
     throw new Error(
-      `No Zoho expense account configured for ${org.name}. Set defaultExpenseAccountName in /settings/zoho.`,
+      `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}. Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries exactly (case insensitive).`,
     );
   }
   const paidThroughId = await resolveAccountId(org, {
@@ -165,7 +177,7 @@ export async function createExpense(
   });
   if (!paidThroughId) {
     throw new Error(
-      `No Zoho paid-through account configured for ${org.name}.`,
+      `Zoho paid-through account "${org.defaultPaidThroughName ?? "(unset)"}" not found in ${org.name}. Check the chart of accounts.`,
     );
   }
   const body: Record<string, unknown> = {

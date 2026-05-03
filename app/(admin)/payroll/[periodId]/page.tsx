@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusPill } from "@/components/domain/status-pill";
+import { SchedulePill } from "@/components/domain/schedule-pill";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
@@ -219,11 +220,7 @@ export default async function PeriodReviewPage({
                 {formatRange(period.startDate, period.endDate)}
               </h1>
               <StatusPill status={period.state} />
-              {runSchedule && (
-                <span className="rounded-input bg-surface-3 px-2 py-0.5 text-xs text-text-muted">
-                  {runSchedule.name}
-                </span>
-              )}
+              <SchedulePill name={runSchedule?.name ?? null} />
               <span className="text-sm text-text-muted">
                 {rendered.length} emp ·{" "}
                 <span className="font-medium text-text">

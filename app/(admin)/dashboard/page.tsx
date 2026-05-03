@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { StatusPill } from "@/components/domain/status-pill";
+import { SchedulePill } from "@/components/domain/schedule-pill";
 import { PayrollRunCard } from "@/components/domain/payroll-run-card";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -290,23 +291,22 @@ export default async function DashboardPage() {
                       className="flex items-center justify-between gap-3 rounded-input border border-border px-3 py-2 hover:bg-surface-2"
                     >
                       <div className="min-w-0">
-                        <div className="font-medium truncate">
-                          {r.period
-                            ? `${r.period.startDate} – ${r.period.endDate}`
-                            : `run ${r.id.slice(0, 8)}`}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium truncate">
+                            {r.period
+                              ? `${r.period.startDate} – ${r.period.endDate}`
+                              : `run ${r.id.slice(0, 8)}`}
+                          </span>
+                          <SchedulePill name={r.schedule?.name ?? null} />
                         </div>
-                        <div className="text-xs text-text-muted truncate">
-                          {r.schedule?.name ?? "unassigned"}
-                          {r.totalAmountCents !== null && (
-                            <>
-                              {" · "}
-                              <MoneyDisplay
-                                cents={r.totalAmountCents}
-                                monospace={false}
-                              />
-                            </>
-                          )}
-                        </div>
+                        {r.totalAmountCents !== null && (
+                          <div className="text-xs text-text-muted truncate">
+                            <MoneyDisplay
+                              cents={r.totalAmountCents}
+                              monospace={false}
+                            />
+                          </div>
+                        )}
                       </div>
                       <StatusPill status={r.state as never} />
                     </Link>

@@ -15,6 +15,7 @@ import {
   Clock4,
   Image as ImageIcon,
   CircleDollarSign,
+  CalendarCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,8 @@ const TABS = [
   { href: "/settings/shifts", label: "Shifts", icon: Layers },
   { href: "/settings/automation", label: "Automation", icon: Clock4 },
   { href: "/settings/ngteco", label: "NGTeco", icon: Workflow },
-  { href: "/settings/zoho", label: "Zoho", icon: CircleDollarSign },
+  { href: "/settings/zoho", label: "Zoho Books", icon: CircleDollarSign },
+  { href: "/settings/google-calendar", label: "Google Calendar", icon: CalendarCheck },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/security", label: "Security", icon: ShieldCheck },
   { href: "/settings/holidays", label: "Holidays", icon: PartyPopper },

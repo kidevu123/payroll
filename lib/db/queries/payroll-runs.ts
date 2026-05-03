@@ -172,7 +172,15 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     source: r.source,
     state: r.state,
     scheduleName: r.scheduleName,
-    amountCents: r.totalAmount ?? r.payslipSum,
+    // Prefer the live payslipSum over the stored total_amount_cents.
+    // Many legacy-import runs were stamped with the source file's
+    // grand-total which sometimes drifted from reality (re-imports,
+    // partial migrations) — the audit found 54 such runs with deltas
+    // up to $5k. The actual payslip rows are the source of truth, so
+    // use them when present. Fall back to the stored total only when
+    // there are no payslips on the run (e.g. cohort-empty shells).
+    amountCents:
+      r.payslipSum > 0 ? r.payslipSum : r.totalAmount ?? 0,
     tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,
     createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
     postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
