@@ -78,8 +78,8 @@ export function Sidebar({
   const pathname = usePathname() ?? "";
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-surface">
-      <div className="px-5 pt-5 pb-6">
+    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-surface sticky top-0 h-dvh">
+      <div className="px-5 pt-5 pb-6 shrink-0">
         <Wordmark name={company.name} logoPath={company.logoPath} size="md" />
       </div>
 
@@ -126,7 +126,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="px-3 pb-3 pt-4 border-t border-border">
+      <div className="px-3 pb-3 pt-4 border-t border-border shrink-0">
         <Link
           href={FOOTER_NAV.href}
           className={cn(

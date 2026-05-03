@@ -87,6 +87,14 @@ export default async function DashboardPage() {
       .select()
       .from(taskPayLineItems)
       .where(eq(taskPayLineItems.periodId, period.id));
+    // Temp workers are part of the work week — owner directive: their
+    // amounts must roll into the dashboard's gross/net headlines and
+    // their headcount into the employee total.
+    const { tempWorkerEntries } = await import("@/lib/db/schema");
+    const tempWorkers = await db
+      .select()
+      .from(tempWorkerEntries)
+      .where(eq(tempWorkerEntries.periodId, period.id));
     const punchesByE = new Map<string, typeof punches>();
     for (const p of punches) {
       const list = punchesByE.get(p.employeeId) ?? [];
@@ -134,6 +142,16 @@ export default async function DashboardPage() {
       totals.gross += result.grossCents;
       totals.rounded += result.roundedCents;
       activeWithWork++;
+    }
+    // Roll in temp workers — they're part of the period's work even
+    // though they don't have an Employee row.
+    for (const tw of tempWorkers) {
+      totals.gross += tw.amountCents;
+      totals.rounded += tw.amountCents;
+      if (tw.hours !== null) {
+        totals.hours += Number(tw.hours);
+      }
+      activeWithWork += 1;
     }
     stats = {
       ...totals,
