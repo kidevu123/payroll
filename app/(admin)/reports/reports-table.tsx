@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Download,
+  Eye,
+  Printer,
   Send,
   Trash2,
   CheckCircle2,
@@ -211,6 +213,30 @@ export function ReportsTable({
                   </td>
                   <td className="py-2 px-3 pr-4 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        title="Open admin report"
+                      >
+                        <Link href={`/payroll/${r.periodId}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        title="Open signature report (print + employee sign-off)"
+                      >
+                        <Link
+                          href={`/api/payslips/period/${r.periodId}/signature`}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
                       {r.pdfPath ? (
                         <Button
                           asChild
