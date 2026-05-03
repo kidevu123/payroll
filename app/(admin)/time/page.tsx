@@ -71,7 +71,21 @@ export default async function TimePage() {
     );
   }
 
-  const days = eachDay(period.startDate, period.endDate);
+  // Canonical 7-day work week: render Monday → Sunday regardless of
+  // how the upload was scoped. Owner pulls punches early sometimes
+  // (Mon-Fri because no work happened Sat-Sun) but the displayed
+  // grid should still reflect the full pay week so empty Sat/Sun
+  // cells are visible. eachDay only goes as far as the stored
+  // end_date, so widen it to start+6 days when the stored range is
+  // shorter.
+  const canonicalEnd = (() => {
+    const start = new Date(`${period.startDate}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() + 6);
+    return start.toISOString().slice(0, 10);
+  })();
+  const lastDay =
+    period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
+  const days = eachDay(period.startDate, lastDay);
   const [allActive, punches] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
     listPunches({ periodId: period.id }),
@@ -105,7 +119,7 @@ export default async function TimePage() {
         <div>
           <h1 className="text-2xl font-semibold">Time</h1>
           <p className="text-sm text-text-muted">
-            Current period: {period.startDate} to {period.endDate}
+            Current period: {period.startDate} to {lastDay}
           </p>
         </div>
         <div className="flex items-center gap-3">
