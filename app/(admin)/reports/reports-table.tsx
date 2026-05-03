@@ -128,24 +128,24 @@ export function ReportsTable({
               return (
                 <React.Fragment key={r.id}>
                   {newPeriod && (
-                    <tr className="bg-surface-3/60 border-t-2 border-border/60">
-                      <td colSpan={7} className="px-4 py-2">
-                        <div className="flex items-baseline justify-between gap-3">
+                    <tr className="bg-surface-3 border-t-[3px] border-brand-700/30">
+                      <td colSpan={7} className="px-4 py-2.5">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div className="flex items-baseline gap-3">
-                            <span className="font-semibold text-text">
+                            <span className="font-semibold text-text whitespace-nowrap">
                               {formatRange(r.startDate, r.endDate)}
                             </span>
-                            <span className="text-xs text-text-muted">
+                            <span className="text-[10px] uppercase tracking-wider text-text-subtle">
                               Period total
                             </span>
                           </div>
-                          <div className="flex items-baseline gap-3 text-right">
+                          <div className="flex items-baseline gap-3 text-right whitespace-nowrap">
                             <span className="font-mono tabular-nums font-semibold text-text">
                               <MoneyDisplay cents={periodGrandTotal} />
                             </span>
                             {r.tempLaborCents > 0 && (
-                              <span className="text-xs text-text-muted">
-                                (incl. <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp)
+                              <span className="text-[10px] text-text-muted">
+                                incl. <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
                               </span>
                             )}
                           </div>
@@ -154,19 +154,19 @@ export function ReportsTable({
                     </tr>
                   )}
                 <tr className="hover:bg-surface/40 transition-colors">
-                  <td className="py-2 pl-8 pr-3">
+                  <td className="py-2 pl-8 pr-3 whitespace-nowrap">
                     <Link
                       href={`/payroll/${r.periodId}`}
-                      className="text-sm text-text hover:text-brand-700 hover:underline underline-offset-2"
+                      className="text-sm text-text hover:text-brand-700 hover:underline underline-offset-2 inline-flex items-baseline gap-1.5"
                     >
-                      <span className="font-mono text-xs text-text-subtle">
-                        {r.source.replace(/_/g, " ").toLowerCase()}
-                      </span>{" "}
-                      <span className="ml-1">·</span>{" "}
-                      <span className="font-mono text-xs">{r.id.slice(0, 8)}…</span>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-text-subtle">
+                        {r.source.replace(/_/g, " ")}
+                      </span>
+                      <span className="text-text-subtle">·</span>
+                      <span className="font-mono text-xs">{r.id.slice(0, 8)}</span>
                     </Link>
                   </td>
-                  <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-text">
+                  <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-text whitespace-nowrap">
                     <MoneyDisplay cents={r.amountCents} />
                     {r.tempLaborCents > 0 && (
                       <div className="text-[10px] font-normal text-text-muted">
@@ -174,11 +174,11 @@ export function ReportsTable({
                       </div>
                     )}
                   </td>
-                  <td className="py-3 px-3 text-text-muted">
+                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">
                     {r.scheduleName ?? <span className="italic">unassigned</span>}
                   </td>
-                  <td className="py-3 px-3 text-text-muted">{r.createdByDisplay}</td>
-                  <td className="py-3 px-3 text-text-muted">{formatDate(r.postedAt)}</td>
+                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">{r.createdByDisplay}</td>
+                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">{formatDate(r.postedAt)}</td>
                   <td className="py-3 px-3">
                     {published ? (
                       <span className="inline-flex items-center gap-1.5 rounded-input bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">

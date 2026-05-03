@@ -53,17 +53,28 @@ export type OverlappingRun = {
 };
 
 /**
- * Look for any payroll_run whose period overlaps [start, end]. Used to
- * warn the admin BEFORE the upload commits — most "I uploaded twice by
- * accident" cases are caught here.
+ * Look for any payroll_run whose period overlaps [start, end] AND
+ * shares the chosen pay schedule. Schedule isolation matters: a
+ * semi-monthly upload mustn't be warned about overlapping weekly
+ * runs (and vice versa) — they're independent workflows.
+ *
+ * If `payScheduleId` is null/undefined, only runs whose period also
+ * has a NULL schedule are considered overlaps. Stays informative for
+ * legacy/unassigned setups without polluting cross-schedule cases.
  */
 export async function findOverlappingRunsAction(
   startDate: string,
   endDate: string,
+  payScheduleId?: string | null,
 ): Promise<OverlappingRun[]> {
   await requireAdmin();
   if (!z.string().date().safeParse(startDate).success) return [];
   if (!z.string().date().safeParse(endDate).success) return [];
+
+  const scheduleClause = payScheduleId
+    ? sql`(${payPeriods.payScheduleId} = ${payScheduleId} OR ${payrollRuns.payScheduleId} = ${payScheduleId})`
+    : sql`${payPeriods.payScheduleId} IS NULL AND ${payrollRuns.payScheduleId} IS NULL`;
+
   const rows = await db
     .select({
       runId: payrollRuns.id,
@@ -83,6 +94,7 @@ export async function findOverlappingRunsAction(
         // overlaps the admin needs to confirm against. They clutter the
         // warning panel and confuse the "did this already publish?" question.
         sql`${payrollRuns.state} NOT IN ('CANCELLED','INGEST_FAILED','FAILED')`,
+        scheduleClause,
       ),
     )
     .orderBy(sql`${payPeriods.startDate} DESC`);

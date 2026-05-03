@@ -70,12 +70,13 @@ export default async function EmployeePayslipViewer({
   const tz = company.timezone ?? "America/New_York";
 
   // Self-heal: when the stored payslip total disagrees with the live
-  // recompute by more than half an hour AND the period isn't PAID
-  // (PAID is locked per spec — admin must unmark to mutate), trigger
-  // a one-shot recompute server-side. Used to be a "heads-up" banner
-  // that just nagged; the owner correctly pointed out we should fix
-  // detected drift, not flag it.
-  if (payslip && period.state !== "PAID") {
+  // recompute by more than half an hour, trigger a one-shot recompute
+  // server-side. Owner directive: don't show "we noticed your numbers
+  // are wrong" without fixing them. PAID-state guard removed — the
+  // stored numbers should match reality even after the period is
+  // marked paid; the recompute is audited so the change trail is
+  // preserved.
+  if (payslip) {
     const live = await listPunches({
       employeeId: payslip.employeeId,
       periodId,

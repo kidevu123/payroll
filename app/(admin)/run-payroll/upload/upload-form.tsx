@@ -48,6 +48,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   const [dragOver, setDragOver] = React.useState(false);
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
+  const [payScheduleId, setPayScheduleId] = React.useState("");
   const [overlaps, setOverlaps] = React.useState<OverlappingRun[]>([]);
   const [confirmedOverlap, setConfirmedOverlap] = React.useState(false);
   const [tempWorkers, setTempWorkers] = React.useState<TempWorker[]>([]);
@@ -63,7 +64,10 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   );
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Re-check overlaps whenever the date range changes meaningfully.
+  // Re-check overlaps whenever the date range or pay schedule changes.
+  // Schedule isolation: a semi-monthly upload only conflict-checks
+  // against semi-monthly runs; weekly only against weekly. The two
+  // workflows are independent.
   React.useEffect(() => {
     if (!startDate || !endDate || startDate > endDate) {
       setOverlaps([]);
@@ -72,7 +76,11 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
     }
     let cancelled = false;
     void (async () => {
-      const result = await findOverlappingRunsAction(startDate, endDate);
+      const result = await findOverlappingRunsAction(
+        startDate,
+        endDate,
+        payScheduleId || null,
+      );
       if (!cancelled) {
         setOverlaps(result);
         setConfirmedOverlap(false);
@@ -81,7 +89,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
     return () => {
       cancelled = true;
     };
-  }, [startDate, endDate]);
+  }, [startDate, endDate, payScheduleId]);
 
   // Auto-detect range from CSV. Pulls the min/max date column on a quick
   // first-pass parse — keeps the UX feeling magical without touching the
@@ -222,7 +230,8 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
               <select
                 id="payScheduleId"
                 name="payScheduleId"
-                defaultValue=""
+                value={payScheduleId}
+                onChange={(e) => setPayScheduleId(e.target.value)}
                 className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
               >
                 <option value="">Unassigned</option>
