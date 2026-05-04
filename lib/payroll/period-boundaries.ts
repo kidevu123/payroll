@@ -95,3 +95,30 @@ export function getNextPeriodBounds(
   const start = addDays(parseDay(current.endDate), 1);
   return getPeriodBounds(formatDay(start), settings);
 }
+
+/**
+ * Bounds of the SEMI-MONTHLY period containing `date`. Periods are:
+ *   first half:  YYYY-MM-01 → YYYY-MM-15
+ *   second half: YYYY-MM-16 → YYYY-MM-{last day of month}
+ *
+ * Used by the CSV importer to route a semi-monthly employee's punches
+ * (Juan) into the right period when they show up on a weekly upload.
+ */
+export function getSemiMonthlyBounds(date: string): PeriodBounds {
+  const target = parseDay(date);
+  const y = target.getUTCFullYear();
+  const m = target.getUTCMonth(); // 0-based
+  const day = target.getUTCDate();
+  if (day <= 15) {
+    return {
+      startDate: formatDay(new Date(Date.UTC(y, m, 1))),
+      endDate: formatDay(new Date(Date.UTC(y, m, 15))),
+    };
+  }
+  // Last day of month: day 0 of next month rolls back.
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return {
+    startDate: formatDay(new Date(Date.UTC(y, m, 16))),
+    endDate: formatDay(new Date(Date.UTC(y, m, lastDay))),
+  };
+}

@@ -15,7 +15,9 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
+  payPeriods,
   payrollRuns,
+  paySchedules,
   payslips,
   punches,
   ingestExceptions,
@@ -27,6 +29,7 @@ import {
   type PunchCandidate,
 } from "@/lib/punches/parser";
 import { transitionRun } from "@/lib/db/queries/payroll-runs";
+import { getSemiMonthlyBounds } from "@/lib/payroll/period-boundaries";
 
 export type ManualImportInput = {
   csv: string;
@@ -45,6 +48,22 @@ export type ManualImportSummary = {
   /** Distinct (employee_id, source_period_id) pairs that had punches moved out
    *  — their existing payslips were voided so source-period totals recompute. */
   payslipsVoidedFromMove: number;
+  /**
+   * Punches imported into a period belonging to a DIFFERENT pay schedule
+   * than the run's. E.g. Juan (semi-monthly) shows up on a weekly upload —
+   * his punches land in the matching SEMI_MONTHLY period instead of being
+   * dropped or contaminating the weekly run. Per-employee detail in
+   * `routedDetail`.
+   */
+  routedToOtherSchedule: number;
+  routedDetail: Array<{
+    employeeId: string;
+    employeeName: string;
+    targetPeriodId: string;
+    periodStart: string;
+    periodEnd: string;
+    punches: number;
+  }>;
 };
 
 export async function runManualCsvImport(
@@ -58,6 +77,8 @@ export async function runManualCsvImport(
     duplicates: 0,
     punchesMoved: 0,
     payslipsVoidedFromMove: 0,
+    routedToOtherSchedule: 0,
+    routedDetail: [],
   };
   // Persist parse errors as ingest_exceptions.
   for (const e of errors) {
@@ -97,6 +118,70 @@ export async function runManualCsvImport(
   // by exactly the moved hours).
   const movedFromSourcePeriods = new Set<string>();
 
+  // Cache of pay schedules so we know each employee's `period_kind` (so
+  // we can compute the right semi-monthly bounds for routed punches).
+  const allSchedules = await db.select().from(paySchedules);
+  const scheduleById = new Map(allSchedules.map((s) => [s.id, s]));
+
+  // Cache of (payScheduleId, periodStart) → periodId so multiple punches
+  // for the same routed employee in the same target period reuse one row.
+  const routedPeriodCache = new Map<string, string>();
+  const routedAggByEmp = new Map<
+    string,
+    {
+      employeeId: string;
+      employeeName: string;
+      targetPeriodId: string;
+      periodStart: string;
+      periodEnd: string;
+      punches: number;
+    }
+  >();
+
+  /**
+   * Find or create the target pay_period for a routed punch. Currently
+   * supports SEMI_MONTHLY only — that's the production case (Juan on a
+   * weekly upload). Other kinds fall back to "no routing" (returns null,
+   * caller skips the routing branch and the punch follows normal rules).
+   */
+  async function findOrCreateTargetPeriod(
+    schedule: { id: string; periodKind: string },
+    clockInDate: string,
+  ): Promise<{ id: string; startDate: string; endDate: string } | null> {
+    if (schedule.periodKind !== "SEMI_MONTHLY") return null;
+    const bounds = getSemiMonthlyBounds(clockInDate);
+    const cacheKey = `${schedule.id}|${bounds.startDate}`;
+    const cached = routedPeriodCache.get(cacheKey);
+    if (cached) return { id: cached, ...bounds };
+    // Try to find an existing pay_period: same start, same schedule.
+    const [existing] = await db
+      .select()
+      .from(payPeriods)
+      .where(
+        and(
+          eq(payPeriods.startDate, bounds.startDate),
+          eq(payPeriods.payScheduleId, schedule.id),
+        ),
+      );
+    if (existing) {
+      routedPeriodCache.set(cacheKey, existing.id);
+      return { id: existing.id, startDate: existing.startDate, endDate: existing.endDate };
+    }
+    // Create a fresh OPEN period for the routed punches.
+    const [created] = await db
+      .insert(payPeriods)
+      .values({
+        startDate: bounds.startDate,
+        endDate: bounds.endDate,
+        state: "OPEN",
+        payScheduleId: schedule.id,
+      })
+      .returning();
+    if (!created) return null;
+    routedPeriodCache.set(cacheKey, created.id);
+    return { id: created.id, startDate: created.startDate, endDate: created.endDate };
+  }
+
   // Dedup is enforced globally by the unique index on ngteco_record_hash, so
   // we don't preload a per-period set anymore — that missed punches that
   // were already imported under a *different* period (e.g. the cron pulled
@@ -128,6 +213,67 @@ export async function runManualCsvImport(
       });
       continue;
     }
+    // ROUTING: when an employee belongs to a different pay schedule than
+    // the run's, redirect their punches into a period belonging to THEIR
+    // schedule. This is the protection the owner asked for: "if Juan
+    // (semi-monthly) shows up in the weekly CSV, his punches go to the
+    // semi-monthly period, not into this weekly run."
+    //
+    // Employees with NULL pay_schedule_id (most legacy rows) follow the
+    // upload's schedule as before. Same-schedule employees skip routing.
+    if (
+      emp.payScheduleId &&
+      run.payScheduleId &&
+      emp.payScheduleId !== run.payScheduleId
+    ) {
+      const empSchedule = scheduleById.get(emp.payScheduleId);
+      if (empSchedule) {
+        // Compute the punch's calendar day in COMPANY TZ — a 23:00 ET punch
+        // on Apr 15 is still Apr 15 for semi-monthly bounds, even though
+        // its UTC date rolls to Apr 16.
+        const clockInDay = new Intl.DateTimeFormat("en-CA", {
+          timeZone: input.timezone,
+        }).format(new Date(c.clockIn));
+        const target = await findOrCreateTargetPeriod(empSchedule, clockInDay);
+        if (target) {
+          seenHashes.add(c.ngtecoRecordHash);
+          try {
+            await db.insert(punches).values({
+              employeeId: emp.id,
+              periodId: target.id,
+              clockIn: new Date(c.clockIn),
+              clockOut: c.clockOut ? new Date(c.clockOut) : null,
+              source: "MANUAL_ADMIN",
+              ngtecoRecordHash: c.ngtecoRecordHash,
+            });
+            summary.routedToOtherSchedule++;
+            const aggKey = `${emp.id}|${target.id}`;
+            const agg = routedAggByEmp.get(aggKey);
+            if (agg) {
+              agg.punches++;
+            } else {
+              routedAggByEmp.set(aggKey, {
+                employeeId: emp.id,
+                employeeName: emp.displayName,
+                targetPeriodId: target.id,
+                periodStart: target.startDate,
+                periodEnd: target.endDate,
+                punches: 1,
+              });
+            }
+          } catch (err) {
+            // Duplicate hash → already routed by an earlier upload, skip.
+            if (isUniqueViolation(err, "punches_ngteco_hash_unique")) {
+              summary.duplicates++;
+            } else {
+              throw err;
+            }
+          }
+          continue;
+        }
+      }
+    }
+
     // Skip employees not in the admin-selected cohort, if one is set.
     if (cohort && !cohort.has(emp.id)) {
       continue;
@@ -239,6 +385,11 @@ export async function runManualCsvImport(
       }
     }
   }
+
+  // Flatten per-employee routing aggregates into the summary.
+  summary.routedDetail = Array.from(routedAggByEmp.values()).sort((a, b) =>
+    a.employeeName.localeCompare(b.employeeName),
+  );
 
   await db
     .update(payrollRuns)

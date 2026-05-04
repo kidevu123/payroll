@@ -585,6 +585,22 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                         from a different period — your CSV is now the source of truth.
                       </li>
                     )}
+                    {success.summary.routedToOtherSchedule > 0 && (
+                      <li>
+                        • {success.summary.routedToOtherSchedule} punch
+                        {success.summary.routedToOtherSchedule === 1 ? "" : "es"}{" "}
+                        auto-routed to a different pay schedule:
+                        <ul className="ml-3 mt-0.5 space-y-0.5">
+                          {success.summary.routedDetail.map((d) => (
+                            <li key={`${d.employeeId}|${d.targetPeriodId}`}>
+                              — {d.employeeName}: {d.punches} punch
+                              {d.punches === 1 ? "" : "es"} → {d.periodStart} to{" "}
+                              {d.periodEnd}
+                            </li>
+                          ))}
+                        </ul>
+                      </li>
+                    )}
                     {success.summary.payslipsVoidedFromMove > 0 && (
                       <li>
                         • {success.summary.payslipsVoidedFromMove} payslip
