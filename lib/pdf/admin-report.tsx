@@ -1,11 +1,13 @@
-// Combined admin period report — one page per employee in the legacy
-// "Date / In / Out / Hours / Pay" format, then a final-page Payroll Summary
-// with shift subtotals + grand total. Mirrors the format the owner has
-// historically printed and signed.
+// Admin period report — compact 3-column layout, ~2 pages for 22
+// employees instead of one page each. Page 1 = payroll summary table
+// (one row per employee, shift subtotals + grand total). Pages 2+ =
+// per-employee detail blocks rendered in a 3-column grid, each block
+// has the employee header, the day-by-day table, total + rounded pay,
+// and a Signature/Date line. Mirrors the legacy reference PDF the
+// owner has been printing for years.
 //
-// Supersedes the older `signature-report.tsx`. The two share no code so
-// signature-report can be removed in a follow-up once the publish handler
-// is migrated and the audit log no longer references the old artifact.
+// Owner directive: "save the planet i want this consolidated to one
+// or two pages but all the details the way you have it need to stay".
 
 import {
   Document,
@@ -14,90 +16,167 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
-import type { AdminReportInput, PayslipDocInput } from "./types";
-import { PayslipBody } from "./payslip";
+import type { AdminReportInput } from "./types";
+
+const PAGE_PADDING = 24;
 
 const styles = StyleSheet.create({
   page: {
-    padding: 36,
-    fontSize: 10,
+    padding: PAGE_PADDING,
+    fontSize: 8,
     fontFamily: "Helvetica",
     color: "#0f172a",
   },
-  summaryPage: {
-    padding: 36,
-    fontSize: 10,
-    fontFamily: "Helvetica",
-    color: "#0f172a",
-  },
+  // Top section: payroll summary table.
   summaryTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 12,
+    marginBottom: 6,
+  },
+  summaryMeta: {
+    fontSize: 8,
+    color: "#64748b",
+    marginBottom: 8,
   },
   table: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 3,
-    marginBottom: 14,
+    borderRadius: 2,
+    marginBottom: 10,
   },
   th: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
-    paddingVertical: 5,
-    paddingHorizontal: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
     borderBottomWidth: 1,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
-    fontSize: 9,
+    fontSize: 7,
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderBottomWidth: 1,
+    paddingVertical: 2.5,
+    paddingHorizontal: 5,
+    borderBottomWidth: 0.5,
     borderColor: "#e2e8f0",
   },
   shiftSubtotal: {
     flexDirection: "row",
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
     backgroundColor: "#fff7ed",
     borderBottomWidth: 1,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
+    fontSize: 8,
   },
   grandTotal: {
     flexDirection: "row",
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderTopWidth: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 5,
+    borderTopWidth: 1.5,
     borderColor: "#0f172a",
     fontFamily: "Helvetica-Bold",
+    fontSize: 8.5,
   },
-  cId: { width: 60, fontFamily: "Courier" },
-  cName: { flex: 2 },
+  cId: { width: 36, fontFamily: "Courier", fontSize: 7 },
+  cName: { flex: 2.2 },
   cShift: { width: 60 },
-  cHours: { width: 80, fontFamily: "Courier", textAlign: "right" },
-  cPay: { width: 90, fontFamily: "Courier", textAlign: "right" },
-  cRounded: { width: 80, fontFamily: "Courier", textAlign: "right" },
-  sun: { fontFamily: "Helvetica-Bold" },
-  footer: {
-    position: "absolute",
-    bottom: 24,
-    left: 36,
-    right: 36,
-    fontSize: 8,
-    color: "#94a3b8",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
+  cHours: { width: 50, fontFamily: "Courier", textAlign: "right" },
+  cPay: { width: 60, fontFamily: "Courier", textAlign: "right" },
+  cRounded: { width: 60, fontFamily: "Courier", textAlign: "right" },
+  // Per-employee detail block (rendered in a 3-col grid).
   breakdownTitle: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
     marginTop: 4,
     marginBottom: 4,
     color: "#475569",
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -3,
+  },
+  block: {
+    width: "33.333%",
+    paddingHorizontal: 3,
+    paddingVertical: 3,
+  },
+  blockInner: {
+    borderWidth: 0.75,
+    borderColor: "#cbd5e1",
+    borderRadius: 2,
+    padding: 4,
+  },
+  blockHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    paddingBottom: 3,
+    marginBottom: 3,
+    borderBottomWidth: 0.5,
+    borderColor: "#e2e8f0",
+  },
+  blockName: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    flex: 1,
+  },
+  blockMeta: {
+    fontSize: 6.5,
+    color: "#64748b",
+  },
+  blockTable: {
+    marginBottom: 3,
+  },
+  blockTr: {
+    flexDirection: "row",
+    fontSize: 6.5,
+  },
+  blockTrAlt: {
+    backgroundColor: "#fafafa",
+  },
+  bcDate: { width: "26%" },
+  bcIn: { width: "22%", fontFamily: "Courier" },
+  bcOut: { width: "22%", fontFamily: "Courier" },
+  bcHours: { width: "14%", fontFamily: "Courier", textAlign: "right" },
+  bcPay: { width: "16%", fontFamily: "Courier", textAlign: "right" },
+  blockTotalsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 2,
+    borderTopWidth: 0.5,
+    borderColor: "#e2e8f0",
+    fontSize: 7,
+  },
+  blockTotalLabel: {
+    fontFamily: "Helvetica-Bold",
+  },
+  blockSig: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginTop: 4,
+    fontSize: 6,
+    color: "#64748b",
+  },
+  sigBlank: {
+    flex: 1,
+    borderBottomWidth: 0.5,
+    borderColor: "#94a3b8",
+    height: 9,
+    marginHorizontal: 3,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 12,
+    left: PAGE_PADDING,
+    right: PAGE_PADDING,
+    fontSize: 7,
+    color: "#94a3b8",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 });
 
@@ -121,8 +200,24 @@ function hrs(h: number, decimals: number): string {
   return h.toFixed(decimals);
 }
 
+function fmtDate(iso: string): string {
+  // "2026-04-27" -> "04/27"
+  const m = iso.match(/^\d{4}-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}/${m[2]}` : iso;
+}
+
+function fmtTime(t: string | undefined): string {
+  if (!t) return "—";
+  // "06:08:34" -> "6:08a"
+  const m = t.match(/^(\d{2}):(\d{2})/);
+  if (!m) return t;
+  const h = parseInt(m[1]!, 10);
+  const ampm = h < 12 ? "a" : "p";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m[2]}${ampm}`;
+}
+
 export function AdminReport({ data }: { data: AdminReportInput }) {
-  // Group employees by shift, preserving the order they arrive in.
   const shifts = new Map<string, AdminReportInput["employees"]>();
   for (const e of data.employees) {
     const k = e.shiftName ?? "Unassigned";
@@ -145,53 +240,24 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
     <Document
       title={`Admin Report ${data.period.startDate} to ${data.period.endDate}`}
     >
-      {data.employees.map((e, idx) => {
-        const slip: PayslipDocInput = {
-          company: data.company,
-          employee: {
-            displayName: e.displayName,
-            legalName: e.legalName,
-            legacyId: e.legacyId,
-            shiftName: e.shiftName,
-            hourlyRateCents: e.hourlyRateCents,
-          },
-          period: data.period,
-          rules: data.rules,
-          days: e.days,
-          totals: e.totals,
-          taskPay: e.taskPay,
-          generatedAt: data.generatedAt,
-        };
-        return (
-          <Page
-            key={`emp-${idx}-${e.legacyId ?? e.displayName}`}
-            size="LETTER"
-            style={styles.page}
-          >
-            <PayslipBody data={slip} />
-            <View style={styles.footer} fixed>
-              <Text>
-                {data.company.name} - {data.period.startDate} to {data.period.endDate}
-              </Text>
-              <Text>Generated {data.generatedAt}</Text>
-            </View>
-          </Page>
-        );
-      })}
-
-      <Page size="LETTER" style={styles.summaryPage}>
+      <Page size="LETTER" style={styles.page} wrap>
         <Text style={[styles.summaryTitle, { color: brand }]}>
-          Payroll Summary - {data.period.startDate} to {data.period.endDate}
+          {data.company.name} — Payroll {data.period.startDate} to {data.period.endDate}
+        </Text>
+        <Text style={styles.summaryMeta}>
+          {data.employees.length} employee{data.employees.length === 1 ? "" : "s"} ·
+          rounding {data.rules.rounding.toLowerCase().replace(/_/g, " ")} ·
+          generated {data.generatedAt}
         </Text>
 
         <View style={styles.table}>
           <View style={styles.th}>
-            <Text style={styles.cId}>Person ID</Text>
-            <Text style={styles.cName}>Employee Name</Text>
+            <Text style={styles.cId}>ID</Text>
+            <Text style={styles.cName}>Employee</Text>
             <Text style={styles.cShift}>Shift</Text>
-            <Text style={styles.cHours}>Total Hours</Text>
-            <Text style={styles.cPay}>Total Pay</Text>
-            <Text style={styles.cRounded}>Rounded Pay</Text>
+            <Text style={styles.cHours}>Hours</Text>
+            <Text style={styles.cPay}>Total</Text>
+            <Text style={styles.cRounded}>Rounded</Text>
           </View>
 
           {[...shifts.entries()].map(([shiftName, rows]) => {
@@ -208,10 +274,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                 {rows.map((r, i) => (
                   <View key={`row-${shiftName}-${i}`} style={styles.tr}>
                     <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
-                    <Text style={styles.cName}>
-                      <Text style={[styles.sun, { color: brand }]}>{"☀  "}</Text>
-                      {r.displayName}
-                    </Text>
+                    <Text style={styles.cName}>{r.displayName}</Text>
                     <Text style={styles.cShift}>{r.shiftName ?? "Unassigned"}</Text>
                     <Text style={styles.cHours}>
                       {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
@@ -226,10 +289,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                 ))}
                 <View style={styles.shiftSubtotal}>
                   <Text style={styles.cId} />
-                  <Text style={styles.cName}>
-                    <Text style={[styles.sun, { color: brand }]}>{"☀  "}</Text>
-                    {shiftName} Shift Total
-                  </Text>
+                  <Text style={styles.cName}>{shiftName} subtotal</Text>
                   <Text style={styles.cShift} />
                   <Text style={styles.cHours}>
                     {hrs(sHours, data.rules.hoursDecimalPlaces)}
@@ -261,13 +321,79 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
           </View>
         </View>
 
-        <Text style={styles.breakdownTitle}>Detailed Breakdown by Employee</Text>
+        <Text style={[styles.breakdownTitle, { color: brand }]}>
+          Detailed breakdown by employee
+        </Text>
+
+        {/* 3-column grid of employee blocks. wrap=true on the page +
+            wrap=false on the block lets blocks flow to subsequent
+            pages without splitting individual blocks. */}
+        <View style={styles.grid}>
+          {data.employees.map((e, idx) => (
+            <View key={`emp-${idx}`} style={styles.block} wrap={false}>
+              <View style={styles.blockInner}>
+                <View style={styles.blockHeader}>
+                  <Text style={styles.blockName}>{e.displayName}</Text>
+                  {e.legacyId && (
+                    <Text style={styles.blockMeta}>#{e.legacyId}</Text>
+                  )}
+                </View>
+                <Text style={styles.blockMeta}>
+                  {e.shiftName ?? "Unassigned"}
+                  {e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
+                    ? ` · ${money(e.hourlyRateCents, data.company.locale)}/hr`
+                    : ""}
+                </Text>
+
+                <View style={[styles.blockTable, { marginTop: 3 }]}>
+                  {e.days.map((d) => (
+                    <View key={d.date} style={styles.blockTr}>
+                      <Text style={styles.bcDate}>{fmtDate(d.date)}</Text>
+                      <Text style={styles.bcIn}>{fmtTime(d.inTime)}</Text>
+                      <Text style={styles.bcOut}>{fmtTime(d.outTime)}</Text>
+                      <Text style={styles.bcHours}>
+                        {hrs(d.hours, data.rules.hoursDecimalPlaces)}
+                      </Text>
+                      <Text style={styles.bcPay}>
+                        {money(d.cents, data.company.locale)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.blockTotalsRow}>
+                  <Text style={styles.blockTotalLabel}>Total</Text>
+                  <Text style={{ fontFamily: "Courier" }}>
+                    {money(e.totals.grossCents, data.company.locale)}
+                  </Text>
+                </View>
+                <View style={[styles.blockTotalsRow, { borderTopWidth: 0, paddingTop: 0 }]}>
+                  <Text style={styles.blockTotalLabel}>Rounded</Text>
+                  <Text style={{ fontFamily: "Helvetica-Bold", color: brand }}>
+                    {money(e.totals.roundedCents, data.company.locale)}
+                  </Text>
+                </View>
+
+                <View style={styles.blockSig}>
+                  <Text>Sig</Text>
+                  <View style={styles.sigBlank} />
+                  <Text>Date</Text>
+                  <View style={[styles.sigBlank, { flex: 0.5 }]} />
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
 
         <View style={styles.footer} fixed>
           <Text>
-            {data.company.name} - {data.period.startDate} to {data.period.endDate}
+            {data.company.name} · {data.period.startDate} to {data.period.endDate}
           </Text>
-          <Text>Generated {data.generatedAt}</Text>
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `Page ${pageNumber} / ${totalPages}`
+            }
+          />
         </View>
       </Page>
     </Document>

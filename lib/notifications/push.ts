@@ -81,9 +81,34 @@ export async function dispatchPush(
         );
         sent++;
       } catch (err) {
-        const status = (err as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) dead.push(s.id);
-        else logger.warn({ err, endpoint: s.endpoint }, "push send failed");
+        // web-push errors carry their interesting fields as
+        // non-enumerable properties (statusCode, headers, body) —
+        // unpack them explicitly so the log is diagnosable.
+        const e = err as {
+          statusCode?: number;
+          body?: string;
+          headers?: Record<string, string>;
+          message?: string;
+        };
+        const status = e.statusCode;
+        if (status === 404 || status === 410) {
+          dead.push(s.id);
+          return;
+        }
+        // 403 = bad VAPID auth (key mismatch with what the
+        // subscription was made under). 401 = expired auth header.
+        // Either way the endpoint is unusable until the user
+        // re-subscribes from the browser.
+        if (status === 403) dead.push(s.id);
+        logger.warn(
+          {
+            statusCode: status,
+            body: e.body?.slice(0, 200),
+            message: e.message,
+            endpoint: s.endpoint.slice(0, 60),
+          },
+          "push send failed",
+        );
       }
     }),
   );
