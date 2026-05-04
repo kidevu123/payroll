@@ -4,6 +4,7 @@
 
 import { requireOwner } from "@/lib/auth-guards";
 import { CleanupTools } from "./cleanup-tools";
+import { PdfRebuildButton } from "./pdf-rebuild-button";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function CleanupPage() {
         </p>
       </div>
       <CleanupTools />
+      <PdfRebuildButton />
     </div>
   );
 }
