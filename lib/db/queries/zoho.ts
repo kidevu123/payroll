@@ -169,14 +169,30 @@ export async function updateOrg(
 export async function setOrgRefreshToken(
   id: string,
   refreshToken: string,
+  actor?: Actor,
 ): Promise<void> {
-  await db
-    .update(zohoOrganizations)
-    .set({
-      refreshTokenEncrypted: seal(refreshToken),
-      updatedAt: new Date(),
-    })
-    .where(eq(zohoOrganizations.id, id));
+  return db.transaction(async (tx) => {
+    await tx
+      .update(zohoOrganizations)
+      .set({
+        refreshTokenEncrypted: seal(refreshToken),
+        updatedAt: new Date(),
+      })
+      .where(eq(zohoOrganizations.id, id));
+    // Audit so a forensic read can answer "when was Zoho last
+    // (re)connected for this org?". Don't log the token itself; the
+    // refreshTokenEncrypted column carries the sealed envelope.
+    await writeAudit(
+      {
+        actorId: actor?.id ?? null,
+        actorRole: actor?.role ?? "OWNER",
+        action: "zoho_org.refresh_token_set",
+        targetType: "ZohoOrganization",
+        targetId: id,
+      },
+      tx,
+    );
+  });
 }
 
 export async function deleteOrg(id: string, actor: Actor): Promise<void> {

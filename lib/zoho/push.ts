@@ -238,9 +238,26 @@ export async function pushReportToZoho(
     }
     if (activeAccountantDocs.length > 0) {
       const { readFile } = await import("fs/promises");
+      const { resolve: pathResolve } = await import("path");
+      // Path safety: every accountant paystub MUST live under
+      // PAYROLL_DOC_ROOT. A future bug that lets a non-admin set
+      // payroll_period_documents.filePath would otherwise become an
+      // arbitrary-file-read into a Zoho upload. Resolve absolute and
+      // check the prefix before opening.
+      const docRoot = pathResolve(
+        process.env.PAYROLL_DOC_ROOT ?? "/data/uploads/payroll-docs",
+      );
       for (const doc of activeAccountantDocs) {
+        const absPath = pathResolve(doc.filePath);
+        if (!absPath.startsWith(docRoot + "/") && absPath !== docRoot) {
+          logger.warn(
+            { payrollRunId, docId: doc.id, filePath: doc.filePath },
+            "zoho push: accountant paystub path outside doc root; refusing to attach",
+          );
+          continue;
+        }
         try {
-          const buf = await readFile(doc.filePath);
+          const buf = await readFile(absPath);
           attachments.push({
             filename: doc.originalFilename,
             mime: doc.mime,
