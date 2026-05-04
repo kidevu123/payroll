@@ -24,9 +24,11 @@ export default async function Page() {
         <div className="rounded-card border border-border bg-surface-2 p-4">
           <p className="mb-2 text-sm font-medium">Test delivery</p>
           <p className="mb-3 text-xs text-text-muted">
-            Fires a push to your own subscribed devices. If it fails, the
-            inline result tells you why (VAPID mismatch, no subscription,
-            push service rejection) without needing container logs.
+            Pick any user with a subscribed device and fire a push. The
+            admin portal isn&apos;t mobile-friendly so subscribing as
+            yourself from a phone is awkward — point this at an employee
+            who has notifications enabled and confirm delivery there.
+            Inline result tells you why if it fails.
           </p>
           <TestPushButton />
         </div>

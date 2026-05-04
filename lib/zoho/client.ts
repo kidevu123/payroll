@@ -129,23 +129,35 @@ type ZohoAccountRow = {
 /**
  * Fetch every chart-of-accounts row, walking page_context.has_more_page.
  * Zoho's per_page maxes at 200, so an org with hundreds of accounts will
- * silently miss matches if you don't paginate. We also include inactive
- * accounts in the page so a user-typed name still resolves even if the
- * account was archived recently (Zoho still accepts inactive account_ids
- * on expense posts in many cases — and at minimum we want a clear error).
+ * silently miss matches if you don't paginate.
+ *
+ * Returns both the rows and a `lastError` field — when present, the
+ * resolver surfaces it in the user-facing error so a failed lookup says
+ * exactly why (auth issue, 400 on filter, etc.) rather than the bland
+ * "not found" we showed before.
  */
+type FetchAccountsResult = {
+  rows: ZohoAccountRow[];
+  lastError: string | null;
+};
+
 async function fetchAllAccounts(
   org: ZohoOrganization,
-): Promise<ZohoAccountRow[]> {
+): Promise<FetchAccountsResult> {
   const all: ZohoAccountRow[] = [];
+  let lastError: string | null = null;
   let page = 1;
   // 20 pages * 200 = 4000 accounts — far past anything realistic.
   for (let i = 0; i < 20; i++) {
     const resp = await authedFetch(
       org,
-      `/chartofaccounts?per_page=200&page=${page}&filter_by=AccountType.All`,
+      `/chartofaccounts?per_page=200&page=${page}`,
     );
-    if (!resp.ok) break;
+    if (!resp.ok) {
+      const text = await resp.text();
+      lastError = `${resp.status}: ${text.slice(0, 200)}`;
+      break;
+    }
     const json = (await resp.json()) as {
       chartofaccounts?: ZohoAccountRow[];
       page_context?: { has_more_page?: boolean; page?: number };
@@ -155,7 +167,7 @@ async function fetchAllAccounts(
     if (!json.page_context?.has_more_page) break;
     page += 1;
   }
-  return all;
+  return { rows: all, lastError };
 }
 
 function normalizeAccountName(s: string): string {
@@ -172,35 +184,42 @@ function normalizeAccountName(s: string): string {
 async function resolveAccountId(
   org: ZohoOrganization,
   hint: { id?: string | null; name?: string | null },
-): Promise<{ id: string | null; tried: string[] }> {
-  if (hint.id) return { id: hint.id, tried: [hint.id] };
-  if (!hint.name) return { id: null, tried: [] };
+): Promise<{ id: string | null; tried: string[]; apiError: string | null }> {
+  if (hint.id) return { id: hint.id, tried: [hint.id], apiError: null };
+  if (!hint.name) return { id: null, tried: [], apiError: null };
 
-  const accounts = await fetchAllAccounts(org);
+  const fetched = await fetchAllAccounts(org);
+  const accounts = fetched.rows;
   const target = normalizeAccountName(hint.name);
   // 1) Exact match on normalized name.
   const exact = accounts.find(
     (a) => normalizeAccountName(a.account_name) === target,
   );
-  if (exact) return { id: exact.account_id, tried: [hint.name] };
+  if (exact) return { id: exact.account_id, tried: [hint.name], apiError: null };
   // 2) Match on account_code (e.g. "5300" matches "[5300] Payroll Expenses").
   const byCode = accounts.find(
     (a) =>
       (a.account_code ?? "").trim().toLowerCase() === hint.name!.trim().toLowerCase(),
   );
-  if (byCode) return { id: byCode.account_id, tried: [hint.name, "by code"] };
+  if (byCode)
+    return { id: byCode.account_id, tried: [hint.name, "by code"], apiError: null };
   // 3) Contains-match on the normalized name (e.g. "payroll" → "payroll expenses").
   const partial = accounts.find((a) =>
     normalizeAccountName(a.account_name).includes(target),
   );
-  if (partial) return { id: partial.account_id, tried: [hint.name, "partial"] };
+  if (partial)
+    return { id: partial.account_id, tried: [hint.name, "partial"], apiError: null };
 
-  // No match — return a small sample of available names so the caller
-  // can surface a diagnosable error.
-  const sample = accounts
-    .slice(0, 30)
-    .map((a) => `${a.account_code ?? "—"}: ${a.account_name}`);
-  return { id: null, tried: sample };
+  // No match — return a sample of available names so the caller can
+  // surface a diagnosable error. Sort by code so the sample is stable
+  // and easy to scan.
+  const sample = [...accounts]
+    .sort((a, b) =>
+      (a.account_code ?? "zzz").localeCompare(b.account_code ?? "zzz"),
+    )
+    .slice(0, 40)
+    .map((a) => `[${a.account_code ?? "—"}] ${a.account_name}`);
+  return { id: null, tried: sample, apiError: fetched.lastError };
 }
 
 export type CreateExpenseInput = {
@@ -230,11 +249,14 @@ export async function createExpense(
     name: org.defaultExpenseAccountName,
   });
   if (!expense.id) {
-    const sample = expense.tried.length
-      ? ` Available accounts (first ${expense.tried.length}): ${expense.tried.slice(0, 10).join(" · ")}…`
+    const apiHint = expense.apiError
+      ? ` Zoho /chartofaccounts call failed: ${expense.apiError}.`
       : "";
+    const sample = expense.tried.length
+      ? ` Available accounts: ${expense.tried.join(" · ")}.`
+      : " (No accounts returned from Zoho.)";
     throw new Error(
-      `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}. Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries (case insensitive, brackets/codes ignored).${sample}`,
+      `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}.${apiHint} Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries (case insensitive, brackets/codes ignored).${sample}`,
     );
   }
   const paidThrough = await resolveAccountId(org, {
@@ -242,11 +264,14 @@ export async function createExpense(
     name: org.defaultPaidThroughName,
   });
   if (!paidThrough.id) {
-    const sample = paidThrough.tried.length
-      ? ` Available accounts (first ${paidThrough.tried.length}): ${paidThrough.tried.slice(0, 10).join(" · ")}…`
+    const apiHint = paidThrough.apiError
+      ? ` Zoho /chartofaccounts call failed: ${paidThrough.apiError}.`
       : "";
+    const sample = paidThrough.tried.length
+      ? ` Available accounts: ${paidThrough.tried.join(" · ")}.`
+      : " (No accounts returned from Zoho.)";
     throw new Error(
-      `Zoho paid-through account "${org.defaultPaidThroughName ?? "(unset)"}" not found in ${org.name}.${sample}`,
+      `Zoho paid-through account "${org.defaultPaidThroughName ?? "(unset)"}" not found in ${org.name}.${apiHint}${sample}`,
     );
   }
   const body: Record<string, unknown> = {
