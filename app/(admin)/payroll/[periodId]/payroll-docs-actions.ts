@@ -49,6 +49,26 @@ export async function uploadPayrollDocAction(
     };
   }
 
+  // Net pay amount entered by admin from the accountant's paystub. The
+  // paystub gross is on the PDF, but Zoho gets the NET (post-tax) amount
+  // because that's what we actually wire to the employee. Required for
+  // PAYSTUB; optional for W2 / OTHER.
+  const netAmountRaw = formData.get("netAmountDollars");
+  let amountCents: number | null = null;
+  if (typeof netAmountRaw === "string" && netAmountRaw.trim() !== "") {
+    const parsed = Number.parseFloat(netAmountRaw);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return { error: "Net amount must be a positive number (e.g. 1685.00)." };
+    }
+    amountCents = Math.round(parsed * 100);
+  }
+  if (kind.data === "PAYSTUB" && amountCents === null) {
+    return {
+      error:
+        "Net pay amount is required for paystubs (this is what's pushed to Zoho — the net the employee actually receives, not the gross).",
+    };
+  }
+
   // Validate the period + employee exist.
   const [period] = await db
     .select()
@@ -88,6 +108,9 @@ export async function uploadPayrollDocAction(
         sizeBytes: file.size,
         visibleToEmployee: true,
         uploadedById: session.user.id,
+        ...(amountCents !== null ? { amountCents } : {}),
+        ...(period.startDate ? { payPeriodStart: period.startDate } : {}),
+        ...(period.endDate ? { payPeriodEnd: period.endDate } : {}),
       },
       { id: session.user.id, role: session.user.role },
     );

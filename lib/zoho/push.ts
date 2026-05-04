@@ -16,6 +16,7 @@ import {
   payPeriods,
   payrollPeriodDocuments,
   payrollRuns,
+  paySchedules,
   payslips,
   zohoOrganizations,
   zohoPushes,
@@ -74,6 +75,51 @@ export async function pushReportToZoho(
     ? await db.select().from(payPeriods).where(eq(payPeriods.id, run.periodId))
     : [];
 
+  // Detect SEMI_MONTHLY periods — they use a different push flow:
+  // the accountant prepares the paystub externally, the admin uploads
+  // it with the NET amount, and that's what we push to Zoho (NOT the
+  // gross we'd compute from punches). The accountant paystub PDF is
+  // attached as the receipt alongside the admin report.
+  const periodSchedule =
+    period?.payScheduleId
+      ? (
+          await db
+            .select()
+            .from(paySchedules)
+            .where(eq(paySchedules.id, period.payScheduleId))
+        )[0]
+      : null;
+  const isSemiMonthly = periodSchedule?.periodKind === "SEMI_MONTHLY";
+
+  // Pull all PAYSTUB documents on this period so we can total their net
+  // amounts and attach them to the Zoho expense.
+  const accountantDocs = period
+    ? await db
+        .select()
+        .from(payrollPeriodDocuments)
+        .where(
+          and(
+            eq(payrollPeriodDocuments.periodId, period.id),
+            eq(payrollPeriodDocuments.kind, "PAYSTUB"),
+          ),
+        )
+    : [];
+  const activeAccountantDocs = accountantDocs.filter((d) => !d.deletedAt);
+  const accountantNetTotal = activeAccountantDocs.reduce(
+    (s, d) => s + (d.amountCents ?? 0),
+    0,
+  );
+  if (isSemiMonthly && activeAccountantDocs.length === 0) {
+    throw new Error(
+      "Semi-monthly periods require an accountant paystub upload before pushing to Zoho. Open the period detail and upload the paystub PDF with the net amount.",
+    );
+  }
+  if (isSemiMonthly && accountantNetTotal <= 0) {
+    throw new Error(
+      "Accountant paystub is uploaded but its net amount is missing or $0. Re-upload with the net pay (post-tax) amount filled in — that's what we wire to the employee.",
+    );
+  }
+
   // Build the admin report once — same artifact powers the Notes table,
   // the receipt PDF Zoho displays, AND the expense amount (the builder
   // already sums payslips + temp workers, matching the period total the
@@ -100,6 +146,13 @@ export async function pushReportToZoho(
       );
     }
   }
+  // For SEMI_MONTHLY periods, override the gross total with the sum of
+  // accountant paystub net amounts. That's the actual cash leaving the
+  // business; the admin-report gross is just for record-keeping in the
+  // Notes + attached PDF.
+  if (isSemiMonthly && accountantNetTotal > 0) {
+    totalCents = accountantNetTotal;
+  }
   // Fallback total when artifact build failed: prefer stored total_amount_cents,
   // else sum the payslips. Note: this fallback does NOT include temp workers;
   // it should rarely be hit since the builder is authoritative.
@@ -121,11 +174,20 @@ export async function pushReportToZoho(
     period?.startDate && period?.endDate
       ? `PAYROLL-${period.startDate}_to_${period.endDate}`
       : `Payroll run ${payrollRunId}`;
+  const cadenceLabel = isSemiMonthly ? "Semi-monthly" : "Weekly";
   const intro =
     period?.startDate && period?.endDate
-      ? `Weekly payroll expense for ${period.startDate} to ${period.endDate} created by ${actor.role.toLowerCase()}\n\n`
+      ? `${cadenceLabel} payroll expense for ${period.startDate} to ${period.endDate} created by ${actor.role.toLowerCase()}\n\n`
       : `Payroll expense created by ${actor.role.toLowerCase()}\n\n`;
-  const description = summaryText ? `${intro}${summaryText}` : intro.trim();
+  // Semi-monthly: include the net-vs-gross breakdown in the description
+  // so the accountant can reconcile against the attached paystub.
+  const semiNote =
+    isSemiMonthly && accountantNetTotal > 0
+      ? `Accountant paystub net total (post-tax): $${(accountantNetTotal / 100).toFixed(2)} — wired to employee.\n\n`
+      : "";
+  const description = summaryText
+    ? `${intro}${semiNote}${summaryText}`
+    : `${intro}${semiNote}`.trim();
   const expenseDate =
     period?.endDate ??
     (run.postedAt ?? run.publishedAt ?? new Date()).toISOString().slice(0, 10);
@@ -140,20 +202,50 @@ export async function pushReportToZoho(
     });
 
     let attachError: string | null = null;
+    // Attach admin report PDF first (the per-employee breakdown), then
+    // every accountant paystub PDF on this period (one per semi-monthly
+    // employee). Each attach is best-effort: a failure on one doesn't
+    // block the others or the expense itself.
+    const attachments: Array<{ filename: string; mime: string; bytes: Uint8Array }> = [];
     if (pdfBytes) {
+      attachments.push({
+        filename: pdfFilename,
+        mime: "application/pdf",
+        bytes: new Uint8Array(pdfBytes),
+      });
+    }
+    if (activeAccountantDocs.length > 0) {
+      const { readFile } = await import("fs/promises");
+      for (const doc of activeAccountantDocs) {
+        try {
+          const buf = await readFile(doc.filePath);
+          attachments.push({
+            filename: doc.originalFilename,
+            mime: doc.mime,
+            bytes: new Uint8Array(buf),
+          });
+        } catch (err) {
+          logger.warn(
+            { payrollRunId, docId: doc.id, err: err instanceof Error ? err.message : String(err) },
+            "zoho push: accountant paystub file missing on disk; skipping attachment",
+          );
+        }
+      }
+    }
+    for (const att of attachments) {
       try {
         await attachReceipt({
           org,
           expenseId: expense.expenseId,
-          filename: pdfFilename,
-          mime: "application/pdf",
-          bytes: new Uint8Array(pdfBytes),
+          filename: att.filename,
+          mime: att.mime,
+          bytes: att.bytes,
         });
       } catch (err) {
         attachError = err instanceof Error ? err.message : String(err);
         logger.warn(
-          { payrollRunId, expenseId: expense.expenseId, err: attachError },
-          "zoho push: receipt attach failed; expense was created without PDF",
+          { payrollRunId, expenseId: expense.expenseId, file: att.filename, err: attachError },
+          "zoho push: one of the attachments failed to upload",
         );
       }
     }

@@ -134,7 +134,7 @@ function EmployeeDocSlot({
             setPending(false);
             if (result?.error) setError(result.error);
           }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end"
+          className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end"
         >
           <div className="space-y-1 sm:col-span-2">
             <Label htmlFor={`file-${employee.id}`} className="text-xs">
@@ -163,11 +163,29 @@ function EmployeeDocSlot({
               <option value="OTHER">Other</option>
             </select>
           </div>
-          <div className="sm:col-span-3 flex items-center gap-2">
+          <div className="space-y-1">
+            <Label htmlFor={`amt-${employee.id}`} className="text-xs">
+              Net pay $ (post-tax)
+            </Label>
+            <Input
+              id={`amt-${employee.id}`}
+              name="netAmountDollars"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="1685.00"
+              title="The net amount you actually wire to the employee — what gets pushed to Zoho. The gross is on the PDF; this is gross minus all taxes/withholdings. Required for paystubs."
+            />
+          </div>
+          <div className="sm:col-span-4 flex items-center gap-2">
             <Button type="submit" size="sm" disabled={pending}>
               <Upload className="h-3.5 w-3.5" />
               {pending ? "Uploading…" : "Upload"}
             </Button>
+            <span className="text-[11px] text-text-muted">
+              Net pay drives the Zoho expense amount; the gross on the PDF is for
+              record-keeping only.
+            </span>
             {error && (
               <span className="text-xs text-red-700">{error}</span>
             )}
@@ -195,6 +213,22 @@ function DocRow({
         <span className="text-xs text-text-muted shrink-0">
           · {doc.kind}
         </span>
+        {doc.amountCents !== null && (
+          <span
+            className="text-xs font-medium text-emerald-700 shrink-0"
+            title="Net pay (post-tax) — pushed to Zoho when this is the latest paystub for the period."
+          >
+            · ${(doc.amountCents / 100).toFixed(2)} net
+          </span>
+        )}
+        {doc.kind === "PAYSTUB" && doc.amountCents === null && (
+          <span
+            className="text-xs font-medium text-amber-700 shrink-0"
+            title="Net amount missing — re-upload with net amount filled in, or this paystub will push $0 to Zoho."
+          >
+            · net amount missing
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <Button asChild size="sm" variant="ghost">
