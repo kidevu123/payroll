@@ -62,19 +62,6 @@ export async function pushReportToZoho(
   if (!org) throw new Error("Zoho organization not found.");
   if (!org.active) throw new Error("Zoho organization is inactive.");
 
-  // Total: prefer explicit total_amount_cents, else sum of payslips.
-  let totalCents = run.totalAmountCents;
-  if (!totalCents) {
-    const slips = await db
-      .select()
-      .from(payslips)
-      .where(eq(payslips.payrollRunId, payrollRunId));
-    totalCents = slips.reduce((s, p) => s + p.roundedPayCents, 0);
-  }
-  if (!totalCents || totalCents <= 0) {
-    throw new Error("Run has no positive total — nothing to push.");
-  }
-
   // Pull the period for a human-readable reference like
   // "PAYROLL-2026-04-06_to_2026-04-11" matching the legacy app's format,
   // and to feed the admin-report builder for Notes + PDF attachment.
@@ -82,20 +69,24 @@ export async function pushReportToZoho(
     ? await db.select().from(payPeriods).where(eq(payPeriods.id, run.periodId))
     : [];
 
-  // Build the admin report once — same artifact powers the Notes table and
-  // the receipt PDF Zoho displays. Failure here is non-fatal: we still push
-  // the expense (with a generic note + no attachment) and surface the
-  // builder error in audit so the admin can re-attach manually if needed.
+  // Build the admin report once — same artifact powers the Notes table,
+  // the receipt PDF Zoho displays, AND the expense amount (the builder
+  // already sums payslips + temp workers, matching the period total the
+  // admin sees on /reports). Failure here is non-fatal: we still push the
+  // expense (without summary/attachment, falling back to the run's stored
+  // total) and surface the builder error in audit.
   let summaryText: string | null = null;
   let pdfBytes: Buffer | null = null;
   let pdfFilename = "admin_report.pdf";
   let buildError: string | null = null;
+  let totalCents = 0;
   if (run.periodId) {
     try {
       const artifacts = await buildAdminReportArtifacts(run.periodId);
       summaryText = artifacts.summaryText;
       pdfBytes = artifacts.pdfBytes;
       pdfFilename = artifacts.filename;
+      totalCents = artifacts.totalRoundedCents;
     } catch (err) {
       buildError = err instanceof Error ? err.message : String(err);
       logger.warn(
@@ -103,6 +94,22 @@ export async function pushReportToZoho(
         "zoho push: admin report build failed; will push without summary/attachment",
       );
     }
+  }
+  // Fallback total when artifact build failed: prefer stored total_amount_cents,
+  // else sum the payslips. Note: this fallback does NOT include temp workers;
+  // it should rarely be hit since the builder is authoritative.
+  if (totalCents <= 0) {
+    totalCents = run.totalAmountCents ?? 0;
+    if (!totalCents) {
+      const slips = await db
+        .select()
+        .from(payslips)
+        .where(eq(payslips.payrollRunId, payrollRunId));
+      totalCents = slips.reduce((s, p) => s + p.roundedPayCents, 0);
+    }
+  }
+  if (!totalCents || totalCents <= 0) {
+    throw new Error("Run has no positive total — nothing to push.");
   }
 
   const ref =
