@@ -118,33 +118,89 @@ export async function validateConnection(
   }
 }
 
+type ZohoAccountRow = {
+  account_id: string;
+  account_name: string;
+  account_code?: string | null;
+  is_active?: boolean;
+  status?: string;
+};
+
+/**
+ * Fetch every chart-of-accounts row, walking page_context.has_more_page.
+ * Zoho's per_page maxes at 200, so an org with hundreds of accounts will
+ * silently miss matches if you don't paginate. We also include inactive
+ * accounts in the page so a user-typed name still resolves even if the
+ * account was archived recently (Zoho still accepts inactive account_ids
+ * on expense posts in many cases — and at minimum we want a clear error).
+ */
+async function fetchAllAccounts(
+  org: ZohoOrganization,
+): Promise<ZohoAccountRow[]> {
+  const all: ZohoAccountRow[] = [];
+  let page = 1;
+  // 20 pages * 200 = 4000 accounts — far past anything realistic.
+  for (let i = 0; i < 20; i++) {
+    const resp = await authedFetch(
+      org,
+      `/chartofaccounts?per_page=200&page=${page}&filter_by=AccountType.All`,
+    );
+    if (!resp.ok) break;
+    const json = (await resp.json()) as {
+      chartofaccounts?: ZohoAccountRow[];
+      page_context?: { has_more_page?: boolean; page?: number };
+    };
+    const rows = json.chartofaccounts ?? [];
+    all.push(...rows);
+    if (!json.page_context?.has_more_page) break;
+    page += 1;
+  }
+  return all;
+}
+
+function normalizeAccountName(s: string): string {
+  // Strip a leading "[CODE] " prefix that Zoho's UI shows but the API
+  // sometimes returns embedded in account_name on older orgs. Lowercase
+  // and collapse whitespace for tolerant compare.
+  return s
+    .replace(/^\s*\[[^\]]+\]\s*/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
 async function resolveAccountId(
   org: ZohoOrganization,
   hint: { id?: string | null; name?: string | null },
-): Promise<string | null> {
-  if (hint.id) return hint.id;
-  if (!hint.name) return null;
-  // Zoho's /chartofaccounts query parameter for name filtering varies by
-  // tenant — the safest path is to fetch all accounts and match the
-  // configured name case-insensitively. Lists are small (rarely > 200
-  // rows) and we cache nothing, so this stays a single roundtrip per
-  // push, which is fine.
-  const resp = await authedFetch(org, `/chartofaccounts?per_page=200`);
-  if (!resp.ok) return null;
-  const json = (await resp.json()) as {
-    chartofaccounts?: Array<{ account_id: string; account_name: string }>;
-  };
-  const accounts = json.chartofaccounts ?? [];
-  const target = hint.name.trim().toLowerCase();
+): Promise<{ id: string | null; tried: string[] }> {
+  if (hint.id) return { id: hint.id, tried: [hint.id] };
+  if (!hint.name) return { id: null, tried: [] };
+
+  const accounts = await fetchAllAccounts(org);
+  const target = normalizeAccountName(hint.name);
+  // 1) Exact match on normalized name.
   const exact = accounts.find(
-    (a) => a.account_name.trim().toLowerCase() === target,
+    (a) => normalizeAccountName(a.account_name) === target,
   );
-  if (exact) return exact.account_id;
-  // Fall back to a contains-match (e.g. "Payroll" matches "Payroll Expenses").
+  if (exact) return { id: exact.account_id, tried: [hint.name] };
+  // 2) Match on account_code (e.g. "5300" matches "[5300] Payroll Expenses").
+  const byCode = accounts.find(
+    (a) =>
+      (a.account_code ?? "").trim().toLowerCase() === hint.name!.trim().toLowerCase(),
+  );
+  if (byCode) return { id: byCode.account_id, tried: [hint.name, "by code"] };
+  // 3) Contains-match on the normalized name (e.g. "payroll" → "payroll expenses").
   const partial = accounts.find((a) =>
-    a.account_name.toLowerCase().includes(target),
+    normalizeAccountName(a.account_name).includes(target),
   );
-  return partial?.account_id ?? null;
+  if (partial) return { id: partial.account_id, tried: [hint.name, "partial"] };
+
+  // No match — return a small sample of available names so the caller
+  // can surface a diagnosable error.
+  const sample = accounts
+    .slice(0, 30)
+    .map((a) => `${a.account_code ?? "—"}: ${a.account_name}`);
+  return { id: null, tried: sample };
 }
 
 export type CreateExpenseInput = {
@@ -152,6 +208,13 @@ export type CreateExpenseInput = {
   amountCents: number;
   reference: string;
   date: string; // YYYY-MM-DD
+  /**
+   * Free-form text written into Zoho's expense `description` (Notes) field.
+   * If omitted, falls back to the legacy "Payroll run pushed from /reports — <ref>"
+   * line. Zoho silently truncates very long descriptions; we cap at 5000 chars
+   * to stay safely under their per-field limit.
+   */
+  description?: string;
 };
 
 export type CreateExpenseResult = {
@@ -161,32 +224,41 @@ export type CreateExpenseResult = {
 export async function createExpense(
   input: CreateExpenseInput,
 ): Promise<CreateExpenseResult> {
-  const { org, amountCents, reference, date } = input;
-  const accountId = await resolveAccountId(org, {
+  const { org, amountCents, reference, date, description } = input;
+  const expense = await resolveAccountId(org, {
     id: org.defaultExpenseAccountId,
     name: org.defaultExpenseAccountName,
   });
-  if (!accountId) {
+  if (!expense.id) {
+    const sample = expense.tried.length
+      ? ` Available accounts (first ${expense.tried.length}): ${expense.tried.slice(0, 10).join(" · ")}…`
+      : "";
     throw new Error(
-      `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}. Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries exactly (case insensitive).`,
+      `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}. Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries (case insensitive, brackets/codes ignored).${sample}`,
     );
   }
-  const paidThroughId = await resolveAccountId(org, {
+  const paidThrough = await resolveAccountId(org, {
     id: org.defaultPaidThroughId,
     name: org.defaultPaidThroughName,
   });
-  if (!paidThroughId) {
+  if (!paidThrough.id) {
+    const sample = paidThrough.tried.length
+      ? ` Available accounts (first ${paidThrough.tried.length}): ${paidThrough.tried.slice(0, 10).join(" · ")}…`
+      : "";
     throw new Error(
-      `Zoho paid-through account "${org.defaultPaidThroughName ?? "(unset)"}" not found in ${org.name}. Check the chart of accounts.`,
+      `Zoho paid-through account "${org.defaultPaidThroughName ?? "(unset)"}" not found in ${org.name}.${sample}`,
     );
   }
   const body: Record<string, unknown> = {
-    account_id: accountId,
-    paid_through_account_id: paidThroughId,
+    account_id: expense.id,
+    paid_through_account_id: paidThrough.id,
     date,
     amount: amountCents / 100,
     reference_number: reference.slice(0, 100),
-    description: `Payroll run pushed from /reports — ${reference}`,
+    description: (description ?? `Payroll run pushed from /reports — ${reference}`).slice(
+      0,
+      5000,
+    ),
   };
   if (org.defaultVendorId) body.vendor_id = org.defaultVendorId;
   const resp = await authedFetch(org, "/expenses", {

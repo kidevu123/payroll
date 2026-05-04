@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
+  payPeriods,
   payrollPeriodDocuments,
   payrollRuns,
   payslips,
@@ -20,6 +21,8 @@ import {
   zohoPushes,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import { logger } from "@/lib/telemetry";
+import { buildAdminReportArtifacts } from "@/lib/pdf/build-admin-report";
 import { attachReceipt, createExpense, validateConnection } from "./client";
 
 export type Actor = {
@@ -72,13 +75,77 @@ export async function pushReportToZoho(
     throw new Error("Run has no positive total — nothing to push.");
   }
 
+  // Pull the period for a human-readable reference like
+  // "PAYROLL-2026-04-06_to_2026-04-11" matching the legacy app's format,
+  // and to feed the admin-report builder for Notes + PDF attachment.
+  const [period] = run.periodId
+    ? await db.select().from(payPeriods).where(eq(payPeriods.id, run.periodId))
+    : [];
+
+  // Build the admin report once — same artifact powers the Notes table and
+  // the receipt PDF Zoho displays. Failure here is non-fatal: we still push
+  // the expense (with a generic note + no attachment) and surface the
+  // builder error in audit so the admin can re-attach manually if needed.
+  let summaryText: string | null = null;
+  let pdfBytes: Buffer | null = null;
+  let pdfFilename = "admin_report.pdf";
+  let buildError: string | null = null;
+  if (run.periodId) {
+    try {
+      const artifacts = await buildAdminReportArtifacts(run.periodId);
+      summaryText = artifacts.summaryText;
+      pdfBytes = artifacts.pdfBytes;
+      pdfFilename = artifacts.filename;
+    } catch (err) {
+      buildError = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        { payrollRunId, periodId: run.periodId, err: buildError },
+        "zoho push: admin report build failed; will push without summary/attachment",
+      );
+    }
+  }
+
+  const ref =
+    period?.startDate && period?.endDate
+      ? `PAYROLL-${period.startDate}_to_${period.endDate}`
+      : `Payroll run ${payrollRunId}`;
+  const intro =
+    period?.startDate && period?.endDate
+      ? `Weekly payroll expense for ${period.startDate} to ${period.endDate} created by ${actor.role.toLowerCase()}\n\n`
+      : `Payroll expense created by ${actor.role.toLowerCase()}\n\n`;
+  const description = summaryText ? `${intro}${summaryText}` : intro.trim();
+  const expenseDate =
+    period?.endDate ??
+    (run.postedAt ?? run.publishedAt ?? new Date()).toISOString().slice(0, 10);
+
   try {
     const expense = await createExpense({
       org,
       amountCents: totalCents,
-      reference: `Payroll run ${payrollRunId}`,
-      date: (run.postedAt ?? run.publishedAt ?? new Date()).toISOString().slice(0, 10),
+      reference: ref,
+      date: expenseDate,
+      description,
     });
+
+    let attachError: string | null = null;
+    if (pdfBytes) {
+      try {
+        await attachReceipt({
+          org,
+          expenseId: expense.expenseId,
+          filename: pdfFilename,
+          mime: "application/pdf",
+          bytes: new Uint8Array(pdfBytes),
+        });
+      } catch (err) {
+        attachError = err instanceof Error ? err.message : String(err);
+        logger.warn(
+          { payrollRunId, expenseId: expense.expenseId, err: attachError },
+          "zoho push: receipt attach failed; expense was created without PDF",
+        );
+      }
+    }
+
     await db.insert(zohoPushes).values({
       payrollRunId,
       organizationId,
@@ -93,7 +160,14 @@ export async function pushReportToZoho(
       action: "zoho.push.ok",
       targetType: "PayrollRun",
       targetId: payrollRunId,
-      after: { organizationId, expenseId: expense.expenseId, amountCents: totalCents },
+      after: {
+        organizationId,
+        expenseId: expense.expenseId,
+        amountCents: totalCents,
+        attachedReceipt: pdfBytes !== null && attachError === null,
+        ...(buildError ? { buildError } : {}),
+        ...(attachError ? { attachError } : {}),
+      },
     });
     return { expenseId: expense.expenseId, alreadyExists: false };
   } catch (err) {

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/domain/status-pill";
-import { listPeriods } from "@/lib/db/queries/pay-periods";
+import { SchedulePill } from "@/components/domain/schedule-pill";
 import { db } from "@/lib/db";
 import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -27,7 +27,18 @@ export const dynamic = "force-dynamic";
 
 export default async function PayrollPage() {
   const [openPeriods, recentInFlight, schedules, lastPoll] = await Promise.all([
-    listPeriods({ limit: 5 }),
+    db
+      .select({
+        id: payPeriods.id,
+        startDate: payPeriods.startDate,
+        endDate: payPeriods.endDate,
+        state: payPeriods.state,
+        scheduleName: paySchedules.name,
+      })
+      .from(payPeriods)
+      .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
+      .orderBy(desc(payPeriods.startDate))
+      .limit(8),
     db
       .select({
         id: payrollRuns.id,
@@ -187,23 +198,37 @@ export default async function PayrollPage() {
           {openPeriods.length === 0 ? (
             <p className="text-sm text-text-muted">No periods yet.</p>
           ) : (
-            openPeriods.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
-              >
-                <Link
-                  href={`/payroll/${p.id}`}
-                  className="flex items-center gap-3 font-medium flex-1 min-w-0"
+            openPeriods.map((p) => {
+              // For weekly schedules the canonical period is 7 days even if
+              // the upload only covered Mon–Fri. Display start..start+6 so
+              // the list reads as "2026-04-27 – 2026-05-03" instead of the
+              // truncated "...05-01" the upload happened to scope to.
+              let displayEnd = p.endDate;
+              if ((p.scheduleName ?? "").toLowerCase().includes("week")) {
+                const start = new Date(`${p.startDate}T00:00:00Z`);
+                start.setUTCDate(start.getUTCDate() + 6);
+                const canonical = start.toISOString().slice(0, 10);
+                if (canonical > displayEnd) displayEnd = canonical;
+              }
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
                 >
-                  <span>
-                    {p.startDate} – {p.endDate}
-                  </span>
-                  <StatusPill status={p.state} />
-                </Link>
-                <PeriodDeleteButton periodId={p.id} state={p.state} />
-              </div>
-            ))
+                  <Link
+                    href={`/payroll/${p.id}`}
+                    className="flex items-center gap-3 font-medium flex-1 min-w-0"
+                  >
+                    <span>
+                      {p.startDate} – {displayEnd}
+                    </span>
+                    <SchedulePill name={p.scheduleName} />
+                    <StatusPill status={p.state} />
+                  </Link>
+                  <PeriodDeleteButton periodId={p.id} state={p.state} />
+                </div>
+              );
+            })
           )}
         </CardContent>
       </Card>

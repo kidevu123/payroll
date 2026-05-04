@@ -217,7 +217,20 @@ export default async function PeriodReviewPage({
             </Button>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-semibold tracking-tight">
-                {formatRange(period.startDate, period.endDate)}
+                {(() => {
+                  // Canonical 7-day week for weekly schedules so a
+                  // short upload (Mon-Fri) still reads as the full
+                  // pay week (Mon-Sun). Mirrors /reports.
+                  const isWeekly = (runSchedule?.name ?? "").toLowerCase().includes("week");
+                  let displayEnd = period.endDate;
+                  if (isWeekly) {
+                    const start = new Date(`${period.startDate}T00:00:00Z`);
+                    start.setUTCDate(start.getUTCDate() + 6);
+                    const canonical = start.toISOString().slice(0, 10);
+                    if (canonical > displayEnd) displayEnd = canonical;
+                  }
+                  return formatRange(period.startDate, displayEnd);
+                })()}
               </h1>
               <StatusPill status={period.state} />
               <SchedulePill name={runSchedule?.name ?? null} />

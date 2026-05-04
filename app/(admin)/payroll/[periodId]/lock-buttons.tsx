@@ -84,20 +84,20 @@ export function LockButtons({ period }: { period: PayPeriod }) {
           setPending(false);
         }}
       >
-        <Button type="submit" disabled={pending}>
+        <Button
+          type="submit"
+          disabled={pending}
+          title="Mark this period ready for review. You can unlock with a reason if you need to make corrections."
+        >
           <Lock className="h-4 w-4" /> {pending ? "Locking…" : "Lock period"}
         </Button>
-        <p className="mt-2 text-xs text-text-muted">
-          Locking marks the period ready for review. You can unlock with a
-          reason if you need to make corrections.
-        </p>
       </form>
     );
   }
 
   // LOCKED — admin can mark paid (to record actual payment) or unlock to fix.
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
         <form
           action={async () => {
@@ -108,22 +108,26 @@ export function LockButtons({ period }: { period: PayPeriod }) {
             if (result?.error) setError(result.error);
           }}
         >
-          <Button type="submit" disabled={pending}>
+          <Button
+            type="submit"
+            disabled={pending}
+            title="Only mark paid once payment has actually been sent."
+          >
             <CheckCircle2 className="h-4 w-4" />{" "}
             {pending ? "Marking…" : "Mark as paid"}
           </Button>
         </form>
         {!unlockOpen && (
-          <Button variant="secondary" onClick={() => setUnlockOpen(true)}>
+          <Button
+            variant="secondary"
+            onClick={() => setUnlockOpen(true)}
+            title="Unlock to correct punches before payment."
+          >
             <Unlock className="h-4 w-4" /> Unlock
           </Button>
         )}
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
-      <p className="text-xs text-text-muted">
-        Only mark paid once payment has actually been sent. Unlocking lets
-        you correct punches before payment.
-      </p>
 
       {unlockOpen && (
         <form
