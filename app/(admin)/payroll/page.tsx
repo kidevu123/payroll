@@ -14,6 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import {
+  ScheduleTabs,
+  parseScheduleTab,
+  scheduleTabToKind,
+} from "@/components/domain/schedule-tabs";
 import { db } from "@/lib/db";
 import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -25,20 +30,32 @@ import { PeriodDeleteButton } from "./period-delete-button";
 
 export const dynamic = "force-dynamic";
 
-export default async function PayrollPage() {
+export default async function PayrollPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ schedule?: string }>;
+}) {
+  const sp = await searchParams;
+  const tab = parseScheduleTab(sp.schedule);
+  const kindFilter = scheduleTabToKind(tab);
   const [openPeriods, recentInFlight, schedules, lastPoll] = await Promise.all([
-    db
-      .select({
-        id: payPeriods.id,
-        startDate: payPeriods.startDate,
-        endDate: payPeriods.endDate,
-        state: payPeriods.state,
-        scheduleName: paySchedules.name,
-      })
-      .from(payPeriods)
-      .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
-      .orderBy(desc(payPeriods.startDate))
-      .limit(8),
+    (async () => {
+      const base = db
+        .select({
+          id: payPeriods.id,
+          startDate: payPeriods.startDate,
+          endDate: payPeriods.endDate,
+          state: payPeriods.state,
+          scheduleName: paySchedules.name,
+          scheduleKind: paySchedules.periodKind,
+        })
+        .from(payPeriods)
+        .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
+      const q = kindFilter
+        ? base.where(eq(paySchedules.periodKind, kindFilter))
+        : base;
+      return q.orderBy(desc(payPeriods.startDate)).limit(8);
+    })(),
     db
       .select({
         id: payrollRuns.id,
@@ -66,8 +83,8 @@ export default async function PayrollPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-2">
           <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
           <p className="text-xs text-text-muted">
             Trigger an import or upload a CSV. Historical reports live in{" "}
@@ -76,6 +93,11 @@ export default async function PayrollPage() {
             </Link>
             .
           </p>
+          <ScheduleTabs
+            current={tab}
+            basePath="/payroll"
+            hrefs={{ salaried: "/salaried" }}
+          />
         </div>
         <div className="text-xs text-text-muted">
           {openCount > 0 && <span>{openCount} open</span>}

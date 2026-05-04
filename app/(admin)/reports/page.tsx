@@ -15,23 +15,40 @@ import { db } from "@/lib/db";
 import { zohoOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ReportsTable } from "./reports-table";
+import {
+  ScheduleTabs,
+  parseScheduleTab,
+  scheduleTabToKind,
+} from "@/components/domain/schedule-tabs";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ schedule?: string }>;
+}) {
+  const sp = await searchParams;
+  const tab = parseScheduleTab(sp.schedule);
+  const kind = scheduleTabToKind(tab);
   const [reports, orgs] = await Promise.all([
-    listReports(200),
+    listReports(200, kind),
     db.select().from(zohoOrganizations).where(eq(zohoOrganizations.active, true)),
   ]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
           <p className="text-sm text-text-muted">
             {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.
           </p>
+          <ScheduleTabs
+            current={tab}
+            basePath="/reports"
+            hrefs={{ salaried: "/salaried" }}
+          />
         </div>
       </div>
 

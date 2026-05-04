@@ -80,8 +80,16 @@ export type ReportRow = {
   zohoPushes: Array<{ orgId: string; orgName: string; expenseId: string | null; pushedAt: Date }>;
 };
 
-export async function listReports(limit = 100): Promise<ReportRow[]> {
-  const rows = await db
+export async function listReports(
+  limit = 100,
+  /**
+   * Filter by pay-schedule kind. WEEKLY / SEMI_MONTHLY map to
+   * paySchedules.periodKind. Pass `null` (default) to return everything
+   * including legacy runs with no schedule attached.
+   */
+  scheduleKind: "WEEKLY" | "SEMI_MONTHLY" | null = null,
+): Promise<ReportRow[]> {
+  const baseQuery = db
     .select({
       id: payrollRuns.id,
       periodId: payrollRuns.periodId,
@@ -109,12 +117,12 @@ export async function listReports(limit = 100): Promise<ReportRow[]> {
     .from(payrollRuns)
     .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
     .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
-    .leftJoin(users, eq(payrollRuns.approvedById, users.id))
-    // Sort by the actual period the run pays out, newest first. Sorting by
-    // postedAt put 2025 legacy imports above 2026 cron runs because the
-    // legacy importer stamps postedAt = source-file mtime (often a 2026
-    // re-import of historical 2025 reports). Period.endDate is what the
-    // admin actually thinks of as "the report's date".
+    .leftJoin(users, eq(payrollRuns.approvedById, users.id));
+  // Sort by the actual period the run pays out, newest first.
+  const filtered = scheduleKind
+    ? baseQuery.where(eq(paySchedules.periodKind, scheduleKind))
+    : baseQuery;
+  const rows = await filtered
     .orderBy(desc(payPeriods.endDate), desc(payrollRuns.createdAt))
     .limit(limit);
 
