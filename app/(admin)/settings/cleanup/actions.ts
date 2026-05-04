@@ -8,6 +8,7 @@ import {
   findEmptyOrphanPeriods,
   findOverlappingPeriods,
   getPeriodEmployeeSummary,
+  mergeAllOverlapsUsingSuggestion,
   mergeOverlappingPair,
   tagLegacyPeriodsBySchedule,
   type MergeOverlappingPairResult,
@@ -108,6 +109,27 @@ export async function previewOverlappingPeriodsAction(): Promise<{
     return {
       pairs: [],
       error: err instanceof Error ? err.message : "Preview failed.",
+    };
+  }
+}
+
+export async function mergeAllOverlapsAction(): Promise<{
+  result?: { merged: number; skipped: number; errors: Array<{ pair: string; error: string }> };
+  error?: string;
+}> {
+  try {
+    const session = await requireOwner();
+    const result = await mergeAllOverlapsUsingSuggestion({
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/settings/cleanup");
+    revalidatePath("/payroll");
+    revalidatePath("/reports");
+    return { result };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Merge-all failed.",
     };
   }
 }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   backfillNullRunTotalsAction,
   deleteEmptyOrphanPeriodsAction,
+  mergeAllOverlapsAction,
   mergeOverlappingPairAction,
   previewEmptyOrphanPeriodsAction,
   previewOverlappingPeriodsAction,
@@ -38,6 +39,11 @@ export function CleanupTools() {
     semiMonthly: number;
     skippedAmbiguous: number;
   } | null>(null);
+  const [mergeAllResult, setMergeAllResult] = React.useState<{
+    merged: number;
+    skipped: number;
+    errors: Array<{ pair: string; error: string }>;
+  } | null>(null);
   const [pending, setPending] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -51,6 +57,30 @@ export function CleanupTools() {
       return;
     }
     if (r.result) setTagResult(r.result);
+  }
+
+  async function onMergeAll() {
+    if (!overlaps || overlaps.length === 0) return;
+    const ok = window.confirm(
+      `Merge ALL ${overlaps.length} overlapping pair${overlaps.length === 1 ? "" : "s"} using the suggested survivor for each?\n\nFor every pair, the side with more payslips wins (PAID-state breaks ties). Loser-side payslips for the same employee get voided + hard-deleted on collision; loser-side runs/punches/temp/docs re-point to the survivor; the loser period is then deleted. One audit row per merge.\n\nThis is irreversible.`,
+    );
+    if (!ok) return;
+    setPending("merge-all");
+    setError(null);
+    setMergeAllResult(null);
+    const r = await mergeAllOverlapsAction();
+    setPending(null);
+    if (r.error) {
+      setError(r.error);
+      return;
+    }
+    if (r.result) {
+      setMergeAllResult(r.result);
+      // Refresh the overlap list — should now be empty (or just the
+      // failed pairs).
+      const refresh = await previewOverlappingPeriodsAction();
+      setOverlaps(refresh.pairs ?? []);
+    }
   }
 
   async function onBackfill() {
@@ -288,14 +318,54 @@ export function CleanupTools() {
             wrong period after re-pointing its payslips.
           </p>
         </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={pending !== null}
-          onClick={onPreviewOverlaps}
-        >
-          {pending === "overlap-preview" ? "Loading…" : "Preview overlaps"}
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={pending !== null}
+            onClick={onPreviewOverlaps}
+          >
+            {pending === "overlap-preview" ? "Loading…" : "Preview overlaps"}
+          </Button>
+          {overlaps && overlaps.length > 0 && (
+            <Button
+              size="sm"
+              variant="default"
+              disabled={pending !== null}
+              onClick={onMergeAll}
+              title="Apply the suggested survivor on every pair in one shot. The suggested side (more payslips, PAID > others) wins; the loser's payslips are voided + hard-deleted on collision, runs/punches/temp/docs re-point to the survivor. Audited per pair."
+            >
+              {pending === "merge-all"
+                ? "Merging…"
+                : `Merge all ${overlaps.length} pairs (suggested)`}
+            </Button>
+          )}
+        </div>
+        {mergeAllResult && (
+          <div
+            className={`rounded-input border p-3 text-xs ${
+              mergeAllResult.errors.length > 0
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+            }`}
+          >
+            <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
+            Merged {mergeAllResult.merged} pair
+            {mergeAllResult.merged === 1 ? "" : "s"}.
+            {mergeAllResult.skipped > 0 && (
+              <> Skipped {mergeAllResult.skipped} (see errors below).</>
+            )}
+            {mergeAllResult.errors.length > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {mergeAllResult.errors.map((e, i) => (
+                  <li key={i}>
+                    <code className="font-mono">{e.pair}</code>: {e.error}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         {overlaps && (
           <div
             className={`rounded-input border p-3 text-xs ${

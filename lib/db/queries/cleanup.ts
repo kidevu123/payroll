@@ -401,6 +401,63 @@ export type PeriodEmployeeSummary = {
   voided: boolean;
 };
 
+/**
+ * Auto-merge every overlap pair using the same suggested-survivor
+ * heuristic the UI shows: more payslips wins; tie → PAID-state wins;
+ * tie → id stability. Walks pairs sequentially because each merge
+ * mutates the period set (deleting the loser may invalidate other
+ * pairs that referenced it).
+ */
+export async function mergeAllOverlapsUsingSuggestion(
+  actor: Actor,
+): Promise<{
+  merged: number;
+  skipped: number;
+  errors: Array<{ pair: string; error: string }>;
+}> {
+  const errors: Array<{ pair: string; error: string }> = [];
+  let merged = 0;
+  let skipped = 0;
+  // Re-fetch the list each iteration: a previous merge may have
+  // deleted a period that another pair still references.
+  let safety = 200; // hard cap to avoid runaway loops
+  while (safety-- > 0) {
+    const pairs = await findOverlappingPeriods(1);
+    if (pairs.length === 0) break;
+    const p = pairs[0];
+    if (!p) break;
+    // Suggested survivor: more payslips wins; tie-break PAID > others;
+    // tie-break id stability.
+    const survivorId =
+      p.aPayslips > p.bPayslips
+        ? p.a.id
+        : p.bPayslips > p.aPayslips
+          ? p.b.id
+          : p.a.state === "PAID" && p.b.state !== "PAID"
+            ? p.a.id
+            : p.b.state === "PAID" && p.a.state !== "PAID"
+              ? p.b.id
+              : p.a.id;
+    const loserId = survivorId === p.a.id ? p.b.id : p.a.id;
+    try {
+      await mergeOverlappingPair(survivorId, loserId, actor);
+      merged++;
+    } catch (err) {
+      errors.push({
+        pair: `${p.a.id.slice(0, 8)}|${p.b.id.slice(0, 8)}`,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      skipped++;
+      // Move on — the failing pair will resurface in the next iteration
+      // unless a downstream merge removes it. To avoid an infinite loop
+      // on a permanently-failing pair, break after we see the same pair
+      // ID twice in a row. Simpler: bail after first error.
+      break;
+    }
+  }
+  return { merged, skipped, errors };
+}
+
 export async function getPeriodEmployeeSummary(
   periodId: string,
 ): Promise<PeriodEmployeeSummary[]> {
