@@ -17,7 +17,8 @@ export type NotificationKind =
   | "payroll_run.ingest_failed"
   | "payroll_run.awaiting_review"
   | "payroll_run.published"
-  | "period.locked";
+  | "period.locked"
+  | "payslip.disputed";
 
 export type DispatchEntry = {
   recipientId: string;

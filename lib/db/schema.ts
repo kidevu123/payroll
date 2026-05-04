@@ -733,6 +733,18 @@ export const payslips = pgTable(
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     voidedById: uuid("voided_by_id").references(() => users.id),
     voidReason: text("void_reason"),
+    /**
+     * Employee-raised dispute. Set when the employee taps "Report a problem"
+     * on /me/pay/[periodId]. The disputeReason is free-text from the
+     * employee. Admin sees the dispute on the period detail page and clears
+     * it (disputeResolvedAt + disputeResolvedById) once the issue is
+     * worked. Coexists with acknowledgedAt — disputed payslips can also be
+     * acknowledged later if the employee changes their mind.
+     */
+    disputedAt: timestamp("disputed_at", { withTimezone: true }),
+    disputeReason: text("dispute_reason"),
+    disputeResolvedAt: timestamp("dispute_resolved_at", { withTimezone: true }),
+    disputeResolvedById: uuid("dispute_resolved_by_id").references(() => users.id),
   },
   (t) => [
     uniqueIndex("payslips_employee_period_unique").on(t.employeeId, t.periodId),

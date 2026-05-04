@@ -13,8 +13,30 @@ import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { db } from "@/lib/db";
-import { payrollRuns } from "@/lib/db/schema";
+import { payrollRuns, type PayrollPeriodDocument } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
+
+/**
+ * Match a doc to a displayed period via:
+ *   1. Direct periodId match (admin uploaded "for this period")
+ *   2. payPeriodStart/End range overlap (paystub PDF metadata)
+ * Returns docs that belong inside the given period card.
+ */
+function docsForPeriod(
+  allDocs: PayrollPeriodDocument[],
+  period: { id: string; startDate: string; endDate: string },
+): PayrollPeriodDocument[] {
+  return allDocs.filter((d) => {
+    if (d.periodId === period.id) return true;
+    if (d.payPeriodStart && d.payPeriodEnd) {
+      return (
+        d.payPeriodStart <= period.endDate &&
+        d.payPeriodEnd >= period.startDate
+      );
+    }
+    return false;
+  });
+}
 
 export default async function EmployeePayList() {
   const session = await requireSession();
@@ -100,57 +122,23 @@ export default async function EmployeePayList() {
   // Final sort: newest period first, like before.
   rows.sort((a, b) => (a.period.startDate < b.period.startDate ? 1 : -1));
 
+  // Group docs to their matching period. Anything that doesn't match any
+  // visible period falls into orphans (e.g. uploaded for a period the
+  // employee can't see yet).
+  const matchedIds = new Set<string>();
+  const docsByPeriodId = new Map<string, PayrollPeriodDocument[]>();
+  for (const r of rows) {
+    const matches = docsForPeriod(payrollDocs, r.period);
+    if (matches.length > 0) {
+      docsByPeriodId.set(r.period.id, matches);
+      for (const m of matches) matchedIds.add(m.id);
+    }
+  }
+  const orphanDocs = payrollDocs.filter((d) => !matchedIds.has(d.id));
+
   return (
     <div className="space-y-6 p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold">My pay</h1>
-
-      {payrollDocs.length > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-medium text-text-muted">
-            Documents from your employer
-          </h2>
-          <ul className="space-y-2">
-            {payrollDocs.map((d) => (
-              <li
-                key={d.id}
-                className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface p-3 shadow-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-text-muted shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {d.originalFilename}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      {d.kind}
-                      {d.payPeriodStart && d.payPeriodEnd
-                        ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
-                        : ""}
-                      {d.amountCents !== null && d.amountCents > 0
-                        ? ` · $${(d.amountCents / 100).toFixed(2)}`
-                        : ""}
-                      {" · uploaded "}
-                      {d.uploadedAt.toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href={`/api/payroll-docs/${d.id}`}
-                  target="_blank"
-                  rel="noopener"
-                  className="flex items-center gap-1 rounded-input border border-border px-2.5 py-1.5 text-sm hover:bg-surface-2"
-                >
-                  <Download className="h-3.5 w-3.5" /> View
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState
@@ -160,27 +148,81 @@ export default async function EmployeePayList() {
         />
       ) : (
         <div className="space-y-3">
-          {rows.map(({ payslip, period }) => (
-            <PayslipCard
-              key={payslip.id}
-              payslipId={payslip.id}
-              periodStart={period.startDate}
-              periodEnd={period.endDate}
-              hours={Number(payslip.hoursWorked)}
-              roundedCents={payslip.roundedPayCents}
-              hoursDecimalPlaces={payRules.hoursDecimalPlaces}
-              state={
-                payslip.acknowledgedAt
-                  ? "acknowledged"
-                  : payslip.publishedAt
-                    ? "published"
-                    : "pending"
-              }
-              href={`/me/pay/${payslip.periodId}`}
-            />
-          ))}
+          {rows.map(({ payslip, period }) => {
+            const docs = docsByPeriodId.get(period.id) ?? [];
+            return (
+              <div key={payslip.id} className="space-y-1.5">
+                <PayslipCard
+                  payslipId={payslip.id}
+                  periodStart={period.startDate}
+                  periodEnd={period.endDate}
+                  hours={Number(payslip.hoursWorked)}
+                  roundedCents={payslip.roundedPayCents}
+                  hoursDecimalPlaces={payRules.hoursDecimalPlaces}
+                  state={
+                    payslip.acknowledgedAt
+                      ? "acknowledged"
+                      : payslip.publishedAt
+                        ? "published"
+                        : "pending"
+                  }
+                  href={`/me/pay/${payslip.periodId}`}
+                />
+                {docs.length > 0 && (
+                  <ul className="ml-4 space-y-1">
+                    {docs.map((d) => (
+                      <DocPill key={d.id} doc={d} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+
+          {orphanDocs.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-border">
+              <h2 className="text-sm font-medium text-text-muted">
+                Other documents from your employer
+              </h2>
+              <ul className="space-y-1.5">
+                {orphanDocs.map((d) => (
+                  <DocPill key={d.id} doc={d} />
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function DocPill({ doc: d }: { doc: PayrollPeriodDocument }) {
+  return (
+    <li className="flex items-center justify-between gap-2 rounded-input border border-border bg-surface px-3 py-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <FileText className="h-3.5 w-3.5 text-text-muted shrink-0" />
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium">{d.originalFilename}</p>
+          <p className="text-[10px] text-text-muted">
+            {d.kind}
+            {d.payPeriodStart && d.payPeriodEnd
+              ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
+              : ""}
+            {d.amountCents !== null && d.amountCents > 0
+              ? ` · $${(d.amountCents / 100).toFixed(2)}`
+              : ""}
+          </p>
+        </div>
+      </div>
+      <Link
+        href={`/api/payroll-docs/${d.id}`}
+        target="_blank"
+        rel="noopener"
+        className="flex items-center gap-1 rounded-input border border-border px-2 py-1 text-xs hover:bg-surface-2"
+      >
+        <Download className="h-3 w-3" /> View
+      </Link>
+    </li>
   );
 }

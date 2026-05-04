@@ -114,6 +114,24 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
         url: "/requests",
         tag: "request_submitted",
       };
+    case "payslip.disputed": {
+      const employeeName =
+        typeof e.payload.employeeName === "string"
+          ? e.payload.employeeName
+          : "an employee";
+      const periodLabel =
+        typeof e.payload.periodLabel === "string"
+          ? e.payload.periodLabel
+          : "a payslip";
+      const periodId =
+        typeof e.payload.periodId === "string" ? e.payload.periodId : "";
+      return {
+        title: "Payslip disputed",
+        body: `${employeeName} reported a problem on ${periodLabel}.`,
+        url: periodId ? `/payroll/${periodId}` : "/payroll",
+        tag: "payslip_disputed",
+      };
+    }
     case "period.locked":
       return null; // admins-only on in-app, push is overkill
     default:

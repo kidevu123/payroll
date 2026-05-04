@@ -22,6 +22,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { AcknowledgeButton } from "./acknowledge-button";
+import { ReportProblemButton } from "./report-problem-button";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -227,9 +228,11 @@ async function PayslipBody({
             {period.startDate} – {period.endDate}
           </CardTitle>
           <CardDescription>
-            {payslip.acknowledgedAt
-              ? `Acknowledged ${payslip.acknowledgedAt.toISOString().slice(0, 16).replace("T", " ")}`
-              : "Published — please review and acknowledge."}
+            {payslip.disputedAt && !payslip.disputeResolvedAt
+              ? "Problem reported — admin has been notified."
+              : payslip.acknowledgedAt
+                ? `Acknowledged ${payslip.acknowledgedAt.toISOString().slice(0, 16).replace("T", " ")}`
+                : "Published — please review and acknowledge."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
@@ -397,7 +400,17 @@ async function PayslipBody({
         </Card>
       ) : null}
 
-      {!payslip.acknowledgedAt && <AcknowledgeButton payslipId={payslip.id} />}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <ReportProblemButton
+          payslipId={payslip.id}
+          alreadyDisputed={
+            !!payslip.disputedAt && !payslip.disputeResolvedAt
+          }
+        />
+        {!payslip.acknowledgedAt && (
+          <AcknowledgeButton payslipId={payslip.id} />
+        )}
+      </div>
     </>
   );
 }

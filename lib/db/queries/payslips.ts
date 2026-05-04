@@ -41,6 +41,12 @@ export async function listPayslipsForEmployee(
 /**
  * Same as listPayslipsForEmployee, but filtered to runs the admin has
  * published to the employee portal. This is the read used by /me/pay.
+ *
+ * Excludes blank payslips (hours=0 AND grossPay=0 AND taskPay=0). These
+ * exist as legacy artifacts when a temp worker (now in temp_worker_entries)
+ * was previously imported as an employee CSV row, leaving a zero-everything
+ * payslip behind. They have no information to show the employee, so they
+ * stay hidden.
  */
 export async function listPublishedPayslipsForEmployee(
   employeeId: string,
@@ -56,7 +62,15 @@ export async function listPublishedPayslipsForEmployee(
         isNull(payslips.voidedAt),
       ),
     );
-  return rows.map((r) => r.p);
+  return rows
+    .map((r) => r.p)
+    .filter(
+      (p) =>
+        Number(p.hoursWorked) > 0 ||
+        p.grossPayCents > 0 ||
+        p.taskPayCents > 0 ||
+        p.roundedPayCents > 0,
+    );
 }
 
 /**
@@ -138,6 +152,83 @@ export async function upsertPayslip(input: NewPayslip): Promise<Payslip> {
     .returning();
   if (!row) throw new Error("upsertPayslip: no row returned");
   return row;
+}
+
+/**
+ * Employee-raised dispute on a published payslip. Records the reason +
+ * timestamp; admin sees this on the period detail page and clears it
+ * once resolved. Notifications to admins are fired by the caller.
+ */
+export async function reportPayslipProblem(
+  id: string,
+  reason: string,
+  actor: Actor,
+): Promise<Payslip> {
+  if (!reason.trim()) throw new Error("reportPayslipProblem: reason is required");
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`reportPayslipProblem: ${id} not found`);
+    if (before.voidedAt) throw new Error("reportPayslipProblem: payslip is voided");
+    const [row] = await tx
+      .update(payslips)
+      .set({
+        disputedAt: new Date(),
+        disputeReason: reason.trim().slice(0, 1000),
+        disputeResolvedAt: null,
+        disputeResolvedById: null,
+      })
+      .where(eq(payslips.id, id))
+      .returning();
+    if (!row) throw new Error("reportPayslipProblem: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.dispute_open",
+        targetType: "Payslip",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+/** Admin clears a dispute. Reason is optional admin note (kept in audit only). */
+export async function resolvePayslipDispute(
+  id: string,
+  actor: Actor,
+): Promise<Payslip> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`resolvePayslipDispute: ${id} not found`);
+    if (!before.disputedAt) return before;
+    if (before.disputeResolvedAt) return before;
+    const [row] = await tx
+      .update(payslips)
+      .set({
+        disputeResolvedAt: new Date(),
+        disputeResolvedById: actor.id,
+      })
+      .where(eq(payslips.id, id))
+      .returning();
+    if (!row) throw new Error("resolvePayslipDispute: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.dispute_resolve",
+        targetType: "Payslip",
+        targetId: id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
 }
 
 export async function markAcknowledged(id: string, actor: Actor): Promise<Payslip> {

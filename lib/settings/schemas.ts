@@ -171,6 +171,7 @@ export const notificationKind = z.enum([
   "payroll_run.awaiting_review",
   "payroll_run.published",
   "period.locked",
+  "payslip.disputed",
 ]);
 export type NotificationKind = z.infer<typeof notificationKind>;
 
@@ -192,6 +193,7 @@ export const notificationsSchema = z.object({
     "payroll_run.awaiting_review": { in_app: true, email: false, push: true },
     "payroll_run.published": { in_app: true, email: false, push: true },
     "period.locked": { in_app: true, email: false, push: false },
+    "payslip.disputed": { in_app: true, email: false, push: true },
   }),
 });
 export type NotificationsSettings = z.infer<typeof notificationsSchema>;

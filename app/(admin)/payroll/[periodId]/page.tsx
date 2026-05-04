@@ -39,6 +39,7 @@ import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { DedupPunchesButton } from "./dedup-button";
 import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
+import { DisputesPanel } from "./disputes-panel";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -381,6 +382,22 @@ export default async function PeriodReviewPage({
           payslip from current punches in one click. Critical for
           fixing the legacy-import 2x bug across 15+ employees on a
           single period. */}
+      {/* Employee-raised disputes — surfaces "Report a problem" reports
+          from /me/pay so admin can see them and one-tap resolve. */}
+      <DisputesPanel
+        disputes={allPayslips
+          .filter((p) => p.disputedAt && !p.disputeResolvedAt && !p.voidedAt)
+          .map((p) => {
+            const emp = allEmployees.find((e) => e.id === p.employeeId);
+            return {
+              payslipId: p.id,
+              employeeName: emp?.displayName ?? "Unknown",
+              reason: p.disputeReason ?? "",
+              disputedAt: (p.disputedAt as Date).toISOString(),
+            };
+          })}
+      />
+
       <RecomputeBanner
         periodId={periodId}
         drifts={
