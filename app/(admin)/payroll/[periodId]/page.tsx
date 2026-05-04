@@ -268,6 +268,14 @@ export default async function PeriodReviewPage({
     ? { hours: payslipHours, gross: payslipSum, rounded: payslipSum }
     : liveTotals;
 
+  // Temp/manual labor sum — added to the period grand total in the header
+  // so the displayed amount matches what /reports shows for the period
+  // (which always includes temp via tempLaborCents).
+  const tempWorkersTotalCents = tempWorkers.reduce(
+    (acc, e) => acc + e.amountCents,
+    0,
+  );
+
   return (
     <div className="space-y-6">
       {/* Sticky action bar — keeps state pill, totals, primary CTAs visible
@@ -303,8 +311,22 @@ export default async function PeriodReviewPage({
               <span className="text-sm text-text-muted">
                 {displayRows.length} emp ·{" "}
                 <span className="font-medium text-text">
-                  <MoneyDisplay cents={totals.rounded} monospace={false} />
+                  <MoneyDisplay
+                    cents={totals.rounded + tempWorkersTotalCents}
+                    monospace={false}
+                  />
                 </span>
+                {tempWorkersTotalCents > 0 && (
+                  <span className="text-xs text-text-muted">
+                    {" "}
+                    (incl.{" "}
+                    <MoneyDisplay
+                      cents={tempWorkersTotalCents}
+                      monospace={false}
+                    />{" "}
+                    temp)
+                  </span>
+                )}
               </span>
             </div>
           </div>
