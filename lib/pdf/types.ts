@@ -106,6 +106,11 @@ export type AdminReportInput = {
       isOvertime: boolean;
       inTime?: string;
       outTime?: string;
+      /** True for synthetic placeholder rows where the calendar day
+       *  exists in the period but the employee has no punches. The
+       *  renderer prints "(no record)" so missing-punch gaps are
+       *  visible at a glance. */
+      missing?: boolean;
     }[];
     totals: {
       hours: number;

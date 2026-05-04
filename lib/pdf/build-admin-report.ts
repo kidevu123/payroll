@@ -22,6 +22,19 @@ function tzDayKey(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** YYYY-MM-DD strings from start to end inclusive. */
+function enumerateDays(startIso: string, endIso: string): string[] {
+  const out: string[] = [];
+  const start = new Date(`${startIso}T00:00:00Z`);
+  const end = new Date(`${endIso}T00:00:00Z`);
+  for (let d = start; d <= end; d = new Date(d.getTime() + MS_PER_DAY)) {
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
 function tzTimeOfDay(d: Date, tz: string): string {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: tz,
@@ -185,20 +198,41 @@ export async function buildAdminReportArtifacts(
     });
     if (result.totalHours <= 0 && result.taskCents <= 0) continue;
     const dayInOut = buildDayInOut(ePunches);
+    // Build the day list, then fill in any missing calendar day in the
+    // canonical period with a "no record" placeholder. Without this,
+    // an employee with a missed punch silently has fewer rows than
+    // their peers — admin can't tell at a glance whether they
+    // legitimately didn't work or whether a clock-in is missing.
+    const workedDays = new Map<string, (typeof result.byDay)[number]>();
+    for (const d of result.byDay) workedDays.set(d.date, d);
+    const allDates = enumerateDays(period.startDate, displayEndDate);
+    const filledDays = allDates.map((iso) => {
+      const worked = workedDays.get(iso);
+      if (worked) {
+        const io = dayInOut.get(worked.date);
+        return {
+          ...worked,
+          ...(io?.inTime ? { inTime: io.inTime } : {}),
+          ...(io?.outTime ? { outTime: io.outTime } : {}),
+        };
+      }
+      // Synthetic empty day — renderer prints "—" for in/out and "(no
+      // record)" hint so the admin can spot the gap.
+      return {
+        date: iso,
+        hours: 0,
+        cents: 0,
+        isOvertime: false,
+        missing: true as const,
+      };
+    });
     reportEmployees.push({
       displayName: e.displayName,
       legalName: e.legalName,
       legacyId: e.legacyId,
       shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
       hourlyRateCents: e.hourlyRateCents,
-      days: result.byDay.map((d) => {
-        const io = dayInOut.get(d.date);
-        return {
-          ...d,
-          ...(io?.inTime ? { inTime: io.inTime } : {}),
-          ...(io?.outTime ? { outTime: io.outTime } : {}),
-        };
-      }),
+      days: filledDays,
       totals: {
         hours: result.totalHours,
         regularCents: result.regularCents,

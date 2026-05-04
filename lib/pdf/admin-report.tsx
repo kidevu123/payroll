@@ -380,16 +380,40 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
 
                 <View style={[styles.blockTable, { marginTop: 3 }]}>
                   {e.days.map((d) => (
-                    <View key={d.date} style={styles.blockTr}>
+                    <View
+                      key={d.date}
+                      style={[
+                        styles.blockTr,
+                        d.missing ? { backgroundColor: "#fef3c7" } : {},
+                      ]}
+                    >
                       <Text style={styles.bcDate}>{fmtDate(d.date)}</Text>
-                      <Text style={styles.bcIn}>{fmtTime(d.inTime)}</Text>
-                      <Text style={styles.bcOut}>{fmtTime(d.outTime)}</Text>
-                      <Text style={styles.bcHours}>
-                        {hrs(d.hours, data.rules.hoursDecimalPlaces)}
-                      </Text>
-                      <Text style={styles.bcPay}>
-                        {money(d.cents, data.company.locale)}
-                      </Text>
+                      {d.missing ? (
+                        <>
+                          <Text
+                            style={[
+                              styles.bcIn,
+                              { color: "#92400e", fontFamily: "Helvetica" },
+                            ]}
+                          >
+                            (no record)
+                          </Text>
+                          <Text style={styles.bcOut} />
+                          <Text style={styles.bcHours}>—</Text>
+                          <Text style={styles.bcPay}>—</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.bcIn}>{fmtTime(d.inTime)}</Text>
+                          <Text style={styles.bcOut}>{fmtTime(d.outTime)}</Text>
+                          <Text style={styles.bcHours}>
+                            {hrs(d.hours, data.rules.hoursDecimalPlaces)}
+                          </Text>
+                          <Text style={styles.bcPay}>
+                            {money(d.cents, data.company.locale)}
+                          </Text>
+                        </>
+                      )}
                     </View>
                   ))}
                 </View>
