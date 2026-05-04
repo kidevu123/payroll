@@ -418,6 +418,20 @@ export async function repushReportToZoho(
   organizationId: string,
   actor: Actor,
 ): Promise<PushResult & { deletedPriorExpenseId: string | null }> {
+  // Guard: only re-push runs that have actually been published. A
+  // CANCELLED / FAILED / INGEST_FAILED run shouldn't be able to delete
+  // a Zoho expense and create a fresh one with stale data.
+  const [run] = await db
+    .select()
+    .from(payrollRuns)
+    .where(eq(payrollRuns.id, payrollRunId));
+  if (!run) throw new Error("Run not found.");
+  if (run.state !== "PUBLISHED") {
+    throw new Error(
+      `Cannot re-push: run is in state ${run.state}. Only PUBLISHED runs can be re-pushed.`,
+    );
+  }
+
   const [existingPush] = await db
     .select()
     .from(zohoPushes)

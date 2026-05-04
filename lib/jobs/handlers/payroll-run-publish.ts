@@ -128,8 +128,14 @@ export async function handlePayrollRunPublish(data: {
   //      preview step. This is the strongest signal and overrides everything.
   //   2. run.payScheduleId — auto-cohort by pay schedule.
   //   3. Neither — include everyone (legacy back-compat).
-  const employeeFilter = run.payScheduleId
-    ? { payScheduleId: run.payScheduleId }
+  // Treat NULL-schedule employees (legacy ride-along) as wildcards so a
+  // run with payScheduleId=Weekly still cuts payslips for legacy
+  // employees that were never assigned a schedule. Mirrors the upload
+  // action's "wildcard" semantics in lib/punches/manual-import.ts.
+  // When run.payScheduleId is null, fall back to the period's schedule.
+  const effectiveScheduleId = run.payScheduleId ?? period.payScheduleId ?? null;
+  const employeeFilter = effectiveScheduleId
+    ? { payScheduleIdOrNull: effectiveScheduleId }
     : {};
   const [allEmployees, punches, payRules, company, shifts] = await Promise.all([
     listEmployees(employeeFilter),

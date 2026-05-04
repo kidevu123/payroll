@@ -34,12 +34,18 @@ export type PayrollRunState = (typeof payrollRunStateEnum.enumValues)[number];
 const LEGAL_TRANSITIONS: Record<PayrollRunState, readonly PayrollRunState[]> = {
   SCHEDULED: ["INGESTING", "CANCELLED"],
   INGESTING: ["AWAITING_EMPLOYEE_FIXES", "AWAITING_ADMIN_REVIEW", "INGEST_FAILED"],
-  INGEST_FAILED: ["INGESTING", "CANCELLED"],
+  // INGEST_FAILED can recover via a manual CSV upload that lands punches
+  // and moves the run forward — without these transitions the run is
+  // stuck even though data successfully landed.
+  INGEST_FAILED: ["INGESTING", "AWAITING_ADMIN_REVIEW", "AWAITING_EMPLOYEE_FIXES", "CANCELLED"],
   AWAITING_EMPLOYEE_FIXES: ["AWAITING_ADMIN_REVIEW", "CANCELLED"],
-  AWAITING_ADMIN_REVIEW: ["APPROVED", "AWAITING_ADMIN_REVIEW", "CANCELLED"],
+  // Self-edge removed — re-asserting the same state is a no-op and
+  // shouldn't pollute audit history.
+  AWAITING_ADMIN_REVIEW: ["APPROVED", "CANCELLED"],
   APPROVED: ["PUBLISHED", "FAILED"],
   PUBLISHED: [],
-  FAILED: ["INGESTING"],
+  // FAILED can also recover to a recovery review, not just re-ingest.
+  FAILED: ["INGESTING", "AWAITING_ADMIN_REVIEW", "CANCELLED"],
   CANCELLED: [],
 };
 

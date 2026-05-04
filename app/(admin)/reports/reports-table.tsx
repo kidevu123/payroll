@@ -6,6 +6,7 @@ import {
   Download,
   Eye,
   Printer,
+  RefreshCw,
   Send,
   Trash2,
   CheckCircle2,
@@ -390,7 +391,7 @@ function PushPill({
       <span className="inline-flex items-center gap-0.5">
         <span
           className="inline-flex items-center gap-1 rounded-l-input bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
-          title={`Expense ${pushed.expenseId ?? "—"} — click ↻ to delete this expense in Zoho and re-push the current period total.`}
+          title={`Expense ${pushed.expenseId ?? "—"} — click the refresh icon to delete this expense in Zoho and re-push the current period total.`}
         >
           <CheckCircle2 className="h-3 w-3" /> {label}
         </span>
@@ -402,7 +403,7 @@ function PushPill({
           title={`Delete expense ${pushed.expenseId ?? "—"} in Zoho and re-push fresh (use after a fix changes the period total).`}
           className="h-5 rounded-r-input rounded-l-none px-1 py-0 text-[11px] text-emerald-700 hover:bg-emerald-100"
         >
-          {busy ? "…" : "↻"}
+          {busy ? "…" : <RefreshCw className="h-3 w-3" />}
         </Button>
       </span>
     );

@@ -44,8 +44,12 @@ export default async function RunReviewPage({
   // listed every employee with punches in the period — including ones the
   // admin explicitly unchecked from the manual-CSV cohort, because their
   // pre-existing punches from a prior run still live in the period.
-  const employeeFilter = run.payScheduleId
-    ? { payScheduleId: run.payScheduleId }
+  // Treat NULL-schedule employees as wildcards matching the run's schedule,
+  // mirroring the publish handler + period detail. Falls back to the
+  // period's schedule when the run itself has none.
+  const effectiveScheduleId = run.payScheduleId ?? period.payScheduleId ?? null;
+  const employeeFilter = effectiveScheduleId
+    ? { payScheduleIdOrNull: effectiveScheduleId }
     : {};
   const [allEmployees, punches, payRules, payPeriod, alerts, payslips, company, exceptions] = await Promise.all([
     listEmployees(employeeFilter),
@@ -60,9 +64,9 @@ export default async function RunReviewPage({
   const cohort: Set<string> | null = Array.isArray(run.cohortEmployeeIds)
     ? new Set(run.cohortEmployeeIds)
     : null;
-  const employees = cohort
-    ? allEmployees.filter((e) => cohort.has(e.id))
-    : allEmployees;
+  const employees = (
+    cohort ? allEmployees.filter((e) => cohort.has(e.id)) : allEmployees
+  ).filter((e) => e.payType !== "SALARIED");
   const tz = company.timezone ?? "America/New_York";
 
   const tasks = await db

@@ -29,8 +29,14 @@ export type EmployeeListFilters = {
    *   - string  → employees on this exact pay schedule
    *   - "none"  → employees without any schedule (employees.pay_schedule_id IS NULL)
    *   - undefined → no filter
+   *
+   * `payScheduleIdOrNull`: same shape as the exact-match form, but ALSO
+   * matches employees with NULL pay_schedule_id (legacy ride-along).
+   * Use this everywhere the upload action's manual-import treats null as
+   * a wildcard — publish handler, run-detail, admin-report, period-detail.
    */
   payScheduleId?: string | "none";
+  payScheduleIdOrNull?: string;
 };
 
 export async function listEmployees(
@@ -43,6 +49,10 @@ export async function listEmployees(
     conditions.push(sql`${employees.payScheduleId} IS NULL`);
   } else if (filters.payScheduleId) {
     conditions.push(eq(employees.payScheduleId, filters.payScheduleId));
+  } else if (filters.payScheduleIdOrNull) {
+    conditions.push(
+      sql`(${employees.payScheduleId} = ${filters.payScheduleIdOrNull} OR ${employees.payScheduleId} IS NULL)`,
+    );
   }
   if (filters.search) {
     const term = `%${filters.search}%`;

@@ -63,7 +63,12 @@ export async function buildAdminReportArtifacts(
 
   const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks] =
     await Promise.all([
-      listEmployees({ status: "ACTIVE" }),
+      // Match the publish handler — no status filter. Terminated/inactive
+      // employees who got a payslip on this period (mid-period termination)
+      // should still appear on the printed admin report so the accountant
+      // can sign for what was actually paid. The "no punches no tasks"
+      // skip below naturally drops anyone irrelevant.
+      listEmployees(),
       listPunches({ periodId }),
       getSetting("payRules"),
       getSetting("company"),

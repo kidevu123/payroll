@@ -408,8 +408,11 @@ export async function runManualCsvImport(
     after: summary,
   });
 
-  // Move the run forward.
-  if (run.state === "INGESTING") {
+  // Move the run forward — works from INGESTING (happy path) and from
+  // INGEST_FAILED (when a prior cron tick failed and the admin uploaded
+  // a CSV to recover). Without the FAILED→REVIEW transition, recovered
+  // runs stayed stuck even though data successfully landed.
+  if (run.state === "INGESTING" || run.state === "INGEST_FAILED") {
     await transitionRun(input.payrollRunId, "AWAITING_ADMIN_REVIEW", input.actor);
   }
   // Reference `and` so the import doesn't dangle.

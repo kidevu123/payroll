@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -106,9 +106,11 @@ export default async function PeriodReviewPage({
 
   // Filter employees with the same precedence the publish handler uses:
   //   1. run.cohortEmployeeIds (admin-locked cohort) — strongest signal
-  //   2. run.payScheduleId (auto-cohort)
+  //   2. run.payScheduleId OR period.payScheduleId (auto-cohort, treats
+  //      NULL-schedule employees as wildcards matching any schedule)
   //   3. all
   // SALARIED staff are excluded from punch-driven views regardless.
+  const effectiveScheduleId = runScheduleId ?? period.payScheduleId ?? null;
   const runCohort: string[] | null = Array.isArray(run?.cohortEmployeeIds)
     ? (run!.cohortEmployeeIds as string[])
     : null;
@@ -116,8 +118,12 @@ export default async function PeriodReviewPage({
   const employees = (
     cohortSet
       ? allEmployees.filter((e) => cohortSet.has(e.id))
-      : runScheduleId
-        ? allEmployees.filter((e) => e.payScheduleId === runScheduleId)
+      : effectiveScheduleId
+        ? allEmployees.filter(
+            (e) =>
+              e.payScheduleId === effectiveScheduleId ||
+              e.payScheduleId === null,
+          )
         : allEmployees
   ).filter((e) => e.payType !== "SALARIED");
 
@@ -383,9 +389,7 @@ export default async function PeriodReviewPage({
                   return (
                     <details key={employee.id} className="group">
                       <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
-                        <span className="text-text-subtle group-open:rotate-90 transition-transform">
-                          ▸
-                        </span>
+                        <ChevronRight className="h-3.5 w-3.5 text-text-subtle group-open:rotate-90 transition-transform" />
                         <div className="min-w-0">
                           <Link
                             href={`/employees/${employee.id}`}
