@@ -9,6 +9,7 @@ import {
   mergeOverlappingPairAction,
   previewEmptyOrphanPeriodsAction,
   previewOverlappingPeriodsAction,
+  previewPeriodEmployeeSummaryAction,
 } from "./actions";
 
 type BackfillRow = {
@@ -386,25 +387,76 @@ function PairSide({
   onKeep: () => void;
   pending: boolean;
 }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [employees, setEmployees] = React.useState<
+    Awaited<ReturnType<typeof previewPeriodEmployeeSummaryAction>>["rows"] | null
+  >(null);
+  const [loading, setLoading] = React.useState(false);
+
+  async function toggle() {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (employees === null) {
+      setLoading(true);
+      const r = await previewPeriodEmployeeSummaryAction(side.id);
+      setEmployees(r.rows);
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="min-w-0">
-        <code className="font-mono">{side.id.slice(0, 8)}</code>:{" "}
-        {side.startDate} → {side.endDate} · {side.state} · {payslips} payslips
-        {suggested && (
-          <span className="ml-2 rounded-input bg-amber-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-amber-900">
-            suggested
-          </span>
-        )}
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={toggle}
+          className="text-left flex-1 min-w-0 hover:underline underline-offset-2"
+          title="Click to see the per-employee payslip breakdown for this period"
+        >
+          <code className="font-mono">{side.id.slice(0, 8)}</code>:{" "}
+          {side.startDate} → {side.endDate} · {side.state} · {payslips} payslips
+          {suggested && (
+            <span className="ml-2 rounded-input bg-amber-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-amber-900">
+              suggested
+            </span>
+          )}
+          <span className="ml-1 text-amber-700">{expanded ? "▼" : "▶"}</span>
+        </button>
+        <Button
+          size="sm"
+          variant={suggested ? "default" : "secondary"}
+          disabled={pending}
+          onClick={onKeep}
+        >
+          {pending ? "…" : "Keep this · delete other"}
+        </Button>
       </div>
-      <Button
-        size="sm"
-        variant={suggested ? "default" : "secondary"}
-        disabled={pending}
-        onClick={onKeep}
-      >
-        {pending ? "…" : "Keep this · delete other"}
-      </Button>
+      {expanded && (
+        <div className="ml-4 rounded-input bg-amber-100 px-2 py-1.5 text-[11px] text-amber-900">
+          {loading && <span>Loading…</span>}
+          {!loading && employees && employees.length === 0 && (
+            <span>No payslips on this period.</span>
+          )}
+          {!loading && employees && employees.length > 0 && (
+            <ul className="space-y-0.5">
+              {employees.map((emp) => (
+                <li
+                  key={emp.employeeId}
+                  className={emp.voided ? "line-through opacity-60" : ""}
+                >
+                  {emp.legacyId ? `#${emp.legacyId} · ` : ""}
+                  {emp.displayName} · {emp.hours.toFixed(2)}h · $
+                  {(emp.roundedCents / 100).toFixed(2)}
+                  {emp.voided && " (voided)"}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

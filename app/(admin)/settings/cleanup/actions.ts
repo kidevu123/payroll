@@ -7,8 +7,10 @@ import {
   deleteEmptyOrphanPeriods,
   findEmptyOrphanPeriods,
   findOverlappingPeriods,
+  getPeriodEmployeeSummary,
   mergeOverlappingPair,
   type MergeOverlappingPairResult,
+  type PeriodEmployeeSummary,
 } from "@/lib/db/queries/cleanup";
 
 export async function backfillNullRunTotalsAction(): Promise<{
@@ -82,6 +84,21 @@ export async function previewOverlappingPeriodsAction(): Promise<{
   } catch (err) {
     return {
       pairs: [],
+      error: err instanceof Error ? err.message : "Preview failed.",
+    };
+  }
+}
+
+export async function previewPeriodEmployeeSummaryAction(
+  periodId: string,
+): Promise<{ rows: PeriodEmployeeSummary[]; error?: string }> {
+  try {
+    await requireOwner();
+    const rows = await getPeriodEmployeeSummary(periodId);
+    return { rows };
+  } catch (err) {
+    return {
+      rows: [],
       error: err instanceof Error ? err.message : "Preview failed.",
     };
   }

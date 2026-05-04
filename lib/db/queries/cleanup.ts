@@ -269,6 +269,59 @@ export async function findOverlappingPeriods(
   }));
 }
 
+/**
+ * Per-period summary: which employees have payslips on the period,
+ * what amount, and how many active vs voided. Used by the cleanup UI
+ * to show the admin EXACTLY what a merge will do before they click.
+ */
+export type PeriodEmployeeSummary = {
+  employeeId: string;
+  displayName: string;
+  legacyId: string | null;
+  hours: number;
+  grossCents: number;
+  roundedCents: number;
+  voided: boolean;
+};
+
+export async function getPeriodEmployeeSummary(
+  periodId: string,
+): Promise<PeriodEmployeeSummary[]> {
+  const rows = await db.execute(sql`
+    SELECT
+      py.employee_id AS employee_id,
+      e.display_name AS display_name,
+      e.legacy_id AS legacy_id,
+      py.hours_worked AS hours,
+      py.gross_pay_cents AS gross,
+      py.rounded_pay_cents AS rounded,
+      (py.voided_at IS NOT NULL) AS voided
+    FROM payslips py
+    LEFT JOIN employees e ON e.id = py.employee_id
+    WHERE py.period_id = ${periodId}
+    ORDER BY e.display_name
+  `);
+  type Row = {
+    employee_id: string;
+    display_name: string | null;
+    legacy_id: string | null;
+    hours: string | number | null;
+    gross: number | string;
+    rounded: number | string;
+    voided: boolean;
+  };
+  const list = rows as unknown as Row[];
+  return list.map((r) => ({
+    employeeId: r.employee_id,
+    displayName: r.display_name ?? "(unknown)",
+    legacyId: r.legacy_id,
+    hours: Number(r.hours ?? 0),
+    grossCents: Number(r.gross ?? 0),
+    roundedCents: Number(r.rounded ?? 0),
+    voided: r.voided,
+  }));
+}
+
 export type MergeOverlappingPairResult = {
   survivorId: string;
   loserId: string;
@@ -326,56 +379,62 @@ export async function mergeOverlappingPair(
       loserDeleted: false,
     };
 
-    // 1) Resolve payslip collisions BEFORE re-pointing. For each loser
-    //    payslip, if survivor already has an active payslip on the same
-    //    employee, void the loser's payslip (admin chose survivor).
-    //    Otherwise the re-point will succeed without conflict.
-    const loserPayslips = await tx
+    // 1) Walk EVERY loser payslip (active + voided) and resolve against
+    //    the survivor's existing payslips. The unique constraint
+    //    (employee_id, period_id) doesn't filter on voidedAt, so a
+    //    naive re-point of voided losers can still collide with a
+    //    survivor's voided OR active payslip for the same employee.
+    //    Resolution rules:
+    //      - both active OR survivor active + loser voided:
+    //          → void the loser's active row (already voided rows are skipped),
+    //            then HARD-DELETE the loser-side row so the re-point
+    //            target stays clean.
+    //      - survivor voided + loser active:
+    //          → void the loser's row + delete (survivor is admin's
+    //            chosen period; we'd rather keep its voided history
+    //            than accept the loser's data).
+    //      - survivor voided + loser voided OR no survivor row:
+    //          → re-point the loser to survivor (no collision).
+    const allLoserPayslips = await tx
       .select()
       .from(payslips)
-      .where(
-        and(eq(payslips.periodId, loserId), isNull(payslips.voidedAt)),
-      );
-    for (const lp of loserPayslips) {
-      const [collision] = await tx
+      .where(eq(payslips.periodId, loserId));
+    for (const lp of allLoserPayslips) {
+      const [survivorRow] = await tx
         .select()
         .from(payslips)
         .where(
           and(
             eq(payslips.periodId, survivorId),
             eq(payslips.employeeId, lp.employeeId),
-            isNull(payslips.voidedAt),
           ),
         );
-      if (collision) {
+      if (!survivorRow) {
+        // No collision → re-point.
+        await tx
+          .update(payslips)
+          .set({ periodId: survivorId })
+          .where(eq(payslips.id, lp.id));
+        result.movedPayslips++;
+        continue;
+      }
+      // Collision. Survivor row wins. Void the loser if still active
+      // (audit trail), then hard-delete the loser-side payslip so the
+      // unique constraint is satisfied. The survivor row is the
+      // canonical source of truth for that (employee, period).
+      if (!lp.voidedAt) {
         await tx
           .update(payslips)
           .set({
             voidedAt: new Date(),
             voidedById: actor.id,
-            voidReason: `period merge: kept survivor payslip ${collision.id} on period ${survivorId}`,
+            voidReason: `period merge: kept survivor payslip ${survivorRow.id} on period ${survivorId}`,
           })
           .where(eq(payslips.id, lp.id));
         result.voidedDuplicatePayslips++;
       }
+      await tx.delete(payslips).where(eq(payslips.id, lp.id));
     }
-
-    // 2) Re-point payslips that DIDN'T collide (i.e. still active).
-    const movedPayslipsRes = await tx
-      .update(payslips)
-      .set({ periodId: survivorId })
-      .where(
-        and(eq(payslips.periodId, loserId), isNull(payslips.voidedAt)),
-      )
-      .returning({ id: payslips.id });
-    result.movedPayslips = movedPayslipsRes.length;
-
-    // Voided payslips also re-point so the loser period is fully empty
-    // before delete (FK is on period_id regardless of voidedAt).
-    await tx
-      .update(payslips)
-      .set({ periodId: survivorId })
-      .where(eq(payslips.periodId, loserId));
 
     // 3) Re-point payroll_runs.
     const movedRuns = await tx
