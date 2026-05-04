@@ -21,8 +21,8 @@
     "exportCsvButton": "button:has-text(/Export.*CSV/i), a:has-text(/Export.*CSV/i)"
   },
   "viewPunch": {
-    "tableLandmark": "text=/View Attendance Punch/i",
-    "rowsContainer": "table tbody tr, [role='row']:not([role='columnheader'])",
+    "tableLandmark": "table tbody tr, .el-table__body tr, [role='row']",
+    "rowsContainer": "table tbody tr, .el-table__body tr.el-table__row, [role='row']:not([role='columnheader'])",
     "personNameCell": "td:nth-child(1), [role='cell']:nth-child(1)",
     "personIdCell": "td:nth-child(2), [role='cell']:nth-child(2)",
     "punchDateCell": "td:nth-child(3), [role='cell']:nth-child(3)",

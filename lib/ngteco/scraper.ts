@@ -328,16 +328,45 @@ export async function scrapeViewAttendance(
       await page.waitForSelector(sel.login.loggedInLandmark, { timeout: 15_000 });
     }
 
-    // Expand Attendance menu if collapsed, then click View Attendance Punch.
-    if (sel.navigation.attendanceMenu) {
+    // Navigate directly to the View Attendance Punch page. The owner
+    // confirmed the canonical URL is `${portalUrl}/att/timecard/transaction`
+    // — much more reliable than walking the sidebar (Element-Plus menu
+    // selectors are fragile when class names rev). Falls back to the
+    // sidebar click flow if the deep-link doesn't render the table
+    // (defensive — covers a future portal redesign).
+    const directPunchUrl = (() => {
       try {
-        await page.click(sel.navigation.attendanceMenu, { timeout: 5_000 });
+        const u = new URL(input.portalUrl);
+        return `${u.origin}/att/timecard/transaction`;
       } catch {
-        // Menu may already be expanded; ignore.
+        return null;
+      }
+    })();
+    let landed = false;
+    if (directPunchUrl) {
+      try {
+        await page.goto(directPunchUrl, { waitUntil: "domcontentloaded" });
+        await page.waitForSelector(sel.viewPunch.tableLandmark, {
+          timeout: 10_000,
+        });
+        landed = true;
+      } catch {
+        /* fall through to sidebar click flow */
       }
     }
-    await page.click(sel.navigation.viewAttendancePunchLink);
-    await page.waitForSelector(sel.viewPunch.tableLandmark, { timeout: 15_000 });
+    if (!landed) {
+      if (sel.navigation.attendanceMenu) {
+        try {
+          await page.click(sel.navigation.attendanceMenu, { timeout: 5_000 });
+        } catch {
+          // Menu may already be expanded; ignore.
+        }
+      }
+      await page.click(sel.navigation.viewAttendancePunchLink);
+      await page.waitForSelector(sel.viewPunch.tableLandmark, {
+        timeout: 15_000,
+      });
+    }
 
     const events: RawPunchEvent[] = [];
     const seenKeys = new Set<string>();
