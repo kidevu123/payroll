@@ -10,6 +10,7 @@ import {
   previewEmptyOrphanPeriodsAction,
   previewOverlappingPeriodsAction,
   previewPeriodEmployeeSummaryAction,
+  tagLegacyPeriodsBySchedule_Action,
 } from "./actions";
 
 type BackfillRow = {
@@ -32,8 +33,25 @@ export function CleanupTools() {
     { id: string; startDate: string; endDate: string }[] | null
   >(null);
   const [overlaps, setOverlaps] = React.useState<OverlapPair[] | null>(null);
+  const [tagResult, setTagResult] = React.useState<{
+    weekly: number;
+    semiMonthly: number;
+    skippedAmbiguous: number;
+  } | null>(null);
   const [pending, setPending] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+
+  async function onTagLegacy() {
+    setPending("tag-legacy");
+    setError(null);
+    const r = await tagLegacyPeriodsBySchedule_Action();
+    setPending(null);
+    if (r.error) {
+      setError(r.error);
+      return;
+    }
+    if (r.result) setTagResult(r.result);
+  }
 
   async function onBackfill() {
     setPending("backfill");
@@ -86,6 +104,48 @@ export function CleanupTools() {
           {error}
         </div>
       )}
+
+      {/* 0. Tag legacy NULL-schedule periods by length (run BEFORE merge) */}
+      <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
+        <div>
+          <h2 className="text-base font-semibold flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-brand-700" />
+            Tag legacy periods by schedule
+          </h2>
+          <p className="mt-1 text-xs text-text-muted">
+            Legacy-imported pay periods have <code className="bg-surface px-1 rounded">pay_schedule_id IS NULL</code> —
+            so the duplicate-period finder treats a 7-day weekly period
+            and a 16-day semi-monthly period that share dates as duplicates
+            even though they&apos;re different workflows. Backfill the
+            schedule by length: 5-7 days → Weekly, 13-16 days → Semi-Monthly.
+            Run this BEFORE merging overlap pairs to avoid bogus matches.
+            Audited per period.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={pending !== null}
+          onClick={onTagLegacy}
+        >
+          {pending === "tag-legacy" ? "Running…" : "Tag legacy periods"}
+        </Button>
+        {tagResult && (
+          <div className="rounded-input border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+            <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
+            Tagged {tagResult.weekly} weekly + {tagResult.semiMonthly}{" "}
+            semi-monthly periods.
+            {tagResult.skippedAmbiguous > 0 && (
+              <>
+                {" "}
+                Skipped {tagResult.skippedAmbiguous} ambiguous period
+                {tagResult.skippedAmbiguous === 1 ? "" : "s"} (length not in
+                5-7 or 13-16 day buckets).
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* 1. Backfill NULL run totals */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">

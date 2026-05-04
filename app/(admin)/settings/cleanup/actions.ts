@@ -9,9 +9,32 @@ import {
   findOverlappingPeriods,
   getPeriodEmployeeSummary,
   mergeOverlappingPair,
+  tagLegacyPeriodsBySchedule,
   type MergeOverlappingPairResult,
   type PeriodEmployeeSummary,
+  type TagLegacyResult,
 } from "@/lib/db/queries/cleanup";
+
+export async function tagLegacyPeriodsBySchedule_Action(): Promise<{
+  result?: TagLegacyResult;
+  error?: string;
+}> {
+  try {
+    const session = await requireOwner();
+    const result = await tagLegacyPeriodsBySchedule({
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/settings/cleanup");
+    revalidatePath("/payroll");
+    revalidatePath("/reports");
+    return { result };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Tag failed.",
+    };
+  }
+}
 
 export async function backfillNullRunTotalsAction(): Promise<{
   fixed: Array<{ runId: string; previousTotal: number | null; newTotal: number }>;

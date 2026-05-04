@@ -230,6 +230,14 @@ export async function findOverlappingPeriods(
 > {
   // Self-join on pay_periods, finding overlap via a.start <= b.end AND a.end >= b.start.
   // a.id < b.id avoids returning each pair twice.
+  //
+  // Length heuristic for legacy NULL-schedule periods: a 5-7 day period
+  // is weekly, a 13-16 day period is semi-monthly. They can legitimately
+  // overlap (a Mon-Sun weekly and a Mar 16-31 semi-monthly share Mar 30/31)
+  // and are not duplicates. Skip pairs where the lengths cross those
+  // buckets (weekly vs semi-monthly) — they're different workflows on
+  // the same nominal "no schedule" but really tracking different
+  // employee cohorts.
   const rows = await db.execute(sql`
     SELECT
       a.id AS a_id, a.start_date AS a_start, a.end_date AS a_end, a.state AS a_state,
@@ -243,6 +251,15 @@ export async function findOverlappingPeriods(
      AND COALESCE(a.pay_schedule_id::text, '~null~') = COALESCE(b.pay_schedule_id::text, '~null~')
      AND a.start_date <= b.end_date
      AND a.end_date >= b.start_date
+     -- Skip cross-cadence pairs: a 5-7 day period overlapping a 13-16 day
+     -- period is a weekly period sharing a few days with a semi-monthly
+     -- period, NOT a duplicate of the same period. Same idea in reverse.
+     AND NOT (
+       ((a.end_date - a.start_date + 1) BETWEEN 5 AND 7
+         AND (b.end_date - b.start_date + 1) BETWEEN 13 AND 16)
+       OR ((b.end_date - b.start_date + 1) BETWEEN 5 AND 7
+         AND (a.end_date - a.start_date + 1) BETWEEN 13 AND 16)
+     )
     ORDER BY a.start_date DESC
     LIMIT ${limit}
   `);
@@ -267,6 +284,106 @@ export async function findOverlappingPeriods(
     bPayslips: Number(r.b_payslips),
     scheduleId: r.schedule_id,
   }));
+}
+
+export type TagLegacyResult = {
+  weekly: number;
+  semiMonthly: number;
+  skippedAmbiguous: number;
+};
+
+/**
+ * Backfill pay_schedule_id on legacy NULL-schedule periods using the
+ * period length as a heuristic:
+ *   - 5-7 days  → Weekly schedule
+ *   - 13-16 days → Semi-Monthly schedule
+ *   - other → skip (admin must classify manually)
+ *
+ * After this runs, the overlap finder naturally distinguishes weekly
+ * from semi-monthly periods (they actually have different
+ * pay_schedule_ids), so the duplicate-period UI stops surfacing
+ * cross-cadence pairs that aren't really duplicates.
+ *
+ * Audited per period.
+ */
+export async function tagLegacyPeriodsBySchedule(
+  actor: Actor,
+): Promise<TagLegacyResult> {
+  // Look up the canonical Weekly + Semi-Monthly schedule rows by
+  // period_kind. The seed migration creates exactly one of each.
+  const schedules = await db
+    .select()
+    .from(payPeriods)
+    .limit(0); // typing only, we want paySchedules
+  void schedules;
+  const { paySchedules } = await import("@/lib/db/schema");
+  const allSchedules = await db.select().from(paySchedules);
+  const weekly = allSchedules.find((s) => s.periodKind === "WEEKLY");
+  const semi = allSchedules.find((s) => s.periodKind === "SEMI_MONTHLY");
+  if (!weekly || !semi) {
+    throw new Error(
+      "Tag legacy: no Weekly or Semi-Monthly schedule found. Add them in /settings/pay-schedules first.",
+    );
+  }
+
+  // Find every NULL-schedule period and bucket by length.
+  const candidates = await db.execute(sql`
+    SELECT id, start_date, end_date, state, (end_date - start_date + 1) AS days
+    FROM pay_periods
+    WHERE pay_schedule_id IS NULL
+    ORDER BY start_date
+  `);
+  type Row = {
+    id: string;
+    start_date: string;
+    end_date: string;
+    state: string;
+    days: number | string;
+  };
+  const list = candidates as unknown as Row[];
+
+  const result: TagLegacyResult = { weekly: 0, semiMonthly: 0, skippedAmbiguous: 0 };
+  for (const row of list) {
+    const days = Number(row.days);
+    let scheduleId: string | null = null;
+    let kind: "WEEKLY" | "SEMI_MONTHLY" | null = null;
+    if (days >= 5 && days <= 7) {
+      scheduleId = weekly.id;
+      kind = "WEEKLY";
+    } else if (days >= 13 && days <= 16) {
+      scheduleId = semi.id;
+      kind = "SEMI_MONTHLY";
+    } else {
+      result.skippedAmbiguous++;
+      continue;
+    }
+    await db.transaction(async (tx) => {
+      await tx
+        .update(payPeriods)
+        .set({ payScheduleId: scheduleId })
+        .where(eq(payPeriods.id, row.id));
+      await writeAudit(
+        {
+          actorId: actor.id,
+          actorRole: actor.role,
+          action: "period.backfill_schedule",
+          targetType: "PayPeriod",
+          targetId: row.id,
+          before: {
+            payScheduleId: null,
+            startDate: row.start_date,
+            endDate: row.end_date,
+            days,
+          },
+          after: { payScheduleId: scheduleId, kind },
+        },
+        tx,
+      );
+    });
+    if (kind === "WEEKLY") result.weekly++;
+    else result.semiMonthly++;
+  }
+  return result;
 }
 
 /**
