@@ -53,23 +53,38 @@ export async function setSetting<K extends SettingKey>(
 ): Promise<void> {
   const schema = settingsRegistry[key];
   const parsed = schema.parse(value);
-  const [row] = await db.select().from(settings).where(eq(settings.key, key));
-  const before: unknown = row?.value ?? null;
-  await db
-    .insert(settings)
-    .values({ key, value: parsed, updatedById: ctx.actorId })
-    .onConflictDoUpdate({
-      target: settings.key,
-      set: { value: parsed, updatedAt: new Date(), updatedById: ctx.actorId },
-    });
-  await writeAudit({
-    actorId: ctx.actorId,
-    actorRole: ctx.actorRole,
-    action: "settings.update",
-    targetType: "Setting",
-    targetId: key,
-    before,
-    after: parsed,
+  // Wrap read + upsert + audit in a single transaction with a row-level
+  // lock on the existing settings row. Two concurrent saves of the same
+  // key would otherwise both see the same `before`, both write their
+  // own value, and the loser's data would be silently overwritten —
+  // and one audit row would carry a stale `before` pointing at the
+  // committed value of the OTHER write.
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(settings)
+      .where(eq(settings.key, key))
+      .for("update");
+    const before: unknown = row?.value ?? null;
+    await tx
+      .insert(settings)
+      .values({ key, value: parsed, updatedById: ctx.actorId })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { value: parsed, updatedAt: new Date(), updatedById: ctx.actorId },
+      });
+    await writeAudit(
+      {
+        actorId: ctx.actorId,
+        actorRole: ctx.actorRole,
+        action: "settings.update",
+        targetType: "Setting",
+        targetId: key,
+        before,
+        after: parsed,
+      },
+      tx,
+    );
   });
 }
 

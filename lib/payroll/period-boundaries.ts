@@ -97,6 +97,55 @@ export function getNextPeriodBounds(
 }
 
 /**
+ * Compute the canonical end of a period given the schedule's kind. For
+ * weekly schedules the canonical period is start + 6 days even if the
+ * stored end is shorter (a "Mon-Fri" upload still reads as the full
+ * Mon-Sun pay week). Returns null when the schedule isn't weekly OR
+ * when the canonical end isn't actually beyond the stored end (i.e.
+ * the stored range already covers the canonical period).
+ *
+ * Used by /payroll/[periodId] header, /payroll Recent periods,
+ * /reports table, /time grid, the admin-report PDF, and the Zoho
+ * expense reference + intro line. Centralized here so the calc lives
+ * in one place — the previous duplication across 4 files diverged on
+ * "bi-weekly" detection (string-includes "week" matched bi-weekly too,
+ * giving it a wrong +6 instead of +13).
+ */
+export function canonicalEndForSchedule(
+  startDate: string,
+  storedEndDate: string,
+  scheduleKind: string | null | undefined,
+): string {
+  if (scheduleKind !== "WEEKLY") return storedEndDate;
+  const start = parseDay(startDate);
+  const canonical = formatDay(addDays(start, 6));
+  return canonical > storedEndDate ? canonical : storedEndDate;
+}
+
+/**
+ * String-name variant for callers that only have the schedule's name
+ * (not period_kind). Strict on the name: only matches when "week" is
+ * the leading token (so "Bi-weekly" / "Monthly" don't match).
+ */
+export function canonicalEndForScheduleName(
+  startDate: string,
+  storedEndDate: string,
+  scheduleName: string | null | undefined,
+): string {
+  if (!scheduleName) return storedEndDate;
+  const lower = scheduleName.toLowerCase();
+  // "Weekly" but not "Bi-weekly" / "Semi-monthly" / "Monthly".
+  if (
+    lower.includes("bi") ||
+    lower.includes("semi") ||
+    !lower.includes("week")
+  ) {
+    return storedEndDate;
+  }
+  return canonicalEndForSchedule(startDate, storedEndDate, "WEEKLY");
+}
+
+/**
  * Bounds of the SEMI-MONTHLY period containing `date`. Periods are:
  *   first half:  YYYY-MM-01 → YYYY-MM-15
  *   second half: YYYY-MM-16 → YYYY-MM-{last day of month}

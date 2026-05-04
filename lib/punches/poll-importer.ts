@@ -128,16 +128,24 @@ export async function importPunchPoll(
           summary.pairsUpdated++;
         }
       } else {
-        await db.insert(punches).values({
-          employeeId: g.empId,
-          periodId,
-          clockIn,
-          clockOut,
-          source: "NGTECO_AUTO",
-          ngtecoRecordHash: hash,
-          notes: note,
-        });
-        summary.pairsInserted++;
+        // ON CONFLICT DO NOTHING — concurrent poll runs (or a poll racing
+        // a manual upload) can otherwise throw 23505 mid-batch and abort
+        // the rest of the loop. The unique index on ngteco_record_hash
+        // is the de-dupe contract; silently skipping a duplicate is fine.
+        const inserted = await db
+          .insert(punches)
+          .values({
+            employeeId: g.empId,
+            periodId,
+            clockIn,
+            clockOut,
+            source: "NGTECO_AUTO",
+            ngtecoRecordHash: hash,
+            notes: note,
+          })
+          .onConflictDoNothing({ target: punches.ngtecoRecordHash })
+          .returning({ id: punches.id });
+        if (inserted.length > 0) summary.pairsInserted++;
       }
     }
   }

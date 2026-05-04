@@ -15,6 +15,15 @@
 
 export type PunchLike = {
   id: string;
+  /**
+   * Optional employee_id. When all punches in the input list belong to
+   * the same employee (the existing callers always pre-group), this can
+   * be omitted. When omitted, dedup keys on (inMinute, outMinute) only —
+   * acceptable per current callers but a future caller passing a mixed
+   * list would silently merge two employees' identical-minute punches.
+   * Pass employeeId on the rows to avoid that risk.
+   */
+  employeeId?: string;
   clockIn: Date | string;
   clockOut: Date | string | null;
 };
@@ -33,7 +42,11 @@ export function dedupNearDuplicatePunches<T extends PunchLike>(
     const outMs = r.clockOut ? asDate(r.clockOut).getTime() : null;
     const inMinute = Math.floor(inMs / 60_000);
     const outMinute = outMs !== null ? Math.floor(outMs / 60_000) : -1;
-    const key = `${inMinute}|${outMinute}`;
+    // Include employeeId in the key when present — defends against a
+    // future caller passing mixed-employee rows. Same-employee callers
+    // are unaffected (single-employee key collapses to old behavior).
+    const empKey = r.employeeId ?? "";
+    const key = `${empKey}|${inMinute}|${outMinute}`;
     const list = groups.get(key) ?? [];
     list.push(r);
     groups.set(key, list);

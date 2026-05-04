@@ -19,6 +19,7 @@ import {
   parseScheduleTab,
   scheduleTabToKind,
 } from "@/components/domain/schedule-tabs";
+import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import { db } from "@/lib/db";
 import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
@@ -221,17 +222,14 @@ export default async function PayrollPage({
             <p className="text-sm text-text-muted">No periods yet.</p>
           ) : (
             openPeriods.map((p) => {
-              // For weekly schedules the canonical period is 7 days even if
-              // the upload only covered Mon–Fri. Display start..start+6 so
-              // the list reads as "2026-04-27 – 2026-05-03" instead of the
-              // truncated "...05-01" the upload happened to scope to.
-              let displayEnd = p.endDate;
-              if ((p.scheduleName ?? "").toLowerCase().includes("week")) {
-                const start = new Date(`${p.startDate}T00:00:00Z`);
-                start.setUTCDate(start.getUTCDate() + 6);
-                const canonical = start.toISOString().slice(0, 10);
-                if (canonical > displayEnd) displayEnd = canonical;
-              }
+              // Canonical 7-day week for weekly schedules — short uploads
+              // (Mon-Fri) display through Sunday. Centralized in
+              // lib/payroll/period-boundaries.ts so all 4 callsites agree.
+              const displayEnd = canonicalEndForScheduleName(
+                p.startDate,
+                p.endDate,
+                p.scheduleName,
+              );
               return (
                 <div
                   key={p.id}

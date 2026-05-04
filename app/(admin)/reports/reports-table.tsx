@@ -36,23 +36,11 @@ function formatRange(startIso: string, endIso: string): string {
   return `${left} – ${right}`;
 }
 
-/**
- * The pay week is conceptually 7 days even when the admin pulled
- * punches early (e.g. Mon-Fri because no work happened Sat-Sun).
- * For weekly schedules, render the canonical end as start + 6 so the
- * period reads as "Apr 27 – May 03" (Mon–Sun) instead of the
- * truncated "Apr 27 – May 01" the upload was scoped to. Falls back
- * to the stored endDate for semi-monthly + other cadences where the
- * stored range IS the canonical range.
- */
-function canonicalEnd(startIso: string, scheduleName: string | null): string | null {
-  if (!scheduleName) return null;
-  const lower = scheduleName.toLowerCase();
-  if (!lower.includes("week")) return null;
-  const start = new Date(`${startIso}T00:00:00Z`);
-  start.setUTCDate(start.getUTCDate() + 6);
-  return start.toISOString().slice(0, 10);
-}
+// Canonical end (start + 6) for weekly schedules lives in
+// lib/payroll/period-boundaries.ts — single source of truth across
+// /payroll, /reports, /payroll/[periodId], /time, the admin-report PDF,
+// and the Zoho expense reference.
+import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
@@ -177,8 +165,11 @@ export function ReportsTable({
                             <span className="font-semibold text-text whitespace-nowrap">
                               {formatRange(
                                 r.startDate,
-                                canonicalEnd(r.startDate, r.scheduleName) ??
+                                canonicalEndForScheduleName(
+                                  r.startDate,
                                   r.endDate,
+                                  r.scheduleName,
+                                ),
                               )}
                             </span>
                             <SchedulePill name={r.scheduleName} />

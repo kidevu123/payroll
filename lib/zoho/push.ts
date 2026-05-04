@@ -178,14 +178,28 @@ export async function pushReportToZoho(
     throw new Error("Run has no positive total — nothing to push.");
   }
 
+  // Use the canonical 7-day end for weekly periods so a Mon-Fri short
+  // upload's Zoho expense reads as "Mon-Sun" (matching what the admin
+  // sees on /reports + /payroll). Semi-monthly periods + non-weekly use
+  // their stored end as-is.
+  const { canonicalEndForSchedule } = await import(
+    "@/lib/payroll/period-boundaries"
+  );
+  const displayEnd = period
+    ? canonicalEndForSchedule(
+        period.startDate,
+        period.endDate,
+        periodSchedule?.periodKind ?? null,
+      )
+    : null;
   const ref =
-    period?.startDate && period?.endDate
-      ? `PAYROLL-${period.startDate}_to_${period.endDate}`
+    period?.startDate && displayEnd
+      ? `PAYROLL-${period.startDate}_to_${displayEnd}`
       : `Payroll run ${payrollRunId}`;
   const cadenceLabel = isSemiMonthly ? "Semi-monthly" : "Weekly";
   const intro =
-    period?.startDate && period?.endDate
-      ? `${cadenceLabel} payroll expense for ${period.startDate} to ${period.endDate} created by ${actor.role.toLowerCase()}\n\n`
+    period?.startDate && displayEnd
+      ? `${cadenceLabel} payroll expense for ${period.startDate} to ${displayEnd} created by ${actor.role.toLowerCase()}\n\n`
       : `Payroll expense created by ${actor.role.toLowerCase()}\n\n`;
   // Semi-monthly: include the net-vs-gross breakdown in the description
   // so the accountant can reconcile against the attached paystub.
