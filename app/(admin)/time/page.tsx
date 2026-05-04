@@ -36,55 +36,205 @@ function dayOf(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
+type PeriodView = {
+  /** Real DB id, or "" for a synthetic forward-rolled window. */
+  id: string;
+  startDate: string;
+  endDate: string;
+  payScheduleId: string | null;
+  /** Display-only label about the period's underlying state. */
+  state: "OPEN" | "LOCKED" | "PAID" | "UPCOMING";
+};
+
 /**
- * Pick the period to render for the current tab:
- *   - All        → the period covering today (or the most recent one)
- *   - Weekly     → the most recent period attached to a WEEKLY schedule
- *   - Semi-monthly → same, for SEMI_MONTHLY
+ * Pick the period to render for the current tab.
+ *
+ * Priority (matches owner's mental model — "if last week is locked, move on"):
+ *   1. OPEN period covering today (preferred — matches the active week)
+ *   2. Any OPEN period (most recent — covers the case where today falls
+ *      in a gap between schedules)
+ *   3. Synthetic forward-roll: if the most recent matching period is
+ *      LOCKED or PAID, advance to the next 7-day Monday→Sunday window
+ *      (Weekly) or next 1st-15th / 16th-EOM bucket (Semi-Monthly). The
+ *      synthetic window has id="" — listPunches falls back to scanning
+ *      by date range. Punches that arrive will auto-create the real
+ *      period row via ensureNextPeriod in the importer.
+ *   4. Most recent LOCKED/PAID period (last-resort, only when no OPEN
+ *      and no rollable boundary exists — e.g. a schedule that's never
+ *      had a period).
+ *
  * SALARIED is filtered out of the Time grid entirely (no punches).
  */
 async function pickPeriodForTab(
   kind: "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null,
   today: string,
-): Promise<{
-  id: string;
-  startDate: string;
-  endDate: string;
-  payScheduleId: string | null;
-} | null> {
-  if (!kind) {
-    const [current] = await db
-      .select()
-      .from(payPeriods)
-      .where(
-        and(
-          lte(payPeriods.startDate, today),
-          gte(payPeriods.endDate, today),
-        ),
-      )
-      .limit(1);
-    if (current) return current;
-    const [mostRecent] = await db
-      .select()
-      .from(payPeriods)
-      .orderBy(desc(payPeriods.startDate))
-      .limit(1);
-    return mostRecent ?? null;
-  }
-  // Tab-filtered: most recent period on a schedule of the requested kind.
-  const rows = await db
+): Promise<PeriodView | null> {
+  // Step 1: OPEN period covering today, optionally filtered by kind.
+  const openTodayBase = db
     .select({
       id: payPeriods.id,
       startDate: payPeriods.startDate,
       endDate: payPeriods.endDate,
       payScheduleId: payPeriods.payScheduleId,
+      state: payPeriods.state,
+      kind: paySchedules.periodKind,
     })
     .from(payPeriods)
-    .innerJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
-    .where(eq(paySchedules.periodKind, kind))
+    .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
+  const openTodayWhere = kind
+    ? and(
+        eq(payPeriods.state, "OPEN"),
+        eq(paySchedules.periodKind, kind),
+        lte(payPeriods.startDate, today),
+        gte(payPeriods.endDate, today),
+      )
+    : and(
+        eq(payPeriods.state, "OPEN"),
+        lte(payPeriods.startDate, today),
+        gte(payPeriods.endDate, today),
+      );
+  const [openToday] = await openTodayBase
+    .where(openTodayWhere)
     .orderBy(desc(payPeriods.startDate))
     .limit(1);
-  return rows[0] ?? null;
+  if (openToday) {
+    return {
+      id: openToday.id,
+      startDate: openToday.startDate,
+      endDate: openToday.endDate,
+      payScheduleId: openToday.payScheduleId,
+      state: "OPEN",
+    };
+  }
+
+  // Step 2: Any OPEN period for the cadence (most recent).
+  const anyOpenWhere = kind
+    ? and(eq(payPeriods.state, "OPEN"), eq(paySchedules.periodKind, kind))
+    : eq(payPeriods.state, "OPEN");
+  const [anyOpen] = await openTodayBase
+    .where(anyOpenWhere)
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  if (anyOpen) {
+    return {
+      id: anyOpen.id,
+      startDate: anyOpen.startDate,
+      endDate: anyOpen.endDate,
+      payScheduleId: anyOpen.payScheduleId,
+      state: "OPEN",
+    };
+  }
+
+  // Step 3: Most recent LOCKED/PAID — used to compute the next window.
+  const recentBase = db
+    .select({
+      id: payPeriods.id,
+      startDate: payPeriods.startDate,
+      endDate: payPeriods.endDate,
+      payScheduleId: payPeriods.payScheduleId,
+      state: payPeriods.state,
+      kind: paySchedules.periodKind,
+    })
+    .from(payPeriods)
+    .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
+  const [mostRecent] = await recentBase
+    .where(kind ? eq(paySchedules.periodKind, kind) : undefined)
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  if (!mostRecent) return null;
+
+  // If the most recent period is still happening (covers today), or is
+  // OPEN, just use it. Otherwise — when it's LOCKED or PAID and ended
+  // before today — roll forward to the next window so the admin sees
+  // the live week instead of the closed one.
+  if (mostRecent.state === "OPEN" || mostRecent.endDate >= today) {
+    return {
+      id: mostRecent.id,
+      startDate: mostRecent.startDate,
+      endDate: mostRecent.endDate,
+      payScheduleId: mostRecent.payScheduleId,
+      state: mostRecent.state as "OPEN" | "LOCKED" | "PAID",
+    };
+  }
+
+  const rolledKind = kind ?? mostRecent.kind ?? "WEEKLY";
+  const next = nextWindowAfter(
+    mostRecent.endDate,
+    rolledKind as "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY",
+  );
+  return {
+    id: "",
+    startDate: next.start,
+    endDate: next.end,
+    payScheduleId: mostRecent.payScheduleId,
+    state: "UPCOMING",
+  };
+}
+
+/**
+ * Compute the start/end of the period that immediately follows
+ * `prevEnd` for a given cadence. For WEEKLY this is the Mon→Sun week
+ * starting the day after prevEnd (or, if prevEnd already ends on a
+ * Sunday, the next Monday). For SEMI_MONTHLY this is the next 1st-15th
+ * or 16th-EOM bucket.
+ */
+function nextWindowAfter(
+  prevEnd: string,
+  kind: "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY",
+): { start: string; end: string } {
+  const startDate = new Date(`${prevEnd}T00:00:00Z`);
+  startDate.setUTCDate(startDate.getUTCDate() + 1);
+  if (kind === "WEEKLY") {
+    const start = startDate;
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  }
+  if (kind === "BIWEEKLY") {
+    const start = startDate;
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 13);
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  }
+  if (kind === "SEMI_MONTHLY") {
+    const day = startDate.getUTCDate();
+    if (day <= 15) {
+      const start = new Date(startDate);
+      start.setUTCDate(1);
+      const end = new Date(start);
+      end.setUTCDate(15);
+      return {
+        start: start.toISOString().slice(0, 10),
+        end: end.toISOString().slice(0, 10),
+      };
+    } else {
+      const start = new Date(startDate);
+      start.setUTCDate(16);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 1);
+      end.setUTCDate(0); // last day of original month
+      return {
+        start: start.toISOString().slice(0, 10),
+        end: end.toISOString().slice(0, 10),
+      };
+    }
+  }
+  // MONTHLY
+  const start = new Date(startDate);
+  start.setUTCDate(1);
+  const end = new Date(start);
+  end.setUTCMonth(end.getUTCMonth() + 1);
+  end.setUTCDate(0);
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }
 
 type CellState = "complete" | "incomplete" | "missed" | "inactive";
@@ -150,8 +300,23 @@ export default async function TimePage({
   const days = eachDay(period.startDate, lastDay);
   const [allActive, punches] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
-    listPunches({ periodId: period.id }),
+    // Synthetic forward-rolled period (period.id === "") has no real
+    // payPeriods row yet — fetch every active punch and filter by date
+    // range below. The period row gets created lazily by the punch
+    // importer when the first real punch lands.
+    period.id
+      ? listPunches({ periodId: period.id })
+      : listPunches({}),
   ]);
+  const startEpoch = new Date(`${period.startDate}T00:00:00Z`).getTime();
+  const endEpoch = new Date(`${period.endDate}T23:59:59Z`).getTime();
+  const punchesInRange = period.id
+    ? punches
+    : punches.filter((p) => {
+        const t = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+        const ms = t.getTime();
+        return ms >= startEpoch && ms <= endEpoch;
+      });
   // SALARIED staff don't punch — hide them from the grid so the admin
   // doesn't see "missed" red cells for everyone-on-salary every day.
   // Schedule-tab filter: when the admin picks Weekly / Semi-monthly,
@@ -168,9 +333,9 @@ export default async function TimePage({
   // Group punches by employeeId + day, then dedup near-duplicates within
   // each cell so the grid doesn't show "1" / "2" cells for what's really
   // a single shift represented twice.
-  const grid = new Map<string, Map<string, typeof punches>>();
+  const grid = new Map<string, Map<string, typeof punchesInRange>>();
   for (const e of employees) grid.set(e.id, new Map());
-  for (const p of punches) {
+  for (const p of punchesInRange) {
     const day = dayOf(p.clockIn, company.timezone);
     const byDay = grid.get(p.employeeId);
     if (!byDay) continue;
@@ -190,7 +355,19 @@ export default async function TimePage({
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold">Time</h1>
           <p className="text-sm text-text-muted">
-            Current period: {period.startDate} to {lastDay}
+            {period.state === "UPCOMING"
+              ? "Upcoming week"
+              : period.state === "LOCKED"
+                ? "Locked period"
+                : period.state === "PAID"
+                  ? "Paid period"
+                  : "Current period"}
+            : {period.startDate} to {lastDay}
+            {period.state === "UPCOMING" && (
+              <span className="ml-2 text-[11px] uppercase tracking-wider text-brand-700">
+                live · punches will land here
+              </span>
+            )}
           </p>
           <ScheduleTabs current={tab} basePath="/time" />
         </div>
@@ -250,22 +427,37 @@ export default async function TimePage({
                   }, 0);
                   const hours = closedMs / (1000 * 60 * 60);
 
+                  // Synthetic forward-rolled period has no DB id yet, so
+                  // edit links can't deep-link to /time/[periodId]/...
+                  // Render a non-interactive cell instead. The first
+                  // punch that lands creates the real period row.
+                  const cellInner = (
+                    <span className={`flex flex-col items-stretch justify-center rounded-chip border px-2 py-1 min-h-9 w-full text-[10px] leading-tight ${cellClasses(state)}${period.id ? " hover:brightness-95" : ""}`}>
+                      <PunchCellContent
+                        state={state}
+                        first={first}
+                        last={last}
+                        count={sorted.length}
+                        hours={hours}
+                        tz={company.timezone}
+                      />
+                    </span>
+                  );
                   return (
                     <td key={d} className="p-1 align-middle">
-                      <Link
-                        href={`/time/${period.id}/${d}/${e.id}`}
-                        className={`flex flex-col items-stretch justify-center rounded-chip border px-2 py-1 min-h-9 w-full text-[10px] leading-tight ${cellClasses(state)} hover:brightness-95`}
-                        aria-label={cellAriaLabel(state, sorted, company.timezone)}
-                      >
-                        <PunchCellContent
-                          state={state}
-                          first={first}
-                          last={last}
-                          count={sorted.length}
-                          hours={hours}
-                          tz={company.timezone}
-                        />
-                      </Link>
+                      {period.id ? (
+                        <Link
+                          href={`/time/${period.id}/${d}/${e.id}`}
+                          className="block"
+                          aria-label={cellAriaLabel(state, sorted, company.timezone)}
+                        >
+                          {cellInner}
+                        </Link>
+                      ) : (
+                        <span aria-label={cellAriaLabel(state, sorted, company.timezone)}>
+                          {cellInner}
+                        </span>
+                      )}
                     </td>
                   );
                 })}

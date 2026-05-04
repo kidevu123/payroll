@@ -79,7 +79,13 @@ RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx lib/pdf/a
 # Use Microsoft's Playwright image as the runtime base — Phase 2 needs it and
 # baking it in now avoids a rebuild later. It's larger (~500MB) but the spec
 # explicitly accepts that (§19).
-FROM mcr.microsoft.com/playwright:v1.48.2-jammy AS run
+#
+# Image version MUST match the `playwright` npm dependency in package.json
+# exactly — Playwright bundles its browsers at /ms-playwright keyed on
+# the package version. A drift (eg. 1.48 image vs 1.59 npm) makes
+# `chromium.launchPersistentContext` fail with "Executable doesn't exist
+# at /ms-playwright/chromium_headless_shell-NNNN/...". Bump in lockstep.
+FROM mcr.microsoft.com/playwright:v1.59.1-jammy AS run
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
