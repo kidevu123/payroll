@@ -234,8 +234,26 @@ export async function deleteRun(
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, id));
     if (!before) throw new Error(`deleteRun: ${id} not found`);
-    // Cascade payslips manually since the FK is RESTRICT.
-    await tx.delete(payslips).where(eq(payslips.payrollRunId, id));
+    // Per CLAUDE.md soft-delete spec, refuse to hard-delete a PUBLISHED
+    // run — payslip history is owed to employees and accountants. Move
+    // through CANCELLED first (or use voidPayslip on individual rows).
+    if (before.state === "PUBLISHED") {
+      throw new Error(
+        "Cannot delete a PUBLISHED run. Cancel it first via the run detail page, or void specific payslips, then retry.",
+      );
+    }
+    // For non-PUBLISHED runs (failed ingest, abandoned drafts, cancelled
+    // runs without payslips), proceed with the cascade. Soft-delete
+    // payslips via voidPayslip semantics — set voidedAt rather than
+    // hard-delete so any acknowledged history isn't lost.
+    await tx
+      .update(payslips)
+      .set({
+        voidedAt: new Date(),
+        voidedById: actor.id,
+        voidReason: `Run ${id} deleted (state=${before.state})`,
+      })
+      .where(eq(payslips.payrollRunId, id));
     await tx.delete(payrollRuns).where(eq(payrollRuns.id, id));
     await writeAudit(
       {

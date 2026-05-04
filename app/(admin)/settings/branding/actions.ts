@@ -33,6 +33,16 @@ export async function updateBrandColorAction(
   revalidatePath("/settings/branding");
 }
 
+const IMAGE_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+]);
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export async function uploadLogoAction(
   formData: FormData,
 ): Promise<{ error?: string } | void> {
@@ -40,6 +50,12 @@ export async function uploadLogoAction(
   const file = formData.get("logo");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a logo file." };
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { error: `File too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB).` };
+  }
+  if (!IMAGE_MIME.has(file.type)) {
+    return { error: "Only PNG, JPEG, WEBP, or SVG logos are accepted." };
   }
   const buffer = Buffer.from(await file.arrayBuffer());
   try {
@@ -79,6 +95,12 @@ export async function uploadFaviconAction(
   const file = formData.get("favicon");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a favicon file." };
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return { error: `File too large (max ${MAX_IMAGE_BYTES / 1024 / 1024} MB).` };
+  }
+  if (!IMAGE_MIME.has(file.type)) {
+    return { error: "Only PNG, JPEG, WEBP, SVG, or ICO favicons are accepted." };
   }
   const buffer = Buffer.from(await file.arrayBuffer());
   try {

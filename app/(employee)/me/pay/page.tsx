@@ -10,6 +10,7 @@ import { PayslipCard } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { getEmployee } from "@/lib/db/queries/employees";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { db } from "@/lib/db";
 import { payrollRuns } from "@/lib/db/schema";
@@ -26,8 +27,17 @@ export default async function EmployeePayList() {
       </div>
     );
   }
+  const employee = await getEmployee(session.user.employeeId);
+  // Salaried employees are paid externally (accountant) and only ever see
+  // uploaded paystub/W2 documents. Skip the punch-driven payslip list
+  // entirely so they don't see $0 payslip cards from runs that never
+  // touched their pay (and so the self-heal recompute on /me/pay/[id]
+  // can't be triggered for salaried records — already guarded there).
+  const isSalaried = employee?.payType === "SALARIED";
   const [payslips, payRules, payrollDocs] = await Promise.all([
-    listPublishedPayslipsForEmployee(session.user.employeeId),
+    isSalaried
+      ? Promise.resolve([])
+      : listPublishedPayslipsForEmployee(session.user.employeeId),
     getSetting("payRules"),
     listEmployeeVisibleDocs(session.user.employeeId),
   ]);
