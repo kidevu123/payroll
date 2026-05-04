@@ -203,6 +203,89 @@ export async function recomputePayslipAction(
 }
 
 /**
+ * Recompute every active (non-voided) payslip on a period from current
+ * punches. Used to fix legacy/import-doubled payslip totals that were
+ * baked at publish time and never refreshed. Returns per-payslip
+ * before/after for the UI to display.
+ */
+export async function recomputeAllPayslipsOnPeriodAction(
+  periodId: string,
+): Promise<
+  | { error: string }
+  | {
+      ok: true;
+      results: Array<{
+        payslipId: string;
+        employeeId: string;
+        beforeHours: number;
+        afterHours: number;
+        beforeRoundedCents: number;
+        afterRoundedCents: number;
+      }>;
+    }
+> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(periodId).success) return { error: "Invalid period id." };
+  const { db } = await import("@/lib/db");
+  const { payslips, payrollRuns } = await import("@/lib/db/schema");
+  const { and, eq, isNull, sql } = await import("drizzle-orm");
+  // Snapshot every active payslip on this period before recomputing
+  // so we can return the delta to the caller.
+  const snapshots = await db
+    .select()
+    .from(payslips)
+    .where(
+      and(eq(payslips.periodId, periodId), isNull(payslips.voidedAt)),
+    );
+  const results: Array<{
+    payslipId: string;
+    employeeId: string;
+    beforeHours: number;
+    afterHours: number;
+    beforeRoundedCents: number;
+    afterRoundedCents: number;
+  }> = [];
+  for (const before of snapshots) {
+    try {
+      await recomputePayslip(before.id, {
+        id: session.user.id,
+        role: session.user.role,
+      });
+    } catch {
+      // recompute may throw for salaried/legacy edge cases; skip
+      continue;
+    }
+    const [after] = await db
+      .select()
+      .from(payslips)
+      .where(eq(payslips.id, before.id));
+    if (!after) continue;
+    results.push({
+      payslipId: before.id,
+      employeeId: before.employeeId,
+      beforeHours: Number(before.hoursWorked ?? 0),
+      afterHours: Number(after.hoursWorked ?? 0),
+      beforeRoundedCents: before.roundedPayCents,
+      afterRoundedCents: after.roundedPayCents,
+    });
+  }
+  // Recompute the run total to match the new payslip sum.
+  await db.execute(sql`
+    UPDATE payroll_runs pr
+    SET total_amount_cents = COALESCE((
+      SELECT SUM(rounded_pay_cents) FROM payslips
+      WHERE payroll_run_id = pr.id AND voided_at IS NULL
+    ), 0)
+    WHERE pr.period_id = ${periodId}
+  `);
+  void payrollRuns;
+  revalidatePath(`/payroll/${periodId}`);
+  revalidatePath("/payroll");
+  revalidatePath("/reports");
+  return { ok: true, results };
+}
+
+/**
  * Run the duplicate-punch merge over a single period (or all-time when
  * periodId is omitted). Picks the longest-duration row in each cluster
  * and voids the rest with a "dedup: <reason>" audit trail.

@@ -29,6 +29,7 @@ import { db } from "@/lib/db";
 import { taskPayLineItems, payrollRuns, paySchedules } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { LockButtons } from "./lock-buttons";
+import { RecomputeBanner } from "./recompute-banner";
 import { PublishPortalButton } from "./publish-portal-button";
 import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
@@ -374,6 +375,34 @@ export default async function PeriodReviewPage({
           </div>
         </div>
       </div>
+
+      {/* Drift banner — shows when stored payslip hours diverge from
+          live punch hours. Lets the admin recompute every doubled
+          payslip from current punches in one click. Critical for
+          fixing the legacy-import 2x bug across 15+ employees on a
+          single period. */}
+      <RecomputeBanner
+        periodId={periodId}
+        drifts={
+          (displayRows
+            .filter((r) => "hoursDrift" in r && r.hoursDrift)
+            .map((r) => {
+              const row = r as typeof r & {
+                storedHours?: number;
+                liveHours?: number;
+              };
+              return {
+                employeeName: row.employee.displayName,
+                storedHours: row.storedHours ?? 0,
+                liveHours: row.liveHours ?? 0,
+              };
+            })) as Array<{
+              employeeName: string;
+              storedHours: number;
+              liveHours: number;
+            }>
+        }
+      />
 
       {/* Per-employee summary — each row expands inline to show that
           employee's punches. Drops the separate Punches card so the
