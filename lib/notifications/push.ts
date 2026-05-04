@@ -61,9 +61,16 @@ export async function dispatchPush(
 
   // webpackIgnore: web-push is Node-only and pulls fs/url that we don't want
   // in the edge bundle of instrumentation.ts.
-  const wp = (await import(
+  //
+  // web-push is a CJS module; the runtime ESM `import()` wraps its exports
+  // under `.default`. Older Node interop occasionally surfaces the named
+  // exports too, but we can't rely on that — always go through `.default`
+  // when present. Without this guard, setVapidDetails is undefined and
+  // every push throws "k.setVapidDetails is not a function" silently.
+  const wpModule = (await import(
     /* webpackIgnore: true */ "web-push"
-  )) as typeof import("web-push");
+  )) as typeof import("web-push") & { default?: typeof import("web-push") };
+  const wp = wpModule.default ?? wpModule;
   wp.setVapidDetails(`mailto:${contact}`, publicKey, privateKey);
 
   let sent = 0;
