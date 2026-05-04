@@ -134,8 +134,12 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
   const failureDir = join(FAILURES_DIR, input.runId);
 
   const { chromium } = (await import("playwright")) as typeof import("playwright");
+  // Force headless on server-side Playwright. The settings toggle was a
+  // dev convenience that has no equivalent on the LXC (no X server, no
+  // $DISPLAY) — surfaces as "Missing X server or $DISPLAY" otherwise.
+  // input.headless stays in the type for backward-compat with callers.
   const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: input.headless,
+    headless: true,
     viewport: { width: 1280, height: 900 },
     locale: "en-US",
   });
@@ -248,8 +252,12 @@ export async function scrapeViewAttendance(
   const maxRows = input.maxRows ?? 1000;
 
   const { chromium } = (await import("playwright")) as typeof import("playwright");
+  // Force headless on server-side Playwright. The settings toggle was a
+  // dev convenience that has no equivalent on the LXC (no X server, no
+  // $DISPLAY) — surfaces as "Missing X server or $DISPLAY" otherwise.
+  // input.headless stays in the type for backward-compat with callers.
   const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
-    headless: input.headless,
+    headless: true,
     viewport: { width: 1280, height: 900 },
     locale: "en-US",
   });
