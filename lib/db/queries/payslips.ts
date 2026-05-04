@@ -60,16 +60,22 @@ export async function listPublishedPayslipsForEmployee(
 }
 
 /**
- * Returns true iff the payslip belongs to a run that's been published to
- * the portal. Used by /api/payslips/[id]/pdf to gate non-admin access.
+ * Returns true iff the payslip belongs to a run that's been published
+ * to the portal AND the payslip itself isn't voided. Used by
+ * /api/payslips/[id]/pdf to gate non-admin access. Without the
+ * voidedAt check, a soft-deleted payslip still streamed to the
+ * employee.
  */
 export async function isPayslipPublishedToPortal(payslipId: string): Promise<boolean> {
   const [row] = await db
-    .select({ portalAt: payrollRuns.publishedToPortalAt })
+    .select({
+      portalAt: payrollRuns.publishedToPortalAt,
+      voidedAt: payslips.voidedAt,
+    })
     .from(payslips)
     .innerJoin(payrollRuns, eq(payslips.payrollRunId, payrollRuns.id))
     .where(eq(payslips.id, payslipId));
-  return !!row?.portalAt;
+  return !!row?.portalAt && !row.voidedAt;
 }
 
 export async function getPayslip(id: string): Promise<Payslip | null> {

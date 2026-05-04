@@ -18,6 +18,17 @@ import type { ZohoOrganization } from "@/lib/db/schema";
 type CachedToken = { accessToken: string; expiresAt: number };
 const tokenCache = new Map<string, CachedToken>();
 
+/**
+ * Drop the cached Zoho access token for an org. Called after disconnect
+ * + reconnect (the refresh token may have changed) and after the OAuth
+ * callback writes a fresh refresh token. Without this, the cached
+ * access token from the OLD refresh token keeps working until expiry,
+ * masking that the new refresh token was even saved.
+ */
+export function invalidateZohoTokenCache(orgId: string): void {
+  tokenCache.delete(orgId);
+}
+
 function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
   return (
     typeof value === "object" &&

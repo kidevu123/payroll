@@ -89,6 +89,13 @@ export async function GET(req: Request): Promise<Response> {
     );
   }
   await setOrgRefreshToken(org.id, json.refresh_token);
+  // Drop any cached access token from the old refresh token so the next
+  // API call mints a fresh one. Without this, the in-process cache
+  // could keep using a token tied to a refresh-token that's no longer
+  // stored, and the admin's "I just reconnected" wouldn't take effect
+  // until the cached token expired.
+  const { invalidateZohoTokenCache } = await import("@/lib/zoho/client");
+  invalidateZohoTokenCache(org.id);
   await writeAudit({
     actorId: session.user.id,
     actorRole: session.user.role,

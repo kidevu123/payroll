@@ -111,6 +111,13 @@ export async function handlePayrollRunPublish(data: {
     logger.error({ runId }, "publish: run not found");
     return;
   }
+  // Idempotent: a re-fire on an already-published run (pg-boss retry,
+  // admin double-click) is a no-op rather than a thrown error. Without
+  // this, the dead-letter queue accumulates noise on every retry.
+  if (run.state === "PUBLISHED") {
+    logger.info({ runId }, "publish: already published; no-op");
+    return;
+  }
   if (run.state !== "APPROVED") {
     throw new Error(
       `publish: run ${runId} is in state ${run.state}; expected APPROVED`,

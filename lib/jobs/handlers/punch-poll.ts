@@ -104,6 +104,22 @@ export async function handlePunchPoll(): Promise<PollSummary> {
       timezone: company.timezone,
     });
     logger.info({ runId, ...summary }, "punch.poll: import done");
+    // Best-effort retention prune: keep poll log rows ≤90 days. Skipped
+    // on failure (no point pruning when the poll itself blew up).
+    try {
+      const { prunePollLog } = await import(
+        /* webpackIgnore: true */ "../../db/queries/poll-history.js"
+      ) as typeof import("@/lib/db/queries/poll-history");
+      const pruned = await prunePollLog(90);
+      if (pruned > 0) {
+        logger.info({ runId, pruned }, "punch.poll: poll-log pruned");
+      }
+    } catch (err) {
+      logger.warn(
+        { runId, err: err instanceof Error ? err.message : String(err) },
+        "punch.poll: poll-log prune failed (non-fatal)",
+      );
+    }
     return {
       ok: true,
       eventsScraped: result.events.length,

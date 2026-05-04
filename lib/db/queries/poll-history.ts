@@ -2,7 +2,7 @@
 // the manual "Poll Now" button log here. Surfaces "last poll: N min ago"
 // and a short error trail in the admin UI.
 
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   ngtecoPollLog,
@@ -59,4 +59,18 @@ export async function listRecentPolls(limit = 20): Promise<NgtecoPollLogRow[]> {
     .from(ngtecoPollLog)
     .orderBy(desc(ngtecoPollLog.startedAt))
     .limit(limit);
+}
+
+/**
+ * Delete poll-log rows older than `days`. Called by punch-poll handler
+ * after every successful run so the table doesn't grow unbounded
+ * (15-min cron = ~35k rows/year). Default 90 days. Returns deleted count.
+ */
+export async function prunePollLog(days = 90): Promise<number> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const deleted = await db
+    .delete(ngtecoPollLog)
+    .where(sql`${ngtecoPollLog.startedAt} < ${cutoff.toISOString()}`)
+    .returning({ id: ngtecoPollLog.id });
+  return deleted.length;
 }
