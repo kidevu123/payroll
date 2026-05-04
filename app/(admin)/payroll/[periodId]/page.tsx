@@ -237,7 +237,18 @@ export default async function PeriodReviewPage({
   // (so legacy periods with sparse punch data still show every employee
   // who got paid). For employees not in `rendered`, append synthetic rows
   // sourced from the payslip.
-  type RowLike = (typeof rendered)[number];
+  //
+  // Drift detection: legacy-imported payslips sometimes carry stored
+  // hours that don't reconcile with the punches in our system (the
+  // legacy app may have double-counted, or punch data may not have
+  // been imported alongside). Stamp `hoursDriftLive` on the row when
+  // stored hours and live punch hours disagree by >0.5h so the table
+  // can surface a warning chip and let the admin recompute.
+  type RowLike = (typeof rendered)[number] & {
+    storedHours?: number;
+    liveHours?: number;
+    hoursDrift?: boolean;
+  };
   const renderedById = new Map(rendered.map((r) => [r.employee.id, r]));
   let displayRows: RowLike[] = rendered;
   if (useStoredTotals) {
@@ -247,7 +258,9 @@ export default async function PeriodReviewPage({
       const emp = allEmployees.find((e) => e.id === py.employeeId);
       if (!emp) continue;
       const existing = renderedById.get(emp.id);
-      const hours = Number(py.hoursWorked ?? 0);
+      const storedHours = Number(py.hoursWorked ?? 0);
+      const liveHours = existing?.result.totalHours ?? 0;
+      const drift = Math.abs(storedHours - liveHours) > 0.5;
       const result = {
         ...(existing?.result ?? {
           regularCents: 0,
@@ -255,7 +268,7 @@ export default async function PeriodReviewPage({
           taskCents: 0,
           byDay: [],
         }),
-        totalHours: hours,
+        totalHours: storedHours,
         grossCents: py.grossPayCents,
         roundedCents: py.roundedPayCents,
       } as RowLike["result"];
@@ -264,6 +277,9 @@ export default async function PeriodReviewPage({
         result,
         incomplete: existing?.incomplete ?? 0,
         punches: existing?.punches ?? [],
+        storedHours,
+        liveHours,
+        hoursDrift: drift,
       });
     }
     displayRows.sort((a, b) =>
@@ -383,7 +399,8 @@ export default async function PeriodReviewPage({
                 <div className="text-right">Issues</div>
               </div>
               <div className="divide-y divide-border">
-                {displayRows.map(({ employee, result, incomplete, punches }) => {
+                {displayRows.map((row) => {
+                  const { employee, result, incomplete, punches } = row;
                   const ePunches = punches.filter((p) => !p.voidedAt);
                   return (
                     <details key={employee.id} className="group">
@@ -419,6 +436,14 @@ export default async function PeriodReviewPage({
                         <span className="text-right">
                           {incomplete > 0 ? (
                             <span className="text-warn-700 text-xs">{incomplete} incomplete</span>
+                          ) : "hoursDrift" in row && row.hoursDrift ? (
+                            <span
+                              className="text-amber-700 text-xs"
+                              title={`Stored hours (${(row as RowLike).storedHours?.toFixed(2)}h) don't match live punch hours (${(row as RowLike).liveHours?.toFixed(2)}h). Open employees row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
+                            >
+                              ⚠ stored {(row as RowLike).storedHours?.toFixed(2)}h ≠
+                              live {(row as RowLike).liveHours?.toFixed(2)}h
+                            </span>
                           ) : (
                             <span className="text-text-subtle">—</span>
                           )}
