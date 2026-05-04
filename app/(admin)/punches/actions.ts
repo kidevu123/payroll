@@ -9,17 +9,31 @@ import { payPeriods } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch } from "@/lib/db/queries/punches";
 
+// ISO datetime regex — input must be e.g. "2026-04-30T06:30" or
+// "2026-04-30T06:30:00Z". Without this, garbage like "2026-13-99"
+// silently becomes a real Date via Date overflow rollover.
+const ISO_DATETIME_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
 const schema = z.object({
   employeeId: z.string().uuid(),
   /** Calendar day in YYYY-MM-DD that the clock_in falls on. */
   date: z.string().date(),
   /** datetime-local value, e.g. 2026-04-30T06:30. Interpreted in company tz. */
-  clockIn: z.string().min(1),
+  clockIn: z
+    .string()
+    .regex(ISO_DATETIME_RE, "clockIn must be ISO datetime (YYYY-MM-DDTHH:MM)"),
   clockOut: z
     .string()
     .optional()
     .nullable()
-    .transform((v) => v || null),
+    .transform((v) => v || null)
+    .pipe(
+      z
+        .string()
+        .regex(ISO_DATETIME_RE, "clockOut must be ISO datetime")
+        .nullable(),
+    ),
   notes: z
     .string()
     .max(500)

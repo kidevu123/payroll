@@ -20,7 +20,11 @@ export async function setPasswordAction(
   const session = await requireAdmin();
   if (!idSchema.safeParse(userId).success) return { error: "Invalid id." };
   const password = String(formData.get("password") ?? "");
+  // Add an upper bound to defend the Argon2id hasher (and avoid storing
+  // an absurdly long string into users.password_hash). 8-200 chars
+  // covers any reasonable password manager output.
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password.length > 200) return { error: "Password must be 200 characters or fewer." };
   try {
     await setPasswordForUser(userId, password, {
       id: session.user.id,

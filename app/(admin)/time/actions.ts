@@ -6,11 +6,21 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch, editPunch, voidPunch } from "@/lib/db/queries/punches";
 
+// ISO datetime regex — input must be e.g. "2026-04-15T07:30" or
+// "2026-04-15T07:30:00Z". Without this, garbage like "2026-13-99"
+// parses via Date overflow rollover and lands a punch on the wrong day.
+const ISO_DATETIME_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?$/;
+
 const createSchema = z.object({
   employeeId: z.string().uuid(),
   periodId: z.string().uuid(),
-  clockIn: z.string().min(1),
-  clockOut: z.string().optional().nullable(),
+  clockIn: z.string().regex(ISO_DATETIME_RE, "clockIn must be ISO datetime"),
+  clockOut: z
+    .string()
+    .regex(ISO_DATETIME_RE, "clockOut must be ISO datetime")
+    .optional()
+    .nullable(),
   notes: z.string().max(500).optional().nullable(),
 });
 
@@ -50,8 +60,12 @@ export async function createPunchAction(
 }
 
 const editSchema = z.object({
-  clockIn: z.string().min(1),
-  clockOut: z.string().optional().nullable(),
+  clockIn: z.string().regex(ISO_DATETIME_RE, "clockIn must be ISO datetime"),
+  clockOut: z
+    .string()
+    .regex(ISO_DATETIME_RE, "clockOut must be ISO datetime")
+    .optional()
+    .nullable(),
   reason: z.string().min(1).max(500),
   notes: z.string().max(500).optional().nullable(),
 });

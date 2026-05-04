@@ -138,11 +138,45 @@ export type UpdateEmployeePatch = Partial<
   Omit<NewEmployee, "id" | "createdAt" | "updatedAt">
 >;
 
+// Whitelist of mutable fields. Defends against a future caller that
+// builds a patch from arbitrary form input — e.g. the employee-side
+// /me/profile action passing through a pay-rate field. Anything not in
+// this set is silently dropped from the update set.
+const UPDATABLE_FIELDS = new Set<keyof UpdateEmployeePatch>([
+  "displayName",
+  "legalName",
+  "email",
+  "phone",
+  "shiftId",
+  "payType",
+  "payScheduleId",
+  "hourlyRateCents",
+  "language",
+  "notes",
+  "ngtecoEmployeeRef",
+  "legacyId",
+  "hiredOn",
+  "status",
+  "requiresW2Upload",
+]);
+
+function whitelistPatch(patch: UpdateEmployeePatch): UpdateEmployeePatch {
+  const out: UpdateEmployeePatch = {};
+  for (const k of Object.keys(patch) as (keyof UpdateEmployeePatch)[]) {
+    if (UPDATABLE_FIELDS.has(k)) {
+      // Type system can't narrow here; runtime check above is the gate.
+      (out as Record<string, unknown>)[k] = (patch as Record<string, unknown>)[k];
+    }
+  }
+  return out;
+}
+
 export async function updateEmployee(
   id: string,
   patch: UpdateEmployeePatch,
   actor: Actor,
 ): Promise<Employee> {
+  const cleanPatch = whitelistPatch(patch);
   return db.transaction(async (tx) => {
     const [before] = await tx
       .select()
@@ -151,22 +185,22 @@ export async function updateEmployee(
     if (!before) throw new Error(`updateEmployee: employee ${id} not found`);
     const [row] = await tx
       .update(employees)
-      .set({ ...patch, updatedAt: new Date() })
+      .set({ ...cleanPatch, updatedAt: new Date() })
       .where(eq(employees.id, id))
       .returning();
     if (!row) throw new Error("updateEmployee: returning() empty");
     // If the employee has a linked User, keep its login email in sync with
     // the employee's email — admins set it on the Employee form and expect
     // the same address to appear on the Account section.
-    if (patch.email && patch.email !== before.email) {
+    if (cleanPatch.email && cleanPatch.email !== before.email) {
       const [linkedUser] = await tx
         .select()
         .from(users)
         .where(eq(users.employeeId, id));
-      if (linkedUser && linkedUser.email !== patch.email) {
+      if (linkedUser && linkedUser.email !== cleanPatch.email) {
         await tx
           .update(users)
-          .set({ email: patch.email, updatedAt: new Date() })
+          .set({ email: cleanPatch.email, updatedAt: new Date() })
           .where(eq(users.id, linkedUser.id));
         await writeAudit(
           {
@@ -176,7 +210,7 @@ export async function updateEmployee(
             targetType: "User",
             targetId: linkedUser.id,
             before: { email: linkedUser.email },
-            after: { email: patch.email },
+            after: { email: cleanPatch.email },
           },
           tx,
         );

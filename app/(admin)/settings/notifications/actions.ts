@@ -20,9 +20,28 @@ export async function updateNotificationsAction(
   formData: FormData,
 ): Promise<{ error?: string } | void> {
   const session = await requireAdmin();
-  // FormData is name="kind|channel" → "on" / null. Reconstruct the matrix.
-  const defaults: Record<string, { in_app: boolean; email: boolean; push: boolean }> = {};
+  // FormData is name="kind|channel" → "on" / null. Reconstruct the
+  // matrix, but only for kinds that ACTUALLY appear in the form. If a
+  // future kind is added to the enum but not yet rendered in the form
+  // template, naively writing all of `notificationKind.options` would
+  // silently disable every channel for that kind ("on" never present
+  // → all false, overwriting whatever was previously configured).
+  const current = await getSetting("notifications");
+  const defaults: Record<string, { in_app: boolean; email: boolean; push: boolean }> = {
+    ...current.defaults,
+  };
   for (const kind of notificationKind.options) {
+    // Skip kinds the form didn't render this time so we preserve their
+    // existing config. We detect "rendered" by the presence of any
+    // checkbox name with that kind prefix in the FormData.
+    const rendered =
+      formData.has(`${kind}|in_app`) ||
+      formData.has(`${kind}|email`) ||
+      formData.has(`${kind}|push`) ||
+      // Hidden marker the form template emits so an all-unchecked row
+      // is still distinguishable from "kind not in the form".
+      formData.has(`${kind}|present`);
+    if (!rendered) continue;
     defaults[kind] = {
       in_app: formData.get(`${kind}|in_app`) === "on",
       email: formData.get(`${kind}|email`) === "on",
@@ -33,7 +52,6 @@ export async function updateNotificationsAction(
   for (const v of Object.values(defaults)) {
     if (!channelSchema.safeParse(v).success) return { error: "Bad shape." };
   }
-  const current = await getSetting("notifications");
   await setSetting(
     "notifications",
     { ...current, defaults },
