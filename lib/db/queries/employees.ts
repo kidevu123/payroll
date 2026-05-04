@@ -224,6 +224,19 @@ export async function archiveEmployee(
       .where(eq(employees.id, id))
       .returning();
     if (!row) throw new Error("archiveEmployee: returning() empty");
+    // Disable the linked user so a terminated employee can't keep
+    // logging in to /me. Without this their session stays valid until
+    // it expires naturally.
+    const [linkedUser] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.employeeId, id));
+    if (linkedUser) {
+      await tx
+        .update(users)
+        .set({ disabledAt: new Date() })
+        .where(eq(users.id, linkedUser.id));
+    }
     await writeAudit(
       {
         actorId: actor.id,
@@ -232,7 +245,7 @@ export async function archiveEmployee(
         targetType: "Employee",
         targetId: id,
         before,
-        after: row,
+        after: { ...row, linkedUserDisabled: !!linkedUser },
       },
       tx,
     );

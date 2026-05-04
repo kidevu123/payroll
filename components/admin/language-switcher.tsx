@@ -31,7 +31,7 @@ export function LanguageSwitcher({ current }: { current: "en" | "es" }) {
 
   return (
     <div
-      className="hidden sm:inline-flex items-center gap-0 rounded-input border border-border bg-surface-2 p-0.5"
+      className="inline-flex items-center gap-0 rounded-input border border-border bg-surface-2 p-0.5"
       title="Language"
     >
       <Globe className="h-3.5 w-3.5 text-text-subtle ml-1.5" aria-hidden />
@@ -41,8 +41,11 @@ export function LanguageSwitcher({ current }: { current: "en" | "es" }) {
           type="button"
           disabled={pending !== null}
           onClick={() => pick(loc)}
+          // 44px min target so the switcher works on phones (the
+          // employee portal is mobile-first and the only place an
+          // employee can change their UI language).
           className={
-            "h-7 px-2 rounded-input text-xs font-medium transition-colors " +
+            "min-h-[36px] min-w-[44px] px-2 rounded-input text-xs font-medium transition-colors flex items-center justify-center " +
             (current === loc
               ? "bg-brand-50 text-brand-800"
               : "text-text-muted hover:bg-surface")

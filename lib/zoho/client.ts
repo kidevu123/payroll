@@ -101,15 +101,29 @@ async function authedFetch(
     }
     return fetch(url, { ...init, headers });
   };
-  // First attempt with cached/refreshed token.
+  // Retry policy:
+  //  - 401 → evict token cache, fetch fresh token, retry once
+  //  - 429 / 502 / 503 / 504 → exponential backoff up to 3 attempts,
+  //    honoring Retry-After when present (Zoho rate-limits at 100/min/org)
+  //  - other 4xx/5xx → return as-is for the caller to surface
   let token = await getAccessToken(org);
   let resp = await doFetch(token);
-  // If Zoho rejects the token (401 / 403 invalid_token), evict the cache
-  // and retry once with a fresh token. Without this, a single revoked
-  // token poisons all subsequent calls until the process restarts.
   if (resp.status === 401) {
     tokenCache.delete(org.id);
     token = await getAccessToken(org);
+    resp = await doFetch(token);
+  }
+  let attempt = 0;
+  while (
+    (resp.status === 429 || (resp.status >= 502 && resp.status <= 504)) &&
+    attempt < 3
+  ) {
+    attempt++;
+    const retryAfter = Number(resp.headers.get("retry-after"));
+    const delayMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : Math.min(2000 * 2 ** (attempt - 1), 8000);
+    await new Promise((r) => setTimeout(r, delayMs));
     resp = await doFetch(token);
   }
   return resp;

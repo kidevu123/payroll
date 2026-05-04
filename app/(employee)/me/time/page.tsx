@@ -30,10 +30,12 @@ function fmtTime(d: Date | null, tz: string): string {
   }).format(d);
 }
 
-function startOfWeek(iso: string): string {
+function startOfWeek(iso: string, startDayOfWeek: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
   const dow = d.getUTCDay(); // 0=Sun..6=Sat
-  const back = (dow + 6) % 7; // back to Monday
+  // Back up to the most recent occurrence of the configured start day.
+  // (dow - startDow + 7) % 7 = days since last <startDow>.
+  const back = (dow - startDayOfWeek + 7) % 7;
   return new Date(d.getTime() - back * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
@@ -52,6 +54,7 @@ export default async function EmployeeTime() {
   }
   const company = await getSetting("company");
   const payRules = await getSetting("payRules");
+  const payPeriod = await getSetting("payPeriod");
   // Dedup once at the top so today + week views both render the same set.
   const punches = dedupNearDuplicatePunches(
     await listPunches({ employeeId: session.user.employeeId }),
@@ -66,7 +69,7 @@ export default async function EmployeeTime() {
   const byWeek = new Map<string, Map<string, typeof punches>>();
   for (const p of recent) {
     const day = dayKey(p.clockIn, company.timezone);
-    const week = startOfWeek(day);
+    const week = startOfWeek(day, payPeriod.startDayOfWeek);
     let weekMap = byWeek.get(week);
     if (!weekMap) {
       weekMap = new Map();

@@ -8,6 +8,7 @@ import { payPeriods, payrollRuns, punches } from "@/lib/db/schema";
 import { requireOwner } from "@/lib/auth-guards";
 import { writeAudit } from "@/lib/db/audit";
 import { logger } from "@/lib/telemetry";
+import { getSetting } from "@/lib/settings/runtime";
 
 const schema = z.object({
   /** Soft-delete every non-voided punch with clock_in on or after this date. */
@@ -55,6 +56,43 @@ export async function wipePunchesAfterAction(
     };
   }
 
+  // Resolve "from <fromDate>" in COMPANY tz so the cutoff is "midnight
+  // ET on this date", not midnight UTC (which would be ~7pm previous
+  // day in ET and silently void the previous evening's late shift).
+  const company = await getSetting("company");
+  const tz = company.timezone ?? "America/New_York";
+  // Parse YYYY-MM-DD as midnight in `tz` by formatting noon-UTC of the
+  // same date in tz, then computing the offset in minutes. We just want
+  // the instant equal to <fromDate>T00:00 in tz expressed as a real Date.
+  const cutoff = (() => {
+    const noonUtc = new Date(`${parsed.data.fromDate}T12:00:00Z`);
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    const parts = dtf.formatToParts(noonUtc);
+    const get = (k: string) => parts.find((p) => p.type === k)?.value ?? "00";
+    // tz wall-clock minus UTC wall-clock for this instant = offset (minutes).
+    // Build "tz-local noon" as a UTC date and diff with noonUtc.
+    const tzNoon = Date.UTC(
+      Number(get("year")),
+      Number(get("month")) - 1,
+      Number(get("day")),
+      Number(get("hour")),
+      Number(get("minute")),
+      Number(get("second")),
+    );
+    const offsetMs = noonUtc.getTime() - tzNoon;
+    return new Date(
+      new Date(`${parsed.data.fromDate}T00:00:00Z`).getTime() + offsetMs,
+    );
+  })();
   const voidedRows = await db
     .update(punches)
     .set({
@@ -63,7 +101,7 @@ export async function wipePunchesAfterAction(
     })
     .where(
       and(
-        gte(punches.clockIn, new Date(`${parsed.data.fromDate}T00:00:00Z`)),
+        gte(punches.clockIn, cutoff),
         isNull(punches.voidedAt),
       ),
     )

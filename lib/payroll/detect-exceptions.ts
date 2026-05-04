@@ -80,7 +80,11 @@ function dayInTimezone(d: Date, tz: string): string {
 }
 
 function dayOfWeekInTimezone(iso: string): number {
-  // Treat YYYY-MM-DD as a UTC midnight; UTC weekday is stable across host TZ.
+  // Treat YYYY-MM-DD as a calendar day in UTC. The function name says
+  // "in timezone" but the calendar date the caller passes is already
+  // resolved to a company-tz day, so UTC weekday math is correct here
+  // — Sat is Sat regardless of the wall-clock zone for an all-day date.
+  // Kept as UTC for stability across host-TZ shifts.
   return new Date(`${iso}T00:00:00Z`).getUTCDay();
 }
 

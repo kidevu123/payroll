@@ -338,6 +338,25 @@ export async function handlePayrollRunPublish(data: {
   await markPublished(runId);
   await transitionRun(runId, "PUBLISHED", null, {});
 
+  // Auto-lock the period when the run publishes — but only if we have
+  // a real user-level actor (run.approvedById). The lockPeriod FK
+  // requires lockedById ∈ users.id, so a system path would need an
+  // explicit system-user row. When approvedById is set (the admin who
+  // clicked Approve), forward that actor and lock idempotently.
+  if (run.approvedById) {
+    try {
+      const { lockPeriod } = await import("@/lib/db/queries/pay-periods");
+      await lockPeriod(period.id, {
+        id: run.approvedById,
+        role: "ADMIN",
+      });
+    } catch (err) {
+      // Non-fatal — publish already landed. Manual Lock from the
+      // period page is still available as a fallback.
+      console.warn("auto-lock after publish failed:", err);
+    }
+  }
+
   // Notifications: payroll_run.published → all employees with payslips +
   // admins (confirmation).
   const employeesWithPayslips = sigRows.length > 0 ? employees.filter((e) =>

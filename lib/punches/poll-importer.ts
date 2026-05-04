@@ -56,13 +56,23 @@ export async function importPunchPoll(
   const { createHash } = await import(/* webpackIgnore: true */ "node:crypto");
 
   // Resolve every refs → employee in one go.
+  // Exclude TERMINATED employees from the poll mapping. A terminated
+  // employee shouldn't keep accumulating new cron-poll punches; if the
+  // NGTeco vendor still has their badge, we skip with no warning. ACTIVE
+  // + INACTIVE both pass through (INACTIVE is a soft-pause state,
+  // typically used mid-leave).
   const empRows = await db
     .select({
       id: employees.id,
       ref: employees.ngtecoEmployeeRef,
     })
     .from(employees)
-    .where(sql`${employees.ngtecoEmployeeRef} IS NOT NULL`);
+    .where(
+      and(
+        sql`${employees.ngtecoEmployeeRef} IS NOT NULL`,
+        sql`${employees.status} <> 'TERMINATED'`,
+      ),
+    );
   const empByRef = new Map<string, string>();
   for (const r of empRows) {
     if (r.ref) empByRef.set(r.ref, r.id);
@@ -87,7 +97,7 @@ export async function importPunchPoll(
 
   // For each group, pair and upsert.
   for (const g of groups.values()) {
-    const periodId = await resolvePeriodIdForDay(g.day);
+    const periodId = await resolvePeriodIdForDay(g.day, options.timezone);
     if (!periodId) continue;
     const sorted = g.events
       .slice()
@@ -164,7 +174,10 @@ export async function importPunchPoll(
   return summary;
 }
 
-async function resolvePeriodIdForDay(dayIso: string): Promise<string | null> {
+async function resolvePeriodIdForDay(
+  dayIso: string,
+  timezone: string,
+): Promise<string | null> {
   const [existing] = await db
     .select({ id: payPeriods.id })
     .from(payPeriods)
@@ -176,7 +189,13 @@ async function resolvePeriodIdForDay(dayIso: string): Promise<string | null> {
     )
     .limit(1);
   if (existing) return existing.id;
-  const today = new Intl.DateTimeFormat("en-CA").format(new Date());
+  // Use COMPANY tz for "today" so a near-midnight first-punch can't
+  // trigger a rollover create on the wrong calendar day. Without the
+  // explicit timeZone, the host (Docker LXC) tz is used — UTC inside
+  // the container.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+  }).format(new Date());
   await ensureNextPeriod(today);
   const cur = await getCurrentPeriod(dayIso);
   return cur?.id ?? null;

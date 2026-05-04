@@ -67,7 +67,11 @@ export function dedupNearDuplicatePunches<T extends PunchLike>(
       const bDur = b.clockOut
         ? asDate(b.clockOut).getTime() - asDate(b.clockIn).getTime()
         : 0;
-      return bDur - aDur;
+      if (aDur !== bDur) return bDur - aDur;
+      // Stable tie-breaker by id so display + auto-merge pick the same
+      // survivor across calls. Without this, render-time dedup could
+      // surface row A while mergeDuplicatePunches kept row B.
+      return a.id.localeCompare(b.id);
     });
     out.push(list[0]!);
   }

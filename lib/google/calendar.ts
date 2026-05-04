@@ -20,11 +20,30 @@ export type TimeOffEvent = {
   endDateExclusive: string;
 };
 
+// In-process token cache for the single configured Google Calendar.
+// Without this, every pushTimeOffEvent / deleteTimeOffEvent fires an
+// extra refresh-token round-trip (Google rate-limits refresh requests).
+// Tokens last 3600s; we cache for 3540s to leave a 60s safety margin.
+let cachedGcalToken: {
+  accessToken: string;
+  calendarId: string;
+  expiresAt: number;
+} | null = null;
+const GCAL_TOKEN_TTL_MS = 3540 * 1000;
+
 /**
  * Get a fresh access token using the stored refresh token. Surfaces a
- * clear error if the calendar isn't connected.
+ * clear error if the calendar isn't connected. Uses the in-process
+ * cache to avoid a refresh round-trip on every call.
  */
 async function freshAccessToken(): Promise<{ accessToken: string; calendarId: string }> {
+  const now = Date.now();
+  if (cachedGcalToken && cachedGcalToken.expiresAt > now + 30_000) {
+    return {
+      accessToken: cachedGcalToken.accessToken,
+      calendarId: cachedGcalToken.calendarId,
+    };
+  }
   const cfg = await getSetting("googleCalendar");
   if (!cfg.refreshTokenSealed || !cfg.calendarId) {
     throw new Error("Google Calendar not connected.");
@@ -32,7 +51,20 @@ async function freshAccessToken(): Promise<{ accessToken: string; calendarId: st
   const sealed = JSON.parse(cfg.refreshTokenSealed) as SealedSecret;
   const refreshToken = openSealed(sealed);
   const { access_token } = await refreshAccessToken(refreshToken);
+  cachedGcalToken = {
+    accessToken: access_token,
+    calendarId: cfg.calendarId,
+    expiresAt: now + GCAL_TOKEN_TTL_MS,
+  };
   return { accessToken: access_token, calendarId: cfg.calendarId };
+}
+
+/**
+ * Drop the in-process token cache. Called after disconnect / reconnect
+ * so we don't keep using a token from a now-detached refresh token.
+ */
+export function invalidateGoogleCalendarTokenCache(): void {
+  cachedGcalToken = null;
 }
 
 /** Insert (or upsert via id) a time-off event on the configured calendar. */
