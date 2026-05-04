@@ -1,14 +1,14 @@
-// Streams the period signature report PDF. Admin-only.
+// Streams a printable admin report PDF — per-employee day breakdown
+// (with signature + date lines), followed by a single payroll summary
+// table. Owner directive: matches the legacy "Admin Report" format
+// they use for handing the printed sheet to employees to sign.
 //
-// If the file doesn't exist on disk yet (e.g. legacy imports never
-// generated one, or a manual run that hasn't been approved), build it
-// on demand from the live period data (employees + punches +
-// rate-history + temp workers) so the owner can always print a
-// signed report regardless of the run's path through the system.
+// Builds on demand from live data, so legacy-imported, manually-
+// uploaded, and cron-driven runs all produce a printable report
+// regardless of whether one was cached on disk.
 
 import { NextResponse } from "next/server";
-import { join } from "path";
-import { eq, isNull, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { db } from "@/lib/db";
@@ -20,9 +20,30 @@ import { listShifts } from "@/lib/db/queries/shifts";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
-import type { SignatureReportInput } from "@/lib/pdf/types";
+import type { AdminReportInput } from "@/lib/pdf/types";
 
-const PAYSLIP_ROOT = process.env.PAYSLIP_STORAGE_DIR ?? "/data/payslips";
+function tzDayKey(d: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+}
+
+function tzTimeOfDay(d: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  let h = "00";
+  let m = "00";
+  let s = "00";
+  for (const p of parts) {
+    if (p.type === "hour") h = p.value === "24" ? "00" : p.value;
+    else if (p.type === "minute") m = p.value;
+    else if (p.type === "second") s = p.value;
+  }
+  return `${h}:${m}:${s}`;
+}
 
 export async function GET(
   _req: Request,
@@ -33,34 +54,22 @@ export async function GET(
   const period = await getPeriodById(periodId);
   if (!period) return new NextResponse("period not found", { status: 404 });
 
-  const cachedPath = join(PAYSLIP_ROOT, period.startDate, "signature-report.pdf");
-  const { readFile } = await import("fs/promises");
-  let bytes: Buffer | null = null;
-  try {
-    bytes = await readFile(cachedPath);
-  } catch {
-    // Not on disk — build it on demand.
-  }
-
-  if (!bytes) {
-    bytes = await buildSignatureReport(periodId, period.startDate, period.endDate);
-  }
-
+  const bytes = await buildAdminReport(periodId, period.startDate, period.endDate);
   return new NextResponse(bytes as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="signature-report-${period.startDate}.pdf"`,
+      "Content-Disposition": `inline; filename="admin-report-${period.startDate}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });
 }
 
-async function buildSignatureReport(
+async function buildAdminReport(
   periodId: string,
   startDate: string,
   endDate: string,
 ): Promise<Buffer> {
-  const [employees, punches, payRules, company, shifts, tempWorkers, tasks] =
+  const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks] =
     await Promise.all([
       listEmployees({ status: "ACTIVE" }),
       listPunches({ periodId }),
@@ -76,8 +85,7 @@ async function buildSignatureReport(
         .from(taskPayLineItems)
         .where(eq(taskPayLineItems.periodId, periodId)),
     ]);
-  void and;
-  void isNull;
+
   const shiftById = new Map(shifts.map((s) => [s.id, s]));
   const tasksByEmployee = new Map<string, typeof tasks>();
   for (const t of tasks) {
@@ -95,8 +103,40 @@ async function buildSignatureReport(
     punchesByEmployee.set(empId, dedupNearDuplicatePunches(list));
   }
 
-  const sigRows: SignatureReportInput["rows"] = [];
-  for (const e of employees) {
+  const tz = company.timezone;
+  const buildDayInOut = (
+    list: typeof punches,
+  ): Map<string, { inTime?: string; outTime?: string }> => {
+    const out = new Map<string, { inMs: number; outMs: number }>();
+    for (const p of list) {
+      if (p.voidedAt) continue;
+      if (!p.clockOut) continue;
+      const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+      const outT = p.clockOut instanceof Date ? p.clockOut : new Date(p.clockOut);
+      if (Number.isNaN(inT.getTime()) || Number.isNaN(outT.getTime())) continue;
+      if (outT.getTime() <= inT.getTime()) continue;
+      const day = tzDayKey(inT, tz);
+      const cur = out.get(day);
+      if (!cur) {
+        out.set(day, { inMs: inT.getTime(), outMs: outT.getTime() });
+      } else {
+        if (inT.getTime() < cur.inMs) cur.inMs = inT.getTime();
+        if (outT.getTime() > cur.outMs) cur.outMs = outT.getTime();
+      }
+    }
+    const formatted = new Map<string, { inTime?: string; outTime?: string }>();
+    for (const [day, v] of out) {
+      formatted.set(day, {
+        inTime: tzTimeOfDay(new Date(v.inMs), tz),
+        outTime: tzTimeOfDay(new Date(v.outMs), tz),
+      });
+    }
+    return formatted;
+  };
+
+  const reportEmployees: AdminReportInput["employees"] = [];
+
+  for (const e of allEmployees) {
     if (e.payType === "SALARIED") continue;
     const ePunches = punchesByEmployee.get(e.id) ?? [];
     const eTasks = tasksByEmployee.get(e.id) ?? [];
@@ -106,62 +146,111 @@ async function buildSignatureReport(
       punches: ePunches,
       rateAt: (p) => {
         const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-        const day = new Intl.DateTimeFormat("en-CA", {
-          timeZone: company.timezone,
-        }).format(d);
+        const day = tzDayKey(d, tz);
         for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
         return e.hourlyRateCents ?? 0;
       },
       taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
-      timezone: company.timezone,
+      timezone: tz,
       rules: {
         rounding: payRules.rounding,
         hoursDecimalPlaces: payRules.hoursDecimalPlaces,
       },
     });
     if (result.totalHours <= 0 && result.taskCents <= 0) continue;
-    sigRows.push({
-      shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? "Unassigned" : "Unassigned",
-      employeeName: e.displayName,
+    const dayInOut = buildDayInOut(ePunches);
+    reportEmployees.push({
+      displayName: e.displayName,
+      legalName: e.legalName,
       legacyId: e.legacyId,
-      hours: result.totalHours,
-      roundedCents: result.roundedCents,
+      shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
+      hourlyRateCents: e.hourlyRateCents,
+      days: result.byDay.map((d) => {
+        const io = dayInOut.get(d.date);
+        return {
+          ...d,
+          ...(io?.inTime ? { inTime: io.inTime } : {}),
+          ...(io?.outTime ? { outTime: io.outTime } : {}),
+        };
+      }),
+      totals: {
+        hours: result.totalHours,
+        regularCents: result.regularCents,
+        overtimeCents: result.overtimeCents,
+        taskCents: result.taskCents,
+        grossCents: result.grossCents,
+        roundedCents: result.roundedCents,
+      },
+      taskPay: eTasks.map((t) => ({
+        description: t.description,
+        amountCents: t.amountCents,
+      })),
     });
   }
 
-  // Render temp workers as their own pseudo-rows so the owner can
-  // collect signatures for them too.
+  // Render temp workers as their own pseudo-employee pages so they
+  // get a signature line too. Their "day" is a single synthetic row
+  // with the period start date + their amount.
   for (const tw of tempWorkers) {
-    sigRows.push({
-      shiftName: "Temp / manual labor",
-      employeeName: tw.workerName,
+    const hours = tw.hours !== null ? Number(tw.hours) : 0;
+    reportEmployees.push({
+      displayName: tw.workerName,
+      legalName: tw.workerName,
       legacyId: null,
-      hours: tw.hours !== null ? Number(tw.hours) : 0,
-      roundedCents: tw.amountCents,
+      shiftName: "Temp / manual labor",
+      hourlyRateCents: hours > 0 ? Math.round(tw.amountCents / hours) : null,
+      days: [
+        {
+          date: startDate,
+          hours,
+          cents: tw.amountCents,
+          isOvertime: false,
+        },
+      ],
+      totals: {
+        hours,
+        regularCents: tw.amountCents,
+        overtimeCents: 0,
+        taskCents: 0,
+        grossCents: tw.amountCents,
+        roundedCents: tw.amountCents,
+      },
+      taskPay: tw.description
+        ? [{ description: tw.description, amountCents: tw.amountCents }]
+        : [],
     });
   }
 
-  sigRows.sort((a, b) => {
-    const s = a.shiftName.localeCompare(b.shiftName);
-    return s !== 0 ? s : a.employeeName.localeCompare(b.employeeName);
+  reportEmployees.sort((a, b) => {
+    const s = (a.shiftName ?? "Unassigned").localeCompare(
+      b.shiftName ?? "Unassigned",
+    );
+    return s !== 0 ? s : a.displayName.localeCompare(b.displayName);
   });
 
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const SIG_DOC_PATH = "/app/.next/pdf/signature-report.js";
-  const signatureDoc = (await import(
-    /* webpackIgnore: true */ SIG_DOC_PATH
-  )) as typeof import("@/lib/pdf/signature-report");
+  const ADMIN_REPORT_PATH = "/app/.next/pdf/admin-report.js";
+  const adminDoc = (await import(
+    /* webpackIgnore: true */ ADMIN_REPORT_PATH
+  )) as typeof import("@/lib/pdf/admin-report");
 
-  const sigInput: SignatureReportInput = {
-    company: { name: company.name, brandColorHex: company.brandColorHex },
+  const input: AdminReportInput = {
+    company: {
+      name: company.name,
+      address: company.address,
+      brandColorHex: company.brandColorHex,
+      locale: company.locale,
+    },
     period: { startDate, endDate },
-    rows: sigRows,
+    rules: {
+      rounding: payRules.rounding,
+      hoursDecimalPlaces: payRules.hoursDecimalPlaces,
+    },
+    employees: reportEmployees,
     generatedAt: new Date().toISOString(),
   };
-  const buf = await renderer.renderToBuffer(
-    signatureDoc.SignatureReport({ data: sigInput }),
-  );
+  const buf = await renderer.renderToBuffer(adminDoc.AdminReport({ data: input }));
   return buf;
 }
