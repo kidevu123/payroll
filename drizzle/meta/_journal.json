@@ -134,6 +134,13 @@
       "when": 1778200000000,
       "tag": "0018_ngteco_portal_url",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778300000000,
+      "tag": "0019_repair_payslip_dispute_columns",
+      "breakpoints": true
     }
   ]
 }
