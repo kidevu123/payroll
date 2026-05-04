@@ -5,12 +5,30 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getSetting, setSetting } from "@/lib/settings/runtime";
 
+// Cron expression: exactly 5 fields (minute hour day-of-month month
+// day-of-week), each a digit/range/list/star. Enforces structure;
+// pg-boss does final semantic validation at runtime (rejects e.g.
+// "99" in the minute field), but this catches obvious typos at save.
+const CRON_FIELD = /^(\*|\d+|\*\/\d+|\d+(-\d+)?(,\d+(-\d+)?)*)$/;
+const cronSchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .refine(
+    (s) => {
+      const parts = s.trim().split(/\s+/);
+      if (parts.length !== 5) return false;
+      return parts.every((p) => CRON_FIELD.test(p));
+    },
+    'Cron must be 5 fields: "<minute> <hour> <day-of-month> <month> <day-of-week>" (e.g. "0 19 * * 0" for Sundays at 7pm).',
+  );
+
 const schema = z.object({
   cronEnabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
   enabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
-  cron: z.string().min(1).max(120).regex(/^[\d*/,\- ]+$/, "Cron must use only digits, *, /, ,, -, and spaces"),
+  cron: cronSchema,
   punchPollEnabled: z.union([z.literal("on").transform(() => true), z.literal("off")]).or(z.boolean()).default(false),
-  punchPollCron: z.string().min(1).max(120).regex(/^[\d*/,\- ]+$/, "Cron must use only digits, *, /, ,, -, and spaces"),
+  punchPollCron: cronSchema,
   employeeFixWindowHours: z.coerce.number().int().min(1).max(168),
   adminAutoNotifyOnIngestFail: z
     .union([z.literal("on").transform(() => true), z.literal("off")])

@@ -30,8 +30,40 @@ export const companySchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a 6-digit hex color")
     .default("#0f766e"),
-  timezone: z.string().default("America/New_York"),
-  locale: z.string().default("en-US"),
+  // IANA timezone validation. Intl.supportedValuesOf("timeZone") was
+  // added in Node 18 LTS. Reject "Atlantis/Lemuria" before save instead
+  // of letting Intl.DateTimeFormat throw at render time on every page.
+  timezone: z
+    .string()
+    .default("America/New_York")
+    .refine(
+      (s) => {
+        try {
+          // Throws on unknown zone.
+          new Intl.DateTimeFormat("en-US", { timeZone: s });
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      "Unknown IANA timezone (e.g. America/New_York, Europe/London).",
+    ),
+  // BCP-47 locale validation via Intl.Locale parser — rejects garbage
+  // before save instead of crashing date/money formatters at render.
+  locale: z
+    .string()
+    .default("en-US")
+    .refine(
+      (s) => {
+        try {
+          new Intl.Locale(s);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      "Invalid locale tag (e.g. en-US, es-MX).",
+    ),
 });
 export type CompanySettings = z.infer<typeof companySchema>;
 

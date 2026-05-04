@@ -288,25 +288,30 @@ export default async function PeriodReviewPage({
       {/* Sticky action bar — keeps state pill, totals, primary CTAs visible
           even on long period pages. The lock/mark-paid action used to live at
           page bottom, requiring 3000px of scroll on busy weeks. */}
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-page/95 backdrop-blur border-b border-border">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <Button asChild variant="ghost" size="sm" className="-ml-2 mb-1">
-              <Link href="/reports">
-                <ArrowLeft className="h-4 w-4" /> All reports
-              </Link>
-            </Button>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-semibold tracking-tight">
-                {formatRange(
-                  period.startDate,
-                  canonicalEndForScheduleName(
-                    period.startDate,
-                    period.endDate,
-                    runSchedule?.name ?? null,
-                  ),
-                )}
-              </h1>
+      {/* Static header (date + Back) sits above the sticky bar. The sticky
+          bar holds only the state pills + action buttons so it never
+          wraps to a second row at common laptop widths (1100-1300px),
+          which was the original "buttons all over the place" complaint. */}
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-1">
+          <Link href="/reports">
+            <ArrowLeft className="h-4 w-4" /> All reports
+          </Link>
+        </Button>
+        <h1 className="text-xl font-semibold tracking-tight">
+          {formatRange(
+            period.startDate,
+            canonicalEndForScheduleName(
+              period.startDate,
+              period.endDate,
+              runSchedule?.name ?? null,
+            ),
+          )}
+        </h1>
+      </div>
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-page/95 backdrop-blur border-b border-border">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
               <StatusPill status={period.state} />
               <SchedulePill name={runSchedule?.name ?? null} />
               <span className="text-sm text-text-muted">
@@ -329,7 +334,6 @@ export default async function PeriodReviewPage({
                   </span>
                 )}
               </span>
-            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {run?.pdfPath && (

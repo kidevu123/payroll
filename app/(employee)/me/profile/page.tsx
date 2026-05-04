@@ -2,6 +2,7 @@
 // fields (legal name, email) are read-only here; admins update them
 // from the Employee detail page.
 
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { LogOut, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,7 @@ export default async function EmployeeProfile() {
       <Card>
         <CardContent className="p-4 space-y-3 text-sm">
           <Button asChild variant="secondary" className="w-full justify-center">
-            <a href="/me/profile/notifications">Notifications</a>
+            <Link href="/me/profile/notifications">Notifications</Link>
           </Button>
           <form action={signOutAction}>
             <Button type="submit" variant="secondary" className="w-full justify-center">
