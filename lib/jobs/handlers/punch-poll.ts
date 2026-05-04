@@ -2,15 +2,20 @@
 // 15 min). Scrapes NGTeco's View Attendance Punch view, pairs the events
 // into in/out per employee per day, and upserts into punches.
 //
-// EVERY heavy dependency below (vault, playwright scraper, importer) is
-// dynamic-imported. The reason: lib/jobs/index.ts is reachable from
-// instrumentation.ts via dynamic import, and adding NEW chunks under
-// that subgraph confuses webpack's edge-bundle analyzer enough that it
-// tries to bundle node:crypto/fs/path. Lazy-loading from inside the
-// handler body keeps those modules out of the analysis path.
+// Heavy dependencies (playwright scraper, importer) are dynamic-imported.
+// The reason: lib/jobs/index.ts is reachable from instrumentation.ts via
+// dynamic import, and webpack pulls Playwright + db deps into the chunk
+// otherwise. The vault module is small (only node:crypto, externalized
+// via serverExternalPackages) so it imports statically — earlier we used
+// a webpackIgnore relative-path dynamic-import which broke when called
+// from server-action chunks (different chunk dir, ENOENT).
+//
+// Path stability rule: every dynamic import here uses the @/-alias so
+// resolution doesn't depend on the calling chunk's directory.
 
 import { logger } from "@/lib/telemetry";
 import { getSetting } from "@/lib/settings/runtime";
+import { open as openSealed } from "@/lib/crypto/vault";
 
 function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
   return (
@@ -49,26 +54,12 @@ export async function handlePunchPoll(): Promise<PollSummary> {
   }
   const runId = `poll-${new Date().toISOString().replace(/[:.]/g, "-")}`;
 
-  // webpackIgnore is required: instrumentation.ts statically reaches this
-  // handler, and webpack would otherwise try to include vault.ts (which
-  // imports node:crypto) into the edge bundle and fail the whole build.
-  // The downside is that the relative path resolves differently from
-  // different caller chunks — the cron worker reaches it fine, but a
-  // server action invocation lands in a different chunk dir and gets
-  // ENOENT. The Poll-now manual button is broken as a result; the
-  // scheduled cron still works. Fixing the manual path requires moving
-  // these dynamic imports behind a stable absolute path; deferring until
-  // automation is the priority again.
-  const vault = (await import(
-    /* webpackIgnore: true */ "../../crypto/vault.js"
-  )) as typeof import("@/lib/crypto/vault");
-  const scraperMod = (await import(
-    /* webpackIgnore: true */ "../../ngteco/scraper.js"
-  )) as typeof import("@/lib/ngteco/scraper");
-  const importerMod = (await import(
-    /* webpackIgnore: true */ "../../punches/poll-importer.js"
-  )) as typeof import("@/lib/punches/poll-importer");
-  const { open: openSealed } = vault;
+  // Stable @/-aliased dynamic imports — resolve the same regardless of
+  // which chunk calls handlePunchPoll (cron worker vs server action).
+  // Playwright + db deps stay out of the eager bundle because the import
+  // is lazy.
+  const scraperMod = await import("@/lib/ngteco/scraper");
+  const importerMod = await import("@/lib/punches/poll-importer");
   const {
     scrapeViewAttendance,
     ChallengeDetectedError,

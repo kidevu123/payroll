@@ -76,10 +76,30 @@ const nextConfig = {
   webpack(config, { isServer }) {
     if (isServer) {
       const exact = new Set(serverOnlyPackages);
+      // Node built-ins that need to stay external on the server target.
+      // Reachable from instrumentation.ts → lib/jobs/handlers chain;
+      // webpack can't bundle these and fails the build otherwise.
+      const NODE_BUILTINS = new Set([
+        'crypto',
+        'fs',
+        'fs/promises',
+        'path',
+        'os',
+        'http',
+        'https',
+        'net',
+        'tls',
+        'stream',
+        'url',
+        'zlib',
+        'child_process',
+      ]);
       const externalize = (ctx, cb) => {
         const req = ctx.request;
         if (!req) return cb();
         if (exact.has(req)) return cb(null, `commonjs ${req}`);
+        if (NODE_BUILTINS.has(req)) return cb(null, `commonjs ${req}`);
+        if (req.startsWith('node:')) return cb(null, `commonjs ${req}`);
         if (serverOnlyMatchers.some((m) => m.test(req))) {
           return cb(null, `commonjs ${req}`);
         }

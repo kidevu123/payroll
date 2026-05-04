@@ -41,6 +41,9 @@ export default async function PayrollPage({
   const kindFilter = scheduleTabToKind(tab);
   const [openPeriods, recentInFlight, schedules, lastPoll] = await Promise.all([
     (async () => {
+      // "Recent periods" = the period(s) the admin still has work to do on.
+      // PAID periods are historical — they belong in /reports, not on the
+      // run-launcher page. Filter them out at the query level.
       const base = db
         .select({
           id: payPeriods.id,
@@ -52,9 +55,12 @@ export default async function PayrollPage({
         })
         .from(payPeriods)
         .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
+      const stateFilter = sql`${payPeriods.state} IN ('OPEN','LOCKED')`;
       const q = kindFilter
-        ? base.where(eq(paySchedules.periodKind, kindFilter))
-        : base;
+        ? base.where(
+            sql`${paySchedules.periodKind} = ${kindFilter} AND ${stateFilter}`,
+          )
+        : base.where(stateFilter);
       return q.orderBy(desc(payPeriods.startDate)).limit(8);
     })(),
     db
@@ -78,9 +84,9 @@ export default async function PayrollPage({
     db.select().from(paySchedules).where(eq(paySchedules.active, true)),
     getLastPoll(),
   ]);
+  // openPeriods is filtered to OPEN+LOCKED only (PAID lives in /reports).
   const openCount = openPeriods.filter((p) => p.state === "OPEN").length;
   const lockedCount = openPeriods.filter((p) => p.state === "LOCKED").length;
-  const paidCount = openPeriods.filter((p) => p.state === "PAID").length;
 
   return (
     <div className="space-y-4">
@@ -102,10 +108,8 @@ export default async function PayrollPage({
         </div>
         <div className="text-xs text-text-muted">
           {openCount > 0 && <span>{openCount} open</span>}
-          {openCount > 0 && (lockedCount > 0 || paidCount > 0) && " · "}
+          {openCount > 0 && lockedCount > 0 && " · "}
           {lockedCount > 0 && <span>{lockedCount} locked</span>}
-          {lockedCount > 0 && paidCount > 0 && " · "}
-          {paidCount > 0 && <span>{paidCount} paid</span>}
         </div>
       </div>
 
@@ -192,7 +196,7 @@ export default async function PayrollPage({
                   }`
                 : lockedCount > 0
                   ? `${lockedCount} locked period${lockedCount === 1 ? "" : "s"} awaiting payment. Mark paid from the period detail page once payment is sent.`
-                  : `${paidCount} paid period${paidCount === 1 ? "" : "s"} on file. The next scheduled tick will create a new period.`}
+                  : "Nothing currently in-flight. Historical reports live in Reports."}
             </p>
           ) : (
             recentInFlight.map((r) => (

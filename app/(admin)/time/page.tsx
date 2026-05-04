@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { CalendarDays, Plus } from "lucide-react";
+import { and, desc, eq, lte, gte, sql } from "drizzle-orm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
-import { listEmployees } from "@/lib/db/queries/employees";
 import {
-  getCurrentPeriod,
-  getMostRecentPeriod,
-} from "@/lib/db/queries/pay-periods";
+  ScheduleTabs,
+  parseScheduleTab,
+  scheduleTabToKind,
+} from "@/components/domain/schedule-tabs";
+import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
+import { db } from "@/lib/db";
+import { payPeriods, paySchedules } from "@/lib/db/schema";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -32,6 +36,57 @@ function dayOf(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
+/**
+ * Pick the period to render for the current tab:
+ *   - All        → the period covering today (or the most recent one)
+ *   - Weekly     → the most recent period attached to a WEEKLY schedule
+ *   - Semi-monthly → same, for SEMI_MONTHLY
+ * SALARIED is filtered out of the Time grid entirely (no punches).
+ */
+async function pickPeriodForTab(
+  kind: "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null,
+  today: string,
+): Promise<{
+  id: string;
+  startDate: string;
+  endDate: string;
+  payScheduleId: string | null;
+} | null> {
+  if (!kind) {
+    const [current] = await db
+      .select()
+      .from(payPeriods)
+      .where(
+        and(
+          lte(payPeriods.startDate, today),
+          gte(payPeriods.endDate, today),
+        ),
+      )
+      .limit(1);
+    if (current) return current;
+    const [mostRecent] = await db
+      .select()
+      .from(payPeriods)
+      .orderBy(desc(payPeriods.startDate))
+      .limit(1);
+    return mostRecent ?? null;
+  }
+  // Tab-filtered: most recent period on a schedule of the requested kind.
+  const rows = await db
+    .select({
+      id: payPeriods.id,
+      startDate: payPeriods.startDate,
+      endDate: payPeriods.endDate,
+      payScheduleId: payPeriods.payScheduleId,
+    })
+    .from(payPeriods)
+    .innerJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
+    .where(eq(paySchedules.periodKind, kind))
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 type CellState = "complete" | "incomplete" | "missed" | "inactive";
 
 function cellClasses(state: CellState): string {
@@ -47,14 +102,21 @@ function cellClasses(state: CellState): string {
   }
 }
 
-export default async function TimePage() {
+export default async function TimePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ schedule?: string }>;
+}) {
   const company = await getSetting("company");
   const today = todayInTimezone(company.timezone);
+  const tab = parseScheduleTab((await searchParams).schedule);
+  const kindFilter = scheduleTabToKind(tab);
 
   // Read-only — auto-create disabled. Period creation now belongs to
-  // the CSV upload + manual punch flows.
-  const period =
-    (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
+  // the CSV upload + manual punch flows. Tab-aware: when filtering by
+  // weekly / semi-monthly, pick the most recent period whose schedule
+  // matches the tab. Defaults to the schedule-agnostic latest period.
+  const period = await pickPeriodForTab(kindFilter, today);
 
   if (!period) {
     return (
@@ -92,7 +154,16 @@ export default async function TimePage() {
   ]);
   // SALARIED staff don't punch — hide them from the grid so the admin
   // doesn't see "missed" red cells for everyone-on-salary every day.
-  const employees = allActive.filter((e) => e.payType !== "SALARIED");
+  // Schedule-tab filter: when the admin picks Weekly / Semi-monthly,
+  // only show employees on a matching schedule (employees with a NULL
+  // schedule are wildcards and stay visible across both tabs).
+  const employees = allActive
+    .filter((e) => e.payType !== "SALARIED")
+    .filter((e) => {
+      if (!kindFilter) return true;
+      if (e.payScheduleId === null) return true;
+      return e.payScheduleId === period.payScheduleId;
+    });
 
   // Group punches by employeeId + day, then dedup near-duplicates within
   // each cell so the grid doesn't show "1" / "2" cells for what's really
@@ -116,11 +187,12 @@ export default async function TimePage() {
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+        <div className="space-y-2">
           <h1 className="text-2xl font-semibold">Time</h1>
           <p className="text-sm text-text-muted">
             Current period: {period.startDate} to {lastDay}
           </p>
+          <ScheduleTabs current={tab} basePath="/time" />
         </div>
         <div className="flex items-center gap-3">
           <Button asChild size="sm" variant="secondary">
