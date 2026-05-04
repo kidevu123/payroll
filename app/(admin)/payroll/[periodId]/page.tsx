@@ -192,7 +192,18 @@ export default async function PeriodReviewPage({
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.employee.displayName.localeCompare(b.employee.displayName));
 
-  const totals = rendered.reduce(
+  // For PAID/PUBLISHED periods (especially LEGACY_IMPORT), the stored
+  // payslips are the canonical "what was actually paid" — live computePay
+  // can under-report when punch data wasn't fully imported. Sum the
+  // non-voided payslips and use that as the period total instead.
+  const payslipSum = allPayslips
+    .filter((p) => !p.voidedAt)
+    .reduce((s, p) => s + p.roundedPayCents, 0);
+  const payslipHours = allPayslips
+    .filter((p) => !p.voidedAt)
+    .reduce((s, p) => s + Number(p.hoursWorked ?? 0), 0);
+
+  const liveTotals = rendered.reduce(
     (acc, r) => {
       acc.hours += r.result.totalHours;
       acc.gross += r.result.grossCents;
@@ -201,6 +212,61 @@ export default async function PeriodReviewPage({
     },
     { hours: 0, gross: 0, rounded: 0 },
   );
+
+  // Use stored payslip data when it's authoritative (LEGACY_IMPORT or any
+  // PAID period). Otherwise prefer live computePay results so the admin
+  // sees the latest from current punches.
+  const useStoredTotals =
+    period.state === "PAID" ||
+    run?.source === "LEGACY_IMPORT" ||
+    (payslipSum > 0 && liveTotals.rounded === 0);
+
+  // Map employee_id -> active payslip for quick row override.
+  const payslipByEmployee = new Map(
+    allPayslips.filter((p) => !p.voidedAt).map((p) => [p.employeeId, p]),
+  );
+
+  // When useStoredTotals is true, build rows from the payslips themselves
+  // (so legacy periods with sparse punch data still show every employee
+  // who got paid). For employees not in `rendered`, append synthetic rows
+  // sourced from the payslip.
+  type RowLike = (typeof rendered)[number];
+  const renderedById = new Map(rendered.map((r) => [r.employee.id, r]));
+  let displayRows: RowLike[] = rendered;
+  if (useStoredTotals) {
+    displayRows = [];
+    for (const py of allPayslips) {
+      if (py.voidedAt) continue;
+      const emp = allEmployees.find((e) => e.id === py.employeeId);
+      if (!emp) continue;
+      const existing = renderedById.get(emp.id);
+      const hours = Number(py.hoursWorked ?? 0);
+      const result = {
+        ...(existing?.result ?? {
+          regularCents: 0,
+          overtimeCents: 0,
+          taskCents: 0,
+          byDay: [],
+        }),
+        totalHours: hours,
+        grossCents: py.grossPayCents,
+        roundedCents: py.roundedPayCents,
+      } as RowLike["result"];
+      displayRows.push({
+        employee: emp,
+        result,
+        incomplete: existing?.incomplete ?? 0,
+        punches: existing?.punches ?? [],
+      });
+    }
+    displayRows.sort((a, b) =>
+      a.employee.displayName.localeCompare(b.employee.displayName),
+    );
+  }
+
+  const totals = useStoredTotals
+    ? { hours: payslipHours, gross: payslipSum, rounded: payslipSum }
+    : liveTotals;
 
   return (
     <div className="space-y-6">
@@ -235,12 +301,9 @@ export default async function PeriodReviewPage({
               <StatusPill status={period.state} />
               <SchedulePill name={runSchedule?.name ?? null} />
               <span className="text-sm text-text-muted">
-                {rendered.length} emp ·{" "}
+                {displayRows.length} emp ·{" "}
                 <span className="font-medium text-text">
-                  <MoneyDisplay
-                    cents={run?.totalAmountCents ?? totals.rounded}
-                    monospace={false}
-                  />
+                  <MoneyDisplay cents={totals.rounded} monospace={false} />
                 </span>
               </span>
             </div>
@@ -258,7 +321,13 @@ export default async function PeriodReviewPage({
               </Button>
             )}
             {run && <PublishPortalButton run={run} />}
-            <LockButtons period={period} />
+            <LockButtons
+              period={period}
+              incompletePunchCount={displayRows.reduce(
+                (s, r) => s + (r.incomplete ?? 0),
+                0,
+              )}
+            />
           </div>
         </div>
       </div>
@@ -287,7 +356,7 @@ export default async function PeriodReviewPage({
                 <div className="text-right">Issues</div>
               </div>
               <div className="divide-y divide-border">
-                {rendered.map(({ employee, result, incomplete, punches }) => {
+                {displayRows.map(({ employee, result, incomplete, punches }) => {
                   const ePunches = punches.filter((p) => !p.voidedAt);
                   return (
                     <details key={employee.id} className="group">
@@ -393,9 +462,10 @@ export default async function PeriodReviewPage({
 
       <PayrollDocsSection
         periodId={periodId}
+        periodPayScheduleId={period.payScheduleId ?? null}
         // Pass ALL active employees so the section can show salaried
         // staff alongside the requires-W2-upload flag list. The section
-        // filters internally.
+        // filters internally by requiresW2Upload AND schedule match.
         employees={allEmployees
           .filter((e) => e.status === "ACTIVE")
           .map((e) => ({
@@ -403,6 +473,7 @@ export default async function PeriodReviewPage({
             displayName: e.displayName,
             requiresW2Upload: e.requiresW2Upload,
             payType: e.payType,
+            payScheduleId: e.payScheduleId,
           }))}
         initialDocs={payrollDocs}
         locked={period.state === "PAID"}

@@ -21,24 +21,35 @@ import {
 
 type EmployeeLite = Pick<
   Employee,
-  "id" | "displayName" | "requiresW2Upload" | "payType"
+  "id" | "displayName" | "requiresW2Upload" | "payType" | "payScheduleId"
 >;
 
 export function PayrollDocsSection({
   periodId,
+  periodPayScheduleId,
   employees,
   initialDocs,
   locked,
 }: {
   periodId: string;
+  /** The period's pay_schedule_id. Only employees on this schedule appear
+   *  in the W2 upload list. NULL legacy periods fall back to "show all
+   *  requiresW2Upload employees" since there's no schedule to scope by. */
+  periodPayScheduleId: string | null;
   employees: EmployeeLite[];
   initialDocs: PayrollPeriodDocument[];
   locked: boolean;
 }) {
-  // Only employees explicitly opted-in via the per-employee
-  // requiresW2Upload flag. Pay-type alone is too broad (most SALARIED
-  // employees are paid in-house); admin must flip the flag deliberately.
-  const w2Employees = employees.filter((e) => e.requiresW2Upload);
+  // Only employees opted-in via the per-employee requiresW2Upload flag,
+  // AND whose pay schedule matches this period. Without the schedule
+  // filter, salaried staff with a weekly schedule (e.g. Seri) or no
+  // schedule (e.g. Sahil) would surface under a semi-monthly period
+  // they have nothing to do with.
+  const w2Employees = employees.filter((e) => {
+    if (!e.requiresW2Upload) return false;
+    if (periodPayScheduleId === null) return true;
+    return e.payScheduleId === periodPayScheduleId;
+  });
 
   if (w2Employees.length === 0) {
     return null;

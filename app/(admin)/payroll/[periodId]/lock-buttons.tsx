@@ -12,7 +12,16 @@ import {
   unmarkPaidAction,
 } from "../actions";
 
-export function LockButtons({ period }: { period: PayPeriod }) {
+export function LockButtons({
+  period,
+  /** Number of incomplete punches across all employees in this period.
+   *  When > 0, the Lock button gates with a confirm dialog so the admin
+   *  has a chance to fix missing clock-outs before the period freezes. */
+  incompletePunchCount = 0,
+}: {
+  period: PayPeriod;
+  incompletePunchCount?: number;
+}) {
   const [unlockOpen, setUnlockOpen] = React.useState(false);
   const [unmarkOpen, setUnmarkOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,6 +88,12 @@ export function LockButtons({ period }: { period: PayPeriod }) {
     return (
       <form
         action={async () => {
+          if (incompletePunchCount > 0) {
+            const ok = window.confirm(
+              `${incompletePunchCount} incomplete punch${incompletePunchCount === 1 ? "" : "es"} in this period (employee clocked in but never clocked out). These contribute $0 to the payslips and stay broken if you lock.\n\nLock anyway?\n\nClick Cancel to fix the punches first — open each flagged employee row in the table to add the missing clock-out.`,
+            );
+            if (!ok) return;
+          }
           setPending(true);
           await lockPeriodAction(period.id);
           setPending(false);
@@ -87,9 +102,18 @@ export function LockButtons({ period }: { period: PayPeriod }) {
         <Button
           type="submit"
           disabled={pending}
-          title="Mark this period ready for review. You can unlock with a reason if you need to make corrections."
+          title={
+            incompletePunchCount > 0
+              ? `${incompletePunchCount} incomplete punches — fix them first or you'll lock with $0 hours for those shifts.`
+              : "Mark this period ready for review. You can unlock with a reason if you need to make corrections."
+          }
         >
           <Lock className="h-4 w-4" /> {pending ? "Locking…" : "Lock period"}
+          {incompletePunchCount > 0 && (
+            <span className="ml-1 rounded-input bg-amber-500 px-1.5 py-0 text-[10px] font-bold text-white">
+              {incompletePunchCount}
+            </span>
+          )}
         </Button>
       </form>
     );
