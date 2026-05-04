@@ -139,7 +139,13 @@ export type AutomationSettings = z.infer<typeof automationSchema>;
 // outside the immediate request that decrypts them for a Playwright session.
 
 export const ngtecoSchema = z.object({
-  portalUrl: z.string().url().default("https://timeclock.ngteco.com"),
+  // NGTeco's web app is served from office.ngteco.com (the timeclock.*
+  // subdomain that the marketing site references doesn't exist as a
+  // routable host — DNS returns NXDOMAIN, scraper bails with
+  // ERR_NAME_NOT_RESOLVED). Use the office subdomain by default; the
+  // setting is admin-editable in /settings/ngteco for forks of the
+  // platform that point elsewhere.
+  portalUrl: z.string().url().default("https://office.ngteco.com"),
   // These are stored as `{ ciphertext, iv }` envelopes. The Settings UI encrypts
   // on write and decrypts on display (with admin role check).
   usernameEncrypted: z
