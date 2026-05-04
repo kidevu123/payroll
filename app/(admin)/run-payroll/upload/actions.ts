@@ -332,6 +332,14 @@ export async function uploadCsvAction(
       : undefined;
   const matched = exact ?? claimable ?? null;
   if (matched) {
+    // Refuse to mutate a LOCKED or PAID period via CSV upload — once a period
+    // is paid out, its data should be immutable. Admin must explicitly Unlock
+    // or Unmark paid first (audited) before re-uploading.
+    if (matched.state === "LOCKED" || matched.state === "PAID") {
+      return {
+        error: `Period ${matched.startDate} → ${matched.endDate} is ${matched.state}. Unlock or unmark paid from the period detail page first; you can't upload a CSV against a frozen period.`,
+      };
+    }
     periodId = matched.id;
     const updates: Record<string, unknown> = {};
     if (matched.endDate !== parsed.data.endDate) {

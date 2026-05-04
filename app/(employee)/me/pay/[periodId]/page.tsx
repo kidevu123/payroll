@@ -76,7 +76,12 @@ export default async function EmployeePayslipViewer({
   // stored numbers should match reality even after the period is
   // marked paid; the recompute is audited so the change trail is
   // preserved.
-  if (payslip) {
+  // Salaried payslips MUST NOT self-recompute — pay is set externally
+  // (accountant), stored as the actual amount; a recompute would drive it
+  // to ~$0 because there are no punches × hourly_rate to sum. Silent
+  // corruption on first view. Only HOURLY pay is safe to recompute.
+  const canSelfHeal = !!payslip && employee?.payType === "HOURLY";
+  if (canSelfHeal && payslip) {
     const live = await listPunches({
       employeeId: payslip.employeeId,
       periodId,

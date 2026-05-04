@@ -46,11 +46,19 @@ export async function pushReportToZoho(
   organizationId: string,
   actor: Actor,
 ): Promise<PushResult> {
-  // Look for an existing OK push first (idempotency).
+  // Look for an existing OK push for THIS RUN AND THIS ORG (idempotency).
+  // The previous query keyed only on payrollRunId, so clicking "Push to
+  // Boomin" on a run already pushed to Haute returned the Haute expense
+  // ID and short-circuited — Boomin never received the push.
   const [existingPush] = await db
     .select()
     .from(zohoPushes)
-    .where(eq(zohoPushes.payrollRunId, payrollRunId));
+    .where(
+      and(
+        eq(zohoPushes.payrollRunId, payrollRunId),
+        eq(zohoPushes.organizationId, organizationId),
+      ),
+    );
   if (existingPush?.status === "OK" && existingPush.expenseId) {
     return { expenseId: existingPush.expenseId, alreadyExists: true };
   }

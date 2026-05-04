@@ -76,9 +76,14 @@ export default async function EmployeeHome() {
     const result = computePay({
       punches,
       rateAt: (p) => {
-        const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
-          .toISOString()
-          .slice(0, 10);
+        // Resolve the punch day in COMPANY TZ (not UTC) — a 22:00 ET punch
+        // shifts to next-day in UTC and silently grabs a next-day rate. Mirrors
+        // the publish handler + period detail page (lib/pdf/build-admin-report.ts).
+        const day = new Intl.DateTimeFormat("en-CA", {
+          timeZone: company.timezone,
+        }).format(
+          p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
+        );
         for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
         return employee.hourlyRateCents ?? 0;
       },

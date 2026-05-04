@@ -428,7 +428,7 @@ export default async function PeriodReviewPage({
               </div>
               <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
                 <div></div>
-                <div>Totals</div>
+                <div>Employee subtotal</div>
                 <div className="text-right font-mono tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
@@ -443,6 +443,30 @@ export default async function PeriodReviewPage({
                 </div>
                 <div></div>
               </div>
+              {tempWorkersTotalCents > 0 && (
+                <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-1 text-xs text-text-muted">
+                  <div></div>
+                  <div>+ Temp / manual labor</div>
+                  <div></div>
+                  <div></div>
+                  <div className="text-right font-mono tabular-nums">
+                    <MoneyDisplay cents={tempWorkersTotalCents} />
+                  </div>
+                  <div></div>
+                </div>
+              )}
+              {tempWorkersTotalCents > 0 && (
+                <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t border-border text-sm font-semibold">
+                  <div></div>
+                  <div>Period grand total</div>
+                  <div></div>
+                  <div></div>
+                  <div className="text-right font-mono tabular-nums">
+                    <MoneyDisplay cents={totals.rounded + tempWorkersTotalCents} />
+                  </div>
+                  <div></div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
