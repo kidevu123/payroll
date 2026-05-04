@@ -16,6 +16,7 @@ import {
   Image as ImageIcon,
   CircleDollarSign,
   CalendarCheck,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const TABS = [
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/security", label: "Security", icon: ShieldCheck },
   { href: "/settings/holidays", label: "Holidays", icon: PartyPopper },
+  { href: "/settings/cleanup", label: "Data cleanup", icon: Wrench },
 ] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
