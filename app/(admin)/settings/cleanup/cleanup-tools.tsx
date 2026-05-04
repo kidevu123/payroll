@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   backfillNullRunTotalsAction,
   deleteEmptyOrphanPeriodsAction,
+  mergeOverlappingPairAction,
   previewEmptyOrphanPeriodsAction,
   previewOverlappingPeriodsAction,
 } from "./actions";
@@ -209,7 +210,7 @@ export function CleanupTools() {
         )}
       </section>
 
-      {/* 3. Overlapping periods (review-only) */}
+      {/* 3. Overlapping periods — inline merge per pair */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
           <h2 className="text-base font-semibold flex items-center gap-2">
@@ -251,26 +252,32 @@ export function CleanupTools() {
               <>
                 <p className="mb-2">
                   {overlaps.length} pair
-                  {overlaps.length === 1 ? "" : "s"} found. Review and decide
-                  which to keep.
+                  {overlaps.length === 1 ? "" : "s"} found. For each pair,
+                  click <strong>Keep</strong> on the row you want to survive
+                  — the other row&apos;s payslips/runs/punches/temp/docs
+                  re-point onto the survivor and the loser period is deleted.
+                  Duplicate (employee, period) payslips are voided on the
+                  loser side, kept on the survivor. Audited per merge.
                 </p>
-                <ul className="space-y-1.5 max-h-96 overflow-y-auto">
+                <ul className="space-y-2 max-h-[32rem] overflow-y-auto">
                   {overlaps.map((p) => (
-                    <li
+                    <OverlapPairRow
                       key={`${p.a.id}|${p.b.id}`}
-                      className="border-b border-amber-300/50 pb-1.5"
-                    >
-                      <div>
-                        <code className="font-mono">{p.a.id.slice(0, 8)}</code>:{" "}
-                        {p.a.startDate} → {p.a.endDate} · {p.a.state} ·{" "}
-                        {p.aPayslips} payslips
-                      </div>
-                      <div>
-                        <code className="font-mono">{p.b.id.slice(0, 8)}</code>:{" "}
-                        {p.b.startDate} → {p.b.endDate} · {p.b.state} ·{" "}
-                        {p.bPayslips} payslips
-                      </div>
-                    </li>
+                      pair={p}
+                      onMerged={() => {
+                        // Drop the merged pair from the local list (and any
+                        // other pair that referenced the now-deleted loser).
+                        setOverlaps((prev) =>
+                          prev?.filter(
+                            (x) =>
+                              x.a.id !== p.b.id &&
+                              x.b.id !== p.b.id &&
+                              x.a.id !== p.a.id &&
+                              x.b.id !== p.a.id,
+                          ) ?? null,
+                        );
+                      }}
+                    />
                   ))}
                 </ul>
               </>
@@ -278,6 +285,126 @@ export function CleanupTools() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function OverlapPairRow({
+  pair,
+  onMerged,
+}: {
+  pair: OverlapPair;
+  onMerged: () => void;
+}) {
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [done, setDone] = React.useState<string | null>(null);
+
+  // Suggest the row with more payslips as survivor; tie-break PAID > others.
+  const suggestedSurvivor =
+    pair.aPayslips > pair.bPayslips
+      ? pair.a.id
+      : pair.bPayslips > pair.aPayslips
+        ? pair.b.id
+        : pair.a.state === "PAID" && pair.b.state !== "PAID"
+          ? pair.a.id
+          : pair.b.state === "PAID" && pair.a.state !== "PAID"
+            ? pair.b.id
+            : pair.a.id;
+
+  async function onKeep(survivorId: string, loserId: string) {
+    const survivor = survivorId === pair.a.id ? pair.a : pair.b;
+    const loser = loserId === pair.a.id ? pair.a : pair.b;
+    const survivorSlips =
+      survivorId === pair.a.id ? pair.aPayslips : pair.bPayslips;
+    const loserSlips =
+      loserId === pair.a.id ? pair.aPayslips : pair.bPayslips;
+    const ok = window.confirm(
+      `Keep ${survivor.startDate} → ${survivor.endDate} (${survivor.state}, ${survivorSlips} payslips), delete ${loser.startDate} → ${loser.endDate} (${loser.state}, ${loserSlips} payslips)?\n\nAll loser payslips/runs/punches/temp/docs re-point onto the survivor. Duplicate-employee payslips on both sides are voided on the loser. Audited.`,
+    );
+    if (!ok) return;
+    setPending(true);
+    setError(null);
+    const r = await mergeOverlappingPairAction(survivorId, loserId);
+    setPending(false);
+    if (r.error) {
+      setError(r.error);
+      return;
+    }
+    if (r.result) {
+      setDone(
+        `Merged. Moved ${r.result.movedPayslips} payslips, ${r.result.movedRuns} runs, ${r.result.movedPunches} punches, ${r.result.movedTempWorkers} temp, ${r.result.movedDocuments} docs. Voided ${r.result.voidedDuplicatePayslips} duplicate payslips.`,
+      );
+      // Brief pause so the admin sees the success summary, then prune
+      // this row from the parent list.
+      setTimeout(onMerged, 1200);
+    }
+  }
+
+  if (done) {
+    return (
+      <li className="border-b border-emerald-300/50 pb-2 text-emerald-900">
+        <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
+        {done}
+      </li>
+    );
+  }
+
+  return (
+    <li className="border-b border-amber-300/50 pb-2 space-y-1">
+      <PairSide
+        side={pair.a}
+        payslips={pair.aPayslips}
+        suggested={suggestedSurvivor === pair.a.id}
+        onKeep={() => onKeep(pair.a.id, pair.b.id)}
+        pending={pending}
+      />
+      <PairSide
+        side={pair.b}
+        payslips={pair.bPayslips}
+        suggested={suggestedSurvivor === pair.b.id}
+        onKeep={() => onKeep(pair.b.id, pair.a.id)}
+        pending={pending}
+      />
+      {error && (
+        <p className="text-red-700">{error}</p>
+      )}
+    </li>
+  );
+}
+
+function PairSide({
+  side,
+  payslips,
+  suggested,
+  onKeep,
+  pending,
+}: {
+  side: { id: string; startDate: string; endDate: string; state: string };
+  payslips: number;
+  suggested: boolean;
+  onKeep: () => void;
+  pending: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <code className="font-mono">{side.id.slice(0, 8)}</code>:{" "}
+        {side.startDate} → {side.endDate} · {side.state} · {payslips} payslips
+        {suggested && (
+          <span className="ml-2 rounded-input bg-amber-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-amber-900">
+            suggested
+          </span>
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant={suggested ? "default" : "secondary"}
+        disabled={pending}
+        onClick={onKeep}
+      >
+        {pending ? "…" : "Keep this · delete other"}
+      </Button>
     </div>
   );
 }

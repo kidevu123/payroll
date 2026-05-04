@@ -7,6 +7,8 @@ import {
   deleteEmptyOrphanPeriods,
   findEmptyOrphanPeriods,
   findOverlappingPeriods,
+  mergeOverlappingPair,
+  type MergeOverlappingPairResult,
 } from "@/lib/db/queries/cleanup";
 
 export async function backfillNullRunTotalsAction(): Promise<{
@@ -81,6 +83,30 @@ export async function previewOverlappingPeriodsAction(): Promise<{
     return {
       pairs: [],
       error: err instanceof Error ? err.message : "Preview failed.",
+    };
+  }
+}
+
+export async function mergeOverlappingPairAction(
+  survivorId: string,
+  loserId: string,
+): Promise<{
+  result?: MergeOverlappingPairResult;
+  error?: string;
+}> {
+  try {
+    const session = await requireOwner();
+    const result = await mergeOverlappingPair(survivorId, loserId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/settings/cleanup");
+    revalidatePath("/payroll");
+    revalidatePath("/reports");
+    return { result };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Merge failed.",
     };
   }
 }

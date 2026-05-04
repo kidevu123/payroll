@@ -448,6 +448,17 @@ export async function repushReportToZoho(
   payrollRunId: string,
   organizationId: string,
   actor: Actor,
+  /**
+   * When true, skip the Zoho-side DELETE of the prior expense and just
+   * clear our DB record before re-pushing. Use when:
+   *  - The expense is already gone from Zoho (admin deleted manually)
+   *  - The OAuth scope doesn't include expenses.DELETE (current scope
+   *    set is CREATE/READ/settings.READ/contacts.READ — no DELETE), so
+   *    the API returns 401 and the normal re-push fails.
+   * The orphan expense in Zoho (if any) survives; admin must verify
+   * separately.
+   */
+  options: { force?: boolean } = {},
 ): Promise<PushResult & { deletedPriorExpenseId: string | null }> {
   // Guard: only re-push runs that have actually been published. A
   // CANCELLED / FAILED / INGEST_FAILED run shouldn't be able to delete
@@ -474,7 +485,7 @@ export async function repushReportToZoho(
     );
 
   let deletedPriorExpenseId: string | null = null;
-  if (existingPush?.expenseId) {
+  if (existingPush?.expenseId && !options.force) {
     const [org] = await db
       .select()
       .from(zohoOrganizations)
@@ -483,7 +494,7 @@ export async function repushReportToZoho(
     const del = await deleteExpense(org, existingPush.expenseId);
     if (!del.ok) {
       throw new Error(
-        `Could not delete prior Zoho expense ${existingPush.expenseId}: ${del.message}. Delete it manually in Zoho, then retry.`,
+        `Could not delete prior Zoho expense ${existingPush.expenseId}: ${del.message}. If the expense is already gone from Zoho (or your OAuth token can't DELETE), use Force re-push to skip the delete and just post fresh.`,
       );
     }
     deletedPriorExpenseId = existingPush.expenseId;
@@ -501,6 +512,22 @@ export async function repushReportToZoho(
     });
   }
   if (existingPush) {
+    if (options.force) {
+      // Audit the force-skip so the orphan expense in Zoho is traceable.
+      await writeAudit({
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "zoho.expense.force_skip_delete",
+        targetType: "PayrollRun",
+        targetId: payrollRunId,
+        after: {
+          organizationId,
+          expenseId: existingPush.expenseId,
+          reason:
+            "Admin chose force re-push. Prior Zoho expense (if still present) was NOT deleted by us; admin must verify in Zoho.",
+        },
+      });
+    }
     await db.delete(zohoPushes).where(eq(zohoPushes.id, existingPush.id));
   }
   const result = await pushReportToZoho(payrollRunId, organizationId, actor);

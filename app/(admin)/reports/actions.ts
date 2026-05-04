@@ -99,10 +99,16 @@ export async function pushReportToZohoAction(
  * fresh. One click resync after a fix changes the underlying total. The
  * UI confirms before calling because deleting an expense in Zoho is
  * not silent (it disappears from accountant view).
+ *
+ * `force`: skip the Zoho-side DELETE and just clear our DB record. Use
+ * when the prior expense is already gone from Zoho (admin deleted
+ * manually) or when the OAuth token can't DELETE (current scope set
+ * is CREATE/READ only — Zoho returns 401 on delete).
  */
 export async function repushReportToZohoAction(
   reportId: string,
   organizationId: string,
+  options: { force?: boolean } = {},
 ): Promise<
   | { error?: string }
   | { expenseId: string; deletedPriorExpenseId: string | null }
@@ -111,10 +117,15 @@ export async function repushReportToZohoAction(
   if (!idSchema.safeParse(reportId).success) return { error: "Invalid report id." };
   if (!idSchema.safeParse(organizationId).success) return { error: "Invalid org id." };
   try {
-    const result = await repushReportToZoho(reportId, organizationId, {
-      id: session.user.id,
-      role: session.user.role,
-    });
+    const result = await repushReportToZoho(
+      reportId,
+      organizationId,
+      {
+        id: session.user.id,
+        role: session.user.role,
+      },
+      { force: options.force === true },
+    );
     revalidatePath("/reports");
     return {
       expenseId: result.expenseId,

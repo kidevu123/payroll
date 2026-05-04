@@ -92,7 +92,32 @@ export function ReportsTable({
     setError(null);
     const result = await repushReportToZohoAction(reportId, orgId);
     setBusyId(null);
-    if ("error" in result && result.error) setError(result.error);
+    if ("error" in result && result.error) {
+      // If the Zoho delete failed (often: 401 because OAuth scope
+      // doesn't include expenses.DELETE, or 404 because the expense is
+      // already gone from Zoho), offer a Force re-push that skips the
+      // delete and just posts fresh. Admin verifies the orphan expense
+      // status separately in Zoho.
+      const isDeleteFailure = result.error.includes("Could not delete prior");
+      if (isDeleteFailure) {
+        const force = window.confirm(
+          `${result.error}\n\nForce re-push? This SKIPS the Zoho delete and just posts a fresh expense. Use this if you've already deleted the old expense in Zoho manually, OR if your Zoho OAuth scope can't DELETE.\n\nIf you click OK and the old expense is still in Zoho, you'll have BOTH expenses (you'll need to delete the old one yourself later).`,
+        );
+        if (force) {
+          setBusyId(`${reportId}:push:${orgId}`);
+          setError(null);
+          const forced = await repushReportToZohoAction(reportId, orgId, {
+            force: true,
+          });
+          setBusyId(null);
+          if ("error" in forced && forced.error) setError(forced.error);
+        } else {
+          setError(result.error);
+        }
+      } else {
+        setError(result.error);
+      }
+    }
   }
 
   async function onDelete(id: string) {

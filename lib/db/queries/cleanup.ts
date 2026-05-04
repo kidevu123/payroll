@@ -268,5 +268,182 @@ export async function findOverlappingPeriods(
     scheduleId: r.schedule_id,
   }));
 }
+
+export type MergeOverlappingPairResult = {
+  survivorId: string;
+  loserId: string;
+  movedPayslips: number;
+  voidedDuplicatePayslips: number;
+  movedRuns: number;
+  movedPunches: number;
+  movedTempWorkers: number;
+  movedDocuments: number;
+  loserDeleted: boolean;
+};
+
+/**
+ * Merge two overlapping pay_periods: re-point all child rows from the
+ * loser onto the survivor, then delete the loser period.
+ *
+ * Collisions on the (employee_id, period_id) unique index for payslips
+ * are resolved by keeping the SURVIVOR's row (the admin chose it) and
+ * voiding the loser's payslip with a clear reason. Punches collide on
+ * (ngteco_record_hash) which is global, so simply re-pointing the
+ * period_id is fine — no extra hash conflicts arise from the move.
+ *
+ * Audited at every step. Atomic — if any sub-step throws, the whole
+ * merge rolls back and the loser period stays alive.
+ */
+export async function mergeOverlappingPair(
+  survivorId: string,
+  loserId: string,
+  actor: Actor,
+): Promise<MergeOverlappingPairResult> {
+  if (survivorId === loserId) {
+    throw new Error("mergeOverlappingPair: survivor and loser must differ.");
+  }
+  return db.transaction(async (tx) => {
+    const [survivor] = await tx
+      .select()
+      .from(payPeriods)
+      .where(eq(payPeriods.id, survivorId));
+    const [loser] = await tx
+      .select()
+      .from(payPeriods)
+      .where(eq(payPeriods.id, loserId));
+    if (!survivor) throw new Error(`Survivor period ${survivorId} not found.`);
+    if (!loser) throw new Error(`Loser period ${loserId} not found.`);
+
+    const result: MergeOverlappingPairResult = {
+      survivorId,
+      loserId,
+      movedPayslips: 0,
+      voidedDuplicatePayslips: 0,
+      movedRuns: 0,
+      movedPunches: 0,
+      movedTempWorkers: 0,
+      movedDocuments: 0,
+      loserDeleted: false,
+    };
+
+    // 1) Resolve payslip collisions BEFORE re-pointing. For each loser
+    //    payslip, if survivor already has an active payslip on the same
+    //    employee, void the loser's payslip (admin chose survivor).
+    //    Otherwise the re-point will succeed without conflict.
+    const loserPayslips = await tx
+      .select()
+      .from(payslips)
+      .where(
+        and(eq(payslips.periodId, loserId), isNull(payslips.voidedAt)),
+      );
+    for (const lp of loserPayslips) {
+      const [collision] = await tx
+        .select()
+        .from(payslips)
+        .where(
+          and(
+            eq(payslips.periodId, survivorId),
+            eq(payslips.employeeId, lp.employeeId),
+            isNull(payslips.voidedAt),
+          ),
+        );
+      if (collision) {
+        await tx
+          .update(payslips)
+          .set({
+            voidedAt: new Date(),
+            voidedById: actor.id,
+            voidReason: `period merge: kept survivor payslip ${collision.id} on period ${survivorId}`,
+          })
+          .where(eq(payslips.id, lp.id));
+        result.voidedDuplicatePayslips++;
+      }
+    }
+
+    // 2) Re-point payslips that DIDN'T collide (i.e. still active).
+    const movedPayslipsRes = await tx
+      .update(payslips)
+      .set({ periodId: survivorId })
+      .where(
+        and(eq(payslips.periodId, loserId), isNull(payslips.voidedAt)),
+      )
+      .returning({ id: payslips.id });
+    result.movedPayslips = movedPayslipsRes.length;
+
+    // Voided payslips also re-point so the loser period is fully empty
+    // before delete (FK is on period_id regardless of voidedAt).
+    await tx
+      .update(payslips)
+      .set({ periodId: survivorId })
+      .where(eq(payslips.periodId, loserId));
+
+    // 3) Re-point payroll_runs.
+    const movedRuns = await tx
+      .update(payrollRuns)
+      .set({ periodId: survivorId })
+      .where(eq(payrollRuns.periodId, loserId))
+      .returning({ id: payrollRuns.id });
+    result.movedRuns = movedRuns.length;
+
+    // 4) Re-point punches.
+    const movedPunches = await tx
+      .update(punches)
+      .set({ periodId: survivorId })
+      .where(eq(punches.periodId, loserId))
+      .returning({ id: punches.id });
+    result.movedPunches = movedPunches.length;
+
+    // 5) Re-point temp workers.
+    const movedTemp = await tx
+      .update(tempWorkerEntries)
+      .set({ periodId: survivorId })
+      .where(eq(tempWorkerEntries.periodId, loserId))
+      .returning({ id: tempWorkerEntries.id });
+    result.movedTempWorkers = movedTemp.length;
+
+    // 6) Re-point payroll period documents.
+    const movedDocs = await tx
+      .update(payrollPeriodDocuments)
+      .set({ periodId: survivorId })
+      .where(eq(payrollPeriodDocuments.periodId, loserId))
+      .returning({ id: payrollPeriodDocuments.id });
+    result.movedDocuments = movedDocs.length;
+
+    // 7) Recompute survivor's run total_amount_cents from non-voided
+    //    payslips on the survivor's run(s).
+    await tx.execute(sql`
+      UPDATE payroll_runs pr
+      SET total_amount_cents = COALESCE((
+        SELECT SUM(rounded_pay_cents) FROM payslips
+        WHERE payroll_run_id = pr.id AND voided_at IS NULL
+      ), 0)
+      WHERE pr.period_id = ${survivorId}
+    `);
+
+    // 8) Delete the now-empty loser period.
+    await tx.delete(payPeriods).where(eq(payPeriods.id, loserId));
+    result.loserDeleted = true;
+
+    // 9) Audit the whole operation.
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "period.merge_overlap",
+        targetType: "PayPeriod",
+        targetId: survivorId,
+        before: {
+          loserId,
+          loserStartDate: loser.startDate,
+          loserEndDate: loser.endDate,
+          loserState: loser.state,
+        },
+        after: result,
+      },
+      tx,
+    );
+    return result;
+  });
+}
 // Avoid unused-var warning when TS strips JSX-only imports.
 void isNull;
