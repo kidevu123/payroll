@@ -9,7 +9,7 @@
 // Implementation lives in lib/zoho/client.ts (token cache + REST calls);
 // this file is the orchestration layer that does the DB book-keeping.
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
@@ -23,7 +23,12 @@ import {
 import { writeAudit } from "@/lib/db/audit";
 import { logger } from "@/lib/telemetry";
 import { buildAdminReportArtifacts } from "@/lib/pdf/build-admin-report";
-import { attachReceipt, createExpense, validateConnection } from "./client";
+import {
+  attachReceipt,
+  createExpense,
+  deleteExpense,
+  validateConnection,
+} from "./client";
 
 export type Actor = {
   id: string;
@@ -293,6 +298,68 @@ export async function pushPaystubToZoho(
   });
 
   return { expenseId: expense.expenseId, alreadyExists: false };
+}
+
+/**
+ * Re-push a payroll run to Zoho. Existing OK push for (run, org) is
+ * resolved atomically:
+ *   1. DELETE the orphan expense in Zoho via API (404 = already gone, fine).
+ *   2. Delete the zoho_pushes row so the idempotency check in
+ *      pushReportToZoho doesn't short-circuit.
+ *   3. Call pushReportToZoho fresh — creates a new expense with current
+ *      amount + Notes + PDF.
+ *
+ * Used after a fix that changes the underlying total (e.g. temp labor
+ * added, payslip recomputed, etc.) so the admin can re-sync without
+ * leaving duplicate expenses in Zoho.
+ */
+export async function repushReportToZoho(
+  payrollRunId: string,
+  organizationId: string,
+  actor: Actor,
+): Promise<PushResult & { deletedPriorExpenseId: string | null }> {
+  const [existingPush] = await db
+    .select()
+    .from(zohoPushes)
+    .where(
+      and(
+        eq(zohoPushes.payrollRunId, payrollRunId),
+        eq(zohoPushes.organizationId, organizationId),
+      ),
+    );
+
+  let deletedPriorExpenseId: string | null = null;
+  if (existingPush?.expenseId) {
+    const [org] = await db
+      .select()
+      .from(zohoOrganizations)
+      .where(eq(zohoOrganizations.id, organizationId));
+    if (!org) throw new Error("Zoho organization not found.");
+    const del = await deleteExpense(org, existingPush.expenseId);
+    if (!del.ok) {
+      throw new Error(
+        `Could not delete prior Zoho expense ${existingPush.expenseId}: ${del.message}. Delete it manually in Zoho, then retry.`,
+      );
+    }
+    deletedPriorExpenseId = existingPush.expenseId;
+    await writeAudit({
+      actorId: actor.id,
+      actorRole: actor.role,
+      action: "zoho.expense.deleted_for_repush",
+      targetType: "PayrollRun",
+      targetId: payrollRunId,
+      after: {
+        organizationId,
+        expenseId: existingPush.expenseId,
+        alreadyGone: del.alreadyGone,
+      },
+    });
+  }
+  if (existingPush) {
+    await db.delete(zohoPushes).where(eq(zohoPushes.id, existingPush.id));
+  }
+  const result = await pushReportToZoho(payrollRunId, organizationId, actor);
+  return { ...result, deletedPriorExpenseId };
 }
 
 export async function testZohoConnection(

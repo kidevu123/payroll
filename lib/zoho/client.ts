@@ -332,6 +332,28 @@ export async function createExpense(
 }
 
 /**
+ * Delete an expense in Zoho Books. Returns true on success or 404 (the
+ * expense was already gone — counts as deleted for our purposes).
+ * Throws on other errors so the caller can surface them.
+ */
+export async function deleteExpense(
+  org: ZohoOrganization,
+  expenseId: string,
+): Promise<{ ok: boolean; alreadyGone: boolean; message?: string }> {
+  const resp = await authedFetch(org, `/expenses/${encodeURIComponent(expenseId)}`, {
+    method: "DELETE",
+  });
+  if (resp.ok) return { ok: true, alreadyGone: false };
+  if (resp.status === 404) return { ok: true, alreadyGone: true };
+  const text = await resp.text();
+  return {
+    ok: false,
+    alreadyGone: false,
+    message: `${resp.status}: ${text.slice(0, 200)}`,
+  };
+}
+
+/**
  * Attach a file (paystub PDF, scanned receipt, etc.) to an existing
  * Zoho expense as its receipt. Uses multipart/form-data per the Zoho
  * Books API docs (POST /expenses/{id}/receipt).

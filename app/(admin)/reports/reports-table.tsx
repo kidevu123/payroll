@@ -20,6 +20,7 @@ import {
   deleteReportAction,
   publishReportAction,
   pushReportToZohoAction,
+  repushReportToZohoAction,
 } from "./actions";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -82,6 +83,27 @@ export function ReportsTable({
     const result = await pushReportToZohoAction(reportId, orgId);
     setBusyId(null);
     if (result?.error) setError(result.error);
+  }
+
+  async function onRepush(
+    reportId: string,
+    orgId: string | undefined,
+    orgLabel: string,
+    expenseId: string | null,
+  ) {
+    if (!orgId) {
+      setError(`Connect "${orgLabel}" in /settings/zoho first.`);
+      return;
+    }
+    const ok = window.confirm(
+      `Re-push to ${orgLabel}?\n\nThis will DELETE the existing expense ${expenseId ?? "(unknown id)"} in Zoho and create a fresh one with the current period total. Use this after a fix changes what should be charged.\n\nThe accountant will see the old expense disappear.`,
+    );
+    if (!ok) return;
+    setBusyId(`${reportId}:push:${orgId}`);
+    setError(null);
+    const result = await repushReportToZohoAction(reportId, orgId);
+    setBusyId(null);
+    if ("error" in result && result.error) setError(result.error);
   }
 
   async function onDelete(id: string) {
@@ -273,12 +295,28 @@ export function ReportsTable({
                         pushed={pushedHaute}
                         busy={busyId === `${r.id}:push:${haute?.id ?? ""}`}
                         onClick={() => onPush(r.id, haute?.id, "Haute")}
+                        onRepush={() =>
+                          onRepush(
+                            r.id,
+                            haute?.id,
+                            "Haute",
+                            pushedHaute?.expenseId ?? null,
+                          )
+                        }
                       />
                       <PushPill
                         label="Boomin"
                         pushed={pushedBoomin}
                         busy={busyId === `${r.id}:push:${boomin?.id ?? ""}`}
                         onClick={() => onPush(r.id, boomin?.id, "Boomin")}
+                        onRepush={() =>
+                          onRepush(
+                            r.id,
+                            boomin?.id,
+                            "Boomin",
+                            pushedBoomin?.expenseId ?? null,
+                          )
+                        }
                       />
                       {confirmDelete === r.id ? (
                         <>
@@ -339,19 +377,33 @@ function PushPill({
   pushed,
   busy,
   onClick,
+  onRepush,
 }: {
   label: string;
   pushed: ReportRow["zohoPushes"][number] | undefined;
   busy: boolean;
   onClick: () => void;
+  onRepush: () => void;
 }) {
   if (pushed) {
     return (
-      <span
-        className="inline-flex items-center gap-1 rounded-input bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
-        title={`Expense ${pushed.expenseId ?? "—"}`}
-      >
-        <CheckCircle2 className="h-3 w-3" /> {label}
+      <span className="inline-flex items-center gap-0.5">
+        <span
+          className="inline-flex items-center gap-1 rounded-l-input bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
+          title={`Expense ${pushed.expenseId ?? "—"} — click ↻ to delete this expense in Zoho and re-push the current period total.`}
+        >
+          <CheckCircle2 className="h-3 w-3" /> {label}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={onRepush}
+          title={`Delete expense ${pushed.expenseId ?? "—"} in Zoho and re-push fresh (use after a fix changes the period total).`}
+          className="h-5 rounded-r-input rounded-l-none px-1 py-0 text-[11px] text-emerald-700 hover:bg-emerald-100"
+        >
+          {busy ? "…" : "↻"}
+        </Button>
       </span>
     );
   }

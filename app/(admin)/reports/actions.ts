@@ -10,7 +10,7 @@ import {
   transitionRun,
 } from "@/lib/db/queries/payroll-runs";
 import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
-import { pushReportToZoho } from "@/lib/zoho/push";
+import { pushReportToZoho, repushReportToZoho } from "@/lib/zoho/push";
 
 const idSchema = z.string().uuid();
 
@@ -91,5 +91,36 @@ export async function pushReportToZohoAction(
     return { expenseId: result.expenseId };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Push failed." };
+  }
+}
+
+/**
+ * Re-push: deletes the prior Zoho expense + clears our DB record + posts
+ * fresh. One click resync after a fix changes the underlying total. The
+ * UI confirms before calling because deleting an expense in Zoho is
+ * not silent (it disappears from accountant view).
+ */
+export async function repushReportToZohoAction(
+  reportId: string,
+  organizationId: string,
+): Promise<
+  | { error?: string }
+  | { expenseId: string; deletedPriorExpenseId: string | null }
+> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(reportId).success) return { error: "Invalid report id." };
+  if (!idSchema.safeParse(organizationId).success) return { error: "Invalid org id." };
+  try {
+    const result = await repushReportToZoho(reportId, organizationId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/reports");
+    return {
+      expenseId: result.expenseId,
+      deletedPriorExpenseId: result.deletedPriorExpenseId,
+    };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Re-push failed." };
   }
 }
