@@ -17,7 +17,16 @@
 const STORAGE_ROOT = process.env.NGTECO_STORAGE_DIR ?? "/data/ngteco";
 
 type Selectors = {
-  login: { url: string; username: string; password: string; submit: string; loggedInLandmark: string };
+  login: {
+    url: string;
+    username: string;
+    password: string;
+    /** Optional — NGTeco gates Login behind a "I have read the agreement"
+     *  checkbox. Tick it before submit when present. */
+    agreementCheckbox?: string;
+    submit: string;
+    loggedInLandmark: string;
+  };
   navigation: {
     reportsLink: string;
     punchReportLink: string;
@@ -183,6 +192,20 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
     if (needsLogin) {
       await page.fill(sel.login.username, input.username);
       await page.fill(sel.login.password, input.password);
+      // NGTeco gates the Login button behind "I have read and agree to
+      // the user agreement & privacy policy". Tick the checkbox first
+      // when present (Playwright's check() is idempotent — if already
+      // ticked, it's a no-op).
+      if (sel.login.agreementCheckbox) {
+        try {
+          await page
+            .locator(sel.login.agreementCheckbox)
+            .first()
+            .check({ timeout: 5_000 });
+        } catch {
+          /* no checkbox visible / already accepted */
+        }
+      }
       await Promise.all([
         page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
         page.click(sel.login.submit),

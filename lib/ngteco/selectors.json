@@ -2,10 +2,11 @@
   "$comment": "Selector config for the NGTeco Playwright scraper. Reloaded fresh on each run so the operator can edit on the LXC without redeploying. Prefer text/role/data-test attributes over CSS classes — class names change, semantics don't.",
   "login": {
     "url": "/login",
-    "username": "input[name='username'], input[type='email']",
-    "password": "input[name='password'], input[type='password']",
-    "submit": "button[type='submit']",
-    "loggedInLandmark": "nav, [role='navigation']"
+    "username": "input[type='email'], input[name='username'], input[placeholder*='mail' i]",
+    "password": "input[type='password'], input[name='password']",
+    "agreementCheckbox": "input[type='checkbox']",
+    "submit": "button:has-text(/^\\s*Login\\s*$/i), button[type='submit']",
+    "loggedInLandmark": "text=/Dashboard|Quickly Setting|Attendance/i"
   },
   "navigation": {
     "reportsLink": "text=/Reports?/i",
