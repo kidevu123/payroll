@@ -178,6 +178,21 @@ async function fetchAllAccounts(
   return { rows: all, lastError };
 }
 
+const ZOHO_DESCRIPTION_MAX = 500;
+const ZOHO_DESCRIPTION_SUFFIX = " … (see attachment)";
+
+/**
+ * Hard-cap an expense description at Zoho's 500-character limit. Mirrors
+ * the legacy Flask app: when the source is too long, truncate to fit
+ * "… (see attachment)" at the end so the receipt PDF — which carries
+ * the full per-employee summary — has an obvious pointer.
+ */
+function capDescription(text: string): string {
+  if (text.length <= ZOHO_DESCRIPTION_MAX) return text;
+  const cutoff = ZOHO_DESCRIPTION_MAX - ZOHO_DESCRIPTION_SUFFIX.length;
+  return text.slice(0, cutoff).replace(/\s+$/, "") + ZOHO_DESCRIPTION_SUFFIX;
+}
+
 function normalizeAccountName(s: string): string {
   // Strip a leading "[CODE] " prefix that Zoho's UI shows but the API
   // sometimes returns embedded in account_name on older orgs. Lowercase
@@ -291,9 +306,13 @@ export async function createExpense(
     date,
     amount: amountCents / 100,
     reference_number: reference.slice(0, 100),
-    description: (description ?? `Payroll run pushed from /reports — ${reference}`).slice(
-      0,
-      5000,
+    // Zoho enforces a 500-char limit on the expense description (code 15
+    // on overflow). The legacy app truncated mid-summary with a "… (see
+    // attachment)" hint pointing at the receipt PDF, which is what we do
+    // here too — the full per-employee table is still in the PDF, the
+    // description just gets the lead lines.
+    description: capDescription(
+      description ?? `Payroll run pushed from /reports — ${reference}`,
     ),
   };
   if (org.defaultVendorId) body.vendor_id = org.defaultVendorId;
