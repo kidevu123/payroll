@@ -28,7 +28,13 @@ const createSchema = z.object({
   payScheduleId: z.string().uuid().optional().nullable(),
   /** Dollar amount as the admin types it; converted to integer cents. */
   initialHourlyRateDollars: z
-    .union([z.coerce.number().min(0), z.literal("").transform(() => null)])
+    .union([
+      z.literal("").transform(() => null),
+      z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, "Rate must be e.g. 15.00 (max 2 decimals)")
+        .transform((s) => Number(s)),
+    ])
     .nullable()
     .optional(),
   /** Legacy back-compat — older callers passed cents directly. */
@@ -185,7 +191,11 @@ const rateSchema = z.object({
    * spec convention. Accept the legacy `hourlyRateCents` field too for
    * back-compat with any older callers, but the form now sends dollars.
    */
-  hourlyRateDollars: z.coerce.number().min(0).optional(),
+  hourlyRateDollars: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Rate must be e.g. 15.00 (max 2 decimals)")
+    .transform((s) => Number(s))
+    .optional(),
   hourlyRateCents: z.coerce.number().int().min(0).optional(),
   reason: z.string().max(500).optional().nullable(),
 });

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-guards";
 import {
   createMissedPunchRequest,
@@ -46,12 +46,20 @@ export async function reportPunchFixAction(
     if (Number.isNaN(outDate.getTime())) return { error: "Invalid out time." };
   }
 
-  // Find a period that contains the date.
+  // Find a period that CONTAINS the date (start <= date <= end). The
+  // previous query keyed on startDate alone, which only matched when
+  // the request date was the period's first day — six days a week the
+  // employee got "no period covers that date" with no recourse.
   const [period] = await db
     .select()
     .from(payPeriods)
-    .where(eq(payPeriods.startDate, parsed.data.date));
-  // Fall back to any period covering this date.
+    .where(
+      and(
+        lte(payPeriods.startDate, parsed.data.date),
+        gte(payPeriods.endDate, parsed.data.date),
+      ),
+    )
+    .limit(1);
   const periodId = period?.id ?? null;
   if (!periodId) {
     return {

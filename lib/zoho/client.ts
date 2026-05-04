@@ -92,14 +92,27 @@ async function authedFetch(
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const token = await getAccessToken(org);
   const url = `${org.apiDomain}/books/v3${path}${path.includes("?") ? "&" : "?"}organization_id=${org.organizationId}`;
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Zoho-oauthtoken ${token}`);
-  if (init.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
+  const doFetch = async (token: string): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Zoho-oauthtoken ${token}`);
+    if (init.body && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    return fetch(url, { ...init, headers });
+  };
+  // First attempt with cached/refreshed token.
+  let token = await getAccessToken(org);
+  let resp = await doFetch(token);
+  // If Zoho rejects the token (401 / 403 invalid_token), evict the cache
+  // and retry once with a fresh token. Without this, a single revoked
+  // token poisons all subsequent calls until the process restarts.
+  if (resp.status === 401) {
+    tokenCache.delete(org.id);
+    token = await getAccessToken(org);
+    resp = await doFetch(token);
   }
-  return fetch(url, { ...init, headers });
+  return resp;
 }
 
 export async function validateConnection(
@@ -324,9 +337,24 @@ export async function createExpense(
     const text = await resp.text();
     throw new Error(`Zoho expense create failed: ${resp.status} ${text.slice(0, 300)}`);
   }
-  const json = (await resp.json()) as { expense?: { expense_id: string } };
+  // Zoho wraps every response in { code, message, expense? }. Even on
+  // HTTP 200 a non-zero code indicates a soft failure (bad vendor, bad
+  // paid_through, etc.) — treat it as an error and surface Zoho's own
+  // message instead of a generic "no expense_id" miss.
+  const json = (await resp.json()) as {
+    code?: number;
+    message?: string;
+    expense?: { expense_id: string };
+  };
+  if (typeof json.code === "number" && json.code !== 0) {
+    throw new Error(
+      `Zoho expense create failed (code ${json.code}): ${json.message ?? "no message"}`,
+    );
+  }
   if (!json.expense?.expense_id) {
-    throw new Error("Zoho expense create: no expense_id in response.");
+    throw new Error(
+      `Zoho expense create: no expense_id in response (message: ${json.message ?? "—"})`,
+    );
   }
   return { expenseId: json.expense.expense_id };
 }

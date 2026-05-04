@@ -46,6 +46,10 @@ export function Wordmark({
   // Logo uploaded → render the image as the brand mark, no extra text.
   // The uploaded asset is expected to be a complete wordmark or icon and
   // shouldn't be paired with a duplicate text label.
+  //
+  // Light wordmarks (white-on-transparent) vanish on light surfaces; dark
+  // wordmarks vanish on dark. Wrap in a neutral surface tile so the logo
+  // always has visible separation regardless of the upload's color.
   if (logoPath) {
     return (
       <span
@@ -54,12 +58,18 @@ export function Wordmark({
           className,
         )}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={logoPath}
-          alt={name}
-          className={cn("w-auto object-contain", s.logoH)}
-        />
+        <span
+          className={cn(
+            "inline-flex items-center justify-center rounded-lg bg-white px-2 py-1 ring-1 ring-border shadow-sm",
+          )}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={logoPath}
+            alt={name}
+            className={cn("w-auto object-contain", s.logoH)}
+          />
+        </span>
       </span>
     );
   }

@@ -162,10 +162,17 @@ export async function markAcknowledged(id: string, actor: Actor): Promise<Paysli
 }
 
 export async function markPublished(payrollRunId: string): Promise<void> {
+  // Exclude voided payslips so the publishedAt stamp doesn't land on a
+  // soft-deleted row and confuse audit reads later.
   await db
     .update(payslips)
     .set({ publishedAt: new Date() })
-    .where(eq(payslips.payrollRunId, payrollRunId));
+    .where(
+      and(
+        eq(payslips.payrollRunId, payrollRunId),
+        isNull(payslips.voidedAt),
+      ),
+    );
 }
 
 /**

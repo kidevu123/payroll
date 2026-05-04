@@ -13,8 +13,10 @@ export async function saveGoogleCalendarAction(
   formData: FormData,
 ): Promise<{ error?: string; ok?: true }> {
   const session = await requireAdmin();
+  const calendarIdRaw = formData.get("calendarId");
   const parsed = schema.safeParse({
-    calendarId: formData.get("calendarId") || "",
+    calendarId:
+      typeof calendarIdRaw === "string" ? calendarIdRaw.trim() : "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -22,12 +24,18 @@ export async function saveGoogleCalendarAction(
   // Merge: preserve OAuth-related fields (connectedEmail, lastPushedAt)
   // that weren't part of this form, so saving the calendar id doesn't
   // wipe a previously-connected Google account.
+  // Skip the calendarId write entirely if blank — submitting a blank
+  // input shouldn't wipe a previously-saved id.
   const current = await getSetting("googleCalendar");
+  const nextCalendarId =
+    parsed.data.calendarId && parsed.data.calendarId.length > 0
+      ? parsed.data.calendarId
+      : current.calendarId;
   await setSetting(
     "googleCalendar",
     {
       ...current,
-      calendarId: parsed.data.calendarId ?? "",
+      calendarId: nextCalendarId,
     },
     { actorId: session.user.id, actorRole: session.user.role },
   );

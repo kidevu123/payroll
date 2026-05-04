@@ -56,11 +56,12 @@ export async function uploadPayrollDocAction(
   const netAmountRaw = formData.get("netAmountDollars");
   let amountCents: number | null = null;
   if (typeof netAmountRaw === "string" && netAmountRaw.trim() !== "") {
-    const parsed = Number.parseFloat(netAmountRaw);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      return { error: "Net amount must be a positive number (e.g. 1685.00)." };
+    const { optionalDollarsToCents } = await import("@/lib/settings/money-input");
+    const parsed = optionalDollarsToCents.safeParse(netAmountRaw);
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Invalid net amount." };
     }
-    amountCents = Math.round(parsed * 100);
+    amountCents = parsed.data;
   }
   if (kind.data === "PAYSTUB" && amountCents === null) {
     return {

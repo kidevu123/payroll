@@ -69,7 +69,7 @@ export async function editPunch(
   actor: Actor,
 ): Promise<Punch> {
   if (!reason.trim()) throw new Error("editPunch: reason is required");
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`editPunch: ${id} not found`);
     const next = {
@@ -101,6 +101,12 @@ export async function editPunch(
     );
     return row;
   });
+  // Recompute the affected payslip after the punch tx commits — keeps a
+  // published run's total in sync with the new hours. No-op if no
+  // published payslip exists yet (admin is in run-prep). Failure here
+  // doesn't roll back the punch edit (intentional — the edit landed).
+  await recomputePayslipForPunch(result, actor);
+  return result;
 }
 
 /**
@@ -209,7 +215,7 @@ export async function voidPunch(
   actor: Actor,
 ): Promise<Punch> {
   if (!reason.trim()) throw new Error("voidPunch: reason is required");
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`voidPunch: ${id} not found`);
     if (before.voidedAt) return before;
@@ -238,4 +244,29 @@ export async function voidPunch(
     );
     return row;
   });
+  await recomputePayslipForPunch(result, actor);
+  return result;
+}
+
+/**
+ * Trigger a payslip recompute for the (employeeId, periodId) of a punch
+ * after edit/void completes. No-op when no payslip exists yet. Failure
+ * is non-fatal — the punch change already landed.
+ */
+async function recomputePayslipForPunch(
+  punch: Punch,
+  actor: Actor,
+): Promise<void> {
+  const { recomputePayslipForEmployeePeriod } = await import(
+    "./payslip-recompute"
+  );
+  try {
+    await recomputePayslipForEmployeePeriod(
+      punch.employeeId,
+      punch.periodId,
+      actor,
+    );
+  } catch {
+    // Non-fatal: the edit/void itself succeeded.
+  }
 }

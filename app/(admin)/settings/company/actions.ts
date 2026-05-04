@@ -19,7 +19,11 @@ export async function saveCompany(formData: FormData): Promise<{ error?: string 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  await setSetting("company", parsed.data, {
+  // Spread `current` first so any fields the form doesn't manage (e.g.
+  // faviconPath, iconsGeneratedAt added by /settings/branding) survive
+  // a company-form save. Without this, those values silently reset on
+  // every Save click.
+  await setSetting("company", { ...current, ...parsed.data }, {
     actorId: session.user.id,
     actorRole: session.user.role,
   });
