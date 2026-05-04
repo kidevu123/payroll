@@ -24,6 +24,30 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
   );
 }
 
+/**
+ * ISO timestamp for Monday 00:00 of the current week in `tz`. Used as a
+ * lower bound when filtering scraped NGTeco events down to "this week
+ * only". Returned in the form scraper events use ("YYYY-MM-DDTHH:mm:ss"
+ * with a tz offset) so a string comparison is well-defined.
+ */
+function mondayOfThisWeekIso(tz: string): string {
+  // Resolve "today's calendar date" in the company tz so a near-midnight
+  // call doesn't pick yesterday.
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
+    new Date(),
+  );
+  // todayStr is "YYYY-MM-DD" in tz. Compute weekday using a UTC-noon
+  // anchor so DST doesn't shift it across midnight.
+  const today = new Date(`${todayStr}T12:00:00Z`);
+  // 0=Sun, 1=Mon ... 6=Sat. Map to days-since-Monday in [0..6].
+  const dow = today.getUTCDay();
+  const daysSinceMonday = dow === 0 ? 6 : dow - 1;
+  const monday = new Date(today);
+  monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
+  const mondayStr = monday.toISOString().slice(0, 10);
+  return `${mondayStr}T00:00:00`;
+}
+
 export type PollSummary = {
   ok: boolean;
   /** "skipped because creds missing", challenge, scrape failure, etc. */
@@ -91,16 +115,32 @@ export async function handlePunchPoll(): Promise<PollSummary> {
         durationMs: result.durationMs,
       };
     }
-    const summary = await importPunchPoll(result.events, {
+    // Per owner directive: poll only emits punches from THIS week (Monday
+    // 00:00 → next Monday 00:00 in company tz). Older events scraped
+    // from NGTeco's "View Attendance Punch" view are dropped at this
+    // boundary — existing rows already in the database stay untouched
+    // (the importer's ON CONFLICT DO NOTHING preserves prior data).
+    const weekStartIso = mondayOfThisWeekIso(company.timezone);
+    const filtered = result.events.filter(
+      (e) => e.punchAt >= weekStartIso,
+    );
+    logger.info(
+      {
+        runId,
+        scraped: result.events.length,
+        thisWeek: filtered.length,
+        weekStartIso,
+      },
+      "punch.poll: window-filtered to current week",
+    );
+    const summary = await importPunchPoll(filtered, {
       timezone: company.timezone,
     });
     logger.info({ runId, ...summary }, "punch.poll: import done");
     // Best-effort retention prune: keep poll log rows ≤90 days. Skipped
     // on failure (no point pruning when the poll itself blew up).
     try {
-      const { prunePollLog } = await import(
-        /* webpackIgnore: true */ "../../db/queries/poll-history.js"
-      ) as typeof import("@/lib/db/queries/poll-history");
+      const { prunePollLog } = await import("@/lib/db/queries/poll-history");
       const pruned = await prunePollLog(90);
       if (pruned > 0) {
         logger.info({ runId, pruned }, "punch.poll: poll-log pruned");

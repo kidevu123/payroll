@@ -52,8 +52,9 @@ export async function importPunchPoll(
     openShifts: 0,
   };
   if (events.length === 0) return summary;
-  // Lazy-load crypto so the parent edge bundle never tries to resolve it.
-  const { createHash } = await import(/* webpackIgnore: true */ "node:crypto");
+  // Node built-in `crypto` is registered as a webpack server external in
+  // next.config.mjs, so a regular dynamic import works from any chunk.
+  const { createHash } = await import("crypto");
 
   // Resolve every refs → employee in one go.
   // Exclude TERMINATED employees from the poll mapping. A terminated

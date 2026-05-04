@@ -64,12 +64,20 @@ const STYLES: Record<StatusKind, Style> = {
   CANCELLED: { kind: "neutral", label: "Cancelled", Icon: CircleDashed },
 };
 
+// Kind classes use a softer hairline border + a subtle inset highlight to
+// differentiate the chip from the surface — premium products lean on
+// inset shadows over thick borders.
 const KIND_CLASSES: Record<Kind, string> = {
-  neutral: "bg-surface-2 text-text-muted border-border",
-  success: "bg-success-50 text-success-700 border-success-200",
-  warn: "bg-warn-50 text-warn-700 border-warn-200",
-  danger: "bg-danger-50 text-danger-700 border-danger-200",
-  info: "bg-info-50 text-info-700 border-info-200",
+  neutral:
+    "bg-surface-2 text-text-muted border-border/70 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.4)]",
+  success:
+    "bg-success-50 text-success-700 border-success-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
+  warn:
+    "bg-warn-50 text-warn-700 border-warn-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
+  danger:
+    "bg-danger-50 text-danger-700 border-danger-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
+  info:
+    "bg-info-50 text-info-700 border-info-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
 };
 
 export function StatusPill({
@@ -84,12 +92,12 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-medium tracking-tight antialiased",
         KIND_CLASSES[s.kind],
         className,
       )}
     >
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      <Icon className="h-3 w-3" aria-hidden="true" />
       {s.label}
     </span>
   );
