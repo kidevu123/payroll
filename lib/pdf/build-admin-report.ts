@@ -14,6 +14,8 @@ import { listShifts } from "@/lib/db/queries/shifts";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
+import { canonicalEndForSchedule } from "@/lib/payroll/period-boundaries";
+import { paySchedules } from "@/lib/db/schema";
 import type { AdminReportInput } from "./types";
 
 function tzDayKey(d: Date, tz: string): string {
@@ -60,6 +62,25 @@ export async function buildAdminReportArtifacts(
 ): Promise<AdminReportArtifacts> {
   const period = await getPeriodById(periodId);
   if (!period) throw new Error(`Period ${periodId} not found`);
+
+  // Resolve the period's pay schedule so we can canonical-extend the
+  // end date for weekly periods. Short uploads (Mon-Fri) printed
+  // "2026-04-27 to 2026-05-01" on the admin report when the canonical
+  // pay week is "2026-04-27 to 2026-05-03" (Mon-Sun). Mirrors the
+  // /payroll header + /reports table + Zoho expense reference.
+  const periodSchedule = period.payScheduleId
+    ? (
+        await db
+          .select()
+          .from(paySchedules)
+          .where(eq(paySchedules.id, period.payScheduleId))
+      )[0]
+    : null;
+  const displayEndDate = canonicalEndForSchedule(
+    period.startDate,
+    period.endDate,
+    periodSchedule?.periodKind ?? null,
+  );
 
   const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks] =
     await Promise.all([
@@ -260,7 +281,7 @@ export async function buildAdminReportArtifacts(
       brandColorHex: company.brandColorHex,
       locale: company.locale,
     },
-    period: { startDate: period.startDate, endDate: period.endDate },
+    period: { startDate: period.startDate, endDate: displayEndDate },
     rules: {
       rounding: payRules.rounding,
       hoursDecimalPlaces: payRules.hoursDecimalPlaces,

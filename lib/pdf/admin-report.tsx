@@ -83,9 +83,28 @@ const styles = StyleSheet.create({
   cId: { width: 36, fontFamily: "Courier", fontSize: 7 },
   cName: { flex: 2.2 },
   cShift: { width: 60 },
-  cHours: { width: 50, fontFamily: "Courier", textAlign: "right" },
-  cPay: { width: 60, fontFamily: "Courier", textAlign: "right" },
-  cRounded: { width: 60, fontFamily: "Courier", textAlign: "right" },
+  // paddingRight on hours so a 3-digit value (e.g. 145.44) doesn't
+  // visually collide with the dollar-sign of the pay column. Same pattern
+  // on pay → rounded.
+  cHours: {
+    width: 50,
+    fontFamily: "Courier",
+    textAlign: "right",
+    paddingRight: 6,
+  },
+  cPay: {
+    width: 60,
+    fontFamily: "Courier",
+    textAlign: "right",
+    paddingLeft: 4,
+    paddingRight: 6,
+  },
+  cRounded: {
+    width: 60,
+    fontFamily: "Courier",
+    textAlign: "right",
+    paddingLeft: 4,
+  },
   // Per-employee detail block (rendered in a 3-col grid).
   breakdownTitle: {
     fontSize: 10,
@@ -138,11 +157,25 @@ const styles = StyleSheet.create({
   blockTrAlt: {
     backgroundColor: "#fafafa",
   },
-  bcDate: { width: "26%" },
-  bcIn: { width: "22%", fontFamily: "Courier" },
-  bcOut: { width: "22%", fontFamily: "Courier" },
-  bcHours: { width: "14%", fontFamily: "Courier", textAlign: "right" },
-  bcPay: { width: "16%", fontFamily: "Courier", textAlign: "right" },
+  // Per-day row column widths. Add explicit right padding on the hours
+  // cell so a long hours value (e.g. "12.05") doesn't visually collide
+  // with the $-sign of the pay cell. Without this gap the report
+  // printed as "12.05$144.60" with no space.
+  bcDate: { width: "24%" },
+  bcIn: { width: "20%", fontFamily: "Courier" },
+  bcOut: { width: "20%", fontFamily: "Courier" },
+  bcHours: {
+    width: "16%",
+    fontFamily: "Courier",
+    textAlign: "right",
+    paddingRight: 6,
+  },
+  bcPay: {
+    width: "20%",
+    fontFamily: "Courier",
+    textAlign: "right",
+    paddingLeft: 4,
+  },
   blockTotalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
