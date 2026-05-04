@@ -143,16 +143,24 @@ type FetchAccountsResult = {
 
 async function fetchAllAccounts(
   org: ZohoOrganization,
+  searchText?: string,
 ): Promise<FetchAccountsResult> {
   const all: ZohoAccountRow[] = [];
   let lastError: string | null = null;
   let page = 1;
   // 20 pages * 200 = 4000 accounts — far past anything realistic.
   for (let i = 0; i < 20; i++) {
-    const resp = await authedFetch(
-      org,
-      `/chartofaccounts?per_page=200&page=${page}`,
-    );
+    // Mirror the legacy app's URL: filter_by=AccountType.All + search_text
+    // for server-side filtering. search_text is a wildcard contains-match
+    // on Zoho's side, which collapses the list dramatically before we
+    // paginate. Both params are tolerated by Zoho even on minimal scopes.
+    const params = new URLSearchParams({
+      per_page: "200",
+      page: String(page),
+      filter_by: "AccountType.All",
+    });
+    if (searchText) params.set("search_text", searchText);
+    const resp = await authedFetch(org, `/chartofaccounts?${params.toString()}`);
     if (!resp.ok) {
       const text = await resp.text();
       lastError = `${resp.status}: ${text.slice(0, 200)}`;
@@ -188,7 +196,10 @@ async function resolveAccountId(
   if (hint.id) return { id: hint.id, tried: [hint.id], apiError: null };
   if (!hint.name) return { id: null, tried: [], apiError: null };
 
-  const fetched = await fetchAllAccounts(org);
+  // Strip "[CODE] " from the search text so Zoho's server-side filter
+  // matches against the raw account name.
+  const searchText = hint.name.replace(/^\s*\[[^\]]+\]\s*/, "").trim();
+  const fetched = await fetchAllAccounts(org, searchText);
   const accounts = fetched.rows;
   const target = normalizeAccountName(hint.name);
   // 1) Exact match on normalized name.

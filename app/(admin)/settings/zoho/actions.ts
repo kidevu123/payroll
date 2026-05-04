@@ -20,11 +20,20 @@ const baseSchema = z.object({
   defaultExpenseAccountName: z
     .union([z.string().max(160), z.literal("").transform(() => null)])
     .nullable(),
+  defaultExpenseAccountId: z
+    .union([z.string().max(60), z.literal("").transform(() => null)])
+    .nullable(),
   defaultPaidThroughName: z
     .union([z.string().max(160), z.literal("").transform(() => null)])
     .nullable(),
+  defaultPaidThroughId: z
+    .union([z.string().max(60), z.literal("").transform(() => null)])
+    .nullable(),
   defaultVendorName: z
     .union([z.string().max(160), z.literal("").transform(() => null)])
+    .nullable(),
+  defaultVendorId: z
+    .union([z.string().max(60), z.literal("").transform(() => null)])
     .nullable(),
 });
 
@@ -45,8 +54,11 @@ function parseFields(formData: FormData) {
     apiDomain: formData.get("apiDomain") || "https://www.zohoapis.com",
     accountsDomain: formData.get("accountsDomain") || "https://accounts.zoho.com",
     defaultExpenseAccountName: formData.get("defaultExpenseAccountName") || null,
+    defaultExpenseAccountId: formData.get("defaultExpenseAccountId") || null,
     defaultPaidThroughName: formData.get("defaultPaidThroughName") || null,
+    defaultPaidThroughId: formData.get("defaultPaidThroughId") || null,
     defaultVendorName: formData.get("defaultVendorName") || null,
+    defaultVendorId: formData.get("defaultVendorId") || null,
   };
 }
 

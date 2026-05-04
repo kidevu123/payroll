@@ -242,16 +242,36 @@ function OrgForm({
         <Label htmlFor={`cs-${org?.id ?? "new"}`}>Client secret {mode === "edit" && "(leave blank to keep)"}</Label>
         <Input id={`cs-${org?.id ?? "new"}`} name="clientSecret" type="password" autoComplete="off" required={mode === "create"} />
       </div>
-      <div className="space-y-1 sm:col-span-2">
-        <Label htmlFor={`exp-${org?.id ?? "new"}`}>Default expense account name</Label>
-        <Input id={`exp-${org?.id ?? "new"}`} name="defaultExpenseAccountName" defaultValue={org?.defaultExpenseAccountName ?? ""} placeholder="Salaries Payable" />
+      <div className="space-y-1 sm:col-span-2 rounded-card border border-border bg-surface p-3">
+        <p className="text-xs text-text-muted">
+          Provide an account_id to bypass chart-of-accounts lookup
+          (matches the legacy app&apos;s ZB_*_ACCOUNT_ID env vars). The
+          name is a fallback used only when the ID is blank — handy if
+          your refresh token doesn&apos;t carry settings.READ scope.
+        </p>
       </div>
-      <div className="space-y-1 sm:col-span-2">
-        <Label htmlFor={`pt-${org?.id ?? "new"}`}>Default paid-through account name</Label>
-        <Input id={`pt-${org?.id ?? "new"}`} name="defaultPaidThroughName" defaultValue={org?.defaultPaidThroughName ?? ""} placeholder="Operating Account" />
+      <div className="space-y-1">
+        <Label htmlFor={`expid-${org?.id ?? "new"}`}>Expense account_id (preferred)</Label>
+        <Input id={`expid-${org?.id ?? "new"}`} name="defaultExpenseAccountId" defaultValue={org?.defaultExpenseAccountId ?? ""} placeholder="2002000000123456" />
       </div>
-      <div className="space-y-1 sm:col-span-2">
-        <Label htmlFor={`ven-${org?.id ?? "new"}`}>Default vendor name (optional)</Label>
+      <div className="space-y-1">
+        <Label htmlFor={`exp-${org?.id ?? "new"}`}>Expense account name (fallback)</Label>
+        <Input id={`exp-${org?.id ?? "new"}`} name="defaultExpenseAccountName" defaultValue={org?.defaultExpenseAccountName ?? ""} placeholder="Payroll Expenses" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`ptid-${org?.id ?? "new"}`}>Paid-through account_id (preferred)</Label>
+        <Input id={`ptid-${org?.id ?? "new"}`} name="defaultPaidThroughId" defaultValue={org?.defaultPaidThroughId ?? ""} placeholder="2002000000123457" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`pt-${org?.id ?? "new"}`}>Paid-through name (fallback)</Label>
+        <Input id={`pt-${org?.id ?? "new"}`} name="defaultPaidThroughName" defaultValue={org?.defaultPaidThroughName ?? ""} placeholder="Cash on hand" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`venid-${org?.id ?? "new"}`}>Vendor_id (optional)</Label>
+        <Input id={`venid-${org?.id ?? "new"}`} name="defaultVendorId" defaultValue={org?.defaultVendorId ?? ""} placeholder="2002000000123458" />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`ven-${org?.id ?? "new"}`}>Vendor name (optional, unused)</Label>
         <Input id={`ven-${org?.id ?? "new"}`} name="defaultVendorName" defaultValue={org?.defaultVendorName ?? ""} />
       </div>
       <div className="flex items-center justify-end gap-2 sm:col-span-2">

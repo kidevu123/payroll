@@ -119,12 +119,25 @@ export async function sendTestPushAction(
       subscriptionCount: 0,
     };
   }
-  const result = await dispatchPush(targetId, {
-    title: "Payroll test push",
-    body: `Sent ${new Date().toLocaleTimeString()} from /settings/notifications.`,
-    url: "/me",
-    tag: "test",
-  });
+  let result: { sent: number; pruned: number };
+  try {
+    result = await dispatchPush(targetId, {
+      title: "Payroll test push",
+      body: `Sent ${new Date().toLocaleTimeString()} from /settings/notifications.`,
+      url: "/me",
+      tag: "test",
+    });
+  } catch (err) {
+    // dispatchPush can throw if web-push's setVapidDetails rejects the
+    // configured key pair (bad shape, wrong length, etc.). Surface the
+    // error inline instead of letting Next 15 redact it as a Server
+    // Component digest.
+    return {
+      ok: false,
+      message: `Push dispatch threw: ${err instanceof Error ? err.message : String(err)}. Likely a malformed VAPID key in /etc/payroll/.env.`,
+      subscriptionCount: subs.length,
+    };
+  }
   if (result.sent === 0 && result.pruned > 0) {
     return {
       ok: false,
