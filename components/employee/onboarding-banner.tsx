@@ -240,7 +240,9 @@ export function OnboardingBanner({
 function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
   const ios = typeof navigator !== "undefined" && isIOSSafari();
   // Lock body scroll while the sheet is open so the page underneath
-  // doesn't scroll when the user touches the backdrop.
+  // doesn't scroll when the user touches the backdrop. Cleanup must
+  // restore the prior overflow value on unmount — otherwise the page
+  // can stay frozen if the sheet is closed mid-transition.
   React.useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -252,11 +254,15 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55"
+      // Center the panel rather than dock to the bottom edge — on iOS
+      // Safari the URL bar + bottom toolbar were eating the bottom 100px
+      // of the viewport, so a docked sheet rendered with its top half
+      // off-screen and the user couldn't see the body or the Add button.
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/55 p-3 sm:p-6 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl bg-surface p-5 pb-8 shadow-pop"
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-surface p-5 pb-8 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong/70" />
