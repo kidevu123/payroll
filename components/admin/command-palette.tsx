@@ -20,7 +20,11 @@ import {
   Workflow,
   BarChart3,
   ScrollText,
+  Briefcase,
+  Database,
+  Clock,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export type CommandTarget = {
@@ -45,17 +49,32 @@ const GROUP_ICON: Record<CommandTarget["group"], LucideIcon> = {
   settings: Settings2,
 };
 
-// Static nav targets injected client-side so the palette has a useful baseline
-// even when no employees or periods exist yet.
-const STATIC_NAV: CommandTarget[] = [
-  { id: "nav-dashboard", label: "Dashboard", href: "/dashboard", group: "navigate" },
-  { id: "nav-employees", label: "Employees", href: "/employees", group: "navigate" },
-  { id: "nav-time", label: "Time", href: "/time", group: "navigate" },
-  { id: "nav-payroll", label: "Payroll", href: "/payroll", group: "navigate" },
-  { id: "nav-requests", label: "Requests", href: "/requests", group: "navigate" },
-  { id: "nav-ngteco", label: "NGTeco", href: "/ngteco", group: "navigate" },
-  { id: "nav-reports", label: "Reports", href: "/reports", group: "navigate" },
-  { id: "nav-audit", label: "Audit", href: "/audit", group: "navigate" },
+// Static nav targets injected client-side so the palette has a useful
+// baseline even when no employees or periods exist yet. Labels resolve
+// through the existing nav.* i18n bundle so the palette respects the
+// admin's chosen locale (en/es). Static identifiers stay stable so
+// keyboard-shortcut customization is portable.
+type NavSeed = {
+  id: string;
+  href: string;
+  labelKey: string; // resolves under nav.*
+};
+const STATIC_NAV_SEEDS: NavSeed[] = [
+  { id: "nav-dashboard", href: "/dashboard", labelKey: "dashboard" },
+  { id: "nav-time", href: "/time", labelKey: "time" },
+  { id: "nav-payroll", href: "/payroll", labelKey: "payroll" },
+  { id: "nav-salaried", href: "/salaried", labelKey: "salaried" },
+  { id: "nav-calendar", href: "/calendar", labelKey: "calendar" },
+  { id: "nav-requests", href: "/requests", labelKey: "requests" },
+  { id: "nav-reports", href: "/reports", labelKey: "reports" },
+  // Tools tucked under Settings → Admin tools — surface them in the
+  // palette too so Cmd+K is the fast keyboard path.
+  { id: "nav-employees", href: "/employees", labelKey: "employees" },
+  { id: "nav-punches", href: "/punches", labelKey: "punches" },
+  { id: "nav-ngteco", href: "/ngteco", labelKey: "ngteco" },
+  { id: "nav-audit", href: "/audit", labelKey: "audit" },
+  { id: "nav-database", href: "/db", labelKey: "database" },
+  { id: "nav-settings", href: "/settings", labelKey: "settings" },
 ];
 
 const NAV_ICON_BY_HREF: Record<string, LucideIcon> = {
@@ -63,10 +82,14 @@ const NAV_ICON_BY_HREF: Record<string, LucideIcon> = {
   "/employees": Users,
   "/time": CalendarDays,
   "/payroll": Wallet,
+  "/salaried": Briefcase,
+  "/calendar": CalendarDays,
   "/requests": MessageSquareWarning,
   "/ngteco": Workflow,
   "/reports": BarChart3,
   "/audit": ScrollText,
+  "/db": Database,
+  "/punches": Clock,
   "/settings": Settings2,
 };
 
@@ -92,11 +115,22 @@ export function CommandPalette({
   targets: CommandTarget[];
   onSelect: (href: string) => void;
 }) {
+  const tNav = useTranslations("nav");
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const merged = React.useMemo(() => [...STATIC_NAV, ...targets], [targets]);
+  const STATIC_NAV: CommandTarget[] = React.useMemo(
+    () =>
+      STATIC_NAV_SEEDS.map((s) => ({
+        id: s.id,
+        href: s.href,
+        label: tNav(s.labelKey),
+        group: "navigate" as const,
+      })),
+    [tNav],
+  );
+  const merged = React.useMemo(() => [...STATIC_NAV, ...targets], [STATIC_NAV, targets]);
 
   const filtered = React.useMemo(() => {
     return merged
