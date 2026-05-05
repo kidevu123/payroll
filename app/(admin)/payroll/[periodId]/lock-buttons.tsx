@@ -18,14 +18,22 @@ export function LockButtons({
    *  When > 0, the Lock button gates with a confirm dialog so the admin
    *  has a chance to fix missing clock-outs before the period freezes. */
   incompletePunchCount = 0,
+  /** Period gross (rounded) in cents. Used to default the CASH
+   *  withdrawal amount when the operator picks "paid in cash". */
+  periodGrossRoundedCents = 0,
 }: {
   period: PayPeriod;
   incompletePunchCount?: number;
+  periodGrossRoundedCents?: number;
 }) {
   const [unlockOpen, setUnlockOpen] = React.useState(false);
   const [unmarkOpen, setUnmarkOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [paymentMethod, setPaymentMethod] = React.useState<"BANK" | "CASH">("BANK");
+  const [cashDollars, setCashDollars] = React.useState(
+    () => (periodGrossRoundedCents / 100).toFixed(2),
+  );
 
   if (period.state === "PAID") {
     if (!unmarkOpen) {
@@ -122,16 +130,56 @@ export function LockButtons({
   // LOCKED — admin can mark paid (to record actual payment) or unlock to fix.
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-end gap-2">
         <form
           action={async () => {
             setPending(true);
             setError(null);
-            const result = await markPaidAction(period.id);
+            const fd = new FormData();
+            fd.set("paymentMethod", paymentMethod);
+            if (paymentMethod === "CASH") {
+              const cents = Math.round(Number(cashDollars) * 100);
+              if (!Number.isFinite(cents) || cents <= 0) {
+                setPending(false);
+                setError("Enter a positive cash amount.");
+                return;
+              }
+              fd.set("cashAmountCents", cents.toString());
+            }
+            const result = await markPaidAction(period.id, fd);
             setPending(false);
             if (result?.error) setError(result.error);
           }}
+          className="flex flex-wrap items-end gap-2"
         >
+          <label className="text-xs text-text-muted space-y-0.5">
+            <span className="block">Payment</span>
+            <select
+              value={paymentMethod}
+              onChange={(e) =>
+                setPaymentMethod(e.target.value as "BANK" | "CASH")
+              }
+              disabled={pending}
+              className="h-9 rounded-input border border-border/70 bg-surface px-2.5 text-sm"
+            >
+              <option value="BANK">Paid through bank</option>
+              <option value="CASH">Paid through cash</option>
+            </select>
+          </label>
+          {paymentMethod === "CASH" && (
+            <label className="text-xs text-text-muted space-y-0.5">
+              <span className="block">Cash withdrawn ($)</span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={cashDollars}
+                onChange={(e) => setCashDollars(e.target.value)}
+                disabled={pending}
+                className="h-9 w-32"
+              />
+            </label>
+          )}
           <Button
             type="submit"
             disabled={pending}

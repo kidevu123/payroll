@@ -1,4 +1,6 @@
-import { requireAdmin } from "@/lib/auth-guards";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth-guards";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
@@ -28,7 +30,23 @@ const SETTINGS_TARGETS: CommandTarget[] = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireAdmin();
+  // Cash drawer is the one (admin) route accountants can reach; their
+  // role is otherwise scoped strictly to that page. Everyone else
+  // hitting any other (admin) path is bounced to /cash-drawer so they
+  // never see employees, payroll runs, settings, etc.
+  const session = await requireRole(
+    "OWNER",
+    "ADMIN",
+    "PAYROLL_STAFF",
+    "ACCOUNTANT",
+  );
+  if (session.user.role === "ACCOUNTANT") {
+    const h = await headers();
+    const pathname = h.get("x-pathname") ?? h.get("x-invoke-path") ?? "";
+    if (pathname && !pathname.startsWith("/cash-drawer")) {
+      redirect("/cash-drawer");
+    }
+  }
   // Usage metrics — one ping per admin page render. Grafana aggregates
   // these into DAU/WAU + active-admin counts. Cheap fire-and-forget.
   try {
@@ -82,7 +100,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-dvh flex bg-page">
-      <Sidebar company={companyForBrand} />
+      <Sidebar company={companyForBrand} role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           email={session.user.email}

@@ -33,7 +33,7 @@ import {
 
 export type Actor = {
   id: string;
-  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 
 export type PushResult = {

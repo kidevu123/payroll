@@ -4,7 +4,12 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-type Role = "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
+type Role =
+  | "OWNER"
+  | "ADMIN"
+  | "PAYROLL_STAFF"
+  | "ACCOUNTANT"
+  | "EMPLOYEE";
 
 export async function requireSession() {
   const session = await auth();
@@ -62,4 +67,14 @@ export async function requireAdminStrict() {
 
 export async function requireOwner() {
   return requireRole("OWNER");
+}
+
+/**
+ * Cash-drawer gate. Owner + Admin (full system access) and Accountant
+ * (cash-only access). PAYROLL_STAFF is intentionally excluded — they
+ * run payroll but don't reconcile cash. Use this on /cash-drawer and
+ * the cash-drawer reports.
+ */
+export async function requireCashDrawerAccess() {
+  return requireRole("OWNER", "ADMIN", "ACCOUNTANT");
 }

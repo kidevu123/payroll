@@ -51,6 +51,11 @@ export const userRoleEnum = pgEnum("user_role", [
   // (time grid, periods, runs, NGTeco, requests) but cannot reset
   // OWNER-only knobs (cleanup actions, DB browser, role assignment).
   "PAYROLL_STAFF",
+  // ACCOUNTANT: scoped to /cash-drawer + reports that pull from it.
+  // Can record deposits/withdrawals and see the running balance.
+  // Cannot see payroll runs, employees, time, settings, or anything
+  // unrelated to cash-on-hand reconciliation.
+  "ACCOUNTANT",
   "EMPLOYEE",
 ]);
 
@@ -71,6 +76,12 @@ export const payTypeEnum = pgEnum("pay_type", [
 ]);
 
 export const languageEnum = pgEnum("language", ["en", "es"]);
+
+export const paymentMethodEnum = pgEnum("payment_method", ["BANK", "CASH"]);
+export const cashDrawerKindEnum = pgEnum("cash_drawer_kind", [
+  "DEPOSIT",
+  "WITHDRAWAL",
+]);
 
 export const payPeriodStateEnum = pgEnum("pay_period_state", [
   "OPEN",
@@ -347,6 +358,15 @@ export const payPeriods = pgTable(
     lockedById: uuid("locked_by_id").references(() => users.id),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     paidById: uuid("paid_by_id").references(() => users.id),
+    /** How the period was settled — BANK transfer / direct deposit, or
+     *  CASH from the on-prem drawer. Set when the period transitions
+     *  to PAID. NULL means unset (older periods predating this column,
+     *  or PAID rows where the operator didn't pick a method). */
+    paymentMethod: paymentMethodEnum("payment_method"),
+    /** When paymentMethod = CASH, links to the cash_drawer_entries
+     *  WITHDRAWAL row this period spent. Null otherwise. FK applied
+     *  below to avoid the forward-reference circular type. */
+    cashDrawerEntryId: uuid("cash_drawer_entry_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -464,6 +484,47 @@ export const tempWorkerEntries = pgTable(
     index("temp_worker_active_idx")
       .on(t.periodId)
       .where(sql`${t.deletedAt} IS NULL`),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cash drawer
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Single-drawer ledger. DEPOSIT entries are operator-initiated (owner
+// adds cash, records the source invoice). WITHDRAWAL entries are
+// auto-created when a pay period is marked PAID with payment_method =
+// CASH. Running balance = sum(DEPOSIT.amount) - sum(WITHDRAWAL.amount).
+// Visible to OWNER + ADMIN + the new ACCOUNTANT role; invisible to
+// PAYROLL_STAFF.
+
+export const cashDrawerEntries = pgTable(
+  "cash_drawer_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: cashDrawerKindEnum("kind").notNull(),
+    /** Always positive. Direction is encoded by `kind`. */
+    amountCents: bigint("amount_cents", { mode: "number" }).notNull(),
+    /** Required for DEPOSIT (owner ask: "everytime i add cash to the
+     *  drawer i need to put a invoice number"). Null for WITHDRAWAL —
+     *  those are tied to a pay period instead. */
+    invoiceNumber: text("invoice_number"),
+    notes: text("notes"),
+    /** Withdrawals link back to the period that consumed them. Null
+     *  for deposits and for any historical withdrawal recorded
+     *  manually. */
+    periodId: uuid("period_id").references(() => payPeriods.id, {
+      onDelete: "set null",
+    }),
+    createdById: uuid("created_by_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("cash_drawer_entries_kind_idx").on(t.kind),
+    index("cash_drawer_entries_period_idx").on(t.periodId),
+    index("cash_drawer_entries_created_idx").on(t.createdAt),
   ],
 );
 

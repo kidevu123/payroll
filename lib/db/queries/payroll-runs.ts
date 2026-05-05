@@ -26,7 +26,7 @@ import { sumByPeriod as sumTempByPeriod } from "@/lib/db/queries/temp-workers";
 
 export type Actor = {
   id: string;
-  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 
 export type PayrollRunState = (typeof payrollRunStateEnum.enumValues)[number];

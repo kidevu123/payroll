@@ -50,7 +50,12 @@ export default function middleware(req: NextRequest) {
     url.searchParams.set("from", pathname);
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  // Forward the pathname so server layouts can role-gate by URL.
+  // Edge can't decode the JWT to check role itself, so the layout
+  // does that part using the path we set here.
+  const headers = new Headers(req.headers);
+  headers.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

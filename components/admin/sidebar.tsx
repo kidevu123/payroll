@@ -28,6 +28,7 @@ import {
   Settings2,
   Briefcase,
   CalendarRange,
+  Banknote,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -53,7 +54,22 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
   {
     headingKey: "operate",
-    items: [{ href: "/reports", labelKey: "reports", icon: BarChart3 }],
+    items: [
+      { href: "/reports", labelKey: "reports", icon: BarChart3 },
+      { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
+    ],
+  },
+];
+
+// When an Accountant is signed in we collapse the sidebar to just
+// their one allowed page. Owner/Admin/Payroll-staff see everything
+// else as before.
+const ACCOUNTANT_SECTIONS: { headingKey: string; items: NavItem[] }[] = [
+  {
+    headingKey: "operate",
+    items: [
+      { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
+    ],
   },
 ];
 
@@ -71,12 +87,17 @@ function isActive(pathname: string, href: string): boolean {
 export function Sidebar({
   company,
   systemHealthy = true,
+  role = "ADMIN",
 }: {
   company: { name: string; logoPath: string | null };
   systemHealthy?: boolean;
+  /** Drives sidebar contents — ACCOUNTANT gets the cash-drawer-only
+   *  variant; everyone else sees the full admin nav. */
+  role?: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT";
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
+  const sections = role === "ACCOUNTANT" ? ACCOUNTANT_SECTIONS : SECTIONS;
 
   return (
     <aside
@@ -109,7 +130,7 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
-        {SECTIONS.map((sec) => (
+        {sections.map((sec) => (
           <div key={sec.headingKey}>
             <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-subtle/80">
               {tNav(sec.headingKey)}
@@ -137,12 +158,14 @@ export function Sidebar({
           aria-hidden
           className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-brand-500/0 via-brand-500/60 to-purple-500/0 pointer-events-none"
         />
-        <SidebarItem
-          href={FOOTER_NAV.href}
-          label={tNav(FOOTER_NAV.labelKey)}
-          Icon={FOOTER_NAV.icon}
-          active={isActive(pathname, FOOTER_NAV.href)}
-        />
+        {role !== "ACCOUNTANT" && (
+          <SidebarItem
+            href={FOOTER_NAV.href}
+            label={tNav(FOOTER_NAV.labelKey)}
+            Icon={FOOTER_NAV.icon}
+            active={isActive(pathname, FOOTER_NAV.href)}
+          />
+        )}
         <SystemStatus healthy={systemHealthy} />
       </div>
     </aside>

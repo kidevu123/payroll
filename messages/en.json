@@ -45,6 +45,7 @@
     "requests": "Requests",
     "ngteco": "NGTeco",
     "reports": "Reports",
+    "cashDrawer": "Cash drawer",
     "audit": "Audit",
     "database": "Database",
     "punches": "All punches",

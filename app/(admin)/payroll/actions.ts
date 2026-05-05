@@ -51,19 +51,49 @@ export async function unlockPeriodAction(
   revalidatePath("/payroll");
 }
 
+const markPaidSchema = z.object({
+  paymentMethod: z.enum(["BANK", "CASH"]).optional(),
+  cashAmountCents: z.coerce.number().int().min(0).optional(),
+});
+
 export async function markPaidAction(
   id: string,
+  formData?: FormData,
 ): Promise<{ error?: string } | void> {
   const session = await requireAdmin();
   if (!idSchema.safeParse(id).success) return { error: "Invalid id." };
+  // Form is optional for backwards-compat (existing buttons that
+  // don't pass any data still work — they mark paid without a
+  // payment-method tag, exactly the prior behavior).
+  let parsed: z.infer<typeof markPaidSchema> = {};
+  if (formData) {
+    const r = markPaidSchema.safeParse({
+      paymentMethod: formData.get("paymentMethod") || undefined,
+      cashAmountCents: formData.get("cashAmountCents") || undefined,
+    });
+    if (!r.success) {
+      return { error: r.error.issues[0]?.message ?? "Invalid input." };
+    }
+    parsed = r.data;
+  }
   try {
-    await markPaid(id, { id: session.user.id, role: session.user.role });
+    await markPaid(
+      id,
+      { id: session.user.id, role: session.user.role },
+      {
+        ...(parsed.paymentMethod ? { paymentMethod: parsed.paymentMethod } : {}),
+        ...(parsed.cashAmountCents !== undefined
+          ? { cashAmountCents: parsed.cashAmountCents }
+          : {}),
+      },
+    );
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Could not mark paid." };
   }
   revalidatePath(`/payroll/${id}`);
   revalidatePath("/payroll");
   revalidatePath("/reports");
+  revalidatePath("/cash-drawer");
 }
 
 const unmarkPaidSchema = z.object({ reason: z.string().min(1).max(500) });

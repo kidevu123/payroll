@@ -19,7 +19,7 @@ import { writeAudit } from "@/lib/db/audit";
 
 export type Actor = {
   id: string;
-  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 
 // ── Missed-punch requests ───────────────────────────────────────────────────

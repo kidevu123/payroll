@@ -110,6 +110,14 @@ export async function lockPeriod(id: string, actor: Actor): Promise<PayPeriod> {
 export async function markPaid(
   id: string,
   actor: Actor,
+  opts: {
+    paymentMethod?: "BANK" | "CASH";
+    /** Total to deduct from the cash drawer when paymentMethod=CASH.
+     *  Caller computes this (typically grossPayCents sum + temp
+     *  worker entries). Required when method=CASH; ignored otherwise. */
+    cashAmountCents?: number;
+    cashNotes?: string;
+  } = {},
 ): Promise<PayPeriod> {
   return db.transaction(async (tx) => {
     const [before] = await tx
@@ -121,9 +129,38 @@ export async function markPaid(
     if (before.state !== "LOCKED") {
       throw new Error("markPaid: period must be LOCKED first");
     }
+
+    let cashDrawerEntryId: string | null = null;
+    if (opts.paymentMethod === "CASH") {
+      if (!opts.cashAmountCents || opts.cashAmountCents <= 0) {
+        throw new Error(
+          "markPaid: cashAmountCents is required when paymentMethod=CASH.",
+        );
+      }
+      // Defer to the cash-drawer module so balance + audit are
+      // consistent with manual deposits/withdrawals.
+      const { recordWithdrawal } = await import("./cash-drawer");
+      const wd = await recordWithdrawal(
+        {
+          amountCents: opts.cashAmountCents,
+          periodId: id,
+          notes: opts.cashNotes ?? null,
+        },
+        actor,
+        tx,
+      );
+      cashDrawerEntryId = wd.id;
+    }
+
     const [row] = await tx
       .update(payPeriods)
-      .set({ state: "PAID", paidAt: new Date(), paidById: actor.id })
+      .set({
+        state: "PAID",
+        paidAt: new Date(),
+        paidById: actor.id,
+        paymentMethod: opts.paymentMethod ?? null,
+        cashDrawerEntryId,
+      })
       .where(eq(payPeriods.id, id))
       .returning();
     if (!row) throw new Error("markPaid: returning() empty");

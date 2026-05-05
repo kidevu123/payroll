@@ -35,7 +35,7 @@ export type ManualImportInput = {
   csv: string;
   payrollRunId: string;
   timezone: string;
-  actor: { id: string; role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE" };
+  actor: { id: string; role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE" };
 };
 
 export type ManualImportSummary = {

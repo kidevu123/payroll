@@ -408,10 +408,96 @@ export default async function PeriodReviewPage({
                 (s, r) => s + (r.incomplete ?? 0),
                 0,
               )}
+              periodGrossRoundedCents={allPayslips
+                .filter((p) => !p.voidedAt)
+                .reduce((s, p) => s + (p.roundedPayCents ?? 0), 0)}
             />
           </div>
         </div>
       </div>
+
+      {/* Acknowledgement roll — owner ask: "where does that go right
+          now there is needs to be a distinct place to see they have
+          approved their pay slip". Counts active payslips by status
+          (acknowledged / disputed / awaiting), with names listed
+          under each bucket so admin sees exactly who's outstanding. */}
+      {(() => {
+        const active = allPayslips.filter((p) => !p.voidedAt);
+        const ackd = active.filter(
+          (p) => p.acknowledgedAt && !p.disputedAt,
+        );
+        const disputed = active.filter(
+          (p) => p.disputedAt && !p.disputeResolvedAt,
+        );
+        const pending = active.filter(
+          (p) => !p.acknowledgedAt && !p.disputedAt,
+        );
+        const nameOf = (id: string) =>
+          allEmployees.find((e) => e.id === id)?.displayName ?? "—";
+        if (active.length === 0) return null;
+        return (
+          <div className="rounded-card border border-border/70 bg-surface p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Payslip acknowledgements
+              </h2>
+              <p className="text-xs text-text-muted tabular-nums">
+                <span className="font-semibold text-emerald-700">
+                  {ackd.length}
+                </span>{" "}
+                /{" "}
+                <span className="text-text">
+                  {active.length}
+                </span>{" "}
+                acknowledged
+                {disputed.length > 0 ? ` · ${disputed.length} disputed` : ""}
+                {pending.length > 0 ? ` · ${pending.length} pending` : ""}
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 text-xs">
+              <div className="rounded-input border border-emerald-200/60 bg-emerald-50/40 p-2">
+                <p className="font-semibold text-emerald-800 mb-1">
+                  Acknowledged ({ackd.length})
+                </p>
+                <p className="text-text-muted leading-relaxed">
+                  {ackd.length === 0
+                    ? "—"
+                    : ackd
+                        .map((p) => nameOf(p.employeeId))
+                        .sort()
+                        .join(", ")}
+                </p>
+              </div>
+              <div className="rounded-input border border-amber-200/60 bg-amber-50/40 p-2">
+                <p className="font-semibold text-amber-800 mb-1">
+                  Pending ({pending.length})
+                </p>
+                <p className="text-text-muted leading-relaxed">
+                  {pending.length === 0
+                    ? "—"
+                    : pending
+                        .map((p) => nameOf(p.employeeId))
+                        .sort()
+                        .join(", ")}
+                </p>
+              </div>
+              <div className="rounded-input border border-red-200/60 bg-red-50/40 p-2">
+                <p className="font-semibold text-red-800 mb-1">
+                  Disputed ({disputed.length})
+                </p>
+                <p className="text-text-muted leading-relaxed">
+                  {disputed.length === 0
+                    ? "—"
+                    : disputed
+                        .map((p) => nameOf(p.employeeId))
+                        .sort()
+                        .join(", ")}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Drift banner — shows when stored payslip hours diverge from
           live punch hours. Lets the admin recompute every doubled
