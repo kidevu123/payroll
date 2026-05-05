@@ -347,45 +347,31 @@ export async function scrapeViewAttendance(
       await page.waitForSelector(sel.login.loggedInLandmark, { timeout: 15_000 });
     }
 
-    // Navigate directly to the View Attendance Punch page. The owner
-    // confirmed the canonical URL is `${portalUrl}/att/timecard/transaction`
-    // — much more reliable than walking the sidebar (Element-Plus menu
-    // selectors are fragile when class names rev). Falls back to the
-    // sidebar click flow if the deep-link doesn't render the table
-    // (defensive — covers a future portal redesign).
-    const directPunchUrl = (() => {
+    // SPA navigation only — page.goto() to a deep URL was nuking the
+    // in-memory session token and bouncing back to /login, even right
+    // after a successful login (verified via failure screenshot).
+    // Click through the sidebar exactly like a human would: expand
+    // Attendance, click View Attendance Punch.
+    //
+    // After login, give the dashboard a moment to hydrate the menu —
+    // Element Plus renders the sidebar after the auth call returns.
+    if (sel.navigation.attendanceMenu) {
       try {
-        const u = new URL(input.portalUrl);
-        return `${u.origin}/att/timecard/transaction`;
-      } catch {
-        return null;
-      }
-    })();
-    let landed = false;
-    if (directPunchUrl) {
-      try {
-        await page.goto(directPunchUrl, { waitUntil: "networkidle" });
-        await page.waitForSelector(sel.viewPunch.tableLandmark, {
-          timeout: 15_000,
+        await page.locator(sel.navigation.attendanceMenu).first().click({
+          timeout: 10_000,
         });
-        landed = true;
       } catch {
-        /* fall through to sidebar click flow */
+        // Menu may already be expanded, or the click landed on a
+        // descendant. Continue — the View Attendance Punch link should
+        // still be reachable.
       }
     }
-    if (!landed) {
-      if (sel.navigation.attendanceMenu) {
-        try {
-          await page.click(sel.navigation.attendanceMenu, { timeout: 5_000 });
-        } catch {
-          // Menu may already be expanded; ignore.
-        }
-      }
-      await page.click(sel.navigation.viewAttendancePunchLink);
-      await page.waitForSelector(sel.viewPunch.tableLandmark, {
-        timeout: 15_000,
-      });
-    }
+    await page.locator(sel.navigation.viewAttendancePunchLink).first().click({
+      timeout: 15_000,
+    });
+    await page.waitForSelector(sel.viewPunch.tableLandmark, {
+      timeout: 15_000,
+    });
 
     // Wait until at least one DATA row has text in its personId cell —
     // Element Plus tables often render a placeholder/loading row first

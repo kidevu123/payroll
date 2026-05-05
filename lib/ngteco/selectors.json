@@ -12,8 +12,8 @@
   "navigation": {
     "reportsLink": "text=/Reports?/i",
     "punchReportLink": "text=/Punch.*Report/i",
-    "attendanceMenu": "text=/Attendance/i",
-    "viewAttendancePunchLink": "text=/View Attendance Punch/i"
+    "attendanceMenu": ".el-submenu__title:has-text(\"Attendance\"), [role=\"menuitem\"]:has-text(\"Attendance\") >> nth=0, text=\"Attendance\"",
+    "viewAttendancePunchLink": ".el-menu-item:has-text(\"View Attendance Punch\"), text=\"View Attendance Punch\""
   },
   "report": {
     "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
