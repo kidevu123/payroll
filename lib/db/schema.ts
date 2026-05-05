@@ -547,6 +547,38 @@ export const ngtecoPollLog = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// In-app feedback / bug reports
+// ─────────────────────────────────────────────────────────────────────────────
+// "Report a bug" widget in the admin chrome writes here. Captures the
+// page URL, user agent, viewport, and the running build SHA so reports
+// are reproducible without a back-and-forth.
+
+export const appFeedback = pgTable(
+  "app_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    submittedById: uuid("submitted_by_id").references(() => users.id),
+    kind: text("kind").notNull(), // 'BUG' | 'IDEA' | 'OTHER'
+    severity: text("severity"), // 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null
+    message: text("message").notNull(),
+    pageUrl: text("page_url"),
+    userAgent: text("user_agent"),
+    viewport: text("viewport"), // "1280x800"
+    buildSha: text("build_sha"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedById: uuid("resolved_by_id").references(() => users.id),
+    resolutionNote: text("resolution_note"),
+  },
+  (t) => [
+    index("app_feedback_submitted_idx").on(t.submittedAt),
+    index("app_feedback_kind_idx").on(t.kind),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Missed-punch alerts + employee-submitted requests
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1047,3 +1079,5 @@ export type NgtecoPollLogRow = typeof ngtecoPollLog.$inferSelect;
 export type NewNgtecoPollLogRow = typeof ngtecoPollLog.$inferInsert;
 export type PayrollPeriodDocument = typeof payrollPeriodDocuments.$inferSelect;
 export type NewPayrollPeriodDocument = typeof payrollPeriodDocuments.$inferInsert;
+export type AppFeedback = typeof appFeedback.$inferSelect;
+export type NewAppFeedback = typeof appFeedback.$inferInsert;

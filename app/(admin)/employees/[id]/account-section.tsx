@@ -115,7 +115,7 @@ export function AccountSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <form
             action={async (form) => {
               setPending("setpw");
@@ -172,7 +172,7 @@ export function AccountSection({
 
         {tempPassword && <TempPasswordCallout value={tempPassword} onCopy={handleCopy} />}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <form
             action={async (form) => {
               setPending("role");

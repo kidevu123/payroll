@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth-guards";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
+import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
 import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
@@ -87,6 +88,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </main>
         <AppFooter />
       </div>
+      <FeedbackLauncher />
     </div>
   );
 }

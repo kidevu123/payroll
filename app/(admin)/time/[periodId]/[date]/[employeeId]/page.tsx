@@ -29,14 +29,21 @@ export default async function PunchEditorPage({
   const suggestedClockIn = `${date}T08:00`;
   const suggestedClockOut = "";
 
-  // Filter punches to ones whose clockIn falls on this calendar day in
-  // the company timezone.
+  // Filter punches to ones that touch this calendar day in the company
+  // timezone — clock_in OR clock_out falls on the date. Without the
+  // clock_out branch, an overnight punch (e.g. Sun 4 PM -> Mon 4 PM,
+  // accidentally created by old buggy form defaults) was only visible
+  // from the Sunday day-view, leaving admins stranded on Monday with
+  // no way to void it.
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
   });
-  const punches = allPunches.filter(
-    (p) => formatter.format(p.clockIn) === date,
-  );
+  const punches = allPunches.filter((p) => {
+    const inDay = formatter.format(p.clockIn);
+    if (inDay === date) return true;
+    if (p.clockOut && formatter.format(p.clockOut) === date) return true;
+    return false;
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">

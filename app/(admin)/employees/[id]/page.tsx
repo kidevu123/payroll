@@ -193,12 +193,6 @@ export default async function EmployeeDetailPage({
               ) : null}
             </CardContent>
           </Card>
-
-          <AccountSection
-            employeeId={employee.id}
-            employeeEmail={employee.email}
-            user={account}
-          />
         </div>
 
         {/* Right: work history + payslips + punches */}
@@ -333,6 +327,16 @@ export default async function EmployeeDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* Account moved out of the narrow left column so the password /
+          role / deactivate panels render at full page width — the
+          previous layout squeezed them into a 320px slot, clipping
+          buttons and stacking labels onto multiple lines. */}
+      <AccountSection
+        employeeId={employee.id}
+        employeeEmail={employee.email}
+        user={account}
+      />
 
       {employee.status !== "TERMINATED" && (
         <ArchiveEmployeeButton id={employee.id} name={employee.displayName} />
