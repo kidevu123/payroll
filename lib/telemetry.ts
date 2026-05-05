@@ -1,24 +1,100 @@
 // OpenTelemetry + structured logging.
 //
 // • OTel SDK boots in instrumentation.ts (Next.js's native hook).
-// • This file exposes the bare minimum: a tracer for ad-hoc spans and a
-//   structured logger for everything else.
-// • Default exporter is the console; OTEL_EXPORTER_OTLP_ENDPOINT redirects
-//   to the owner's Grafana stack (§19).
+// • This file exposes:
+//     - getTracer() for ad-hoc spans
+//     - metrics: counters and histograms for the flows that matter
+//     - structured logger for everything else
+// • Default exporter is the console; OTEL_EXPORTER_OTLP_ENDPOINT
+//   redirects to the owner's Grafana stack.
 
-import { trace, type Tracer } from "@opentelemetry/api";
+import { metrics, trace, type Tracer } from "@opentelemetry/api";
 
 export function getTracer(name = "payroll"): Tracer {
   return trace.getTracer(name);
 }
 
-// Tiny structured logger. Pino is overkill for Phase 0; we just want JSON
-// out of the box. Replace with Pino if/when needed.
+const meter = metrics.getMeter("payroll");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domain metrics. Names follow OTel conventions: snake_case, dot-separated
+// namespaces. Each is created lazily so importing this module is cheap.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Count of NGTeco poll runs, labeled with outcome. */
+export const ngtecoPollRuns = meter.createCounter("ngteco.poll.runs", {
+  description: "NGTeco punch-poll executions",
+});
+
+/** Histogram of NGTeco scrape durations in milliseconds. */
+export const ngtecoScrapeDuration = meter.createHistogram(
+  "ngteco.scrape.duration_ms",
+  {
+    description: "NGTeco scrape duration",
+    unit: "ms",
+  },
+);
+
+/** Count of punches imported from a poll/scrape. */
+export const punchesImported = meter.createCounter("punches.imported", {
+  description: "Number of punches inserted/updated by ingest",
+});
+
+/** Count of payroll runs published, labeled with schedule kind. */
+export const payrollRunsPublished = meter.createCounter(
+  "payroll.runs.published",
+  {
+    description: "Payroll runs that reached PUBLISHED state",
+  },
+);
+
+/** Histogram of payroll publish duration in ms. */
+export const payrollPublishDuration = meter.createHistogram(
+  "payroll.publish.duration_ms",
+  {
+    description: "Time from publish-start to PUBLISHED state",
+    unit: "ms",
+  },
+);
+
+/** Count of payslips generated, labeled with run kind. */
+export const payslipsGenerated = meter.createCounter("payslips.generated", {
+  description: "Payslips written by the publish handler",
+});
+
+/** Count of pay periods marked PAID. */
+export const periodsMarkedPaid = meter.createCounter("periods.marked_paid", {
+  description: "Pay periods transitioned to PAID state",
+});
+
+/** Count of cron job firings (heartbeat for liveness). */
+export const cronJobFires = meter.createCounter("cron.job.fires", {
+  description: "pg-boss cron-driven job executions",
+});
+
+/** Count of structured-error log lines. Use this so Grafana alerts on
+ *  rising error rates without parsing log text. */
+export const errorEvents = meter.createCounter("app.errors", {
+  description: "Errors emitted via logger.error()",
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Structured JSON logger. Every error.* call also bumps the errorEvents
+// metric so error rates are visible in Grafana without log parsing.
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const logger = {
   debug: (...args: unknown[]) => log("debug", args),
   info: (...args: unknown[]) => log("info", args),
   warn: (...args: unknown[]) => log("warn", args),
-  error: (...args: unknown[]) => log("error", args),
+  error: (...args: unknown[]) => {
+    log("error", args);
+    try {
+      errorEvents.add(1, { source: errorSource(args) });
+    } catch {
+      /* metric SDK not initialized in some test paths */
+    }
+  },
 };
 
 function log(level: "debug" | "info" | "warn" | "error", args: unknown[]) {
@@ -39,4 +115,13 @@ function log(level: "debug" | "info" | "warn" | "error", args: unknown[]) {
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
   else console.log(line);
+}
+
+function errorSource(args: unknown[]): string {
+  const first = args[0];
+  if (first && typeof first === "object" && "source" in first) {
+    const s = (first as { source?: unknown }).source;
+    if (typeof s === "string") return s;
+  }
+  return "app";
 }

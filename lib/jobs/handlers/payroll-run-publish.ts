@@ -9,7 +9,12 @@
 // to walk them. Only the Node runtime ever invokes this handler.
 
 import { eq } from "drizzle-orm";
-import { logger } from "@/lib/telemetry";
+import {
+  logger,
+  payrollRunsPublished,
+  payrollPublishDuration,
+  payslipsGenerated,
+} from "@/lib/telemetry";
 import { db } from "@/lib/db";
 import { taskPayLineItems } from "@/lib/db/schema";
 import {
@@ -106,6 +111,7 @@ export async function handlePayrollRunPublish(data: {
   runId: string;
 }): Promise<void> {
   const { runId } = data;
+  const t0 = Date.now();
   const run = await getRun(runId);
   if (!run) {
     logger.error({ runId }, "publish: run not found");
@@ -400,4 +406,10 @@ export async function handlePayrollRunPublish(data: {
     { runId, payslips: sigRows.length, periodDir },
     "publish: -> PUBLISHED",
   );
+  payrollRunsPublished.add(1, {
+    schedule: run.payScheduleId ? "tagged" : "untagged",
+    source: run.source,
+  });
+  payrollPublishDuration.record(Date.now() - t0, { source: run.source });
+  payslipsGenerated.add(sigRows.length, { source: run.source });
 }

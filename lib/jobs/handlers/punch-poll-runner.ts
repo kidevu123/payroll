@@ -8,7 +8,12 @@
 // it runs — the dynamic-import gymnastics in punch-poll.ts depend on the
 // handler module staying small.
 
-import { logger } from "@/lib/telemetry";
+import {
+  logger,
+  ngtecoPollRuns,
+  ngtecoScrapeDuration,
+  punchesImported,
+} from "@/lib/telemetry";
 import {
   finishPoll,
   startPoll,
@@ -26,6 +31,7 @@ export async function runPollAndLog(opts: {
     triggeredBy: opts.triggeredBy,
     triggeredById: opts.triggeredById ?? null,
   });
+  const t0 = Date.now();
   try {
     const summary = await handlePunchPoll();
     await finishPoll(log.id, {
@@ -35,11 +41,26 @@ export async function runPollAndLog(opts: {
       ...(summary.pairsUpdated !== undefined ? { pairsUpdated: summary.pairsUpdated } : {}),
       ...(summary.reason ? { errorMessage: summary.reason } : {}),
     });
+    ngtecoPollRuns.add(1, {
+      outcome: summary.ok ? "ok" : "fail",
+      trigger: opts.triggeredBy,
+    });
+    ngtecoScrapeDuration.record(Date.now() - t0, {
+      outcome: summary.ok ? "ok" : "fail",
+    });
+    if (summary.pairsInserted) {
+      punchesImported.add(summary.pairsInserted, { kind: "inserted" });
+    }
+    if (summary.pairsUpdated) {
+      punchesImported.add(summary.pairsUpdated, { kind: "updated" });
+    }
     return summary;
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    logger.error({ err }, "punch.poll: runner caught unexpected throw");
+    logger.error({ err, source: "ngteco.punch.poll" }, "punch.poll: runner caught unexpected throw");
     await finishPoll(log.id, { ok: false, errorMessage: reason });
+    ngtecoPollRuns.add(1, { outcome: "fail", trigger: opts.triggeredBy });
+    ngtecoScrapeDuration.record(Date.now() - t0, { outcome: "fail" });
     return { ok: false, reason };
   }
 }

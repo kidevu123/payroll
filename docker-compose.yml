@@ -45,7 +45,11 @@ services:
       APP_URL: ${APP_URL:-http://localhost:3000}
       TRUST_PROXY: ${TRUST_PROXY:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-payroll}
+      OTEL_DEPLOYMENT_ENVIRONMENT: ${OTEL_DEPLOYMENT_ENVIRONMENT:-production}
+      OTEL_PROMETHEUS_PORT: "9464"
+      OTEL_PROMETHEUS_HOST: "0.0.0.0"
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL:-noreply@example.com}
@@ -55,6 +59,10 @@ services:
       - ./data:/data
     ports:
       - "${APP_PORT:-3000}:3000"
+      # Prometheus scrape endpoint. Map to host so a Prometheus
+      # collector running on the LXC (or another host on the LAN)
+      # can scrape http://<lx120-ip>:9464/metrics directly.
+      - "${OTEL_PROMETHEUS_HOST_PORT:-9464}:9464"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
