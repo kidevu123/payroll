@@ -63,24 +63,29 @@ export default async function PayrollPage({
         : base.where(stateFilter);
       return q.orderBy(desc(payPeriods.startDate)).limit(8);
     })(),
-    db
-      .select({
-        id: payrollRuns.id,
-        periodId: payrollRuns.periodId,
-        state: payrollRuns.state,
-        startDate: payPeriods.startDate,
-        endDate: payPeriods.endDate,
-        scheduleName: paySchedules.name,
-        createdAt: payrollRuns.createdAt,
-      })
-      .from(payrollRuns)
-      .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
-      .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
-      .where(
-        sql`${payrollRuns.state} IN ('SCHEDULED','INGESTING','INGEST_FAILED','AWAITING_EMPLOYEE_FIXES','AWAITING_ADMIN_REVIEW','APPROVED')`,
-      )
-      .orderBy(desc(payrollRuns.createdAt))
-      .limit(10),
+    (async () => {
+      // In-flight runs honor the schedule tab — Weekly tab must never
+      // show a Semi-monthly in-flight (and vice versa). Owner directive:
+      // workflows stay separate. The All tab still shows everything.
+      const stateClause = sql`${payrollRuns.state} IN ('SCHEDULED','INGESTING','INGEST_FAILED','AWAITING_EMPLOYEE_FIXES','AWAITING_ADMIN_REVIEW','APPROVED')`;
+      const base = db
+        .select({
+          id: payrollRuns.id,
+          periodId: payrollRuns.periodId,
+          state: payrollRuns.state,
+          startDate: payPeriods.startDate,
+          endDate: payPeriods.endDate,
+          scheduleName: paySchedules.name,
+          createdAt: payrollRuns.createdAt,
+        })
+        .from(payrollRuns)
+        .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
+        .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id));
+      const where = kindFilter
+        ? sql`${stateClause} AND ${paySchedules.periodKind} = ${kindFilter}`
+        : stateClause;
+      return base.where(where).orderBy(desc(payrollRuns.createdAt)).limit(10);
+    })(),
     db.select().from(paySchedules).where(eq(paySchedules.active, true)),
     getLastPoll(),
   ]);

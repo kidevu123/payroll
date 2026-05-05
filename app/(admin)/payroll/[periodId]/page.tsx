@@ -40,6 +40,7 @@ import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { DedupPunchesButton } from "./dedup-button";
 import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
 import { DisputesPanel } from "./disputes-panel";
+import { PeriodDetailBackButton } from "./back-button";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -311,11 +312,7 @@ export default async function PeriodReviewPage({
           wraps to a second row at common laptop widths (1100-1300px),
           which was the original "buttons all over the place" complaint. */}
       <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-1">
-          <Link href="/reports">
-            <ArrowLeft className="h-4 w-4" /> All reports
-          </Link>
-        </Button>
+        <PeriodDetailBackButton />
         <h1 className="text-xl font-semibold tracking-tight">
           {formatRange(
             period.startDate,
