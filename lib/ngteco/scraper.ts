@@ -136,58 +136,110 @@ async function detectLoginPage(
 }
 
 /** Fill a login field using the most reliable strategy first.
- *  Tries (in order): MUI label match → semantic input type → the
- *  configured CSS selector. The first one that locates a unique
- *  visible element wins. */
+ *  Strategy order, derived from the live office.ngteco.com DOM:
+ *    1. input[name="username"] / input[name="password"] — MUI's
+ *       form names are stable across visual themes. ✔ confirmed
+ *       working against the live portal.
+ *    2. getByPlaceholder — "Email" / "Password" placeholders are
+ *       human-readable and survive class refactors.
+ *    3. semantic input attribute (input[type="password"], etc.).
+ *    4. configured CSS selector (legacy / operator override).
+ *
+ *  Notes: getByLabel() *does not* work here because the live form
+ *  sets aria-label="description" on both inputs (a stale MUI
+ *  default), so a name-based label match never resolves. Reads the
+ *  value back to confirm the fill landed in the visible field. */
 async function fillLoginField(
   page: import("playwright-core").Page,
   kind: "username" | "password",
   configuredSelector: string | undefined,
   value: string,
 ): Promise<void> {
-  const labelRegex =
-    kind === "username" ? /email|account|username|user name/i : /password/i;
+  const placeholder = kind === "username" ? "Email" : "Password";
+  const nameSelector =
+    kind === "username" ? 'input[name="username"]' : 'input[name="password"]';
   const semanticSelector =
     kind === "username"
       ? 'input[type="email"], input[name*="email" i], input[name*="account" i], input[name*="user" i]'
       : 'input[type="password"]';
 
-  // Strategy 1: getByLabel
-  try {
-    const byLabel = page.getByLabel(labelRegex).first();
-    if (await byLabel.count()) {
-      await byLabel.fill("");
-      await byLabel.fill(value, { timeout: 5_000 });
-      const filled = await byLabel.inputValue();
-      if (filled === value) return;
+  const tryFill = async (loc: import("playwright-core").Locator): Promise<boolean> => {
+    if (!(await loc.count())) return false;
+    try {
+      await loc.fill("");
+      await loc.fill(value, { timeout: 5_000 });
+      const filled = await loc.inputValue();
+      return filled === value;
+    } catch {
+      return false;
     }
-  } catch {
-    /* fall through */
-  }
+  };
 
-  // Strategy 2: semantic input attribute
-  try {
-    const bySemantic = page.locator(semanticSelector).first();
-    if (await bySemantic.count()) {
-      await bySemantic.fill("");
-      await bySemantic.fill(value, { timeout: 5_000 });
-      const filled = await bySemantic.inputValue();
-      if (filled === value) return;
-    }
-  } catch {
-    /* fall through */
-  }
+  // Strategy 1: input[name="username"] / input[name="password"]
+  if (await tryFill(page.locator(nameSelector).first())) return;
 
-  // Strategy 3: configured selector (legacy / operator override).
+  // Strategy 2: getByPlaceholder("Email" / "Password")
+  if (await tryFill(page.getByPlaceholder(placeholder, { exact: true }).first())) return;
+
+  // Strategy 3: semantic attribute fallback
+  if (await tryFill(page.locator(semanticSelector).first())) return;
+
+  // Strategy 4: configured selector (legacy / operator override).
   if (configuredSelector) {
-    await page.fill(configuredSelector, value, { timeout: 5_000 });
-    return;
+    try {
+      await page.fill(configuredSelector, value, { timeout: 5_000 });
+      return;
+    } catch {
+      /* fall through to error */
+    }
   }
 
   throw new ScrapeFailure(
-    `Could not locate the ${kind} field. Tried label, semantic, and configured selectors.`,
+    `Could not locate the ${kind} field. Tried name attribute, placeholder, semantic, and configured selectors.`,
     {},
   );
+}
+
+/** Tick the "I have read and agree to the User Agreement & Privacy
+ *  Policy" checkbox if it exists on the page. NGTeco's MUI login
+ *  form disables the Login button until this is checked, and the
+ *  poll has been silently failing because the script never ticked
+ *  it. We locate it by the surrounding text rather than DOM
+ *  position so a future re-order doesn't break us. */
+async function ensureAgreementChecked(
+  page: import("playwright-core").Page,
+): Promise<void> {
+  // First try the labelled control (MUI wraps the checkbox + the
+  // text in a single FormControlLabel, so getByLabel can resolve
+  // it once we strip the trailing "User Agreement & Privacy
+  // Policy" buttons that sit right after).
+  const candidates: import("playwright-core").Locator[] = [
+    page.getByLabel(/i have read and agree/i),
+    // Fallback: the FormControlLabel root contains the text — find it
+    // and then the checkbox inside.
+    page
+      .locator('label')
+      .filter({ hasText: /i have read and agree/i })
+      .locator('input[type="checkbox"]'),
+    // Last-ditch: of the two checkboxes in the login form, the
+    // agreement one is the FIRST (Remember-Me is second).
+    page.locator('input[type="checkbox"]').first(),
+  ];
+  for (const cb of candidates) {
+    try {
+      if (!(await cb.count())) continue;
+      const checked = await cb.first().isChecked().catch(() => false);
+      if (checked) return;
+      await cb.first().check({ timeout: 4_000, force: true });
+      const nowChecked = await cb.first().isChecked().catch(() => false);
+      if (nowChecked) return;
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  // Don't throw — some NGTeco tenants don't show the checkbox at
+  // all. The post-submit /login redirect check will catch the real
+  // failure if the button stays disabled.
 }
 
 /** Click the login submit button. Tries the configured selector,
@@ -437,6 +489,10 @@ export async function scrapeViewAttendance(
     if (onLoginPage) {
       await fillLoginField(page, "username", sel.login.username, input.username);
       await fillLoginField(page, "password", sel.login.password, input.password);
+      // Tick the User Agreement / Privacy Policy checkbox — NGTeco's
+      // MUI login disables the submit button until it's checked, so
+      // skipping this step silently kept the form on /login.
+      await ensureAgreementChecked(page);
       await Promise.all([
         page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
         clickLoginSubmit(page, sel.login.submit),
