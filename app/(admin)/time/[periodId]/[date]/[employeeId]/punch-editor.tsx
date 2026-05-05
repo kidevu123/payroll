@@ -127,11 +127,16 @@ function CreateForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label htmlFor="clockIn">Clock in (ET)</Label>
+          {/* `suggestedClockIn` is already a wall-clock string in ET
+              ("YYYY-MM-DDTHH:MM"), so pass it through directly — no
+              tz double-conversion. Previously we passed an ISO with
+              Z, which `new Date()` re-interpreted as UTC and the
+              wall-clock helper then shifted by another offset. */}
           <Input
             id="clockIn"
             name="clockIn"
             type="datetime-local"
-            defaultValue={toLocalInputValue(new Date(suggestedClockIn), timezone)}
+            defaultValue={suggestedClockIn}
             required
           />
         </div>
@@ -141,7 +146,7 @@ function CreateForm({
             id="clockOut"
             name="clockOut"
             type="datetime-local"
-            defaultValue={toLocalInputValue(new Date(suggestedClockOut), timezone)}
+            defaultValue={suggestedClockOut}
           />
         </div>
       </div>

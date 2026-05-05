@@ -8,8 +8,6 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { PunchEditor } from "./punch-editor";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export default async function PunchEditorPage({
   params,
 }: {
@@ -24,8 +22,12 @@ export default async function PunchEditorPage({
   ]);
   if (!period || !employee) notFound();
 
-  const dayStart = new Date(`${date}T00:00:00Z`);
-  const dayEnd = new Date(dayStart.getTime() + MS_PER_DAY);
+  // Sane "Add manual punch" defaults: 8 AM ET clock-in, blank clock-out.
+  // Previously we passed dayStart -> dayStart+24h, which created a
+  // 24-hour punch on a single submit-without-edit (the bug owner saw
+  // as "25h, $5,000 for Chintu").
+  const suggestedClockIn = `${date}T08:00`;
+  const suggestedClockOut = "";
 
   // Filter punches to ones whose clockIn falls on this calendar day in
   // the company timezone.
@@ -55,8 +57,8 @@ export default async function PunchEditorPage({
         date={date}
         timezone={company.timezone}
         punches={punches}
-        suggestedClockIn={dayStart.toISOString()}
-        suggestedClockOut={dayEnd.toISOString()}
+        suggestedClockIn={suggestedClockIn}
+        suggestedClockOut={suggestedClockOut}
         periodLocked={period.state !== "OPEN"}
       />
     </div>

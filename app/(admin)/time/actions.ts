@@ -24,6 +24,26 @@ async function parsePunchInput(input: string): Promise<Date | null> {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Sanity check punches before they hit the DB. Rejects nonsense pairs
+ * that the UI defaults could otherwise produce: clockOut at-or-before
+ * clockIn, or a span longer than the company's longest plausible
+ * shift (16h hard cap).
+ */
+const MAX_PUNCH_SPAN_MS = 16 * 60 * 60 * 1000;
+function validatePunchSpan(
+  clockIn: Date,
+  clockOut: Date | null,
+): string | null {
+  if (!clockOut) return null;
+  const span = clockOut.getTime() - clockIn.getTime();
+  if (span <= 0) return "Clock-out must be after clock-in.";
+  if (span > MAX_PUNCH_SPAN_MS) {
+    return `Punch span over 16 hours — that's almost certainly wrong. Adjust the times.`;
+  }
+  return null;
+}
+
 // ISO datetime regex — input must be e.g. "2026-04-15T07:30" or
 // "2026-04-15T07:30:00Z". Without this, garbage like "2026-13-99"
 // parses via Date overflow rollover and lands a punch on the wrong day.
@@ -64,6 +84,8 @@ export async function createPunchAction(
   if (parsed.data.clockOut && !clockOutD) {
     return { error: "Invalid clock-out." };
   }
+  const spanErr = validatePunchSpan(clockInD, clockOutD);
+  if (spanErr) return { error: spanErr };
   try {
     await createPunch(
       {
@@ -119,6 +141,8 @@ export async function editPunchAction(
   if (parsed.data.clockOut && !clockOutD) {
     return { error: "Invalid clock-out." };
   }
+  const spanErr = validatePunchSpan(clockInD, clockOutD);
+  if (spanErr) return { error: spanErr };
   try {
     await editPunch(
       punchId,
