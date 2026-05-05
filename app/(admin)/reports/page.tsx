@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listReports } from "@/lib/db/queries/payroll-runs";
+import { getDrawerBalanceCents } from "@/lib/db/queries/cash-drawer";
 import { db } from "@/lib/db";
 import { zohoOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -33,9 +34,10 @@ export default async function ReportsPage({
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
   const kind = scheduleTabToKind(tab);
-  const [reports, orgs] = await Promise.all([
+  const [reports, orgs, drawerBalanceCents] = await Promise.all([
     listReports(200, kind),
     db.select().from(zohoOrganizations).where(eq(zohoOrganizations.active, true)),
+    getDrawerBalanceCents().catch(() => 0),
   ]);
 
   return (
@@ -54,7 +56,11 @@ export default async function ReportsPage({
         />
       </div>
 
-      <ReportsTable reports={reports} zohoOrgs={orgs} />
+      <ReportsTable
+        reports={reports}
+        zohoOrgs={orgs}
+        drawerBalanceCents={drawerBalanceCents}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">

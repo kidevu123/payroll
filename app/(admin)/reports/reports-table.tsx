@@ -29,6 +29,8 @@ import {
   Upload,
   FileText,
   Scissors,
+  Banknote,
+  Landmark,
 } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
@@ -50,6 +52,7 @@ import {
   pushReportToZohoAction,
   repushReportToZohoAction,
 } from "./actions";
+import { markPaidAction } from "../payroll/actions";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LONG = [
@@ -165,9 +168,13 @@ function sumGroupTotal(g: GroupedReport): number {
 export function ReportsTable({
   reports,
   zohoOrgs,
+  drawerBalanceCents = 0,
 }: {
   reports: ReportRow[];
   zohoOrgs: ZohoOrganization[];
+  /** Current cash-on-hand. Drives the "Pay from cash drawer" dialog
+   *  so the operator sees what's available before confirming. */
+  drawerBalanceCents?: number;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -292,6 +299,7 @@ export function ReportsTable({
               key={g.periodId}
               group={g}
               busyId={busyId}
+              setError={setError}
               confirmDelete={confirmDelete}
               setConfirmDelete={setConfirmDelete}
               onPush={onPush}
@@ -300,6 +308,7 @@ export function ReportsTable({
               onDelete={onDelete}
               haute={haute}
               boomin={boomin}
+              drawerBalanceCents={drawerBalanceCents}
             />,
           );
         }
@@ -312,6 +321,7 @@ export function ReportsTable({
 function PeriodGroup({
   group,
   busyId,
+  setError,
   confirmDelete,
   setConfirmDelete,
   onPush,
@@ -320,9 +330,11 @@ function PeriodGroup({
   onDelete,
   haute,
   boomin,
+  drawerBalanceCents,
 }: {
   group: GroupedReport;
   busyId: string | null;
+  setError: (v: string | null) => void;
   confirmDelete: string | null;
   setConfirmDelete: (v: string | null) => void;
   onPush: (reportId: string, orgId: string | undefined, label: string) => void;
@@ -336,6 +348,7 @@ function PeriodGroup({
   onDelete: (id: string) => void;
   haute: ZohoOrganization | undefined;
   boomin: ZohoOrganization | undefined;
+  drawerBalanceCents: number;
 }) {
   const accent = scheduleAccent(group.scheduleName);
   const periodTotal = sumGroupTotal(group);
@@ -344,6 +357,41 @@ function PeriodGroup({
     group.periodEnd,
     group.scheduleName,
   );
+  // All runs in a group share the same period — read state from the
+  // first run. Used to switch between "Pay from cash drawer" (LOCKED)
+  // and the static "Paid bank/cash" pill (PAID).
+  const periodState = group.runs[0]?.periodState ?? "OPEN";
+  const periodPaymentMethod = group.runs[0]?.periodPaymentMethod ?? null;
+  const [payOpen, setPayOpen] = React.useState(false);
+  const [payAmount, setPayAmount] = React.useState(
+    () => (periodTotal / 100).toFixed(2),
+  );
+  const [paying, setPaying] = React.useState(false);
+
+  async function payFromDrawer() {
+    setPaying(true);
+    setError(null);
+    const cents = Math.round(Number(payAmount) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) {
+      setPaying(false);
+      setError("Enter a positive amount.");
+      return;
+    }
+    if (cents > drawerBalanceCents) {
+      setPaying(false);
+      setError(
+        `Drawer has $${(drawerBalanceCents / 100).toFixed(2)} on hand — short by $${((cents - drawerBalanceCents) / 100).toFixed(2)}.`,
+      );
+      return;
+    }
+    const fd = new FormData();
+    fd.set("paymentMethod", "CASH");
+    fd.set("cashAmountCents", cents.toString());
+    const r = await markPaidAction(group.periodId, fd);
+    setPaying(false);
+    if (r?.error) setError(r.error);
+    else setPayOpen(false);
+  }
 
   return (
     <div
@@ -359,8 +407,34 @@ function PeriodGroup({
           <span className="text-[10px] uppercase tracking-wider text-text-subtle">
             Period total
           </span>
+          {periodState === "PAID" && periodPaymentMethod === "CASH" && (
+            <span className="inline-flex items-center gap-1 rounded-chip border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+              <Banknote className="h-3 w-3" /> Paid from drawer
+            </span>
+          )}
+          {periodState === "PAID" && periodPaymentMethod === "BANK" && (
+            <span className="inline-flex items-center gap-1 rounded-chip border border-info-200 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+              <Landmark className="h-3 w-3" /> Paid via bank
+            </span>
+          )}
+          {periodState === "PAID" && periodPaymentMethod === null && (
+            <span className="inline-flex items-center gap-1 rounded-chip border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+              <CheckCircle2 className="h-3 w-3" /> Paid
+            </span>
+          )}
         </div>
-        <div className="flex items-baseline gap-3 text-right whitespace-nowrap">
+        <div className="flex items-center gap-3 text-right whitespace-nowrap">
+          {periodState === "LOCKED" && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setPayOpen((v) => !v)}
+              className="h-7 px-2.5 text-[11px]"
+              title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+            >
+              <Banknote className="h-3.5 w-3.5" /> Pay from drawer
+            </Button>
+          )}
           <span className="font-mono tabular-nums font-semibold text-text">
             <MoneyDisplay cents={periodTotal} />
           </span>
@@ -371,6 +445,62 @@ function PeriodGroup({
           )}
         </div>
       </div>
+
+      {/* Pay-from-drawer dialog. Inline (not a modal) to keep the page
+          flow obvious — you see the period total, the drawer balance,
+          and one click commits the cash withdrawal + period mark-paid
+          in the same transaction. */}
+      {payOpen && periodState === "LOCKED" && (
+        <div className="px-4 py-3 border-t border-border/60 bg-amber-50/40">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wider text-text-subtle">
+                Drawer balance
+              </p>
+              <p className="font-mono tabular-nums text-sm font-semibold">
+                <MoneyDisplay cents={drawerBalanceCents} />
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] uppercase tracking-wider text-text-subtle">
+                Withdraw
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+                disabled={paying}
+                className="block h-9 w-32 rounded-input border border-border/70 bg-surface px-2.5 text-sm tabular-nums"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={payFromDrawer}
+              disabled={paying}
+              className="h-9"
+            >
+              <Banknote className="h-4 w-4" />
+              {paying ? "Paying…" : "Pay this period from drawer"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setPayOpen(false)}
+              disabled={paying}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+          </div>
+          <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
+            Marks the period <span className="font-semibold">PAID</span>,
+            records a withdrawal on the cash drawer ledger, and links the
+            two so the drawer entry references this period.
+          </p>
+        </div>
+      )}
 
       {/* Run rows */}
       <div className="divide-y divide-border/60">

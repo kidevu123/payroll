@@ -84,6 +84,13 @@ export type ReportRow = {
   publishedToPortalAt: Date | null;
   pdfPath: string | null;
   zohoPushes: Array<{ orgId: string; orgName: string; expenseId: string | null; pushedAt: Date }>;
+  /** State of the underlying pay_period (OPEN / LOCKED / PAID). Drives
+   *  the "Pay from cash drawer" affordance — only LOCKED can transition
+   *  to PAID. */
+  periodState: "OPEN" | "LOCKED" | "PAID";
+  /** When state = PAID, how it was settled. NULL for older periods or
+   *  ones that haven't been paid yet. */
+  periodPaymentMethod: "BANK" | "CASH" | null;
 };
 
 export async function listReports(
@@ -119,6 +126,8 @@ export async function listReports(
       createdAt: payrollRuns.createdAt,
       publishedToPortalAt: payrollRuns.publishedToPortalAt,
       pdfPath: payrollRuns.pdfPath,
+      periodState: payPeriods.state,
+      periodPaymentMethod: payPeriods.paymentMethod,
     })
     .from(payrollRuns)
     .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
@@ -201,6 +210,11 @@ export async function listReports(
     publishedToPortalAt: r.publishedToPortalAt,
     pdfPath: r.pdfPath,
     zohoPushes: pushesByRun.get(r.id) ?? [],
+    periodState: (r.periodState ?? "OPEN") as "OPEN" | "LOCKED" | "PAID",
+    periodPaymentMethod: (r.periodPaymentMethod ?? null) as
+      | "BANK"
+      | "CASH"
+      | null,
   }));
 }
 
