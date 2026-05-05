@@ -1,10 +1,18 @@
 // Admin sidebar — sectioned nav with active accent. Lucide icons only (§9).
-// Top-level groups follow the operator's mental model: Overview / Manage /
-// Operate / Settings sit at the foot. Active route gets a brand-tinted
-// surface treatment + a 2-px brand bar on the left so the eye lands on it
-// before reading the label. The wordmark slot has explicit min dimensions
-// so a missing/late logo asset can never collapse the header to zero
-// height (the "invisible logo" bug from the v6 deploy).
+//
+// Visual language tuned to match premium SaaS sidebars (Linear, Vercel,
+// Stripe Dashboard, Notion):
+//   • Subtly tinted page background bleeds into the sidebar (no hard
+//     border on the right — just a soft divider).
+//   • Wordmark sits at the top WITHOUT a tile/sticker — the glyph is
+//     rendered raw next to "Milo" so it reads as part of the chrome.
+//   • Section headings: text-[10px] uppercase tracking-[0.08em] semi-
+//     muted, with airy spacing.
+//   • Items: rounded-lg, gap-3, text-[13px], py-2, soft hover bg.
+//   • Active: subtle brand tint + brand-700 left edge bar + brand icon.
+//     Pill background is desaturated so the colored chrome doesn't
+//     compete with the page content.
+//   • Footer pinned: Settings link + system pulse on a hairline divider.
 
 "use client";
 
@@ -79,116 +87,132 @@ export function Sidebar({
   const pathname = usePathname() ?? "";
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-surface sticky top-0 h-dvh">
-      {/* Wordmark slot. Explicit min height so a missing/late-loading logo
-          can never collapse the header to zero (regression guard for the
-          invisible-logo bug). */}
-      <div className="px-5 pt-5 pb-6 shrink-0 min-h-[64px] flex items-center">
-        <span className="inline-flex min-w-32 min-h-8 items-center">
-          {/* App is "Milo" — the company-uploaded logo is the glyph and
-              "Milo" reads as the wordmark next to it. The company name
-              still surfaces in /settings/branding + the topbar context. */}
-          <Wordmark name="Milo" logoPath={company.logoPath} size="md" />
-        </span>
+    <aside
+      className={cn(
+        // Soft right divider via a tinted border (color-mix style) instead
+        // of a hard solid line — premium SaaS sidebars rarely use a
+        // visible 1px border. Slight inset shadow keeps separation.
+        "hidden lg:flex w-64 shrink-0 flex-col bg-surface/95 backdrop-blur",
+        "border-r border-border/60 sticky top-0 h-dvh",
+        "shadow-[1px_0_0_0_rgb(15_23_42_/_0.02),inset_-1px_0_0_0_rgb(15_23_42_/_0.01)]",
+      )}
+    >
+      {/* Wordmark slot. Glyph rendered raw (no tile) next to "Milo" so it
+          reads as type, not a sticker. min-h guard against the
+          invisible-logo bug. */}
+      <div className="px-5 pt-5 pb-5 shrink-0 min-h-[56px] flex items-center">
+        <Wordmark
+          name="Milo"
+          logoPath={company.logoPath}
+          size="md"
+          className="min-w-0"
+        />
       </div>
 
-      <nav className="flex-1 px-3 space-y-6 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
         {SECTIONS.map((sec) => (
           <div key={sec.heading}>
-            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
+            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-subtle/80">
               {sec.heading}
             </div>
             <ul className="space-y-0.5">
-              {sec.items.map(({ href, label, icon: Icon }) => {
-                const active = isActive(pathname, href);
-                return (
-                  <li key={href}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "relative flex items-center gap-3 px-3 py-2 rounded-input text-sm transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
-                        active
-                          ? "bg-brand-50 text-brand-800 font-medium"
-                          : "text-text-muted hover:bg-surface-2 hover:text-text",
-                      )}
-                    >
-                      {active ? (
-                        <span
-                          aria-hidden="true"
-                          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-brand-700"
-                        />
-                      ) : null}
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0",
-                          active ? "text-brand-700" : "text-text-subtle",
-                        )}
-                        aria-hidden
-                      />
-                      <span className="truncate">{label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {sec.items.map(({ href, label, icon: Icon }) => (
+                <SidebarItem
+                  key={href}
+                  href={href}
+                  label={label}
+                  Icon={Icon}
+                  active={isActive(pathname, href)}
+                />
+              ))}
             </ul>
           </div>
         ))}
       </nav>
 
-      <div className="px-3 pb-3 pt-4 border-t border-border shrink-0">
-        <Link
+      <div className="px-3 pb-3 pt-3 border-t border-border/50 shrink-0 space-y-1">
+        <SidebarItem
           href={FOOTER_NAV.href}
-          aria-current={isActive(pathname, FOOTER_NAV.href) ? "page" : undefined}
-          className={cn(
-            "relative flex items-center gap-3 px-3 py-2 rounded-input text-sm transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
-            isActive(pathname, FOOTER_NAV.href)
-              ? "bg-brand-50 text-brand-800 font-medium"
-              : "text-text-muted hover:bg-surface-2 hover:text-text",
-          )}
-        >
-          {isActive(pathname, FOOTER_NAV.href) ? (
-            <span
-              aria-hidden="true"
-              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-brand-700"
-            />
-          ) : null}
-          <FOOTER_NAV.icon
-            className={cn(
-              "h-4 w-4",
-              isActive(pathname, FOOTER_NAV.href) ? "text-brand-700" : "text-text-subtle",
-            )}
-            aria-hidden
-          />
-          {FOOTER_NAV.label}
-        </Link>
+          label={FOOTER_NAV.label}
+          Icon={FOOTER_NAV.icon}
+          active={isActive(pathname, FOOTER_NAV.href)}
+        />
         <SystemStatus healthy={systemHealthy} />
       </div>
     </aside>
   );
 }
 
+function SidebarItem({
+  href,
+  label,
+  Icon,
+  active,
+}: {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  active: boolean;
+}) {
+  return (
+    <li className="list-none">
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          // Premium item base: tighter type, refined radius + spacing.
+          "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium tracking-tight transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+          active
+            ? // Active: desaturated brand tint + crisp left bar + brand icon.
+              // Inner highlight gives the surface a "pressed in" feel.
+              "bg-brand-50/70 text-brand-900 shadow-[inset_0_0_0_1px_rgb(15_118_110_/_0.08)]"
+            : "text-text-muted hover:bg-surface-2/70 hover:text-text",
+        )}
+      >
+        {active ? (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-brand-700"
+          />
+        ) : null}
+        <Icon
+          className={cn(
+            "h-[18px] w-[18px] shrink-0 transition-colors",
+            active
+              ? "text-brand-700"
+              : "text-text-subtle group-hover:text-text",
+          )}
+          aria-hidden
+          strokeWidth={1.75}
+        />
+        <span className="truncate">{label}</span>
+      </Link>
+    </li>
+  );
+}
+
 function SystemStatus({ healthy }: { healthy: boolean }) {
   return (
     <div
-      className="mt-2 px-3 py-2 flex items-center gap-2 text-xs text-text-muted"
+      className="px-3 py-1.5 flex items-center gap-2 text-[11px] text-text-subtle"
       title={healthy ? "System healthy" : "System degraded"}
       role="status"
       aria-live="polite"
     >
-      <span className="relative inline-flex h-2 w-2 shrink-0" aria-hidden>
+      <span className="relative inline-flex h-1.5 w-1.5 shrink-0" aria-hidden>
         {healthy ? (
           <>
             <span className="absolute inset-0 rounded-full bg-brand-500/60 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-600" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
           </>
         ) : (
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-warn-700" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn-700" />
         )}
       </span>
-      <span>{healthy ? "All systems normal" : "System degraded"}</span>
+      <span className="font-medium tracking-tight">
+        {healthy ? "All systems normal" : "System degraded"}
+      </span>
     </div>
   );
 }

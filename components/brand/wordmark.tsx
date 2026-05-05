@@ -19,17 +19,20 @@ export type WordmarkProps = {
   className?: string;
 };
 
-// `logoMaxW` caps how wide the rendered logo can grow. Without a cap, a
-// wide wordmark (e.g. "Acme Industries") at the sidebar's md size would
-// overflow the 256-px-wide rail. With a cap, the image scales down via
-// object-contain to fit, preserving aspect ratio. `logoMinW` keeps the
-// tile from collapsing if a future stylesheet bug zeros the height.
+// `logoMaxW` caps how wide the rendered logo can grow. `logoMinW` keeps
+// the slot from collapsing if a future stylesheet bug zeros the height.
+//
+// Sized down vs the prior version — sidebar logos in premium products
+// (Linear, Stripe, Vercel) sit at h-6 to h-8 with the wordmark beside,
+// not in a giant sticker. The owner-uploaded glyph is rendered raw
+// (no white tile, no border, no shadow) so it reads as part of the
+// chrome rather than a pasted-on graphic.
 const SIZES = {
-  sm: { box: "h-6 w-6", logoH: "h-7", logoMinW: "min-w-[28px]", logoMaxW: "max-w-[160px]", text: "text-sm", radius: "rounded-md" },
-  md: { box: "h-8 w-8", logoH: "h-12", logoMinW: "min-w-[48px]", logoMaxW: "max-w-[192px]", text: "text-base", radius: "rounded-lg" },
-  lg: { box: "h-10 w-10", logoH: "h-16", logoMinW: "min-w-[64px]", logoMaxW: "max-w-[280px]", text: "text-lg", radius: "rounded-xl" },
-  xl: { box: "h-14 w-14", logoH: "h-24", logoMinW: "min-w-[96px]", logoMaxW: "max-w-[360px]", text: "text-2xl", radius: "rounded-2xl" },
-  "2xl": { box: "h-20 w-20", logoH: "h-36", logoMinW: "min-w-[144px]", logoMaxW: "max-w-[480px]", text: "text-3xl", radius: "rounded-2xl" },
+  sm: { box: "h-5 w-5", logoH: "h-5", logoMinW: "min-w-[20px]", logoMaxW: "max-w-[120px]", text: "text-sm", radius: "rounded-md" },
+  md: { box: "h-7 w-7", logoH: "h-7", logoMinW: "min-w-[28px]", logoMaxW: "max-w-[160px]", text: "text-base", radius: "rounded-md" },
+  lg: { box: "h-9 w-9", logoH: "h-10", logoMinW: "min-w-[40px]", logoMaxW: "max-w-[220px]", text: "text-lg", radius: "rounded-lg" },
+  xl: { box: "h-12 w-12", logoH: "h-16", logoMinW: "min-w-[64px]", logoMaxW: "max-w-[320px]", text: "text-2xl", radius: "rounded-xl" },
+  "2xl": { box: "h-16 w-16", logoH: "h-24", logoMinW: "min-w-[96px]", logoMaxW: "max-w-[420px]", text: "text-3xl", radius: "rounded-xl" },
 } as const;
 
 function initialsFor(name: string): string {
@@ -48,41 +51,31 @@ export function Wordmark({
 }: WordmarkProps) {
   const s = SIZES[size];
 
-  // Logo uploaded → render the image as the GLYPH and pair it with the
-  // app name as a text wordmark. The owner-uploaded logo is a glyph
-  // (the "m" mark) — Milo branding still needs to read as words next to
-  // it. Callers that already have a full wordmark image can opt out via
-  // showName={false}.
-  //
-  // Light wordmarks (white-on-transparent) vanish on light surfaces; dark
-  // wordmarks vanish on dark. Wrap in a neutral surface tile so the logo
-  // always has visible separation regardless of the upload's color.
+  // Logo uploaded → render the glyph naked next to the wordmark. No
+  // tile, no border, no shadow — premium SaaS sidebars (Linear, Stripe,
+  // Vercel) treat the glyph as a typographic element, not a sticker.
+  // The branding/storage layer trims transparent whitespace on upload,
+  // so the glyph fits its bounding box without extra padding here.
   if (logoPath) {
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-3 font-semibold tracking-tight antialiased",
+          "inline-flex items-center gap-2.5 font-semibold tracking-tight antialiased",
           s.text,
           className,
         )}
       >
-        <span
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoPath}
+          alt={name}
           className={cn(
-            "inline-flex items-center justify-center rounded-lg bg-white px-2 py-1 ring-1 ring-border shadow-sm shrink-0",
+            "w-auto object-contain shrink-0",
+            s.logoH,
+            s.logoMinW,
+            s.logoMaxW,
           )}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logoPath}
-            alt={name}
-            className={cn(
-              "w-auto object-contain",
-              s.logoH,
-              s.logoMinW,
-              s.logoMaxW,
-            )}
-          />
-        </span>
+        />
         {showName ? (
           <span className="truncate leading-none">{name}</span>
         ) : null}

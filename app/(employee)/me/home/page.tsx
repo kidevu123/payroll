@@ -54,7 +54,7 @@ export default async function EmployeeHome() {
           {t("greeting", { name: session.user.email })}
         </h1>
         <p className="text-sm text-text-muted leading-relaxed">
-          Your account is not linked to an employee record.
+          {t("notLinkedAccount")}
         </p>
       </main>
     );
@@ -197,18 +197,18 @@ export default async function EmployeeHome() {
             <CardContent className="px-6 py-5 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs uppercase tracking-wider text-text-subtle font-medium">
-                  Latest payslip
+                  {t("latestPayslip")}
                 </p>
                 {latestPayslip.state === "disputed" ? (
                   <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
                     <AlertTriangle className="h-3 w-3" aria-hidden />
-                    Reported
+                    {t("reported")}
                   </span>
                 ) : latestPayslip.state === "acknowledged" ? (
                   <StatusPill status="APPROVED" />
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-info-700">
-                    Awaiting review
+                    {t("awaitingReview")}
                   </span>
                 )}
               </div>
@@ -230,12 +230,12 @@ export default async function EmployeeHome() {
                       hours={latestPayslip.hours}
                       decimals={payRules.hoursDecimalPlaces}
                     />{" "}
-                    <span className="text-text-subtle">hrs</span>
+                    <span className="text-text-subtle">{t("hrsAbbr")}</span>
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-xs font-medium text-brand-700">
-                Open payslip
+                {t("openPayslip")}
                 <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
             </CardContent>
@@ -247,7 +247,7 @@ export default async function EmployeeHome() {
           single "what needs your attention" surface. */}
       <Card>
         <CardHeader>
-          <CardTitle>Requests</CardTitle>
+          <CardTitle>{t("requestsTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!isSalaried && (
@@ -284,19 +284,19 @@ export default async function EmployeeHome() {
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[11px] uppercase tracking-wider font-medium text-text-subtle">
-                Time off
+                {t("timeOff")}
               </h3>
               <Link
                 href="/me/home/time-off/new"
                 className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-700 hover:text-brand-800"
               >
-                New request
+                {t("newRequest")}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>
             {recentTimeOff.length === 0 ? (
               <p className="text-sm text-text-muted leading-relaxed">
-                No requests yet.
+                {t("noTimeOffRequests")}
               </p>
             ) : (
               <ul className="space-y-1.5">
@@ -309,12 +309,12 @@ export default async function EmployeeHome() {
                         : "PENDING";
                   const typeLabel =
                     r.type === "PERSONAL"
-                      ? "PTO / Vacation"
+                      ? t("ptoVacation")
                       : r.type === "SICK"
-                        ? "Sick"
+                        ? t("sick")
                         : r.type === "UNPAID"
-                          ? "Unpaid"
-                          : "Other";
+                          ? t("unpaid")
+                          : t("other");
                   return (
                     <li
                       key={r.id}
@@ -366,24 +366,22 @@ export default async function EmployeeHome() {
       {isSalaried && (
         <Card>
           <CardHeader>
-            <CardTitle>Salaried account</CardTitle>
+            <CardTitle>{t("salariedTitle")}</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-text-muted leading-relaxed space-y-2">
             <p>
-              You&apos;re on a salaried plan. Your paystubs and W2 documents
-              appear under{" "}
-              <Link
-                href="/me/pay"
-                className="text-brand-700 font-medium hover:underline"
-              >
-                Pay
-              </Link>
-              .
+              {t.rich("salariedBody1", {
+                payLink: (chunks) => (
+                  <Link
+                    href="/me/pay"
+                    className="text-brand-700 font-medium hover:underline"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
-            <p>
-              Use the &ldquo;Request time off&rdquo; button above for vacation
-              or sick days.
-            </p>
+            <p>{t("salariedBody2")}</p>
           </CardContent>
         </Card>
       )}

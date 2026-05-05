@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Flag } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ export function ReportFixForm({
   defaultIn?: string;
   defaultOut?: string;
 }) {
+  const t = useTranslations("employee.day");
   const [open, setOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
@@ -23,7 +25,7 @@ export function ReportFixForm({
   if (!open) {
     return (
       <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        <Flag className="h-4 w-4" /> Report a fix for this day
+        <Flag className="h-4 w-4" /> {t("reportFix")}
       </Button>
     );
   }
@@ -41,12 +43,11 @@ export function ReportFixForm({
     >
       <input type="hidden" name="date" value={date} />
       <p className="text-sm text-text-muted">
-        Tell admin what the correct in / out times should be for {date}. They
-        review on /requests and apply the fix.
+        {t("reportInstructions", { date })}
       </p>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="claimedClockIn">Correct clock in</Label>
+          <Label htmlFor="claimedClockIn">{t("correctClockIn")}</Label>
           <Input
             id="claimedClockIn"
             name="claimedClockIn"
@@ -56,7 +57,7 @@ export function ReportFixForm({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="claimedClockOut">Correct clock out (optional)</Label>
+          <Label htmlFor="claimedClockOut">{t("correctClockOutOptional")}</Label>
           <Input
             id="claimedClockOut"
             name="claimedClockOut"
@@ -66,7 +67,7 @@ export function ReportFixForm({
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="reason">What happened?</Label>
+        <Label htmlFor="reason">{t("whatHappened")}</Label>
         <textarea
           id="reason"
           name="reason"
@@ -74,17 +75,17 @@ export function ReportFixForm({
           minLength={1}
           maxLength={500}
           rows={3}
-          placeholder="Forgot to clock out for lunch, left early for a doctor appointment, etc."
+          placeholder={t("reasonPlaceholder")}
           className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
-          Cancel
+          {t("cancel")}
         </Button>
         <Button type="submit" size="sm" disabled={pending}>
-          {pending ? "Submitting…" : "Send to admin"}
+          {pending ? t("submitting") : t("sendToAdmin")}
         </Button>
       </div>
     </form>

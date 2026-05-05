@@ -11,13 +11,14 @@ import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
+import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
-function fmtTime(d: Date | null, tz: string): string {
+function fmtTime(d: Date | null, tz: string, locale: string): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
     timeZone: tz,
@@ -32,7 +33,12 @@ export default async function EmployeeDay({
   searchParams: Promise<{ reported?: string }>;
 }) {
   const session = await requireSession();
-  const t = await getTranslations("employee.time");
+  const [t, tDay, locale] = await Promise.all([
+    getTranslations("employee.time"),
+    getTranslations("employee.day"),
+    resolveLocale(),
+  ]);
+  const dateLocale = locale === "es" ? "es-MX" : "en-US";
   if (!session.user.employeeId) return <main className="p-4">…</main>;
   const { date } = await params;
   const sp = await searchParams;
@@ -93,9 +99,9 @@ export default async function EmployeeDay({
               >
                 <span>
                   <span className="text-text-muted">{t("in")}: </span>
-                  <span className="font-mono">{fmtTime(p.clockIn, company.timezone)}</span>
+                  <span className="font-mono">{fmtTime(p.clockIn, company.timezone, dateLocale)}</span>
                   <span className="text-text-muted ml-3">{t("out")}: </span>
-                  <span className="font-mono">{fmtTime(p.clockOut, company.timezone)}</span>
+                  <span className="font-mono">{fmtTime(p.clockOut, company.timezone, dateLocale)}</span>
                 </span>
                 {p.editedAt ? (
                   <span className="flex items-center gap-1 text-xs text-text-muted">
@@ -110,7 +116,7 @@ export default async function EmployeeDay({
 
       {sp.reported && (
         <div className="rounded-card border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" /> Sent. Admin will review on /requests.
+          <CheckCircle2 className="h-4 w-4" /> {tDay("reportSent")}
         </div>
       )}
 

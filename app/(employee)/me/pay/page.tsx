@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { Download, FileText, Wallet } from "lucide-react";
 import { inArray } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
@@ -40,11 +41,12 @@ function docsForPeriod(
 
 export default async function EmployeePayList() {
   const session = await requireSession();
+  const t = await getTranslations("employee.pay");
   if (!session.user.employeeId) {
     return (
       <div className="p-6 max-w-xl mx-auto">
         <p className="text-sm text-text-muted">
-          Your account is not linked to an employee record.
+          {t("notLinkedAccount")}
         </p>
       </div>
     );
@@ -140,18 +142,18 @@ export default async function EmployeePayList() {
     <main className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight antialiased">
-          My pay
+          {t("title")}
         </h1>
         <p className="text-sm text-text-muted leading-relaxed">
-          Every payslip your employer has published for you.
+          {t("subtitle")}
         </p>
       </header>
 
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState
           icon={Wallet}
-          title="No payslips yet"
-          description="Your first payslip lands here when payroll publishes."
+          title={t("empty")}
+          description={t("emptyHint")}
         />
       ) : (
         <div className="space-y-5">
@@ -180,7 +182,7 @@ export default async function EmployeePayList() {
                 {docs.length > 0 && (
                   <ul className="ml-3 sm:ml-5 space-y-1.5 border-l border-border/70 pl-3 sm:pl-5">
                     {docs.map((d) => (
-                      <DocPill key={d.id} doc={d} />
+                      <DocPill key={d.id} doc={d} viewLabel={t("viewDoc")} />
                     ))}
                   </ul>
                 )}
@@ -191,11 +193,11 @@ export default async function EmployeePayList() {
           {orphanDocs.length > 0 && (
             <section className="space-y-3 pt-5 border-t border-border/70">
               <h2 className="text-xs font-medium uppercase tracking-wider text-text-subtle">
-                Other documents from your employer
+                {t("otherDocs")}
               </h2>
               <ul className="space-y-1.5">
                 {orphanDocs.map((d) => (
-                  <DocPill key={d.id} doc={d} />
+                  <DocPill key={d.id} doc={d} viewLabel={t("viewDoc")} />
                 ))}
               </ul>
             </section>
@@ -206,7 +208,7 @@ export default async function EmployeePayList() {
   );
 }
 
-function DocPill({ doc: d }: { doc: PayrollPeriodDocument }) {
+function DocPill({ doc: d, viewLabel }: { doc: PayrollPeriodDocument; viewLabel: string }) {
   return (
     <li className="group flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5 shadow-[0_1px_2px_0_rgb(15_23_42_/_0.03)] transition-shadow duration-200 hover:shadow-card">
       <div className="flex items-center gap-2.5 min-w-0">
@@ -234,7 +236,7 @@ function DocPill({ doc: d }: { doc: PayrollPeriodDocument }) {
         rel="noopener"
         className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
       >
-        <Download className="h-3 w-3" /> View
+        <Download className="h-3 w-3" /> {viewLabel}
       </Link>
     </li>
   );

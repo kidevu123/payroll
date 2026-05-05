@@ -13,17 +13,20 @@ import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
+import { resolveLocale } from "@/lib/i18n";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 
+// Stable ISO-style date key (YYYY-MM-DD) — locale-independent, used for
+// grouping/filtering. Keep en-CA so the format never shifts.
 function dayKey(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
-function fmtTime(d: Date | null, tz: string): string {
+function fmtTime(d: Date | null, tz: string, locale: string): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
     timeZone: tz,
@@ -42,12 +45,16 @@ function startOfWeek(iso: string, startDayOfWeek: number): string {
 export default async function EmployeeTime() {
   const session = await requireSession();
   const t = await getTranslations("employee.time");
+  const locale = await resolveLocale();
+  // Format hour displays with a region-flavored locale (es-MX vs en-US).
+  // The bare "es" / "en" tag is fine but es-MX is preferred for am/pm.
+  const dateLocale = locale === "es" ? "es-MX" : "en-US";
   if (!session.user.employeeId) {
     return (
       <main className="px-4 py-6">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <p className="text-sm text-text-muted mt-2">
-          Account not linked to an employee.
+          {t("notLinkedAccount")}
         </p>
       </main>
     );
@@ -98,25 +105,27 @@ export default async function EmployeeTime() {
           <h1 className="text-xl font-semibold">{t("title")}</h1>
           <p className="text-sm text-text-muted">{t("subtitle")}</p>
         </div>
-        <AutoRefresh intervalMs={60_000} label="Updates" />
+        <AutoRefresh intervalMs={60_000} label={t("updatesLabel")} />
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Today · {today}</CardTitle>
+          <CardTitle className="text-base">{t("todayLabel")} · {today}</CardTitle>
           <CardDescription>
-            <HoursDisplay
-              hours={todayMs / MS_PER_HOUR}
-              decimals={payRules.hoursDecimalPlaces}
-            />{" "}
-            so far. Pulled from NGTeco every few minutes.
+            {t.rich("todaySubtitle", {
+              hours: () => (
+                <HoursDisplay
+                  hours={todayMs / MS_PER_HOUR}
+                  decimals={payRules.hoursDecimalPlaces}
+                />
+              ),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {todayPunches.length === 0 ? (
             <p className="text-sm text-text-muted">
-              No punches yet today. They&apos;ll appear here within a minute
-              of you clocking in.
+              {t("noPunchesToday")}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -130,15 +139,15 @@ export default async function EmployeeTime() {
                   <span>
                     <span className="text-text-muted">{t("in")}: </span>
                     <span className="font-mono">
-                      {fmtTime(p.clockIn, company.timezone)}
+                      {fmtTime(p.clockIn, company.timezone, dateLocale)}
                     </span>
                     <span className="text-text-muted ml-3">{t("out")}: </span>
                     <span className="font-mono">
-                      {fmtTime(p.clockOut, company.timezone)}
+                      {fmtTime(p.clockOut, company.timezone, dateLocale)}
                     </span>
                   </span>
                   {!p.clockOut && (
-                    <span className="text-xs text-emerald-700 font-medium">on the clock</span>
+                    <span className="text-xs text-emerald-700 font-medium">{t("onTheClock")}</span>
                   )}
                 </div>
               ))}
@@ -147,7 +156,7 @@ export default async function EmployeeTime() {
                   href={`/me/time/${today}`}
                   className="text-xs text-brand-700 hover:underline"
                 >
-                  Open day detail · report a fix →
+                  {t("openDayDetail")}
                 </Link>
               </div>
             </div>

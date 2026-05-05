@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileDown, AlertTriangle, CircleCheck } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
@@ -22,22 +23,23 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
+import { resolveLocale } from "@/lib/i18n";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
-function fmtTime(d: Date | null, tz: string): string {
+function fmtTime(d: Date | null, tz: string, locale: string): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     hour: "numeric",
     minute: "2-digit",
     timeZone: tz,
   }).format(d);
 }
 
-function fmtDayLabel(iso: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function fmtDayLabel(iso: string, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -51,6 +53,9 @@ export default async function EmployeePayslipViewer({
   params: Promise<{ periodId: string }>;
 }) {
   const session = await requireSession();
+  const t = await getTranslations("employee.pay");
+  const locale = await resolveLocale();
+  const dateLocale = locale === "es" ? "es-MX" : "en-US";
   const { periodId } = await params;
   const period = await getPeriodById(periodId);
   if (!period) notFound();
@@ -58,7 +63,7 @@ export default async function EmployeePayslipViewer({
     return (
       <div className="p-6 max-w-xl mx-auto">
         <p className="text-sm text-text-muted">
-          Your account is not linked to an employee record.
+          {t("notLinkedAccount")}
         </p>
       </div>
     );

@@ -111,7 +111,16 @@ export function Topbar({
 
   return (
     <>
-      <div className="h-14 border-b border-border bg-surface flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
+      <div
+        className={cn(
+          // Premium chrome: hairline divider, light backdrop blur, subtle
+          // bottom shadow that lifts the bar from the page (matches the
+          // sidebar's softer separation language).
+          "h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
+          "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
+          "shadow-[0_1px_0_0_rgb(15_23_42_/_0.02)]",
+        )}
+      >
         <MobileNav company={company} />
         <div className="min-w-0 flex items-center gap-2 shrink-0">
           <h1 className="text-sm font-semibold tracking-tight antialiased truncate">
@@ -134,15 +143,19 @@ export function Topbar({
             type="button"
             onClick={() => setPaletteOpen(true)}
             className={cn(
-              "inline-flex items-center gap-2 h-9 w-full max-w-md px-3 rounded-input border border-border bg-surface-2/60",
-              "text-xs text-text-muted hover:bg-surface-2 hover:text-text transition-colors",
+              // Refined search trigger: hairline border that brightens on
+              // hover, subtle inner highlight, brand-tinted focus ring.
+              "inline-flex items-center gap-2.5 h-9 w-full max-w-md px-3 rounded-lg",
+              "border border-border/70 bg-surface shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.4),0_1px_2px_0_rgb(15_23_42_/_0.03)]",
+              "text-[13px] text-text-muted",
+              "hover:bg-surface-2/50 hover:border-border-strong/70 hover:text-text transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             )}
             aria-label="Open command palette"
           >
-            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="flex-1 text-left">Search anything</span>
-            <kbd className="ml-1 inline-flex items-center gap-0.5 font-mono text-[10px] px-1.5 py-0.5 rounded-chip border border-border bg-surface text-text-subtle">
+            <Search className="h-3.5 w-3.5 shrink-0 text-text-subtle" aria-hidden />
+            <span className="flex-1 text-left tracking-tight">Search anything</span>
+            <kbd className="ml-1 inline-flex items-center gap-0.5 font-mono text-[10px] px-1.5 h-5 rounded-md border border-border/80 bg-surface-2/60 text-text-subtle">
               <span aria-label="Command">⌘</span>K
             </kbd>
           </button>
@@ -156,15 +169,16 @@ export function Topbar({
             href="/requests"
             aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
             className={cn(
-              "relative h-9 w-9 inline-flex items-center justify-center rounded-input hover:bg-surface-2 transition-colors",
+              "relative h-9 w-9 inline-flex items-center justify-center rounded-lg text-text-muted",
+              "hover:bg-surface-2/70 hover:text-text transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             )}
           >
-            <Bell className="h-4 w-4" aria-hidden />
+            <Bell className="h-[18px] w-[18px]" aria-hidden strokeWidth={1.75} />
             {unreadCount > 0 ? (
               <span
                 aria-hidden="true"
-                className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger-700 text-white text-[10px] font-semibold flex items-center justify-center font-mono tabular-nums"
+                className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger-700 text-white text-[10px] font-semibold flex items-center justify-center font-mono tabular-nums shadow-[0_0_0_2px_rgb(255_255_255)]"
               >
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
