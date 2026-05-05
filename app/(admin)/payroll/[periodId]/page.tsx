@@ -29,6 +29,7 @@ import { db } from "@/lib/db";
 import { taskPayLineItems, payrollRuns, paySchedules } from "@/lib/db/schema";
 import { and, eq, desc } from "drizzle-orm";
 import { LockButtons } from "./lock-buttons";
+import { AssignScheduleButton } from "./assign-schedule-button";
 import { RecomputeBanner } from "./recompute-banner";
 import { PublishPortalButton } from "./publish-portal-button";
 import { TempWorkersSection } from "./temp-workers-section";
@@ -342,6 +343,22 @@ export default async function PeriodReviewPage({
           <div className="flex items-center gap-2 flex-wrap min-w-0">
               <StatusPill status={period.state} />
               <SchedulePill name={runSchedule?.name ?? null} />
+              {!period.payScheduleId && (
+                <AssignScheduleButton
+                  periodId={period.id}
+                  schedules={schedules
+                    .filter((s) => s.active !== false)
+                    .map((s) => ({
+                      id: s.id,
+                      name: s.name,
+                      kind: s.periodKind as
+                        | "WEEKLY"
+                        | "BIWEEKLY"
+                        | "SEMI_MONTHLY"
+                        | "MONTHLY",
+                    }))}
+                />
+              )}
               <span className="text-sm text-text-muted">
                 {displayRows.length} emp ·{" "}
                 <span className="font-medium text-text">
@@ -593,9 +610,11 @@ export default async function PeriodReviewPage({
       <PayrollDocsSection
         periodId={periodId}
         periodPayScheduleId={period.payScheduleId ?? null}
+        periodKind={runSchedule?.periodKind ?? null}
         // Pass ALL active employees so the section can show salaried
         // staff alongside the requires-W2-upload flag list. The section
-        // filters internally by requiresW2Upload AND schedule match.
+        // filters internally by requiresW2Upload AND schedule match,
+        // and excludes salaried-on-weekly as a defensive measure.
         employees={allEmployees
           .filter((e) => e.status === "ACTIVE")
           .map((e) => ({

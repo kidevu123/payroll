@@ -347,3 +347,62 @@ export async function getLastPollAction(): Promise<{
     errorMessage: last.errorMessage,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Assign / reassign a pay_schedule on an existing pay period. Owner ask:
+// "WHY DOES EVERYTHING SAY UNASSIGNED AND IF IT UNASSIGNED HOW THE FUCK
+// DO YOU ASSIGN IT" — there was no UI to set the schedule_id on a
+// period. This action wires the dropdown on /payroll/[periodId].
+// ─────────────────────────────────────────────────────────────────────────────
+
+const assignScheduleSchema = z.object({
+  payScheduleId: z
+    .union([z.string().uuid(), z.literal("").transform(() => null)])
+    .nullable(),
+});
+
+export async function assignPeriodScheduleAction(
+  periodId: string,
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(periodId).success) return { error: "Invalid id." };
+  const parsed = assignScheduleSchema.safeParse({
+    payScheduleId: formData.get("payScheduleId") || null,
+  });
+  if (!parsed.success) return { error: "Invalid schedule." };
+  const { db } = await import("@/lib/db");
+  const { payPeriods } = await import("@/lib/db/schema");
+  const { eq } = await import("drizzle-orm");
+  const { writeAudit } = await import("@/lib/db/audit");
+  await db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(payPeriods)
+      .where(eq(payPeriods.id, periodId));
+    if (!before) throw new Error("Period not found.");
+    if (before.state === "PAID") {
+      throw new Error("Can't change the schedule on a PAID period.");
+    }
+    const [after] = await tx
+      .update(payPeriods)
+      .set({ payScheduleId: parsed.data.payScheduleId })
+      .where(eq(payPeriods.id, periodId))
+      .returning();
+    await writeAudit(
+      {
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        action: "period.assign_schedule",
+        targetType: "PayPeriod",
+        targetId: periodId,
+        before,
+        after,
+      },
+      tx,
+    );
+  });
+  revalidatePath(`/payroll/${periodId}`);
+  revalidatePath("/payroll");
+  revalidatePath("/reports");
+}

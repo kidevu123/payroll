@@ -27,36 +27,39 @@ type EmployeeLite = Pick<
 export function PayrollDocsSection({
   periodId,
   periodPayScheduleId,
+  /** The period's pay_schedule.period_kind. Used to keep SALARIED
+   *  employees off WEEKLY periods regardless of what their stored
+   *  schedule says — weekly is punch-driven; a salaried W2 slot
+   *  there is always a data error. */
+  periodKind,
   employees,
   initialDocs,
   locked,
 }: {
   periodId: string;
-  /** The period's pay_schedule_id. Only employees on this schedule appear
-   *  in the W2 upload list. NULL legacy periods fall back to "show all
-   *  requiresW2Upload employees" since there's no schedule to scope by. */
   periodPayScheduleId: string | null;
+  periodKind: "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null;
   employees: EmployeeLite[];
   initialDocs: PayrollPeriodDocument[];
   locked: boolean;
 }) {
   // STRICT schedule isolation. An employee's paystub upload belongs on
   // the period that matches their pay schedule and nowhere else.
-  // Owner directive: "JUAN IS ALREADY NOTED AS A SEMI MONTHLY...
-  // SERI AND SAHIL ARE SALARIED!!!" — the prior "show all when period
-  // has no schedule" fallback was bleeding semi-monthly + scheduleless
-  // salaried employees onto weekly periods.
   //
   //   period.payScheduleId === employee.payScheduleId  → show
   //   anything else                                     → hide
   //
-  // Both being NULL is a legacy back-compat case: surfaces when an
-  // unassigned salaried employee lands on an unassigned period. Once
-  // the consolidate-duplicate-periods migration runs and schedules
-  // get tagged, this collapses to "schedule matches schedule".
+  // Plus a SALARIED-not-on-WEEKLY guard: weekly is a punch-driven
+  // cadence; if the data ever has a salaried employee on a weekly
+  // schedule (Seri's profile in production had this), we exclude them
+  // here so they never bleed onto the weekly period's W2 slot.
+  // Owner directive: "SERI STILL SHOWS ON THE WEEKLY!" — even with a
+  // matching schedule_id, we refuse the combination at the filter.
   const w2Employees = employees.filter((e) => {
     if (!e.requiresW2Upload) return false;
-    return e.payScheduleId === periodPayScheduleId;
+    if (e.payScheduleId !== periodPayScheduleId) return false;
+    if (e.payType === "SALARIED" && periodKind === "WEEKLY") return false;
+    return true;
   });
 
   if (w2Employees.length === 0) {

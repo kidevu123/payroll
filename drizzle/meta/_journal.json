@@ -148,6 +148,20 @@
       "when": 1778400000000,
       "tag": "0020_consolidate_unassigned_duplicate_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0021_clear_salaried_weekly_misassignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0022_reroute_punches_to_employee_schedule",
+      "breakpoints": true
     }
   ]
 }
