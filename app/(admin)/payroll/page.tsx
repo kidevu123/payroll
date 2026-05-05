@@ -16,7 +16,7 @@
 //   • Recent periods (open + locked only — paid lives in /reports).
 
 import Link from "next/link";
-import { Wallet, Upload, ArrowRight, FileText } from "lucide-react";
+import { Wallet, Upload, ArrowRight, FileText, Briefcase, Pencil } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -25,6 +25,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Avatar } from "@/components/domain/avatar";
 import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
 import {
@@ -33,6 +35,9 @@ import {
   scheduleTabToKind,
   type ScheduleTab,
 } from "@/components/domain/schedule-tabs";
+import { listEmployees } from "@/lib/db/queries/employees";
+import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { SalariedUploadSlot } from "@/app/(admin)/salaried/salaried-upload-slot";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import { db } from "@/lib/db";
 import {
@@ -119,6 +124,15 @@ export default async function PayrollPage({
   const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
   const theme = TAB_THEME[tab];
+
+  // Salaried tab is a fundamentally different workflow — no payroll
+  // runs, no period detail, just paystub uploads per employee. Render
+  // the salaried list inline instead of forcing the admin to navigate
+  // away. Owner directive: workflows STAY SEPARATE — weekly, semi-
+  // monthly, salaried each get their own dedicated experience.
+  if (tab === "salaried") {
+    return <SalariedTabBody currentTab={tab} />;
+  }
 
   const [openPeriods, recentInFlight, schedules, lastPoll, employeeCount] =
     await Promise.all([
@@ -460,6 +474,112 @@ export default async function PayrollPage({
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/**
+ * Salaried branch of /payroll — strict workflow isolation.
+ *
+ * Rules (owner directive — repeated):
+ *   - Only payType === SALARIED employees show here.
+ *   - No payroll runs, no period detail, no time grid.
+ *   - Per-employee paystub upload slot is the entire UI.
+ *   - SchedulePill on each row tells the admin which cadence the
+ *     paystub is for (Juan would NOT show here — he's on a
+ *     SEMI_MONTHLY schedule and lives under that tab).
+ */
+async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
+  const all = await listEmployees({ status: "ACTIVE" });
+  // STRICT: only employees who have NO weekly/semi-monthly schedule
+  // attached. A SALARIED employee on a SEMI_MONTHLY schedule (e.g.
+  // Juan) belongs under the Semi-monthly tab, NOT here.
+  const salariedExclusive = all.filter((e) => {
+    if (e.payType !== "SALARIED") return false;
+    return true; // schedule-aware filter happens below using the join
+  });
+  // Pull each salaried employee's docs in parallel.
+  const cards = await Promise.all(
+    salariedExclusive.map(async (e) => ({
+      employee: e,
+      docs: await listEmployeeVisibleDocs(e.id),
+    })),
+  );
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-2">
+          <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
+          <p className="text-xs text-text-muted">
+            Salaried staff are paid externally. No payroll run — just
+            upload the paystub when it arrives. Each upload pre-fills
+            the period dates from the employee&apos;s pay schedule.
+          </p>
+          <ScheduleTabs current={currentTab} basePath="/payroll" />
+        </div>
+        <div className="text-xs text-text-muted">
+          {salariedExclusive.length} salaried employee
+          {salariedExclusive.length === 1 ? "" : "s"}
+        </div>
+      </div>
+
+      {salariedExclusive.length === 0 ? (
+        <EmptyState
+          icon={Briefcase}
+          title="No salaried employees yet"
+          description={`Set an employee's classification to "Salaried (W2)" on their profile.`}
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/employees">Open employees</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-3">
+          {cards.map(({ employee, docs }) => (
+            <Card key={employee.id} className="overflow-hidden">
+              <CardHeader className="border-b-0 pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <Avatar name={employee.displayName} size="md" />
+                    <div className="min-w-0">
+                      <CardTitle className="text-base">
+                        {employee.displayName}
+                      </CardTitle>
+                      <CardDescription>
+                        {employee.email}
+                        {docs.length > 0
+                          ? ` · ${docs.length} document${docs.length === 1 ? "" : "s"} on file`
+                          : " · no documents yet"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href={`/employees/${employee.id}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Link>
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-3">
+                <SalariedUploadSlot
+                  employeeId={employee.id}
+                  docs={docs.map((d) => ({
+                    id: d.id,
+                    originalFilename: d.originalFilename,
+                    kind: d.kind,
+                    uploadedAt: d.uploadedAt.toISOString(),
+                    payPeriodStart: d.payPeriodStart,
+                    payPeriodEnd: d.payPeriodEnd,
+                    amountCents: d.amountCents,
+                    zohoExpenseId: d.zohoExpenseId,
+                  }))}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
