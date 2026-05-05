@@ -119,6 +119,97 @@ export class ScrapeFailure extends Error {
   }
 }
 
+/** Are we on the login page? Looks for any of: a label/input that
+ *  says Email, an input[type=password], a "Login" button, or the
+ *  configured username selector. Any match counts. */
+async function detectLoginPage(
+  page: import("playwright-core").Page,
+  sel: Selectors,
+): Promise<boolean> {
+  if (sel.login.username && (await page.locator(sel.login.username).count()) > 0) {
+    return true;
+  }
+  // MUI labels — the live portal uses these.
+  if ((await page.getByLabel(/email/i).count()) > 0) return true;
+  if ((await page.locator('input[type="password"]').count()) > 0) return true;
+  return false;
+}
+
+/** Fill a login field using the most reliable strategy first.
+ *  Tries (in order): MUI label match → semantic input type → the
+ *  configured CSS selector. The first one that locates a unique
+ *  visible element wins. */
+async function fillLoginField(
+  page: import("playwright-core").Page,
+  kind: "username" | "password",
+  configuredSelector: string | undefined,
+  value: string,
+): Promise<void> {
+  const labelRegex =
+    kind === "username" ? /email|account|username|user name/i : /password/i;
+  const semanticSelector =
+    kind === "username"
+      ? 'input[type="email"], input[name*="email" i], input[name*="account" i], input[name*="user" i]'
+      : 'input[type="password"]';
+
+  // Strategy 1: getByLabel
+  try {
+    const byLabel = page.getByLabel(labelRegex).first();
+    if (await byLabel.count()) {
+      await byLabel.fill("");
+      await byLabel.fill(value, { timeout: 5_000 });
+      const filled = await byLabel.inputValue();
+      if (filled === value) return;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Strategy 2: semantic input attribute
+  try {
+    const bySemantic = page.locator(semanticSelector).first();
+    if (await bySemantic.count()) {
+      await bySemantic.fill("");
+      await bySemantic.fill(value, { timeout: 5_000 });
+      const filled = await bySemantic.inputValue();
+      if (filled === value) return;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Strategy 3: configured selector (legacy / operator override).
+  if (configuredSelector) {
+    await page.fill(configuredSelector, value, { timeout: 5_000 });
+    return;
+  }
+
+  throw new ScrapeFailure(
+    `Could not locate the ${kind} field. Tried label, semantic, and configured selectors.`,
+    {},
+  );
+}
+
+/** Click the login submit button. Tries the configured selector,
+ *  then falls back to a button labelled "Login". */
+async function clickLoginSubmit(
+  page: import("playwright-core").Page,
+  configuredSelector: string | undefined,
+): Promise<void> {
+  if (configuredSelector) {
+    try {
+      await page.click(configuredSelector, { timeout: 5_000 });
+      return;
+    } catch {
+      /* fall through */
+    }
+  }
+  await page
+    .getByRole("button", { name: /^log\s*in$|^sign\s*in$/i })
+    .first()
+    .click({ timeout: 6_000 });
+}
+
 async function loadSelectors(): Promise<Selectors> {
   const { readFileSync } = await import(/* webpackIgnore: true */ "node:fs");
   const { join } = await import(/* webpackIgnore: true */ "node:path");
@@ -331,39 +422,60 @@ export async function scrapeViewAttendance(
       throw new ChallengeDetectedError("CAPTCHA");
     }
 
-    // Login if needed.
-    const needsLogin = (await page.locator(sel.login.username).count()) > 0;
-    if (needsLogin) {
-      await page.fill(sel.login.username, input.username);
-      await page.fill(sel.login.password, input.password);
+    // Login if needed. NGTeco rebuilt their login form on MUI; the
+    // configured CSS selector (Element Plus era) silently mis-targets,
+    // and fill() ends up writing to a hidden input while the visible
+    // Email field stays empty. Failure mode: form submits, MUI shows
+    // "This field is required!" on Email, and the SPA stays on /login.
+    //
+    // Fix: prefer label/role-based locators (those survive a CSS
+    // refactor) and fall through to the configured selector last.
+    // After submit, *verify* we left /login; if not, throw a clear
+    // error instead of timing out 30s downstream looking for menu
+    // links that will never appear.
+    const onLoginPage = await detectLoginPage(page, sel);
+    if (onLoginPage) {
+      await fillLoginField(page, "username", sel.login.username, input.username);
+      await fillLoginField(page, "password", sel.login.password, input.password);
       await Promise.all([
         page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
-        page.click(sel.login.submit),
+        clickLoginSubmit(page, sel.login.submit),
       ]);
-      // Post-login readiness: try the configured landmark first
-      // (often "Quickly Setting" or similar dashboard text). If the
-      // operator-saved selector is stale (NGTeco renamed the menu
-      // again), fall back to "any sidebar nav rendered + URL is no
-      // longer /login". The downstream Attendance click has its own
-      // text/role fallbacks, so we don't need this landmark to be
-      // pixel-perfect — just enough to know the SPA is mounted.
+      // Hard verification: did we actually get off /login? MUI's
+      // client-side validation can reject a partially-filled form
+      // and keep the SPA on the login route — that needs to fail
+      // loudly here, not 30s later when a menu click times out.
+      try {
+        await page.waitForFunction(
+          () => !/\/login/i.test(window.location.pathname),
+          null,
+          { timeout: 10_000 },
+        );
+      } catch {
+        const url = page.url();
+        // If we're still on /login the form rejected us. Surface that
+        // directly so the operator sees "login failed" instead of a
+        // confusing menu-selector timeout.
+        throw new ScrapeFailure(
+          `NGTeco login did not complete — page still on ${url}. Most likely either credentials are wrong or the email/password selectors no longer match the page. Check the failure screenshot.`,
+          {},
+        );
+      }
+      // Post-login: wait for the SPA to mount its sidebar (any nav).
       try {
         await page.waitForSelector(sel.login.loggedInLandmark, {
-          timeout: 6_000,
+          timeout: 4_000,
         });
       } catch {
         try {
           await page.waitForFunction(
             () =>
-              !/\/login/i.test(window.location.pathname) &&
               document.querySelectorAll("nav, aside, [role=navigation]").length >
-                0,
+              0,
             null,
-            { timeout: 8_000 },
+            { timeout: 6_000 },
           );
         } catch {
-          // Give the SPA one more beat — many MUI dashboards finish
-          // hydrating right around the 2s mark.
           await page.waitForTimeout(1_500);
         }
       }
