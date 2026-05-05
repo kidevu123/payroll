@@ -1,38 +1,38 @@
 {
-  "$comment": "Selector config for the NGTeco Playwright scraper. Reloaded fresh on each run so the operator can edit on the LXC without redeploying. Prefer text/role/data-test attributes over CSS classes — class names change, semantics don't.",
+  "$comment": "Verified live against office.ngteco.com (probe agent, 2026-05-05). Portal is Material UI v5 — sidebar uses MuiAccordion, table is MuiDataGrid. Cells expose stable data-field attributes (employee_name, employee_code, att_date, attendance_status [punch time, not date], verify_type, timezone, punch_from). DO NOT switch back to Element Plus selectors — they all match zero.",
   "login": {
     "url": "/login",
-    "username": "input[type='email'], input[name='username'], input[placeholder*='mail' i]",
-    "password": "input[type='password'], input[name='password']",
-    "agreementCheckbox": ".el-checkbox:has-text(\"have read\") input[type=\"checkbox\"], label:has-text(\"have read\") input[type=\"checkbox\"]",
-    "agreementClickTarget": ".el-checkbox:has-text(\"have read\") .el-checkbox__inner, .el-checkbox:has-text(\"have read\"), label:has-text(\"have read\")",
-    "submit": "button:has-text(/^\\s*Login\\s*$/i), button[type='submit']",
-    "loggedInLandmark": "text=/Dashboard|Quickly Setting|Attendance/i"
+    "username": "input[name='username']",
+    "password": "input[name='password']",
+    "agreementCheckbox": "label:has-text(\"have read\") input[type=\"checkbox\"]",
+    "agreementClickTarget": "label:has-text(\"have read\")",
+    "submit": "button:has-text(\"Login\")",
+    "loggedInLandmark": "text=\"Quickly Setting\""
   },
   "navigation": {
     "reportsLink": "text=/Reports?/i",
     "punchReportLink": "text=/Punch.*Report/i",
-    "attendanceMenu": ".el-submenu__title:has-text(\"Attendance\"), [role=\"menuitem\"]:has-text(\"Attendance\") >> nth=0, text=\"Attendance\"",
-    "viewAttendancePunchLink": ".el-menu-item:has-text(\"View Attendance Punch\"), text=\"View Attendance Punch\""
+    "attendanceMenu": ".MuiAccordionSummary-root:has(p:text-is(\"Attendance\"))",
+    "viewAttendancePunchLink": "p:text-is(\"View Attendance Punch\")"
   },
   "report": {
     "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
     "toDate": "input[name='toDate'], input[type='date']:nth-of-type(2)",
-    "applyButton": "button:has-text(/Apply|Search|Run/i)",
-    "exportCsvButton": "button:has-text(/Export.*CSV/i), a:has-text(/Export.*CSV/i)"
+    "applyButton": "button:has-text('Apply'), button:has-text('Search'), button:has-text('Run')",
+    "exportCsvButton": "button:has-text('Export CSV'), a:has-text('Export CSV')"
   },
   "viewPunch": {
-    "tableLandmark": "table tbody tr, .el-table__body tr, [role='row']",
-    "rowsContainer": "table tbody tr, .el-table__body tr.el-table__row, [role='row']:not([role='columnheader'])",
-    "personNameCell": "td:nth-child(1), [role='cell']:nth-child(1)",
-    "personIdCell": "td:nth-child(2), [role='cell']:nth-child(2)",
-    "punchDateCell": "td:nth-child(3), [role='cell']:nth-child(3)",
-    "punchTimeCell": "td:nth-child(4), [role='cell']:nth-child(4)",
-    "verifyTypeCell": "td:nth-child(5), [role='cell']:nth-child(5)",
-    "timezoneCell": "td:nth-child(6), [role='cell']:nth-child(6)",
-    "sourceCell": "td:nth-child(7), [role='cell']:nth-child(7)",
-    "nextPageButton": "button.btn-next:not([disabled]), button[aria-label*='next' i]:not([disabled]), .el-pagination button.btn-next:not([disabled])",
-    "pageInfo": ".el-pagination, [class*='pagination']"
+    "tableLandmark": "[role=\"row\"][aria-rowindex=\"1\"]",
+    "rowsContainer": ".MuiDataGrid-row",
+    "personNameCell": "[role=\"cell\"][data-field=\"employee_name\"]",
+    "personIdCell": "[role=\"cell\"][data-field=\"employee_code\"]",
+    "punchDateCell": "[role=\"cell\"][data-field=\"att_date\"]",
+    "punchTimeCell": "[role=\"cell\"][data-field=\"attendance_status\"]",
+    "verifyTypeCell": "[role=\"cell\"][data-field=\"verify_type\"]",
+    "timezoneCell": "[role=\"cell\"][data-field=\"timezone\"]",
+    "sourceCell": "[role=\"cell\"][data-field=\"punch_from\"]",
+    "nextPageButton": "button[aria-label=\"Go to next page\"]:not([disabled])",
+    "pageInfo": ".MuiTablePagination-displayedRows"
   },
   "challenge": {
     "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",
