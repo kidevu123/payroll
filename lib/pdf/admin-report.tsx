@@ -1,13 +1,10 @@
-// Admin period report — compact 3-column layout, ~2 pages for 22
-// employees instead of one page each. Page 1 = payroll summary table
-// (one row per employee, shift subtotals + grand total). Pages 2+ =
-// per-employee detail blocks rendered in a 3-column grid, each block
-// has the employee header, the day-by-day table, total + rounded pay,
-// and a Signature/Date line. Mirrors the legacy reference PDF the
-// owner has been printing for years.
-//
-// Owner directive: "save the planet i want this consolidated to one
-// or two pages but all the details the way you have it need to stay".
+// Admin period report — compact 4-column layout. Owner ask:
+// "i want the PDF report to be max 2 pages so i can print it front
+// and back in a single page". Tuned for ~22 employees on Letter
+// portrait: page 1 = payroll summary table (one row per employee,
+// shift subtotals + grand total). Page 2 = per-employee detail
+// blocks in a 4-col grid, each block has the employee header,
+// day-by-day rows, totals, and a signature line.
 
 import {
   Document,
@@ -18,67 +15,67 @@ import {
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
 
-const PAGE_PADDING = 24;
+const PAGE_PADDING = 16;
 
 const styles = StyleSheet.create({
   page: {
     padding: PAGE_PADDING,
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: "Helvetica",
     color: "#0f172a",
   },
   // Top section: payroll summary table.
   summaryTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 6,
+    marginBottom: 3,
   },
   summaryMeta: {
-    fontSize: 8,
+    fontSize: 7,
     color: "#64748b",
-    marginBottom: 8,
+    marginBottom: 5,
   },
   table: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
     borderRadius: 2,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   th: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
-    paddingVertical: 3,
-    paddingHorizontal: 5,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
-    fontSize: 7,
+    fontSize: 6.5,
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 2.5,
-    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    paddingHorizontal: 4,
     borderBottomWidth: 0.5,
     borderColor: "#e2e8f0",
   },
   shiftSubtotal: {
     flexDirection: "row",
-    paddingVertical: 3,
-    paddingHorizontal: 5,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
     backgroundColor: "#fff7ed",
     borderBottomWidth: 1,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
-    fontSize: 8,
+    fontSize: 7,
   },
   grandTotal: {
     flexDirection: "row",
-    paddingVertical: 4,
-    paddingHorizontal: 5,
+    paddingVertical: 2.5,
+    paddingHorizontal: 4,
     borderTopWidth: 1.5,
     borderColor: "#0f172a",
     fontFamily: "Helvetica-Bold",
-    fontSize: 8.5,
+    fontSize: 7.5,
   },
   cId: { width: 36, fontFamily: "Courier", fontSize: 7 },
   cName: { flex: 2.2 },
@@ -105,54 +102,54 @@ const styles = StyleSheet.create({
     textAlign: "right",
     paddingLeft: 4,
   },
-  // Per-employee detail block (rendered in a 3-col grid).
+  // Per-employee detail block (rendered in a 4-col grid for 2-page fit).
   breakdownTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 2,
+    marginBottom: 3,
     color: "#475569",
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginHorizontal: -3,
+    marginHorizontal: -2,
   },
   block: {
-    width: "33.333%",
-    paddingHorizontal: 3,
-    paddingVertical: 3,
+    width: "25%",
+    paddingHorizontal: 2,
+    paddingVertical: 2,
   },
   blockInner: {
     borderWidth: 0.75,
     borderColor: "#cbd5e1",
     borderRadius: 2,
-    padding: 4,
+    padding: 3,
   },
   blockHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    paddingBottom: 3,
-    marginBottom: 3,
+    paddingBottom: 2,
+    marginBottom: 2,
     borderBottomWidth: 0.5,
     borderColor: "#e2e8f0",
   },
   blockName: {
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: "Helvetica-Bold",
     flex: 1,
   },
   blockMeta: {
-    fontSize: 6.5,
+    fontSize: 5.5,
     color: "#64748b",
   },
   blockTable: {
-    marginBottom: 3,
+    marginBottom: 2,
   },
   blockTr: {
     flexDirection: "row",
-    fontSize: 6.5,
+    fontSize: 5.5,
   },
   blockTrAlt: {
     backgroundColor: "#fafafa",
@@ -179,10 +176,10 @@ const styles = StyleSheet.create({
   blockTotalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: 2,
+    paddingTop: 1.5,
     borderTopWidth: 0.5,
     borderColor: "#e2e8f0",
-    fontSize: 7,
+    fontSize: 6,
   },
   blockTotalLabel: {
     fontFamily: "Helvetica-Bold",
@@ -190,16 +187,16 @@ const styles = StyleSheet.create({
   blockSig: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginTop: 4,
-    fontSize: 6,
+    marginTop: 2,
+    fontSize: 5,
     color: "#64748b",
   },
   sigBlank: {
     flex: 1,
     borderBottomWidth: 0.5,
     borderColor: "#94a3b8",
-    height: 9,
-    marginHorizontal: 3,
+    height: 7,
+    marginHorizontal: 2,
   },
   footer: {
     position: "absolute",
@@ -419,13 +416,9 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                 </View>
 
                 <View style={styles.blockTotalsRow}>
-                  <Text style={styles.blockTotalLabel}>Total</Text>
-                  <Text style={{ fontFamily: "Courier" }}>
+                  <Text style={styles.blockTotalLabel}>
                     {money(e.totals.grossCents, data.company.locale)}
                   </Text>
-                </View>
-                <View style={[styles.blockTotalsRow, { borderTopWidth: 0, paddingTop: 0 }]}>
-                  <Text style={styles.blockTotalLabel}>Rounded</Text>
                   <Text style={{ fontFamily: "Helvetica-Bold", color: brand }}>
                     {money(e.totals.roundedCents, data.company.locale)}
                   </Text>
@@ -434,8 +427,6 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                 <View style={styles.blockSig}>
                   <Text>Sig</Text>
                   <View style={styles.sigBlank} />
-                  <Text>Date</Text>
-                  <View style={[styles.sigBlank, { flex: 0.5 }]} />
                 </View>
               </View>
             </View>

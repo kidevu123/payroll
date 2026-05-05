@@ -3,9 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { Bell, Search, ChevronRight, ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { signOutAction } from "./sign-out-action";
+import { SignOutButton } from "./sign-out-button";
 import { CommandPalette, type CommandTarget } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { LanguageSwitcher } from "./language-switcher";
@@ -253,16 +253,7 @@ export function Topbar({
                     </div>
                   </div>
                 </div>
-                <form action={signOutAction}>
-                  <button
-                    type="submit"
-                    role="menuitem"
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text transition-colors text-left"
-                  >
-                    <LogOut className="h-4 w-4 text-text-subtle" aria-hidden />
-                    {tAuth("signOut")}
-                  </button>
-                </form>
+                <SignOutButton label={tAuth("signOut")} />
               </div>
             ) : null}
           </div>
