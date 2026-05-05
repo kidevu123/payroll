@@ -8,13 +8,17 @@ import { getSetting } from "@/lib/settings/runtime";
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const company = await getSetting("company").catch(() => null);
-  const name = company?.name ?? "Payroll";
+  // App display name on the home screen / installer dialog. Owner asked
+  // for "Milo" specifically — single word, fits any home-screen tile.
+  // Long form ("Milo · <company>") stays as the in-app browser tab title.
+  const longName = `Milo · ${company?.name ?? "Payroll"}`;
+  const shortName = "Milo";
   const themeColor = company?.brandColorHex ?? "#0f766e";
   const lang = company?.locale?.split("-")[0] ?? "en";
   const v = company?.iconsGeneratedAt ?? "default";
   return {
-    name,
-    short_name: name.length > 12 ? name.slice(0, 12) : name,
+    name: longName,
+    short_name: shortName,
     description: "Self-hosted payroll and employee operations.",
     start_url: "/me/home",
     scope: "/",

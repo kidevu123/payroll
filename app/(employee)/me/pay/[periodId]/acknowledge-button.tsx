@@ -19,10 +19,10 @@ export function AcknowledgeButton({ payslipId }: { payslipId: string }) {
       }}
       className="flex items-center justify-end gap-3"
     >
-      {error && <span className="text-sm text-red-700">{error}</span>}
+      {error && <span className="text-xs text-danger-700">{error}</span>}
       <Button type="submit" disabled={pending}>
-        <CircleCheck className="h-4 w-4" />{" "}
-        {pending ? "Recording…" : "I have reviewed this payslip"}
+        <CircleCheck className="h-4 w-4" />
+        {pending ? "Recording…" : "Acknowledge payslip"}
       </Button>
     </form>
   );

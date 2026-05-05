@@ -29,7 +29,7 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
   return (
     <nav
       aria-label="Employee navigation"
-      className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_2px_0_rgb(15_23_42_/_0.04)]"
     >
       <ul className={cn("grid max-w-md mx-auto", hideTime ? "grid-cols-3" : "grid-cols-4")}>
         {tabs.map(({ href, label, icon: Icon }) => {

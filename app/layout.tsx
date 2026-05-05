@@ -13,13 +13,15 @@ import { resolveLocale, messagesFor } from "@/lib/i18n";
 export async function generateMetadata(): Promise<Metadata> {
   const v = await assetVersion("favicon");
   return {
-    title: "Payroll",
+    title: "Milo",
     description: "Self-hosted payroll and employee operations.",
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "Payroll",
+      // Owner-set short name for the iOS Add-to-Home-Screen prompt; this is
+      // what the springboard tile reads. Long form lives in the manifest.
+      title: "Milo",
     },
     icons: {
       icon: [{ url: `/icon?v=${v}`, sizes: "any" }],

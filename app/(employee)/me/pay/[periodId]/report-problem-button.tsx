@@ -9,6 +9,9 @@ import { reportPayslipProblemAction } from "./actions";
  * Inline expandable problem-report form. Hidden until the employee taps
  * "Report a problem"; expands to a textarea + submit. Submitting writes
  * a dispute on the payslip and notifies admins.
+ *
+ * Uses the warn-* token palette so the surface picks up dark-mode
+ * automatically; no hard-coded amber-50/etc shades.
  */
 export function ReportProblemButton({
   payslipId,
@@ -25,11 +28,9 @@ export function ReportProblemButton({
 
   if (done || alreadyDisputed) {
     return (
-      <div className="flex items-center gap-2 rounded-input border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        <CircleAlert className="h-3.5 w-3.5" />
-        <span>
-          Problem reported. Admin has been notified and will follow up.
-        </span>
+      <div className="inline-flex items-center gap-2 rounded-input border border-warn-200/80 bg-warn-50 px-3 py-2 text-xs font-medium text-warn-700">
+        <CircleAlert className="h-3.5 w-3.5" aria-hidden />
+        <span>Problem reported. Admin has been notified and will follow up.</span>
       </div>
     );
   }
@@ -41,7 +42,7 @@ export function ReportProblemButton({
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
-        className="text-amber-700 hover:text-amber-900 hover:bg-amber-50"
+        className="text-warn-700 hover:bg-warn-50 hover:text-warn-700"
       >
         <AlertTriangle className="h-4 w-4" /> Report a problem
       </Button>
@@ -49,37 +50,39 @@ export function ReportProblemButton({
   }
 
   return (
-    <div className="rounded-card border border-amber-300 bg-amber-50/50 p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-amber-900">
+    <div className="w-full rounded-card border border-warn-200/80 bg-warn-50/60 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium tracking-tight text-warn-700 antialiased">
           What&apos;s wrong with this payslip?
         </p>
         <Button
           type="button"
           variant="ghost"
           size="icon"
+          className="h-7 w-7 text-warn-700 hover:bg-warn-50"
           onClick={() => {
             setOpen(false);
             setReason("");
             setError(null);
           }}
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </Button>
       </div>
       <textarea
-        className="w-full h-24 rounded-input border border-border bg-surface px-3 py-2 text-sm"
+        className="w-full h-24 rounded-input border border-border bg-surface px-3 py-2 text-sm leading-relaxed transition-colors focus-visible:outline-none focus-visible:border-warn-700 focus-visible:ring-2 focus-visible:ring-warn-200"
         placeholder="e.g. I was paid for 40 hours but I worked 48. The hours from Tuesday and Wednesday are missing."
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         disabled={pending}
         maxLength={1000}
       />
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-text-muted">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[10px] text-text-muted tabular-nums">
           {reason.length}/1000
         </span>
-        {error && <span className="text-xs text-red-700">{error}</span>}
+        {error && <span className="text-xs text-danger-700">{error}</span>}
         <Button
           type="button"
           size="sm"

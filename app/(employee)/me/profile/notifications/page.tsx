@@ -4,10 +4,17 @@
 // device-scoped opt-in.
 
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, BellRing } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { notifications, pushSubscriptions } from "@/lib/db/schema";
@@ -31,8 +38,8 @@ export default async function NotificationsPage() {
   ]);
 
   return (
-    <main className="px-4 py-6 space-y-4">
-      <Button asChild variant="ghost" size="sm">
+    <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/profile">
           <ArrowLeft className="h-4 w-4" /> Back
         </Link>
@@ -40,7 +47,7 @@ export default async function NotificationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Push notifications</CardTitle>
+          <CardTitle>Push notifications</CardTitle>
           <CardDescription>
             Get pinged on this device when payroll publishes or a missed-punch
             alert lands. Tied to this browser; revoking notification permission
@@ -51,16 +58,19 @@ export default async function NotificationsPage() {
           {configured ? (
             <PushToggle alreadySubscribed={subs.length > 0} />
           ) : (
-            <div className="flex items-start gap-2 rounded-card border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-medium">
+            <div className="flex items-start gap-2.5 rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-sm text-warn-700">
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0"
+                aria-hidden
+              />
+              <div className="space-y-1">
+                <p className="font-medium tracking-tight">
                   Push notifications aren&apos;t set up yet.
                 </p>
-                <p className="text-xs">
-                  Your admin needs to configure VAPID keys before this
-                  device can subscribe. They&apos;ll find the setup steps
-                  under <strong>Settings → Notifications</strong>.
+                <p className="text-[11px] leading-relaxed">
+                  Your admin needs to configure VAPID keys before this device
+                  can subscribe. They&apos;ll find the setup steps under{" "}
+                  <strong>Settings → Notifications</strong>.
                 </p>
               </div>
             </div>
@@ -70,23 +80,33 @@ export default async function NotificationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent notifications</CardTitle>
+          <CardTitle>Recent notifications</CardTitle>
+          <CardDescription>Last 20 alerts sent to your account.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent>
           {recent.length === 0 ? (
-            <p className="text-text-muted">Nothing yet.</p>
+            <EmptyState
+              icon={BellRing}
+              title="No notifications yet"
+              description="Anything we send to you will show up here."
+              tone="neutral"
+            />
           ) : (
-            recent.map((n) => (
-              <div
-                key={n.id}
-                className="rounded-input border border-border px-3 py-2"
-              >
-                <div className="text-xs font-mono">{n.kind}</div>
-                <div className="text-xs text-text-muted">
-                  {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
-                </div>
-              </div>
-            ))
+            <ul className="space-y-1.5">
+              {recent.map((n) => (
+                <li
+                  key={n.id}
+                  className="flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5"
+                >
+                  <span className="font-mono text-[11px] tracking-tight text-text truncate">
+                    {n.kind}
+                  </span>
+                  <span className="text-[10px] text-text-muted tabular-nums shrink-0">
+                    {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </CardContent>
       </Card>
