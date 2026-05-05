@@ -406,13 +406,17 @@ export async function scrapeViewAttendance(
     let pages = 0;
     while (events.length < maxRows && pages < 50) {
       pages++;
-      // Read every row's cells in ONE pass via page.evaluate. Per-row
-      // .locator().nth(N) was timing out on MuiDataGrid because the grid
-      // virtualizes rows — only on-screen rows live in the DOM, so when
-      // we asked for row N=8 while the grid had scrolled it out, the
-      // selector hung waiting for an element that no longer existed.
-      // page.evaluate runs in-browser, snapshots the visible row HTML,
-      // and never blocks on Playwright's auto-wait.
+      // MuiDataGrid uses ROW VIRTUALIZATION — even on a paginated grid,
+      // only the rows currently in the viewport buffer render in the
+      // DOM. A single page.evaluate snapshot misses any row that's
+      // scrolled out. Last live poll: events_scraped=45 vs 68 visible
+      // in the UI ≈ 1/3 of rows lost.
+      //
+      // Fix: scroll the virtual scroller in steps, accumulating unique
+      // rows by personId+timestamp. Each scroll forces MUI to render
+      // the next batch into the DOM. We stop when the row count stops
+      // growing OR we've collected at least the page-size number of
+      // rows (whichever first).
       const evalArgs = {
         rowSel: sel.viewPunch.rowsContainer,
         nameSel: sel.viewPunch.personNameCell,
@@ -423,28 +427,7 @@ export async function scrapeViewAttendance(
         tzSel: sel.viewPunch.timezoneCell,
         sourceSel: sel.viewPunch.sourceCell,
       };
-      const rowsRaw = (await page.evaluate(
-        (a: typeof evalArgs) => {
-          const out: Array<Record<string, string>> = [];
-          const rows = document.querySelectorAll(a.rowSel);
-          for (const row of Array.from(rows)) {
-            const get = (s: string) =>
-              (row.querySelector(s) as HTMLElement | null)?.textContent?.trim() ??
-              "";
-            out.push({
-              personName: get(a.nameSel),
-              personId: get(a.idSel),
-              dateRaw: get(a.dateSel),
-              timeRaw: get(a.timeSel),
-              verifyType: get(a.verifySel),
-              tzRaw: get(a.tzSel),
-              source: get(a.sourceSel),
-            });
-          }
-          return out;
-        },
-        evalArgs,
-      )) as Array<{
+      type RowRaw = {
         personName: string;
         personId: string;
         dateRaw: string;
@@ -452,9 +435,86 @@ export async function scrapeViewAttendance(
         verifyType: string;
         tzRaw: string;
         source: string;
-      }>;
-      for (const r of rowsRaw) {
-        if (!r.personId || !r.dateRaw || !r.timeRaw) continue;
+      };
+      const collectVisible = async (): Promise<RowRaw[]> => {
+        const out = await page.evaluate(
+          (a: typeof evalArgs) => {
+            const result: Array<Record<string, string>> = [];
+            const rows = document.querySelectorAll(a.rowSel);
+            for (const row of Array.from(rows)) {
+              const get = (s: string) =>
+                (row.querySelector(s) as HTMLElement | null)?.textContent?.trim() ??
+                "";
+              result.push({
+                personName: get(a.nameSel),
+                personId: get(a.idSel),
+                dateRaw: get(a.dateSel),
+                timeRaw: get(a.timeSel),
+                verifyType: get(a.verifySel),
+                tzRaw: get(a.tzSel),
+                source: get(a.sourceSel),
+              });
+            }
+            return result;
+          },
+          evalArgs,
+        );
+        return out as RowRaw[];
+      };
+      const pageKeys = new Set<string>();
+      const pageRows: RowRaw[] = [];
+      const scrollStep = async (offset: number): Promise<void> => {
+        await page.evaluate((y: number) => {
+          const scroller = document.querySelector(
+            ".MuiDataGrid-virtualScroller",
+          ) as HTMLElement | null;
+          if (scroller) scroller.scrollTop = y;
+        }, offset);
+      };
+      // Reset scroll, then scan top → bottom in chunks. The virtual
+      // scroller's total height equals (rowCount × rowHeight); each
+      // window the buffer renders ~30 rows, so 200px steps comfortably
+      // overlap and ensure no row is skipped.
+      await scrollStep(0);
+      await page.waitForTimeout(150);
+      let stableCount = 0;
+      let lastSize = 0;
+      const maxScrollSteps = 60; // safety cap
+      for (let step = 0; step < maxScrollSteps; step++) {
+        const visible = await collectVisible();
+        for (const r of visible) {
+          const key = `${r.personId}|${r.dateRaw}|${r.timeRaw}`;
+          if (!r.personId || !r.dateRaw || !r.timeRaw) continue;
+          if (pageKeys.has(key)) continue;
+          pageKeys.add(key);
+          pageRows.push(r);
+        }
+        // Advance the scroller. End-of-list reached → MUI will clamp
+        // scrollTop, the size stops growing, we exit.
+        const reached = await page.evaluate(() => {
+          const sc = document.querySelector(
+            ".MuiDataGrid-virtualScroller",
+          ) as HTMLElement | null;
+          if (!sc) return true;
+          const next = sc.scrollTop + Math.max(200, sc.clientHeight - 80);
+          sc.scrollTop = next;
+          return sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4;
+        });
+        await page.waitForTimeout(120);
+        if (pageRows.length === lastSize) {
+          stableCount++;
+        } else {
+          stableCount = 0;
+          lastSize = pageRows.length;
+        }
+        if (reached && stableCount >= 1) break;
+        if (stableCount >= 3) break; // no growth for 3 cycles
+      }
+      // Reset to the top so the next pagination click lands on a clean
+      // viewport (avoids React state weirdness).
+      await scrollStep(0);
+
+      for (const r of pageRows) {
         const punchAt = composeIso(r.dateRaw, r.timeRaw, r.tzRaw);
         if (!punchAt) continue;
         const key = `${r.personId}|${punchAt}`;
@@ -468,7 +528,7 @@ export async function scrapeViewAttendance(
           source: r.source,
         });
       }
-      // Try to advance.
+      // Try to advance to the next pagination page.
       const next = page.locator(sel.viewPunch.nextPageButton).first();
       const visible = (await next.count()) > 0 && (await next.isEnabled().catch(() => false));
       if (!visible) break;
@@ -476,6 +536,30 @@ export async function scrapeViewAttendance(
         page.waitForTimeout(400), // small debounce for the pagination redraw
         next.click().catch(() => {}),
       ]);
+      // Wait for the new page's first row to have hydrated content
+      // (otherwise our scroll-and-collect loop will read placeholders
+      // and exit early).
+      try {
+        await page.waitForFunction(
+          ({ rowSel, idSel }: { rowSel: string; idSel: string }) => {
+            const rows = document.querySelectorAll(rowSel);
+            for (const row of Array.from(rows)) {
+              const idCell = row.querySelector(idSel);
+              const text = idCell?.textContent?.trim() ?? "";
+              if (text && !/^[—–-]$/.test(text)) return true;
+            }
+            return false;
+          },
+          {
+            rowSel: sel.viewPunch.rowsContainer,
+            idSel: sel.viewPunch.personIdCell,
+          },
+          { timeout: 8_000 },
+        );
+      } catch {
+        /* page may have ended unexpectedly — break out */
+        break;
+      }
     }
 
     // Diagnostics — when the scrape technically succeeded (no thrown
