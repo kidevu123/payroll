@@ -122,10 +122,14 @@ export function Topbar({
         className={cn(
           // Premium chrome: hairline divider, light backdrop blur, subtle
           // bottom shadow that lifts the bar from the page (matches the
-          // sidebar's softer separation language).
-          "h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
+          // sidebar's softer separation language). 2px brand-tinted
+          // accent gradient at the very top — adds color without
+          // shouting (Vercel / Linear pattern).
+          "relative h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
           "shadow-[0_1px_0_0_rgb(15_23_42_/_0.02)]",
+          "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-[2px]",
+          "before:bg-gradient-to-r before:from-brand-500/0 before:via-brand-500/70 before:to-purple-500/0",
         )}
       >
         <MobileNav company={company} />

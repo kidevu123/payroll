@@ -99,15 +99,22 @@ export function Sidebar({
         "shadow-[1px_0_0_0_rgb(15_23_42_/_0.02),inset_-1px_0_0_0_rgb(15_23_42_/_0.01)]",
       )}
     >
-      {/* Wordmark slot. Glyph rendered raw (no tile) next to "Milo" so it
-          reads as type, not a sticker. min-h guard against the
-          invisible-logo bug. */}
-      <div className="px-5 pt-5 pb-5 shrink-0 min-h-[56px] flex items-center">
+      {/* Wordmark slot. The uploaded logo IS the "milo" wordmark, so no
+          text label — showName={false} suppresses the duplicate.
+          Subtle brand-tinted gradient at the top of the rail provides
+          color without competing with content (Vercel / Linear pattern).
+          min-h guard against the invisible-logo bug. */}
+      <div className="relative px-5 pt-5 pb-5 shrink-0 min-h-[56px] flex items-center">
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand-50/60 via-brand-50/20 to-transparent pointer-events-none"
+        />
         <Wordmark
           name="Milo"
           logoPath={company.logoPath}
           size="md"
-          className="min-w-0"
+          showName={false}
+          className="relative min-w-0"
         />
       </div>
 
@@ -132,7 +139,14 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="px-3 pb-3 pt-3 border-t border-border/50 shrink-0 space-y-1">
+      <div className="relative px-3 pb-3 pt-3 border-t border-border/50 shrink-0 space-y-1">
+        {/* Soft brand gradient pinned at the bottom edge — mirrors the
+            top-bar's colored accent line so the chrome feels consistent
+            and a little less monochrome. */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-brand-500/0 via-brand-500/60 to-purple-500/0 pointer-events-none"
+        />
         <SidebarItem
           href={FOOTER_NAV.href}
           label={tNav(FOOTER_NAV.labelKey)}

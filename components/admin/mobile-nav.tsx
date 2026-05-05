@@ -109,7 +109,7 @@ export function MobileNav({
           />
           <aside className="relative flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface shadow-xl">
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border">
-              <Wordmark name="Milo" logoPath={company.logoPath} size="md" />
+              <Wordmark name="Milo" logoPath={company.logoPath} size="md" showName={false} />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
