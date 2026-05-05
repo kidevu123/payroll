@@ -229,10 +229,16 @@ export async function buildAdminReportArtifacts(
         missing: true as const,
       };
     });
+    // Fall back to the NGTeco ref when the explicit legacyId is null —
+    // older inline-create flows didn't capture it but ngtecoEmployeeRef
+    // is the same identifier (the person ID NGTeco emits in the punch
+    // CSV / scrape). Without this fall-back the PDF renders blank IDs
+    // for employees whose record predates the fix.
+    const reportLegacyId = e.legacyId ?? e.ngtecoEmployeeRef ?? null;
     reportEmployees.push({
       displayName: e.displayName,
       legalName: e.legalName,
-      legacyId: e.legacyId,
+      legacyId: reportLegacyId,
       shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
       hourlyRateCents: e.hourlyRateCents,
       days: filledDays,
@@ -250,7 +256,7 @@ export async function buildAdminReportArtifacts(
       })),
     });
     summaryRows.push({
-      legacyId: e.legacyId,
+      legacyId: reportLegacyId,
       displayName: e.displayName,
       hours: result.totalHours,
       grossCents: result.grossCents,

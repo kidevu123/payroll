@@ -17,97 +17,84 @@ import type { AdminReportInput } from "./types";
 
 const PAGE_PADDING = 16;
 
+// Single typeface throughout (Helvetica + Helvetica-Bold). The
+// previous version mixed Helvetica with Courier for numerics, which
+// looks dated and ransom-note-y on a payroll PDF. Numbers stay
+// right-aligned and tabular via consistent column widths — modern
+// payroll software does the same.
 const styles = StyleSheet.create({
   page: {
     padding: PAGE_PADDING,
-    fontSize: 7,
+    fontSize: 8,
     fontFamily: "Helvetica",
     color: "#0f172a",
   },
   // Top section: payroll summary table.
   summaryTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 3,
+    marginBottom: 2,
+    letterSpacing: 0.1,
   },
   summaryMeta: {
-    fontSize: 7,
+    fontSize: 8,
     color: "#64748b",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   table: {
-    borderWidth: 1,
+    borderWidth: 0.75,
     borderColor: "#cbd5e1",
     borderRadius: 2,
-    marginBottom: 6,
+    marginBottom: 10,
   },
   th: {
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderBottomWidth: 0.75,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
-    fontSize: 6.5,
+    fontSize: 8,
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 1.5,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     borderBottomWidth: 0.5,
     borderColor: "#e2e8f0",
   },
   shiftSubtotal: {
     flexDirection: "row",
-    paddingVertical: 2,
-    paddingHorizontal: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     backgroundColor: "#fff7ed",
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderColor: "#cbd5e1",
     fontFamily: "Helvetica-Bold",
-    fontSize: 7,
+    fontSize: 8,
   },
   grandTotal: {
     flexDirection: "row",
-    paddingVertical: 2.5,
-    paddingHorizontal: 4,
-    borderTopWidth: 1.5,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderTopWidth: 1.25,
     borderColor: "#0f172a",
     fontFamily: "Helvetica-Bold",
-    fontSize: 7.5,
+    fontSize: 9,
   },
-  cId: { width: 36, fontFamily: "Courier", fontSize: 7 },
-  cName: { flex: 2.2 },
-  cShift: { width: 60 },
-  // paddingRight on hours so a 3-digit value (e.g. 145.44) doesn't
-  // visually collide with the dollar-sign of the pay column. Same pattern
-  // on pay → rounded.
-  cHours: {
-    width: 50,
-    fontFamily: "Courier",
-    textAlign: "right",
-    paddingRight: 6,
-  },
-  cPay: {
-    width: 60,
-    fontFamily: "Courier",
-    textAlign: "right",
-    paddingLeft: 4,
-    paddingRight: 6,
-  },
-  cRounded: {
-    width: 60,
-    fontFamily: "Courier",
-    textAlign: "right",
-    paddingLeft: 4,
-  },
+  cId: { width: 44 },
+  cName: { flex: 2.4, fontSize: 8 },
+  cShift: { width: 70 },
+  cHours: { width: 60, textAlign: "right", paddingRight: 8 },
+  cPay: { width: 80, textAlign: "right", paddingRight: 8 },
+  cRounded: { width: 80, textAlign: "right" },
   // Per-employee detail block (rendered in a 4-col grid for 2-page fit).
   breakdownTitle: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    marginTop: 2,
-    marginBottom: 3,
+    marginTop: 4,
+    marginBottom: 4,
     color: "#475569",
   },
   grid: {
@@ -141,7 +128,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   blockMeta: {
-    fontSize: 5.5,
+    fontSize: 6,
     color: "#64748b",
   },
   blockTable: {
@@ -149,54 +136,53 @@ const styles = StyleSheet.create({
   },
   blockTr: {
     flexDirection: "row",
-    fontSize: 5.5,
+    fontSize: 6,
+    paddingVertical: 0.75,
   },
   blockTrAlt: {
     backgroundColor: "#fafafa",
   },
-  // Per-day row column widths. Add explicit right padding on the hours
-  // cell so a long hours value (e.g. "12.05") doesn't visually collide
-  // with the $-sign of the pay cell. Without this gap the report
-  // printed as "12.05$144.60" with no space.
+  // Per-day row column widths. All cells share the page font; right-
+  // aligned numeric columns + tabular widths keep the table grid tidy
+  // without resorting to a monospace face.
   bcDate: { width: "24%" },
-  bcIn: { width: "20%", fontFamily: "Courier" },
-  bcOut: { width: "20%", fontFamily: "Courier" },
-  bcHours: {
-    width: "16%",
-    fontFamily: "Courier",
-    textAlign: "right",
-    paddingRight: 6,
-  },
-  bcPay: {
-    width: "20%",
-    fontFamily: "Courier",
-    textAlign: "right",
-    paddingLeft: 4,
-  },
+  bcIn: { width: "20%" },
+  bcOut: { width: "20%" },
+  bcHours: { width: "16%", textAlign: "right", paddingRight: 4 },
+  bcPay: { width: "20%", textAlign: "right" },
   blockTotalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: 1.5,
     borderTopWidth: 0.5,
     borderColor: "#e2e8f0",
-    fontSize: 6,
+    fontSize: 6.5,
   },
   blockTotalLabel: {
     fontFamily: "Helvetica-Bold",
   },
-  blockSig: {
+  // Two stacked lines: Signature ___________  Date __________ .
+  // Owner ask: "add date next to signature, it needs to look better".
+  blockSigRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginTop: 2,
-    fontSize: 5,
+    marginTop: 4,
+    fontSize: 5.5,
     color: "#64748b",
   },
   sigBlank: {
     flex: 1,
     borderBottomWidth: 0.5,
     borderColor: "#94a3b8",
-    height: 7,
+    height: 8,
     marginHorizontal: 2,
+  },
+  dateBlank: {
+    width: 36,
+    borderBottomWidth: 0.5,
+    borderColor: "#94a3b8",
+    height: 8,
+    marginLeft: 2,
   },
   footer: {
     position: "absolute",
@@ -392,9 +378,11 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                   </Text>
                 </View>
 
-                <View style={styles.blockSig}>
-                  <Text>Sig</Text>
+                <View style={styles.blockSigRow}>
+                  <Text>Signature</Text>
                   <View style={styles.sigBlank} />
+                  <Text>Date</Text>
+                  <View style={styles.dateBlank} />
                 </View>
               </View>
             </View>
