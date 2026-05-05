@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
-import { employees } from "@/lib/db/schema";
+import { employees, paySchedules } from "@/lib/db/schema";
 import { createDoc, deleteDoc, getDoc } from "@/lib/db/queries/payroll-documents";
+import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
 import { pushPaystubToZoho } from "@/lib/zoho/push";
 import { listOrgs } from "@/lib/db/queries/zoho";
 
@@ -226,4 +227,62 @@ export async function pushDocToZohoAction(
       error: err instanceof Error ? err.message : "Push failed.",
     };
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-pick the pay period for a salaried employee given a reference date.
+// Owner directive: "I could easily just give the date I upload the pay
+// period paystub and boom done". Reads the employee's payScheduleId and
+// returns the (startDate, endDate) of the period containing the date.
+//
+// Returns { kind: "NONE" } when the employee has no schedule attached;
+// admin must enter dates manually for that case.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const inferSchema = z.object({
+  employeeId: z.string().uuid(),
+  referenceDate: z.string().date(),
+});
+
+export async function inferSalariedPeriodAction(
+  input: { employeeId: string; referenceDate: string },
+): Promise<
+  | { kind: "NONE" }
+  | {
+      kind: "OK";
+      scheduleName: string;
+      periodKind: "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY";
+      startDate: string;
+      endDate: string;
+    }
+  | { kind: "ERROR"; error: string }
+> {
+  await requireAdmin();
+  const parsed = inferSchema.safeParse(input);
+  if (!parsed.success) {
+    return { kind: "ERROR", error: "Invalid input." };
+  }
+  const [emp] = await db
+    .select({ payScheduleId: employees.payScheduleId })
+    .from(employees)
+    .where(eq(employees.id, parsed.data.employeeId));
+  if (!emp || !emp.payScheduleId) {
+    return { kind: "NONE" };
+  }
+  const [sched] = await db
+    .select()
+    .from(paySchedules)
+    .where(eq(paySchedules.id, emp.payScheduleId));
+  if (!sched) return { kind: "NONE" };
+  const bounds = periodBoundsForSchedule(parsed.data.referenceDate, {
+    periodKind: sched.periodKind,
+    anchorDate: sched.anchorDate,
+  });
+  return {
+    kind: "OK",
+    scheduleName: sched.name,
+    periodKind: sched.periodKind,
+    startDate: bounds.startDate,
+    endDate: bounds.endDate,
+  };
 }

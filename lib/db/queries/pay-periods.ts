@@ -4,7 +4,12 @@
 
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { payPeriods, type PayPeriod } from "@/lib/db/schema";
+import {
+  payPeriods,
+  paySchedules,
+  type PayPeriod,
+  type PaySchedule,
+} from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import { getSetting } from "@/lib/settings/runtime";
 import {
@@ -261,6 +266,159 @@ export async function ensureNextPeriod(
       })
       .returning();
     if (!row) throw new Error("ensureNextPeriod: insert returned no row");
+    await writeAudit(
+      {
+        actorId: actor?.id ?? null,
+        actorRole: actor?.role ?? null,
+        action: "period.create",
+        targetType: "PayPeriod",
+        targetId: row.id,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+/**
+ * Compute the (startDate, endDate) bounds for the period that contains
+ * `day` (YYYY-MM-DD) under the given pay schedule's cadence. Pure —
+ * no DB touch. Used both by ensurePeriodForSchedule and the salaried
+ * paystub-upload auto-pick. Owner directive: "if I'm uploading a
+ * paystub I should just give the date and you figure out the period".
+ *
+ * WEEKLY  → Monday → Sunday containing `day`.
+ * BIWEEKLY → Two-week window aligned to scheduleStartDate (or to the
+ *             nearest Monday before `day` when the schedule has none).
+ * SEMI_MONTHLY → 1st-15th OR 16th-EOM (whichever contains `day`).
+ * MONTHLY → 1st-EOM of the month containing `day`.
+ */
+export function periodBoundsForSchedule(
+  day: string,
+  schedule: { periodKind: PaySchedule["periodKind"]; anchorDate?: string | null },
+): { startDate: string; endDate: string } {
+  const d = new Date(`${day}T12:00:00Z`);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const dom = d.getUTCDate();
+  const dow = d.getUTCDay(); // 0=Sun ... 6=Sat
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const iso = (yy: number, mm: number, dd: number) =>
+    `${yy}-${pad(mm + 1)}-${pad(dd)}`;
+
+  if (schedule.periodKind === "WEEKLY") {
+    // Monday-anchored week. (Mon=1, Sun=0 → Sun maps back 6 days.)
+    const back = dow === 0 ? 6 : dow - 1;
+    const start = new Date(d);
+    start.setUTCDate(start.getUTCDate() - back);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return {
+      startDate: iso(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()),
+      endDate: iso(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
+    };
+  }
+  if (schedule.periodKind === "BIWEEKLY") {
+    // Two-week window. Anchor: schedule.anchorDate if set; otherwise
+    // the Monday on or before `day`.
+    const anchorIso = schedule.anchorDate ?? null;
+    let anchor: Date;
+    if (anchorIso) {
+      anchor = new Date(`${anchorIso}T12:00:00Z`);
+    } else {
+      anchor = new Date(d);
+      const back = dow === 0 ? 6 : dow - 1;
+      anchor.setUTCDate(anchor.getUTCDate() - back);
+    }
+    const diffDays = Math.floor(
+      (d.getTime() - anchor.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    // Negative-safe modulo so dates before the anchor still land on a
+    // valid 14-day window.
+    const offset = ((diffDays % 14) + 14) % 14;
+    const start = new Date(d);
+    start.setUTCDate(start.getUTCDate() - offset);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 13);
+    return {
+      startDate: iso(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()),
+      endDate: iso(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
+    };
+  }
+  if (schedule.periodKind === "SEMI_MONTHLY") {
+    if (dom <= 15) {
+      const eom15 = 15;
+      return { startDate: iso(y, m, 1), endDate: iso(y, m, eom15) };
+    }
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return { startDate: iso(y, m, 16), endDate: iso(y, m, lastDay) };
+  }
+  // MONTHLY
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return { startDate: iso(y, m, 1), endDate: iso(y, m, lastDay) };
+}
+
+/**
+ * Find or create the pay period for a (paySchedule, day) pair. The
+ * created row is tagged with payScheduleId and uses the schedule's
+ * cadence to compute (start, end). Idempotent on the (payScheduleId,
+ * startDate) unique index.
+ *
+ * Owner directive: when an auto-period gets created (from the punch
+ * importer's resolvePeriodIdForDay or the Time-tab forward-roll),
+ * tag it with the matching schedule so it doesn't read as UNASSIGNED.
+ */
+export async function ensurePeriodForSchedule(
+  scheduleId: string,
+  day: string,
+  actor: Actor | null = null,
+): Promise<PayPeriod> {
+  const [schedule] = await db
+    .select()
+    .from(paySchedules)
+    .where(eq(paySchedules.id, scheduleId));
+  if (!schedule) {
+    throw new Error(`ensurePeriodForSchedule: schedule ${scheduleId} not found`);
+  }
+  const bounds = periodBoundsForSchedule(day, {
+    periodKind: schedule.periodKind,
+    anchorDate: schedule.anchorDate,
+  });
+  const [existing] = await db
+    .select()
+    .from(payPeriods)
+    .where(
+      and(
+        eq(payPeriods.startDate, bounds.startDate),
+        eq(payPeriods.payScheduleId, scheduleId),
+      ),
+    );
+  if (existing) return existing;
+
+  return db.transaction(async (tx) => {
+    const [racing] = await tx
+      .select()
+      .from(payPeriods)
+      .where(
+        and(
+          eq(payPeriods.startDate, bounds.startDate),
+          eq(payPeriods.payScheduleId, scheduleId),
+        ),
+      );
+    if (racing) return racing;
+    const [row] = await tx
+      .insert(payPeriods)
+      .values({
+        startDate: bounds.startDate,
+        endDate: bounds.endDate,
+        state: "OPEN",
+        payScheduleId: scheduleId,
+      })
+      .returning();
+    if (!row) {
+      throw new Error("ensurePeriodForSchedule: insert returned no row");
+    }
     await writeAudit(
       {
         actorId: actor?.id ?? null,

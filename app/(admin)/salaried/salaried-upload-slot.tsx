@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   deleteSalariedDocAction,
+  inferSalariedPeriodAction,
   listZohoOrgsAction,
   pushDocToZohoAction,
   uploadSalariedDocAction,
@@ -49,6 +50,32 @@ export function SalariedUploadSlot({
 }) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [referenceDate, setReferenceDate] = React.useState(todayStr);
+  const [inferred, setInferred] = React.useState<
+    | { kind: "OK"; scheduleName: string; periodKind: string; startDate: string; endDate: string }
+    | { kind: "NONE" }
+    | { kind: "PENDING" }
+    | { kind: "ERROR"; error: string }
+  >({ kind: "PENDING" });
+
+  // Infer the period whenever the reference date changes. Saves the
+  // admin from typing "May 1" and "May 15" manually — they pick a date
+  // anywhere inside the period and we resolve the bounds.
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const r = await inferSalariedPeriodAction({
+        employeeId,
+        referenceDate,
+      });
+      if (cancelled) return;
+      setInferred(r);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, referenceDate]);
 
   return (
     <div className="space-y-3">
@@ -99,50 +126,68 @@ export function SalariedUploadSlot({
             </select>
           </div>
         </div>
+        {/* Auto-infer the pay period from the employee's pay schedule.
+            Owner directive: "I could just give the date I upload the
+            paystub and boom done". Admin picks any reference date
+            inside the period; we compute the (start, end) bounds and
+            send them as hidden fields. The inferred range is shown
+            live so admin can verify before clicking Upload. */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div className="space-y-1">
             <Label
-              htmlFor={`pps-${employeeId}`}
+              htmlFor={`ref-${employeeId}`}
               className="text-xs text-text-muted"
             >
-              Pay period start (optional)
+              Pay period covering
             </Label>
             <Input
-              id={`pps-${employeeId}`}
-              name="payPeriodStart"
+              id={`ref-${employeeId}`}
               type="date"
+              value={referenceDate}
+              onChange={(e) => setReferenceDate(e.target.value)}
             />
+            <p className="text-[10px] text-text-subtle leading-tight">
+              {inferred.kind === "OK"
+                ? `${inferred.scheduleName} · ${formatRange(inferred.startDate, inferred.endDate)}`
+                : inferred.kind === "NONE"
+                  ? "No schedule attached — dates will be blank."
+                  : inferred.kind === "PENDING"
+                    ? "Resolving…"
+                    : "Couldn't infer; check schedule."}
+            </p>
           </div>
-          <div className="space-y-1">
-            <Label
-              htmlFor={`ppe-${employeeId}`}
-              className="text-xs text-text-muted"
-            >
-              Pay period end (optional)
-            </Label>
-            <Input
-              id={`ppe-${employeeId}`}
-              name="payPeriodEnd"
-              type="date"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label
-              htmlFor={`amt-${employeeId}`}
-              className="text-xs text-text-muted"
-            >
-              Net amount $ (optional)
-            </Label>
-            <Input
-              id={`amt-${employeeId}`}
-              name="amountDollars"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="2143.20"
-            />
+          <div className="space-y-1 sm:col-span-2 grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label
+                htmlFor={`amt-${employeeId}`}
+                className="text-xs text-text-muted"
+              >
+                Net amount $ (optional)
+              </Label>
+              <Input
+                id={`amt-${employeeId}`}
+                name="amountDollars"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="2143.20"
+              />
+            </div>
           </div>
         </div>
+        {/* Hidden fields populated from the inferred period so the
+            existing server action signature stays untouched. Empty
+            strings when no schedule is attached → server stores NULL. */}
+        <input
+          type="hidden"
+          name="payPeriodStart"
+          value={inferred.kind === "OK" ? inferred.startDate : ""}
+        />
+        <input
+          type="hidden"
+          name="payPeriodEnd"
+          value={inferred.kind === "OK" ? inferred.endDate : ""}
+        />
         <div className="flex items-center gap-2">
           <Button type="submit" size="sm" disabled={pending}>
             <Upload className="h-3.5 w-3.5" />

@@ -66,6 +66,7 @@ export async function importPunchPoll(
     .select({
       id: employees.id,
       ref: employees.ngtecoEmployeeRef,
+      payScheduleId: employees.payScheduleId,
     })
     .from(employees)
     .where(
@@ -75,8 +76,12 @@ export async function importPunchPoll(
       ),
     );
   const empByRef = new Map<string, string>();
+  const scheduleByEmp = new Map<string, string | null>();
   for (const r of empRows) {
-    if (r.ref) empByRef.set(r.ref, r.id);
+    if (r.ref) {
+      empByRef.set(r.ref, r.id);
+      scheduleByEmp.set(r.id, r.payScheduleId);
+    }
   }
 
   // Group by employee × day.
@@ -96,9 +101,17 @@ export async function importPunchPoll(
     groups.set(k, g);
   }
 
-  // For each group, pair and upsert.
+  // For each group, pair and upsert. Pass the employee's payScheduleId
+  // through so a fresh auto-created period gets tagged with the right
+  // schedule (Owner: "the period is clearly a weekly period" — fix is
+  // to pass the schedule from the matched employee, not rely on a
+  // legacy single-cadence default).
   for (const g of groups.values()) {
-    const periodId = await resolvePeriodIdForDay(g.day, options.timezone);
+    const periodId = await resolvePeriodIdForDay(
+      g.day,
+      options.timezone,
+      scheduleByEmp.get(g.empId) ?? null,
+    );
     if (!periodId) continue;
     const sorted = g.events
       .slice()
@@ -191,7 +204,37 @@ export async function importPunchPoll(
 async function resolvePeriodIdForDay(
   dayIso: string,
   timezone: string,
+  payScheduleId: string | null,
 ): Promise<string | null> {
+  // Schedule-aware lookup: prefer a period tagged with the employee's
+  // schedule that contains the day. This keeps weekly + semi-monthly
+  // employees on their own period rows even when both happen to span
+  // the same calendar day.
+  if (payScheduleId) {
+    const [existingForSchedule] = await db
+      .select({ id: payPeriods.id })
+      .from(payPeriods)
+      .where(
+        and(
+          eq(payPeriods.payScheduleId, payScheduleId),
+          sql`${payPeriods.startDate} <= ${dayIso}::date`,
+          sql`${payPeriods.endDate} >= ${dayIso}::date`,
+        ),
+      )
+      .limit(1);
+    if (existingForSchedule) return existingForSchedule.id;
+    // Lazy-load the schedule-aware ensure helper; mirrors the lazy
+    // crypto import above (keeps the importer's eager bundle small).
+    const { ensurePeriodForSchedule } = await import(
+      "@/lib/db/queries/pay-periods"
+    );
+    const created = await ensurePeriodForSchedule(payScheduleId, dayIso);
+    return created.id;
+  }
+
+  // Legacy fallback: employee has no schedule attached. Match any
+  // existing period covering the day, otherwise create one with the
+  // legacy single-cadence settings (untagged).
   const [existing] = await db
     .select({ id: payPeriods.id })
     .from(payPeriods)
@@ -203,10 +246,6 @@ async function resolvePeriodIdForDay(
     )
     .limit(1);
   if (existing) return existing.id;
-  // Use COMPANY tz for "today" so a near-midnight first-punch can't
-  // trigger a rollover create on the wrong calendar day. Without the
-  // explicit timeZone, the host (Docker LXC) tz is used — UTC inside
-  // the container.
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
   }).format(new Date());
