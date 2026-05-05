@@ -25,27 +25,22 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
 }
 
 /**
- * ISO timestamp for Monday 00:00 of the current week in `tz`. Used as a
- * lower bound when filtering scraped NGTeco events down to "this week
- * only". Returned in the form scraper events use ("YYYY-MM-DDTHH:mm:ss"
- * with a tz offset) so a string comparison is well-defined.
+ * ISO timestamp for 00:00 (midnight) of TODAY's calendar date in `tz`.
+ * Used as the lower bound when filtering scraped NGTeco events. Owner
+ * directive: poll runs multiple times a day; each poll only ingests
+ * today's punches. Yesterday's data is locked in by the time we move on.
+ *
+ * Returned in the form scraper events use ("YYYY-MM-DDTHH:mm:ss"
+ * with a tz offset truncated). String compare against punchAt which
+ * has the form "YYYY-MM-DDTHH:mm:ss-04:00" — works because the date
+ * portion is identical-prefix when "today" matches and lex-greater
+ * when "today" is later.
  */
-function mondayOfThisWeekIso(tz: string): string {
-  // Resolve "today's calendar date" in the company tz so a near-midnight
-  // call doesn't pick yesterday.
+function startOfTodayIso(tz: string): string {
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
     new Date(),
   );
-  // todayStr is "YYYY-MM-DD" in tz. Compute weekday using a UTC-noon
-  // anchor so DST doesn't shift it across midnight.
-  const today = new Date(`${todayStr}T12:00:00Z`);
-  // 0=Sun, 1=Mon ... 6=Sat. Map to days-since-Monday in [0..6].
-  const dow = today.getUTCDay();
-  const daysSinceMonday = dow === 0 ? 6 : dow - 1;
-  const monday = new Date(today);
-  monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
-  const mondayStr = monday.toISOString().slice(0, 10);
-  return `${mondayStr}T00:00:00`;
+  return `${todayStr}T00:00:00`;
 }
 
 export type PollSummary = {
@@ -115,23 +110,36 @@ export async function handlePunchPoll(): Promise<PollSummary> {
         durationMs: result.durationMs,
       };
     }
-    // Per owner directive: poll only emits punches from THIS week (Monday
-    // 00:00 → next Monday 00:00 in company tz). Older events scraped
-    // from NGTeco's "View Attendance Punch" view are dropped at this
-    // boundary — existing rows already in the database stay untouched
-    // (the importer's ON CONFLICT DO NOTHING preserves prior data).
-    const weekStartIso = mondayOfThisWeekIso(company.timezone);
+    // Per owner directive: each poll only ingests TODAY's punches. The
+    // poll runs multiple times a day, so yesterday's data is locked in
+    // by the time we hit a new calendar day. Older events scraped from
+    // NGTeco's "View Attendance Punch" view are dropped at this
+    // boundary — existing rows in the database stay untouched.
+    //
+    // Mid-day re-entry is handled fully by the importer:
+    //   - Each pair (in→out) is hashed on (employeeId, in-event-timestamp).
+    //   - Existing rows with the same hash get their clock_out updated
+    //     (handles the "morning poll saw open shift, lunch poll sees
+    //     closed shift" case).
+    //   - A second pair (employee left for lunch, came back) gets its
+    //     own hash from the second IN event's timestamp — separate row.
+    //   - Concurrent polls racing the same insert hit a 23505 unique
+    //     violation and skip silently (importer try/catch).
+    // Net: poll twice a day, ten times a day, no duplicate rows ever
+    // accumulate. The unique partial index on punches.ngteco_record_hash
+    // is the de-dupe contract.
+    const todayStartIso = startOfTodayIso(company.timezone);
     const filtered = result.events.filter(
-      (e) => e.punchAt >= weekStartIso,
+      (e) => e.punchAt >= todayStartIso,
     );
     logger.info(
       {
         runId,
         scraped: result.events.length,
-        thisWeek: filtered.length,
-        weekStartIso,
+        today: filtered.length,
+        todayStartIso,
       },
-      "punch.poll: window-filtered to current week",
+      "punch.poll: window-filtered to today",
     );
     const summary = await importPunchPoll(filtered, {
       timezone: company.timezone,
