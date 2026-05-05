@@ -450,23 +450,13 @@ async function PayslipBody({
         </CardContent>
       </Card>
 
-      {payslip.pdfPath && payslip.pdfPath.toLowerCase().endsWith(".pdf") ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("printablePayslip")}</CardTitle>
-            <CardDescription>
-              {t("printableDescription")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <iframe
-              title={`Payslip ${period.startDate}`}
-              src={`/api/payslips/${payslip.id}/pdf`}
-              className="w-full h-[70vh] rounded-input border border-border/70 bg-surface"
-            />
-          </CardContent>
-        </Card>
-      ) : payslip.pdfPath ? (
+      {/* The full-page signature PDF used to embed here as a 70vh
+          iframe. Owner ask: replace it with the compact card view —
+          the hero summary + daily breakdown above already shows
+          everything (hours, total, daily punches) without the heavy
+          signature framing. Spreadsheet-attached fallback remains for
+          legacy imports that ship .xlsx instead of .pdf. */}
+      {payslip.pdfPath && !payslip.pdfPath.toLowerCase().endsWith(".pdf") ? (
         <Card>
           <CardContent className="p-6 space-y-3 text-sm">
             <p className="text-text-muted leading-relaxed">

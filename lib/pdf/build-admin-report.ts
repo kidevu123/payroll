@@ -64,6 +64,9 @@ export type AdminReportArtifacts = {
   summaryText: string;
   totalRoundedCents: number;
   rowCount: number;
+  /** Same input that drove the admin PDF — exposed so callers (the
+   *  cut-sheet renderer in particular) don't have to re-query. */
+  input: AdminReportInput;
 };
 
 /**
@@ -300,14 +303,6 @@ export async function buildAdminReportArtifacts(
   });
   summaryRows.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
-  const renderer = (await import(
-    /* webpackIgnore: true */ "@react-pdf/renderer"
-  )) as typeof import("@react-pdf/renderer");
-  const ADMIN_REPORT_PATH = "/app/.next/pdf/admin-report.js";
-  const adminDoc = (await import(
-    /* webpackIgnore: true */ ADMIN_REPORT_PATH
-  )) as typeof import("@/lib/pdf/admin-report");
-
   const input: AdminReportInput = {
     company: {
       name: company.name,
@@ -323,6 +318,15 @@ export async function buildAdminReportArtifacts(
     employees: reportEmployees,
     generatedAt: new Date().toISOString(),
   };
+
+  const renderer = (await import(
+    /* webpackIgnore: true */ "@react-pdf/renderer"
+  )) as typeof import("@react-pdf/renderer");
+  const ADMIN_REPORT_PATH = "/app/.next/pdf/admin-report.js";
+  const adminDoc = (await import(
+    /* webpackIgnore: true */ ADMIN_REPORT_PATH
+  )) as typeof import("@/lib/pdf/admin-report");
+
   const pdfBytes = await renderer.renderToBuffer(
     adminDoc.AdminReport({ data: input }),
   );
@@ -351,5 +355,32 @@ export async function buildAdminReportArtifacts(
     summaryText,
     totalRoundedCents,
     rowCount: summaryRows.length,
+    /** Same input that drove the admin PDF — re-rendered into the
+     *  cuttable payslip layout by buildPayslipCutSheet(). Reuse this
+     *  to avoid double-querying the DB. */
+    input,
+  };
+}
+
+/** Render the cuttable payslip sheet (2-col cards, no signature) for
+ *  a period. Uses the same fetched/computed data as the admin report
+ *  so totals on the cut-sheet match the admin PDF byte-for-byte. */
+export async function buildPayslipCutSheet(
+  periodId: string,
+): Promise<{ pdfBytes: Buffer; filename: string }> {
+  const { input } = await buildAdminReportArtifacts(periodId);
+  const renderer = (await import(
+    /* webpackIgnore: true */ "@react-pdf/renderer"
+  )) as typeof import("@react-pdf/renderer");
+  const CUT_PATH = "/app/.next/pdf/payslip-cut-sheet.js";
+  const mod = (await import(
+    /* webpackIgnore: true */ CUT_PATH
+  )) as typeof import("@/lib/pdf/payslip-cut-sheet");
+  const pdfBytes = await renderer.renderToBuffer(
+    mod.PayslipCutSheet({ data: input }),
+  );
+  return {
+    pdfBytes,
+    filename: `payslips_${input.period.startDate}.pdf`,
   };
 }

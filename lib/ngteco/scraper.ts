@@ -282,12 +282,8 @@ export async function scrapeViewAttendance(
   if (!sel.viewPunch) {
     throw new ScrapeFailure("selectors.viewPunch not configured", {});
   }
-  if (!sel.navigation.viewAttendancePunchLink) {
-    throw new ScrapeFailure(
-      "selectors.navigation.viewAttendancePunchLink not configured",
-      {},
-    );
-  }
+  // viewAttendancePunchLink is no longer hard-required — the click path
+  // falls back through getByRole + getByText if it's missing or stale.
   const t0 = Date.now();
   if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
   const failureDir = join(FAILURES_DIR, input.runId);
@@ -355,20 +351,57 @@ export async function scrapeViewAttendance(
     //
     // After login, give the dashboard a moment to hydrate the menu —
     // Element Plus renders the sidebar after the auth call returns.
+    // Resilient nav: try the configured selector first, then fall back
+    // through several text-based strategies. NGTeco rebuilt the sidebar
+    // when they swapped Element Plus → MUI; the configured selector is
+    // a CSS string that targets one DOM shape, but a getByText/role
+    // fallback works against either. Past failure mode: a configured
+    // `p:text-is("…")` selector timed out for 15s every poll because
+    // the new MUI sidebar renders text in `<span>` not `<p>`.
     if (sel.navigation.attendanceMenu) {
       try {
         await page.locator(sel.navigation.attendanceMenu).first().click({
-          timeout: 10_000,
+          timeout: 5_000,
         });
       } catch {
-        // Menu may already be expanded, or the click landed on a
-        // descendant. Continue — the View Attendance Punch link should
-        // still be reachable.
+        try {
+          await page.getByText("Attendance", { exact: true }).first().click({
+            timeout: 5_000,
+          });
+        } catch {
+          // Menu may already be expanded, or it has no expandable
+          // header at all. Continue — the link should still be
+          // reachable.
+        }
       }
     }
-    await page.locator(sel.navigation.viewAttendancePunchLink).first().click({
-      timeout: 15_000,
-    });
+
+    let clicked = false;
+    if (sel.navigation.viewAttendancePunchLink) {
+      try {
+        await page.locator(sel.navigation.viewAttendancePunchLink).first().click({
+          timeout: 6_000,
+        });
+        clicked = true;
+      } catch {
+        /* fall through to text/role-based fallbacks */
+      }
+    }
+    if (!clicked) {
+      try {
+        await page.getByRole("link", { name: /view attendance punch/i }).first().click({
+          timeout: 6_000,
+        });
+        clicked = true;
+      } catch {
+        /* not a link — try plain text */
+      }
+    }
+    if (!clicked) {
+      await page.getByText(/view attendance punch/i).first().click({
+        timeout: 8_000,
+      });
+    }
     await page.waitForSelector(sel.viewPunch.tableLandmark, {
       timeout: 15_000,
     });

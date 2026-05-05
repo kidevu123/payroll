@@ -63,7 +63,7 @@ RUN GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
 # etc. fail at build time). Compiling them as a side-step keeps the
 # job handler in the bundle while the PDF docs sit at a known
 # runtime-resolvable absolute path.
-RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx lib/pdf/admin-report.tsx lib/pdf/employee-guide.tsx \
+RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx lib/pdf/admin-report.tsx lib/pdf/employee-guide.tsx lib/pdf/payslip-cut-sheet.tsx \
     --bundle \
     --platform=node \
     --target=node20 \

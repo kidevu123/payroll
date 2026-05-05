@@ -28,6 +28,7 @@ import {
   MoreHorizontal,
   Upload,
   FileText,
+  Scissors,
 } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
@@ -608,6 +609,15 @@ function RowOverflowMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[14rem]">
         <DropdownMenuLabel>Documents</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link
+            href={`/api/payroll/${periodId}/payslips-cut-sheet`}
+            target="_blank"
+            rel="noopener"
+          >
+            <Scissors className="h-3.5 w-3.5" /> Pay-slip cut sheet
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
             href={`/api/payslips/period/${periodId}/signature`}

@@ -127,24 +127,12 @@ export default async function EmployeesPage({
           />
         </div>
 
-        {/* Pill toggle group: shift */}
-        {shifts.length > 0 && (
-          <div className="inline-flex h-9 items-center rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
-            <PillToggle
-              href={buildHref({ shift: "" })}
-              active={!currentShift}
-              label="All shifts"
-            />
-            {shifts.map((s) => (
-              <PillToggle
-                key={s.id}
-                href={buildHref({ shift: s.id })}
-                active={currentShift === s.id}
-                label={s.name}
-              />
-            ))}
-          </div>
-        )}
+        {/* Shift filter row removed — owner ask: drop shift UI from
+            admin views. Shift records remain (employees still link to
+            them under the hood) but they no longer surface as a
+            filter chip. The PillToggle group used to live here.
+            `shifts` is still resolved server-side so the existing
+            admin export keeps the column. */}
 
         {(params.q || explicitStatus || currentShift) && (
           <Button asChild size="sm" variant="ghost">
