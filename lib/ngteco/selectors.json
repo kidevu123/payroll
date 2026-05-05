@@ -4,7 +4,8 @@
     "url": "/login",
     "username": "input[type='email'], input[name='username'], input[placeholder*='mail' i]",
     "password": "input[type='password'], input[name='password']",
-    "agreementCheckbox": "input[type='checkbox']",
+    "agreementCheckbox": ".el-checkbox:has-text(\"have read\") input[type=\"checkbox\"], label:has-text(\"have read\") input[type=\"checkbox\"]",
+    "agreementClickTarget": ".el-checkbox:has-text(\"have read\") .el-checkbox__inner, .el-checkbox:has-text(\"have read\"), label:has-text(\"have read\")",
     "submit": "button:has-text(/^\\s*Login\\s*$/i), button[type='submit']",
     "loggedInLandmark": "text=/Dashboard|Quickly Setting|Attendance/i"
   },

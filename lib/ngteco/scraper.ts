@@ -24,6 +24,10 @@ type Selectors = {
     /** Optional — NGTeco gates Login behind a "I have read the agreement"
      *  checkbox. Tick it before submit when present. */
     agreementCheckbox?: string;
+    /** The clickable wrapper for the agreement checkbox (Element Plus
+     *  hides the real <input> and routes clicks through .el-checkbox__inner).
+     *  Falls back to the input itself when missing. */
+    agreementClickTarget?: string;
     submit: string;
     loggedInLandmark: string;
   };
@@ -193,15 +197,30 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
       await page.fill(sel.login.username, input.username);
       await page.fill(sel.login.password, input.password);
       // NGTeco gates the Login button behind "I have read and agree to
-      // the user agreement & privacy policy". Tick the checkbox first
-      // when present (Playwright's check() is idempotent — if already
-      // ticked, it's a no-op).
-      if (sel.login.agreementCheckbox) {
+      // the user agreement & privacy policy". Element Plus checkboxes
+      // hide the real <input> and route events through .el-checkbox__inner;
+      // .check() on the input is a no-op. Click the wrapper instead. The
+      // selector targets the wrapper that contains the "have read" text
+      // specifically — there's a second "Remember account" checkbox on
+      // the page that we must NOT toggle.
+      const clickTarget =
+        sel.login.agreementClickTarget ?? sel.login.agreementCheckbox;
+      if (clickTarget) {
         try {
-          await page
-            .locator(sel.login.agreementCheckbox)
-            .first()
-            .check({ timeout: 5_000 });
+          // Verify it's not already checked, then click. Use the input
+          // selector to read state, the clickTarget to actually click.
+          const cb = sel.login.agreementCheckbox
+            ? page.locator(sel.login.agreementCheckbox).first()
+            : null;
+          const alreadyChecked = cb
+            ? await cb.isChecked().catch(() => false)
+            : false;
+          if (!alreadyChecked) {
+            await page
+              .locator(clickTarget)
+              .first()
+              .click({ timeout: 5_000 });
+          }
         } catch {
           /* no checkbox visible / already accepted */
         }
