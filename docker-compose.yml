@@ -34,6 +34,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Stamped at build time; surfaced via milo_build_info gauge.
+        BUILD_GIT_SHA: ${BUILD_GIT_SHA:-dev}
+        BUILD_GIT_BRANCH: ${BUILD_GIT_BRANCH:-rebuild/foundation}
     restart: unless-stopped
     depends_on:
       db:
@@ -101,6 +105,32 @@ services:
           # Sleep 24 hours
           sleep 86400
         done
+    networks:
+      - internal
+
+  # Container metrics for the payroll stack. Exposes /metrics on
+  # 8089 (host port) — the Prometheus collector on LXC 112 scrapes
+  # `192.168.1.197:8089/metrics` for per-container CPU / memory /
+  # network / restart-count series.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: payroll-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --store_container_labels=false
+    ports:
+      - "${CADVISOR_HOST_PORT:-8089}:8080"
     networks:
       - internal
 

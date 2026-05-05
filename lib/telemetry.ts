@@ -79,6 +79,29 @@ export const errorEvents = meter.createCounter("app.errors", {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Build / deploy info. Single emission at boot — labels carry the SHA,
+// version, and start time so Grafana can render a CI/CD section without
+// scraping git or systemd. The systemd deploy unit writes the current SHA
+// into BUILD_GIT_SHA at recreate time; locally it falls back to "dev".
+// ─────────────────────────────────────────────────────────────────────────────
+const buildInfo = meter.createObservableGauge("milo.build.info", {
+  description: "Build/deploy info (1) with sha + version labels",
+});
+const startTime = meter.createObservableGauge("milo.process.start_time_seconds", {
+  description: "Unix epoch seconds when this process started",
+  unit: "s",
+});
+const PROCESS_START = Math.floor(Date.now() / 1000);
+buildInfo.addCallback((result) => {
+  result.observe(1, {
+    sha: process.env.BUILD_GIT_SHA ?? "dev",
+    version: process.env.npm_package_version ?? "0.0.0",
+    branch: process.env.BUILD_GIT_BRANCH ?? "unknown",
+  });
+});
+startTime.addCallback((result) => result.observe(PROCESS_START));
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Structured JSON logger. Every error.* call also bumps the errorEvents
 // metric so error rates are visible in Grafana without log parsing.
 // ─────────────────────────────────────────────────────────────────────────────

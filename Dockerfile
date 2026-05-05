@@ -92,9 +92,21 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Stamped at build time by deploy/lxc/payroll-deploy.service. Used by
+# instrumentation.ts to emit milo_build_info{sha,branch,version} so the
+# Grafana CI/CD section shows what's running without scraping git.
+ARG BUILD_GIT_SHA=dev
+ARG BUILD_GIT_BRANCH=unknown
+ENV BUILD_GIT_SHA=$BUILD_GIT_SHA
+ENV BUILD_GIT_BRANCH=$BUILD_GIT_BRANCH
+
 # Copy the standalone bundle and static files from the build stage.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Carry the SHA stamp into the runtime image. Used by the deploy
+# drift-detection check AND by lib/telemetry.ts to emit
+# milo_build_info{sha,…} for the Grafana CI/CD panel.
+COPY --from=build /app/.git-sha /app/.git-sha
 # Pre-compiled PDF docs that the publish job dynamic-imports at
 # /app/.next/pdf/*.js (see lib/jobs/handlers/payroll-run-publish.ts).
 COPY --from=build /app/.next/pdf ./.next/pdf

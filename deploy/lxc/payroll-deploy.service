@@ -21,6 +21,8 @@ ExecStart=/bin/bash -c '\
   before=$(git rev-parse HEAD); \
   git reset --hard --quiet "origin/$PAYROLL_BRANCH"; \
   after=$(git rev-parse HEAD); \
+  export BUILD_GIT_SHA="$after"; \
+  export BUILD_GIT_BRANCH="$PAYROLL_BRANCH"; \
   running=$(/usr/bin/docker compose exec -T app cat /app/.git-sha 2>/dev/null | tr -d "[:space:]" || true); \
   if [ "$before" != "$after" ]; then \
     echo "deploying $before -> $after"; \

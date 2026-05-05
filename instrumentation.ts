@@ -26,6 +26,19 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  // Hydrate BUILD_GIT_SHA from /app/.git-sha if the env var isn't set.
+  // The Dockerfile's build stage stamps the SHA into that file; making
+  // the gauge work is just a matter of reading it at boot.
+  if (!process.env.BUILD_GIT_SHA) {
+    try {
+      const fs = await import("node:fs");
+      const sha = fs.readFileSync("/app/.git-sha", "utf8").trim();
+      if (sha) process.env.BUILD_GIT_SHA = sha;
+    } catch {
+      /* file missing in dev — fine */
+    }
+  }
+
   const exporterUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   const headers = parseOtlpHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS);
   const promPort = Number(process.env.OTEL_PROMETHEUS_PORT ?? 9464);
