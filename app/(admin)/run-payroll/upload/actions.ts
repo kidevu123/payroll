@@ -469,3 +469,101 @@ export async function uploadCsvAction(
   revalidatePath("/reports");
   return { ok: true, runId: run.id, summary };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline employee creation from the CSV-upload preview screen. The owner
+// uploads a payroll CSV and a few names show as "No match (ref: NN)". The
+// old flow opened /employees/new in a new tab → admin filled the form →
+// admin had to re-upload the same CSV to refresh the preview. This action
+// creates the employee right where the admin sees the unmatched row, and
+// returns the new employeeId + a refreshed preview row so the client can
+// flip the row from unmatched → matched without a page reload.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const inlineCreateSchema = z.object({
+  ngtecoRef: z.string().min(1).max(64),
+  displayName: z.string().min(1).max(120),
+  hourlyRateDollars: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, "Use a number like 13.50"),
+  payScheduleId: z
+    .union([z.string().uuid(), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+});
+
+export async function createEmployeeFromCsvAction(
+  formData: FormData,
+): Promise<{ error: string } | { ok: true; row: CsvPreviewEmployee }> {
+  const session = await requireAdmin();
+  const parsed = inlineCreateSchema.safeParse({
+    ngtecoRef: formData.get("ngtecoRef"),
+    displayName: formData.get("displayName"),
+    hourlyRateDollars: formData.get("hourlyRateDollars"),
+    payScheduleId: formData.get("payScheduleId") || null,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const rateCents = Math.round(Number(parsed.data.hourlyRateDollars) * 100);
+  if (!Number.isFinite(rateCents) || rateCents <= 0) {
+    return { error: "Hourly rate must be greater than zero." };
+  }
+  // Refuse if an employee with this NGTeco ref already exists — saves an
+  // accidental duplicate when the admin clicks twice.
+  const existing = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.ngtecoEmployeeRef, parsed.data.ngtecoRef))
+    .limit(1);
+  if (existing.length > 0) {
+    return { error: "An employee with this NGTeco ref already exists." };
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  // Synth placeholder email since the schema requires one. The admin can
+  // fix it later via /employees/[id] without breaking anything — login
+  // doesn't use this email (employees authenticate via the legacy_id
+  // mapping or a separately-created users row).
+  const safeRef = parsed.data.ngtecoRef.replace(/[^a-zA-Z0-9_-]/g, "");
+  const placeholderEmail = `legacy.${safeRef.toLowerCase() || "noref"}@local`;
+  const { createEmployee } = await import("@/lib/db/queries/employees");
+  await createEmployee(
+    {
+      legacyId: parsed.data.ngtecoRef,
+      displayName: parsed.data.displayName.trim(),
+      legalName: parsed.data.displayName.trim(),
+      email: placeholderEmail,
+      payType: "HOURLY",
+      payScheduleId: parsed.data.payScheduleId ?? null,
+      language: "en",
+      hiredOn: today,
+      ngtecoEmployeeRef: parsed.data.ngtecoRef,
+      initialHourlyRateCents: rateCents,
+      initialRateEffectiveFrom: today,
+    },
+    { id: session.user.id, role: session.user.role },
+  );
+  // Re-pull the row so the UI gets the same shape the preview emits.
+  const [emp] = await db
+    .select()
+    .from(employees)
+    .where(eq(employees.ngtecoEmployeeRef, parsed.data.ngtecoRef))
+    .limit(1);
+  if (!emp) return { error: "Saved but couldn't reload the row — refresh." };
+  return {
+    ok: true,
+    row: {
+      employeeId: emp.id,
+      displayName: emp.displayName,
+      ngtecoRef: parsed.data.ngtecoRef,
+      // dayCount + totalHours are NOT recomputed here — the client
+      // already has them from the original preview. The form merges this
+      // row in by ngtecoRef.
+      dayCount: 0,
+      totalHours: 0,
+      payScheduleName: null,
+      payType: emp.payType,
+      unmatched: false,
+    },
+  };
+}
