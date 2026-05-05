@@ -65,16 +65,21 @@ export function AssignScheduleButton({
         onClick={async () => {
           setPending(true);
           setError(null);
-          const fd = new FormData();
-          fd.set("payScheduleId", scheduleId);
-          const r = await assignPeriodScheduleAction(periodId, fd);
-          setPending(false);
-          if (r?.error) {
-            setError(r.error);
-            return;
+          try {
+            const fd = new FormData();
+            fd.set("payScheduleId", scheduleId);
+            const r = await assignPeriodScheduleAction(periodId, fd);
+            if (r?.error) {
+              setError(r.error);
+              return;
+            }
+            // Reload to pick up the new schedule everywhere on the page.
+            window.location.reload();
+          } catch {
+            setError("Couldn't save schedule. Try again.");
+          } finally {
+            setPending(false);
           }
-          // Reload to pick up the new schedule everywhere on the page.
-          window.location.reload();
         }}
       >
         {pending ? "Saving…" : "Save"}

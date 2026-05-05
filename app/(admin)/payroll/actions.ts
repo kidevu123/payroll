@@ -375,33 +375,42 @@ export async function assignPeriodScheduleAction(
   const { payPeriods } = await import("@/lib/db/schema");
   const { eq } = await import("drizzle-orm");
   const { writeAudit } = await import("@/lib/db/audit");
-  await db.transaction(async (tx) => {
-    const [before] = await tx
-      .select()
-      .from(payPeriods)
-      .where(eq(payPeriods.id, periodId));
-    if (!before) throw new Error("Period not found.");
-    if (before.state === "PAID") {
-      throw new Error("Can't change the schedule on a PAID period.");
-    }
-    const [after] = await tx
-      .update(payPeriods)
-      .set({ payScheduleId: parsed.data.payScheduleId })
-      .where(eq(payPeriods.id, periodId))
-      .returning();
-    await writeAudit(
-      {
-        actorId: session.user.id,
-        actorRole: session.user.role,
-        action: "period.assign_schedule",
-        targetType: "PayPeriod",
-        targetId: periodId,
-        before,
-        after,
-      },
-      tx,
-    );
-  });
+  // Surface validation failures as `{error}` so the inline button can
+  // show them next to the dropdown. Throwing inside the transaction
+  // crashes the server action and leaves the client stuck on "Saving…".
+  try {
+    await db.transaction(async (tx) => {
+      const [before] = await tx
+        .select()
+        .from(payPeriods)
+        .where(eq(payPeriods.id, periodId));
+      if (!before) throw new Error("PERIOD_NOT_FOUND");
+      if (before.state === "PAID") throw new Error("PERIOD_PAID");
+      const [after] = await tx
+        .update(payPeriods)
+        .set({ payScheduleId: parsed.data.payScheduleId })
+        .where(eq(payPeriods.id, periodId))
+        .returning();
+      await writeAudit(
+        {
+          actorId: session.user.id,
+          actorRole: session.user.role,
+          action: "period.assign_schedule",
+          targetType: "PayPeriod",
+          targetId: periodId,
+          before,
+          after,
+        },
+        tx,
+      );
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg === "PERIOD_NOT_FOUND") return { error: "Period not found." };
+    if (msg === "PERIOD_PAID")
+      return { error: "Can't change the schedule on a PAID period." };
+    return { error: "Couldn't save schedule. Try again." };
+  }
   revalidatePath(`/payroll/${periodId}`);
   revalidatePath("/payroll");
   revalidatePath("/reports");

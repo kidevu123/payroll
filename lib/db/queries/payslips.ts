@@ -343,12 +343,22 @@ export async function recomputePayslip(
     const { getEmployee } = await import("@/lib/db/queries/employees");
     const { getSetting } = await import("@/lib/settings/runtime");
 
-    const [employee, payRules, company, allPunches, rates] = await Promise.all([
+    const { taskPayLineItems } = await import("@/lib/db/schema");
+    const [employee, payRules, company, allPunches, rates, tasks] = await Promise.all([
       getEmployee(before.employeeId),
       getSetting("payRules"),
       getSetting("company"),
       listPunches({ employeeId: before.employeeId, periodId: before.periodId }),
       listRates(before.employeeId),
+      tx
+        .select()
+        .from(taskPayLineItems)
+        .where(
+          and(
+            eq(taskPayLineItems.employeeId, before.employeeId),
+            eq(taskPayLineItems.periodId, before.periodId),
+          ),
+        ),
     ]);
     if (!employee) throw new Error("recomputePayslip: employee not found");
     const punches = dedupNearDuplicatePunches(allPunches);
@@ -367,7 +377,9 @@ export async function recomputePayslip(
         }
         return employee.hourlyRateCents ?? 0;
       },
-      taskPay: [],
+      // Preserve task pay across recomputes. A previous version passed [],
+      // which silently zeroed taskPayCents on every recompute / drift fix.
+      taskPay: tasks.map((t) => ({ amountCents: t.amountCents })),
       timezone: company.timezone,
       rules: {
         rounding: payRules.rounding,

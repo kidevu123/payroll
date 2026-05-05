@@ -2,11 +2,14 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
 import { AppFooter } from "@/components/app-footer";
-import { unreadCount } from "@/lib/notifications/in-app";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPeriods } from "@/lib/db/queries/pay-periods";
+import {
+  listPendingMissedPunchRequests,
+  listPendingTimeOffRequests,
+} from "@/lib/db/queries/requests";
 import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
 
@@ -25,14 +28,20 @@ const SETTINGS_TARGETS: CommandTarget[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
-  const [unread, company, employees, periods, locale, logoVersion] = await Promise.all([
-    unreadCount(session.user.id).catch(() => 0),
+  // Bell badge reflects what the admin will SEE on /requests — pending
+  // missed-punch + pending time-off requests. Was previously
+  // unreadCount(notifications), which drifted from the page contents and
+  // produced badges with no rows behind them ("8" with empty inbox).
+  const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion] = await Promise.all([
+    listPendingMissedPunchRequests().catch(() => []),
+    listPendingTimeOffRequests().catch(() => []),
     getSetting("company").catch(() => null),
     listEmployees({ status: "ACTIVE" }).catch(() => []),
     listPeriods({ limit: 12 }).catch(() => []),
     resolveLocale(),
     assetVersion("logo").catch(() => "default"),
   ]);
+  const unread = missedReqs.length + timeOffReqs.length;
   // Override the stored logoPath's cache-bust with a fresh mtime stamp so
   // any server-side post-processing of the asset (e.g. transparent-margin
   // trimming) shows up in browsers that cached an earlier URL. The stored

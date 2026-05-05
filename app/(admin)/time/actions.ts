@@ -44,17 +44,24 @@ export async function createPunchAction(
   if (clockOutD && Number.isNaN(clockOutD.getTime())) {
     return { error: "Invalid clock-out." };
   }
-  await createPunch(
-    {
-      employeeId: parsed.data.employeeId,
-      periodId: parsed.data.periodId,
-      clockIn: clockInD,
-      clockOut: clockOutD,
-      source: "MANUAL_ADMIN",
-      notes: parsed.data.notes ?? null,
-    },
-    { id: session.user.id, role: session.user.role },
-  );
+  try {
+    await createPunch(
+      {
+        employeeId: parsed.data.employeeId,
+        periodId: parsed.data.periodId,
+        clockIn: clockInD,
+        clockOut: clockOutD,
+        source: "MANUAL_ADMIN",
+        notes: parsed.data.notes ?? null,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PERIOD_PAID") {
+      return { error: "Period is paid. Unmark paid before editing punches." };
+    }
+    throw err;
+  }
   revalidatePath("/time");
   redirect(`/time/${parsed.data.periodId}/${formData.get("date")}/${parsed.data.employeeId}`);
 }
@@ -90,12 +97,19 @@ export async function editPunchAction(
   if (clockOutD && Number.isNaN(clockOutD.getTime())) {
     return { error: "Invalid clock-out." };
   }
-  await editPunch(
-    punchId,
-    { clockIn: clockInD, clockOut: clockOutD, notes: parsed.data.notes ?? null },
-    parsed.data.reason,
-    { id: session.user.id, role: session.user.role },
-  );
+  try {
+    await editPunch(
+      punchId,
+      { clockIn: clockInD, clockOut: clockOutD, notes: parsed.data.notes ?? null },
+      parsed.data.reason,
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PERIOD_PAID") {
+      return { error: "Period is paid. Unmark paid before editing punches." };
+    }
+    throw err;
+  }
   revalidatePath("/time");
 }
 
@@ -108,9 +122,16 @@ export async function voidPunchAction(
   const session = await requireAdmin();
   const parsed = voidSchema.safeParse({ reason: formData.get("reason") });
   if (!parsed.success) return { error: "Reason required." };
-  await voidPunch(punchId, parsed.data.reason, {
-    id: session.user.id,
-    role: session.user.role,
-  });
+  try {
+    await voidPunch(punchId, parsed.data.reason, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === "PERIOD_PAID") {
+      return { error: "Period is paid. Unmark paid before voiding punches." };
+    }
+    throw err;
+  }
   revalidatePath("/time");
 }

@@ -3,9 +3,26 @@
 
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { punches, type Punch, type NewPunch } from "@/lib/db/schema";
+import { payPeriods, punches, type Punch, type NewPunch } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import type { Actor } from "./employees";
+
+/**
+ * Refuse any punch mutation on a PAID period. Admins must "Unmark paid"
+ * first if they really need to edit paid history — that route writes its
+ * own audit row so the reversal is traceable. Throws PERIOD_PAID; the
+ * server action layer converts it into a friendly `{error}` response.
+ */
+async function assertPeriodMutable(
+  tx: typeof db,
+  periodId: string,
+): Promise<void> {
+  const [row] = await tx
+    .select({ state: payPeriods.state })
+    .from(payPeriods)
+    .where(eq(payPeriods.id, periodId));
+  if (row?.state === "PAID") throw new Error("PERIOD_PAID");
+}
 
 export type ListPunchesFilters = {
   periodId?: string;
@@ -39,6 +56,7 @@ export async function createPunch(
   actor: Actor,
 ): Promise<Punch> {
   return db.transaction(async (tx) => {
+    await assertPeriodMutable(tx as unknown as typeof db, input.periodId);
     const [row] = await tx.insert(punches).values(input).returning();
     if (!row) throw new Error("createPunch: insert returned no row");
     await writeAudit(
@@ -72,6 +90,7 @@ export async function editPunch(
   const result = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`editPunch: ${id} not found`);
+    await assertPeriodMutable(tx as unknown as typeof db, before.periodId);
     const next = {
       ...patch,
       // First edit captures original timestamps; subsequent edits keep them.
@@ -219,6 +238,7 @@ export async function voidPunch(
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`voidPunch: ${id} not found`);
     if (before.voidedAt) return before;
+    await assertPeriodMutable(tx as unknown as typeof db, before.periodId);
     const [row] = await tx
       .update(punches)
       .set({

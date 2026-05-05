@@ -10,6 +10,8 @@ import {
   MessageSquareWarning,
   BarChart3,
   Settings2,
+  Briefcase,
+  CalendarRange,
   Menu,
   X,
   type LucideIcon,
@@ -30,6 +32,8 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
     items: [
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
+      { href: "/salaried", labelKey: "salaried", icon: Briefcase },
+      { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
       { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
     ],
   },

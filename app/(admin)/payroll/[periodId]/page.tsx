@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, Download } from "lucide-react";
+import { ArrowLeft, ChevronRight, Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -511,10 +511,11 @@ export default async function PeriodReviewPage({
                             <span className="text-warn-700 text-xs">{incomplete} incomplete</span>
                           ) : "hoursDrift" in row && row.hoursDrift ? (
                             <span
-                              className="text-amber-700 text-xs"
+                              className="inline-flex items-center gap-1 text-amber-700 text-xs"
                               title={`Stored hours (${(row as RowLike).storedHours?.toFixed(2)}h) don't match live punch hours (${(row as RowLike).liveHours?.toFixed(2)}h). Open employees row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
                             >
-                              ⚠ stored {(row as RowLike).storedHours?.toFixed(2)}h ≠
+                              <AlertTriangle className="h-3 w-3" aria-hidden />
+                              drift: stored {(row as RowLike).storedHours?.toFixed(2)}h vs
                               live {(row as RowLike).liveHours?.toFixed(2)}h
                             </span>
                           ) : (
