@@ -22,6 +22,12 @@ export type Actor = {
 
 export type EmployeeListFilters = {
   status?: "ACTIVE" | "INACTIVE" | "TERMINATED";
+  /**
+   * When true, terminated employees are excluded from the result regardless
+   * of `status`. The Employees page uses this for its default + "All" views
+   * so terminated staff only surface under the explicit Terminated tab.
+   */
+  excludeTerminated?: boolean;
   shiftId?: string;
   search?: string;
   /**
@@ -44,6 +50,8 @@ export async function listEmployees(
 ): Promise<Employee[]> {
   const conditions = [];
   if (filters.status) conditions.push(eq(employees.status, filters.status));
+  if (filters.excludeTerminated)
+    conditions.push(sql`${employees.status} <> 'TERMINATED'`);
   if (filters.shiftId) conditions.push(eq(employees.shiftId, filters.shiftId));
   if (filters.payScheduleId === "none") {
     conditions.push(sql`${employees.payScheduleId} IS NULL`);

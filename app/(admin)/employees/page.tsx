@@ -21,14 +21,15 @@ export default async function EmployeesPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const [employees, shifts] = await Promise.all([
-    listEmployees({
-      ...(params.q ? { search: params.q } : {}),
-      ...(params.status ? { status: params.status } : {}),
-      ...(params.shift ? { shiftId: params.shift } : {}),
-    }),
-    listActiveShifts(),
-  ]);
+  // Terminated employees only render on the explicit Terminated tab. The
+  // default ("Active") and "All" views both exclude TERMINATED so old
+  // staff don't clutter day-to-day work.
+  const employees = await listEmployees({
+    ...(params.q ? { search: params.q } : {}),
+    ...(params.status ? { status: params.status } : { excludeTerminated: true }),
+    ...(params.shift ? { shiftId: params.shift } : {}),
+  });
+  const shifts = await listActiveShifts();
   const shiftById = new Map(shifts.map((s) => [s.id, s]));
 
   // Counts for the pill toggles — the unfiltered roster is small (≤100), so
@@ -39,7 +40,7 @@ export default async function EmployeesPage({
     listEmployees({ status: "INACTIVE", ...(params.q ? { search: params.q } : {}) }),
     listEmployees({ status: "TERMINATED", ...(params.q ? { search: params.q } : {}) }),
   ]);
-  const allCount = allActive.length + allInactive.length + allTerminated.length;
+  const livingCount = allActive.length + allInactive.length;
 
   const buildHref = (overrides: Partial<{ q: string; status: StatusFilter | ""; shift: string }>) => {
     const sp = new URLSearchParams();
@@ -53,8 +54,7 @@ export default async function EmployeesPage({
     return qs ? `/employees?${qs}` : "/employees";
   };
 
-  const currentStatus = params.status ?? "ACTIVE"; // default to Active for the toggle UI
-  const explicitStatus = params.status; // null when "All" selected
+  const explicitStatus = params.status; // null when "All" (active+inactive) is selected
   const currentShift = params.shift ?? "";
 
   return (
@@ -63,8 +63,14 @@ export default async function EmployeesPage({
         <div>
           <h1 className="text-title font-semibold tracking-tight">Employees</h1>
           <p className="text-sm text-text-muted">
-            {employees.length} of {allCount}{" "}
-            {allCount === 1 ? "person" : "people"}
+            {employees.length} of {livingCount}{" "}
+            {livingCount === 1 ? "person" : "people"}
+            {allTerminated.length > 0 && (
+              <span className="text-text-subtle">
+                {" "}
+                · {allTerminated.length} terminated
+              </span>
+            )}
           </p>
         </div>
         <Button asChild>
@@ -99,23 +105,23 @@ export default async function EmployeesPage({
             href={buildHref({ status: "" })}
             active={!explicitStatus}
             label="All"
-            count={allCount}
+            count={livingCount}
           />
           <PillToggle
             href={buildHref({ status: "ACTIVE" })}
-            active={currentStatus === "ACTIVE" && !!explicitStatus}
+            active={explicitStatus === "ACTIVE"}
             label="Active"
             count={allActive.length}
           />
           <PillToggle
             href={buildHref({ status: "INACTIVE" })}
-            active={currentStatus === "INACTIVE"}
+            active={explicitStatus === "INACTIVE"}
             label="Inactive"
             count={allInactive.length}
           />
           <PillToggle
             href={buildHref({ status: "TERMINATED" })}
-            active={currentStatus === "TERMINATED"}
+            active={explicitStatus === "TERMINATED"}
             label="Terminated"
             count={allTerminated.length}
           />
