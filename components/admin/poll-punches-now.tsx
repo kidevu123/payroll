@@ -116,7 +116,9 @@ export function PollPunchesNowButton({
           <div className="space-y-1">
             <p>
               {result.summary.ok
-                ? `Imported ${result.summary.pairsInserted ?? 0} new punch pair${
+                ? `Scraped ${result.summary.eventsScraped ?? 0} event${
+                    (result.summary.eventsScraped ?? 0) === 1 ? "" : "s"
+                  } · imported ${result.summary.pairsInserted ?? 0} new pair${
                     (result.summary.pairsInserted ?? 0) === 1 ? "" : "s"
                   }${
                     result.summary.pairsUpdated && result.summary.pairsUpdated > 0
@@ -124,7 +126,7 @@ export function PollPunchesNowButton({
                       : ""
                   }${
                     result.summary.unmatchedRefs && result.summary.unmatchedRefs > 0
-                      ? `, ${result.summary.unmatchedRefs} unmatched employees`
+                      ? `, ${result.summary.unmatchedRefs} unmatched`
                       : ""
                   }.`
                 : `Skipped: ${result.summary.reason ?? "unknown"}`}

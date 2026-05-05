@@ -364,9 +364,9 @@ export async function scrapeViewAttendance(
     let landed = false;
     if (directPunchUrl) {
       try {
-        await page.goto(directPunchUrl, { waitUntil: "domcontentloaded" });
+        await page.goto(directPunchUrl, { waitUntil: "networkidle" });
         await page.waitForSelector(sel.viewPunch.tableLandmark, {
-          timeout: 10_000,
+          timeout: 15_000,
         });
         landed = true;
       } catch {
@@ -385,6 +385,34 @@ export async function scrapeViewAttendance(
       await page.waitForSelector(sel.viewPunch.tableLandmark, {
         timeout: 15_000,
       });
+    }
+
+    // Wait until at least one DATA row has text in its personId cell —
+    // Element Plus tables often render a placeholder/loading row first
+    // and the real data lands a beat later. Without this wait, the
+    // scrape returns 0 events even though the table is about to fill in.
+    try {
+      await page.waitForFunction(
+        ({ rowSel, idSel }: { rowSel: string; idSel: string }) => {
+          const rows = document.querySelectorAll(rowSel);
+          for (const row of Array.from(rows)) {
+            const idCell = row.querySelector(idSel);
+            const text = idCell?.textContent?.trim() ?? "";
+            if (text && text.length > 0 && !/^[—–-]$/.test(text)) {
+              return true;
+            }
+          }
+          return false;
+        },
+        {
+          rowSel: sel.viewPunch.rowsContainer,
+          idSel: sel.viewPunch.personIdCell,
+        },
+        { timeout: 15_000 },
+      );
+    } catch {
+      /* table is empty or never hydrated — proceed; we'll either return
+         0 events legitimately or log a failure with the screenshot. */
     }
 
     const events: RawPunchEvent[] = [];
@@ -431,6 +459,28 @@ export async function scrapeViewAttendance(
       ]);
     }
 
+    // Diagnostics — when the scrape technically succeeded (no thrown
+    // error) but yielded zero events, capture a screenshot + HTML dump
+    // to the same failure-artifacts dir so the admin can inspect what
+    // the page actually looked like. The summary still returns ok:true
+    // and pairsInserted: 0 — the scraper isn't lying about success,
+    // we're just helping the admin verify "is the table really empty
+    // right now" vs "is my selector broken".
+    if (events.length === 0) {
+      try {
+        const debugDir = join(FAILURES_DIR, `${input.runId}-empty`);
+        if (!existsSync(debugDir)) mkdirSync(debugDir, { recursive: true });
+        await page.screenshot({
+          path: join(debugDir, "page.png"),
+          fullPage: true,
+        });
+        const html = await page.content();
+        const { writeFileSync } = await import("node:fs");
+        writeFileSync(join(debugDir, "page.html"), html);
+      } catch {
+        /* best-effort */
+      }
+    }
     await ctx.close();
     return { events, durationMs: Date.now() - t0 };
   } catch (err) {
