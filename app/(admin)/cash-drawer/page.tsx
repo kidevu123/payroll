@@ -4,6 +4,7 @@
 // or manually for corrections). Running balance = sum(DEPOSIT) -
 // sum(WITHDRAWAL), constrained to never go negative.
 
+import Link from "next/link";
 import { Wallet, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { requireCashDrawerAccess } from "@/lib/auth-guards";
 import { getDrawerBalanceCents, listEntries } from "@/lib/db/queries/cash-drawer";
@@ -174,9 +175,12 @@ export default async function CashDrawerPage() {
                         {entry.kind === "DEPOSIT" ? (
                           <span className="font-mono">{entry.invoiceNumber ?? "—"}</span>
                         ) : period ? (
-                          <span className="text-text-muted">
+                          <Link
+                            href={`/payroll/${period.id}`}
+                            className="text-text-muted hover:text-brand-700 hover:underline underline-offset-2"
+                          >
                             {period.startDate} – {period.endDate}
-                          </span>
+                          </Link>
                         ) : (
                           <span className="text-text-subtle">manual</span>
                         )}

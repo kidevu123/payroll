@@ -198,9 +198,58 @@ export async function unmarkPaid(
       .where(eq(payPeriods.id, id));
     if (!before) throw new Error(`unmarkPaid: ${id} not found`);
     if (before.state !== "PAID") return before;
+
+    // If this period was paid from the cash drawer, reverse the
+    // withdrawal so the running balance reflects reality. We don't
+    // delete the original withdrawal — it stays in the ledger as a
+    // historical record — but we add an offsetting DEPOSIT keyed
+    // back to the same period so the audit trail tells the full
+    // story. The period's cash_drawer_entry_id is cleared so a
+    // future re-pay creates a fresh withdrawal.
+    if (before.paymentMethod === "CASH" && before.cashDrawerEntryId) {
+      const { cashDrawerEntries } = await import("@/lib/db/schema");
+      const [origWithdrawal] = await tx
+        .select()
+        .from(cashDrawerEntries)
+        .where(eq(cashDrawerEntries.id, before.cashDrawerEntryId));
+      if (origWithdrawal && origWithdrawal.kind === "WITHDRAWAL") {
+        const [reversal] = await tx
+          .insert(cashDrawerEntries)
+          .values({
+            kind: "DEPOSIT",
+            amountCents: origWithdrawal.amountCents,
+            invoiceNumber: `REV-${origWithdrawal.id.slice(0, 8)}`,
+            notes: `Reversal — period ${before.startDate} to ${before.endDate} unmarked paid${reason ? ` (${reason})` : ""}`,
+            periodId: id,
+            createdById: actor.id,
+          })
+          .returning();
+        if (reversal) {
+          await writeAudit(
+            {
+              actorId: actor.id,
+              actorRole: actor.role,
+              action: "cash_drawer.reversal",
+              targetType: "CashDrawerEntry",
+              targetId: reversal.id,
+              before: origWithdrawal,
+              after: reversal,
+            },
+            tx,
+          );
+        }
+      }
+    }
+
     const [row] = await tx
       .update(payPeriods)
-      .set({ state: "LOCKED", paidAt: null, paidById: null })
+      .set({
+        state: "LOCKED",
+        paidAt: null,
+        paidById: null,
+        paymentMethod: null,
+        cashDrawerEntryId: null,
+      })
       .where(eq(payPeriods.id, id))
       .returning();
     if (!row) throw new Error("unmarkPaid: returning() empty");

@@ -36,59 +36,61 @@ export function LockButtons({
   );
 
   if (period.state === "PAID") {
-    if (!unmarkOpen) {
-      return (
-        <div className="space-y-2">
-          <p className="text-sm text-text-muted">
-            Period is marked paid. Pay records are immutable while in this
-            state.
-          </p>
-          <Button variant="secondary" onClick={() => setUnmarkOpen(true)}>
-            <RotateCcw className="h-4 w-4" /> Unmark paid
-          </Button>
-          <p className="text-xs text-text-muted">
-            Use this if the period was marked paid by mistake (e.g. a legacy
-            import) or you need to make corrections.
-          </p>
-        </div>
-      );
-    }
+    // Compact action — sits inline with PublishPortalButton in the
+    // header bar at consistent size="sm". The unmark confirm popover
+    // expands below the row instead of replacing it (the previous
+    // amber card blew out the bar's height and shoved everything
+    // around).
     return (
-      <form
-        action={async (form) => {
-          setPending(true);
-          setError(null);
-          const result = await unmarkPaidAction(period.id, form);
-          setPending(false);
-          if (result?.error) setError(result.error);
-          else setUnmarkOpen(false);
-        }}
-        className="space-y-2 rounded-card border border-amber-200 bg-amber-50/40 p-4"
-      >
-        <p className="text-sm font-medium">
-          Unmark paid for {period.startDate}? Reason will be audited.
-        </p>
-        <Input
-          name="reason"
-          required
-          minLength={1}
-          maxLength={500}
-          placeholder="Reason (e.g. legacy import was test data)"
-        />
-        {error && <p className="text-sm text-red-700">{error}</p>}
-        <div className="flex items-center gap-2">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Confirm unmark"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setUnmarkOpen(false)}
+      <div className="flex flex-col items-end gap-1.5">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setUnmarkOpen((v) => !v)}
+        >
+          <RotateCcw className="h-4 w-4" /> Unmark paid
+        </Button>
+        {unmarkOpen && (
+          <form
+            action={async (form) => {
+              setPending(true);
+              setError(null);
+              const result = await unmarkPaidAction(period.id, form);
+              setPending(false);
+              if (result?.error) setError(result.error);
+              else setUnmarkOpen(false);
+            }}
+            className="rounded-card border border-amber-200 bg-amber-50/40 p-2.5 space-y-2 w-72"
           >
-            Cancel
-          </Button>
-        </div>
-      </form>
+            <p className="text-[11px] text-text-muted leading-snug">
+              Unmark paid for {period.startDate}? If the period was paid from
+              the cash drawer, the withdrawal is reversed automatically.
+            </p>
+            <Input
+              name="reason"
+              required
+              minLength={1}
+              maxLength={500}
+              placeholder="Reason (audited)"
+              className="h-8 text-xs"
+            />
+            {error && <p className="text-[11px] text-red-700">{error}</p>}
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                size="sm"
+                type="button"
+                variant="ghost"
+                onClick={() => setUnmarkOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Confirm"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
     );
   }
 
@@ -109,6 +111,7 @@ export function LockButtons({
       >
         <Button
           type="submit"
+          size="sm"
           disabled={pending}
           title={
             incompletePunchCount > 0
@@ -160,7 +163,7 @@ export function LockButtons({
                 setPaymentMethod(e.target.value as "BANK" | "CASH")
               }
               disabled={pending}
-              className="h-9 rounded-input border border-border/70 bg-surface px-2.5 text-sm"
+              className="h-8 rounded-input border border-border/70 bg-surface px-2.5 text-xs"
             >
               <option value="BANK">Paid through bank</option>
               <option value="CASH">Paid through cash</option>
@@ -176,12 +179,13 @@ export function LockButtons({
                 value={cashDollars}
                 onChange={(e) => setCashDollars(e.target.value)}
                 disabled={pending}
-                className="h-9 w-32"
+                className="h-8 w-28 text-xs"
               />
             </label>
           )}
           <Button
             type="submit"
+            size="sm"
             disabled={pending}
             title="Only mark paid once payment has actually been sent."
           >
@@ -191,6 +195,7 @@ export function LockButtons({
         </form>
         {!unlockOpen && (
           <Button
+            size="sm"
             variant="secondary"
             onClick={() => setUnlockOpen(true)}
             title="Unlock to correct punches before payment."
@@ -211,9 +216,9 @@ export function LockButtons({
             if (result?.error) setError(result.error);
             else setUnlockOpen(false);
           }}
-          className="space-y-2 rounded-card border border-amber-200 bg-amber-50/40 p-4"
+          className="rounded-card border border-amber-200 bg-amber-50/40 p-2.5 space-y-2 w-72"
         >
-          <p className="text-sm font-medium">
+          <p className="text-[11px] text-text-muted leading-snug">
             Unlock {period.startDate}? Reason will be audited.
           </p>
           <Input
@@ -222,17 +227,19 @@ export function LockButtons({
             minLength={1}
             maxLength={500}
             placeholder="Correction reason"
+            className="h-8 text-xs"
           />
-          <div className="flex items-center gap-2">
-            <Button type="submit" disabled={pending}>
-              {pending ? "Unlocking…" : "Confirm unlock"}
-            </Button>
+          <div className="flex items-center justify-end gap-1.5">
             <Button
+              size="sm"
               type="button"
               variant="ghost"
               onClick={() => setUnlockOpen(false)}
             >
               Cancel
+            </Button>
+            <Button size="sm" type="submit" disabled={pending}>
+              {pending ? "Unlocking…" : "Confirm unlock"}
             </Button>
           </div>
         </form>
