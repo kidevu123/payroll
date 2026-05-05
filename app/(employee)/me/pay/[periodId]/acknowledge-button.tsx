@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import { CircleCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { acknowledgePayslipAction } from "./actions";
 
 export function AcknowledgeButton({ payslipId }: { payslipId: string }) {
+  const t = useTranslations("employee.pay");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   return (
@@ -22,7 +24,7 @@ export function AcknowledgeButton({ payslipId }: { payslipId: string }) {
       {error && <span className="text-xs text-danger-700">{error}</span>}
       <Button type="submit" disabled={pending}>
         <CircleCheck className="h-4 w-4" />
-        {pending ? "Recording…" : "Acknowledge payslip"}
+        {pending ? t("recording") : t("acknowledgePayslip")}
       </Button>
     </form>
   );

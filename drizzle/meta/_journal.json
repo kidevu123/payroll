@@ -141,6 +141,13 @@
       "when": 1778300000000,
       "tag": "0019_repair_payslip_dispute_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1778400000000,
+      "tag": "0020_consolidate_unassigned_duplicate_periods",
+      "breakpoints": true
     }
   ]
 }

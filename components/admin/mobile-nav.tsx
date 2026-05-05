@@ -17,36 +17,37 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/brand/wordmark";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
+type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
-const SECTIONS: { heading: string; items: NavItem[] }[] = [
+const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
-    heading: "Overview",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    headingKey: "overview",
+    items: [{ href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard }],
   },
   {
-    heading: "Manage",
+    headingKey: "manage",
     items: [
-      { href: "/employees", label: "Employees", icon: Users },
-      { href: "/time", label: "Time", icon: CalendarDays },
-      { href: "/payroll", label: "Payroll", icon: Wallet },
-      { href: "/requests", label: "Requests", icon: MessageSquareWarning },
+      { href: "/employees", labelKey: "employees", icon: Users },
+      { href: "/time", labelKey: "time", icon: CalendarDays },
+      { href: "/payroll", labelKey: "payroll", icon: Wallet },
+      { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
     ],
   },
   {
-    heading: "Operate",
+    headingKey: "operate",
     items: [
-      { href: "/ngteco", label: "NGTeco", icon: Workflow },
-      { href: "/reports", label: "Reports", icon: BarChart3 },
-      { href: "/audit", label: "Audit", icon: ScrollText },
+      { href: "/ngteco", labelKey: "ngteco", icon: Workflow },
+      { href: "/reports", labelKey: "reports", icon: BarChart3 },
+      { href: "/audit", labelKey: "audit", icon: ScrollText },
     ],
   },
   {
-    heading: "System",
-    items: [{ href: "/settings", label: "Settings", icon: Settings2 }],
+    headingKey: "system",
+    items: [{ href: "/settings", labelKey: "settings", icon: Settings2 }],
   },
 ];
 
@@ -66,6 +67,7 @@ export function MobileNav({
   company: { name: string; logoPath: string | null };
 }) {
   const pathname = usePathname() ?? "";
+  const tNav = useTranslations("nav");
   const [open, setOpen] = React.useState(false);
 
   // Close drawer on route change.
@@ -88,7 +90,7 @@ export function MobileNav({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Open navigation"
+        aria-label={tNav("openNavigation")}
         className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-input hover:bg-surface-2"
       >
         <Menu className="h-5 w-5" aria-hidden />
@@ -111,7 +113,7 @@ export function MobileNav({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close navigation"
+                aria-label={tNav("closeNavigation")}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-input hover:bg-surface-2"
               >
                 <X className="h-5 w-5" aria-hidden />
@@ -119,12 +121,12 @@ export function MobileNav({
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
               {SECTIONS.map((sec) => (
-                <div key={sec.heading}>
+                <div key={sec.headingKey}>
                   <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
-                    {sec.heading}
+                    {tNav(sec.headingKey)}
                   </div>
                   <ul className="space-y-0.5">
-                    {sec.items.map(({ href, label, icon: Icon }) => {
+                    {sec.items.map(({ href, labelKey, icon: Icon }) => {
                       const active = isActive(pathname, href);
                       return (
                         <li key={href}>
@@ -138,7 +140,7 @@ export function MobileNav({
                             )}
                           >
                             <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                            <span>{label}</span>
+                            <span>{tNav(labelKey)}</span>
                           </Link>
                         </li>
                       );

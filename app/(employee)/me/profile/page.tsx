@@ -26,16 +26,15 @@ import { LanguageSwitcher } from "@/components/admin/language-switcher";
 import { resolveLocale } from "@/lib/i18n";
 import { ProfileForm } from "./profile-form";
 
-function payTypeLabel(payType: "HOURLY" | "FLAT_TASK" | "SALARIED"): string {
-  if (payType === "HOURLY") return "Hourly";
-  if (payType === "SALARIED") return "Salaried";
-  return "Flat-task";
-}
-
 export default async function EmployeeProfile() {
   const session = await requireSession();
   const t = await getTranslations("employee.profile");
   const locale = await resolveLocale();
+  const payTypeLabel = (payType: "HOURLY" | "FLAT_TASK" | "SALARIED"): string => {
+    if (payType === "HOURLY") return t("payTypeHourly");
+    if (payType === "SALARIED") return t("payTypeSalaried");
+    return t("payTypeFlatTask");
+  };
   if (!session.user.employeeId) {
     return (
       <main className="px-4 py-6 space-y-4">
@@ -84,7 +83,7 @@ export default async function EmployeeProfile() {
       {/* Account details — read-only fields. Compact; admin owns them. */}
       <Card>
         <CardHeader>
-          <CardTitle>Account details</CardTitle>
+          <CardTitle>{t("accountDetails")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="grid grid-cols-1 gap-3">
@@ -116,9 +115,7 @@ export default async function EmployeeProfile() {
           <LanguageSwitcher current={locale} />
         </CardHeader>
         <CardContent className="text-[11px] text-text-muted leading-relaxed">
-          Switches the language on this device immediately. Your saved
-          preference (above) is what other devices use until they switch
-          too.
+          {t("languageHint")}
         </CardContent>
       </Card>
 
@@ -135,10 +132,10 @@ export default async function EmployeeProfile() {
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium tracking-tight text-text antialiased">
-                Notifications
+                {t("notifications")}
               </p>
               <p className="text-[11px] text-text-muted leading-relaxed">
-                Push alerts when payroll publishes
+                {t("notificationsHint")}
               </p>
             </div>
             <ChevronRight className="h-4 w-4 text-text-subtle transition-transform group-hover:translate-x-0.5" />
@@ -157,7 +154,7 @@ export default async function EmployeeProfile() {
                   {t("signOut")}
                 </p>
                 <p className="text-[11px] text-text-muted leading-relaxed">
-                  Ends this browser session
+                  {t("endsSession")}
                 </p>
               </div>
             </button>

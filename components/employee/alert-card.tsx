@@ -5,9 +5,10 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { ExceptionBadge } from "@/components/domain/exception-badge";
 
-export function AlertCard({
+export async function AlertCard({
   alertId,
   date,
   issue,
@@ -21,6 +22,7 @@ export function AlertCard({
     | "SUSPICIOUS_DURATION"
     | "INVERTED_TIMES";
 }) {
+  const t = await getTranslations("employee.alertCard");
   return (
     <Link
       href={`/me/home/missed-punch/${alertId}`}
@@ -33,7 +35,7 @@ export function AlertCard({
         <ExceptionBadge issue={issue} />
       </div>
       <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-700">
-        Fix this
+        {t("fixThis")}
         <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </span>
     </Link>

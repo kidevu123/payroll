@@ -19,7 +19,7 @@ export function ProfileForm({ employee }: { employee: Employee }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Editable preferences</CardTitle>
+        <CardTitle>{t("editablePreferences")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form

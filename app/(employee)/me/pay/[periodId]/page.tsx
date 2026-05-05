@@ -131,7 +131,7 @@ export default async function EmployeePayslipViewer({
     <main className="space-y-5 p-4 sm:p-6 max-w-3xl mx-auto">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/pay">
-          <ArrowLeft className="h-4 w-4" /> All payslips
+          <ArrowLeft className="h-4 w-4" /> {t("allPayslips")}
         </Link>
       </Button>
 
@@ -141,11 +141,11 @@ export default async function EmployeePayslipViewer({
             <CardTitle>
               {period.startDate} – {period.endDate}
             </CardTitle>
-            <CardDescription>No payslip yet for this period.</CardDescription>
+            <CardDescription>{t("noPayslip")}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-text-muted leading-relaxed">
-              When the run publishes, your payslip lands here automatically.
+              {t("willAppear")}
             </p>
           </CardContent>
         </Card>
@@ -157,6 +157,7 @@ export default async function EmployeePayslipViewer({
           tz={tz}
           rateCents={employee?.hourlyRateCents ?? null}
           payType={employee?.payType ?? "HOURLY"}
+          dateLocale={dateLocale}
         />
       )}
     </main>
@@ -170,6 +171,7 @@ async function PayslipBody({
   tz,
   rateCents,
   payType,
+  dateLocale,
 }: {
   payslip: NonNullable<Awaited<ReturnType<typeof getPublishedPayslipForEmployeePeriod>>>;
   period: NonNullable<Awaited<ReturnType<typeof getPeriodById>>>;
@@ -177,7 +179,9 @@ async function PayslipBody({
   tz: string;
   rateCents: number | null;
   payType: "HOURLY" | "FLAT_TASK" | "SALARIED";
+  dateLocale: string;
 }) {
+  const t = await getTranslations("employee.pay");
   // Pull every punch the employee has and filter by date range against the
   // employee's display tz — covers cases where punches are stored on a
   // different period_id than the one the payslip is pinned to (e.g. legacy
@@ -245,7 +249,7 @@ async function PayslipBody({
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="space-y-1.5">
               <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
-                Pay period
+                {t("payPeriod")}
               </p>
               <p className="text-base font-semibold tracking-tight text-text antialiased">
                 {period.startDate}{" "}
@@ -256,20 +260,20 @@ async function PayslipBody({
             {isDisputed ? (
               <span className="inline-flex items-center gap-1.5 rounded-chip border border-warn-200/80 bg-warn-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warn-700">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
-                Problem reported
+                {t("problemReported")}
               </span>
             ) : isAcknowledged ? (
               <StatusPill status="APPROVED" />
             ) : (
               <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-info-700">
-                Awaiting review
+                {t("awaitingReview")}
               </span>
             )}
           </div>
 
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
-              Net pay
+              {t("netPay")}
             </p>
             <p className="text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
               <MoneyDisplay
@@ -280,14 +284,14 @@ async function PayslipBody({
           </div>
 
           <div className="grid grid-cols-2 gap-4 pt-1 border-t border-border/60">
-            <HeroStat label="Hours">
+            <HeroStat label={t("viewerHours")}>
               <HoursDisplay
                 hours={storedHours}
                 decimals={payRules.hoursDecimalPlaces}
                 className="font-sans"
               />
             </HeroStat>
-            <HeroStat label="Gross">
+            <HeroStat label={t("viewerGross")}>
               <MoneyDisplay
                 cents={payslip.grossPayCents}
                 monospace={false}
@@ -297,20 +301,21 @@ async function PayslipBody({
 
           <p className="text-[11px] text-text-muted leading-relaxed">
             {isDisputed
-              ? "Admin has been notified about your report and will follow up."
+              ? t("disputedNotice")
               : isAcknowledged
-                ? `Acknowledged ${payslip.acknowledgedAt!.toISOString().slice(0, 16).replace("T", " ")} UTC`
-                : "Please review the breakdown below and acknowledge once you're satisfied."}
+                ? t("acknowledgedNotice", {
+                    when: payslip.acknowledgedAt!.toISOString().slice(0, 16).replace("T", " "),
+                  })
+                : t("reviewAndAcknowledge")}
           </p>
 
           {discrepancy && (
             <div className="rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-xs text-warn-700 space-y-1.5 leading-relaxed">
               <p className="font-medium">
-                Heads-up: the stored payslip total and the daily breakdown
-                disagree.
+                {t("discrepancyHeading")}
               </p>
               <p>
-                <span className="font-medium">Per the report:</span>{" "}
+                <span className="font-medium">{t("perReport")}</span>{" "}
                 <HoursDisplay
                   hours={storedHours}
                   decimals={payRules.hoursDecimalPlaces}
@@ -319,7 +324,7 @@ async function PayslipBody({
                 · <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
               </p>
               <p>
-                <span className="font-medium">Per recorded punches:</span>{" "}
+                <span className="font-medium">{t("perPunches")}</span>{" "}
                 <HoursDisplay
                   hours={liveHours}
                   decimals={payRules.hoursDecimalPlaces}
@@ -328,10 +333,7 @@ async function PayslipBody({
                 · <MoneyDisplay cents={liveCents} monospace={false} />
               </p>
               <p>
-                Most often this happens on legacy-imported records where the
-                old report&apos;s total was copied over but only some of the
-                original punches survived the migration. Ask admin to
-                reconcile if it matters.
+                {t("discrepancyExplain")}
               </p>
             </div>
           )}
@@ -340,28 +342,28 @@ async function PayslipBody({
 
       <Card>
         <CardHeader>
-          <CardTitle>Daily breakdown</CardTitle>
+          <CardTitle>{t("dailyBreakdown")}</CardTitle>
           <CardDescription>
-            Times shown in your local timezone ({tz.replace("_", " ")}).
+            {t("timesShownLocal", { tz: tz.replace("_", " ") })}
           </CardDescription>
         </CardHeader>
         <CardContent className="px-2 sm:px-4 py-2">
           {days.length === 0 ? (
             <p className="px-4 py-4 text-sm text-text-muted leading-relaxed">
-              No clock-in records on file for this period.
+              {t("noClockInRecords")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
-                    <th className="px-3 py-3 font-medium">Day</th>
-                    <th className="px-3 py-3 font-medium">In</th>
-                    <th className="px-3 py-3 font-medium">Out</th>
-                    <th className="px-3 py-3 font-medium text-right">Hours</th>
+                    <th className="px-3 py-3 font-medium">{t("day")}</th>
+                    <th className="px-3 py-3 font-medium">{t("in")}</th>
+                    <th className="px-3 py-3 font-medium">{t("out")}</th>
+                    <th className="px-3 py-3 font-medium text-right">{t("hours")}</th>
                     {payType === "HOURLY" && (
                       <th className="px-3 py-3 font-medium text-right">
-                        Est. pay
+                        {t("estPay")}
                       </th>
                     )}
                   </tr>
@@ -409,13 +411,13 @@ async function PayslipBody({
                           className="transition-colors hover:bg-surface-2/40"
                         >
                           <td className="px-3 py-3 text-xs font-medium text-text">
-                            {i === 0 ? fmtDayLabel(d, tz) : ""}
+                            {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
                           </td>
                           <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
-                            {fmtTime(inT, tz)}
+                            {fmtTime(inT, tz, dateLocale)}
                           </td>
                           <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
-                            {fmtTime(outT, tz)}
+                            {fmtTime(outT, tz, dateLocale)}
                           </td>
                           <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
                             {hours !== null ? hours.toFixed(2) : "—"}
@@ -441,10 +443,9 @@ async function PayslipBody({
             </div>
           )}
           <p className="mt-3 px-3 text-[11px] text-text-muted leading-relaxed">
-            &ldquo;Est. pay&rdquo; is rate × hours per day before the period
-            rounding rule (currently{" "}
-            {payRules.rounding.toLowerCase().replace(/_/g, " ")}). Your final
-            paycheck is the rounded total above.
+            {t("estPayExplain", {
+              rounding: payRules.rounding.toLowerCase().replace(/_/g, " "),
+            })}
           </p>
         </CardContent>
       </Card>
@@ -452,9 +453,9 @@ async function PayslipBody({
       {payslip.pdfPath && payslip.pdfPath.toLowerCase().endsWith(".pdf") ? (
         <Card>
           <CardHeader>
-            <CardTitle>Printable payslip</CardTitle>
+            <CardTitle>{t("printablePayslip")}</CardTitle>
             <CardDescription>
-              The PDF copy your employer published.
+              {t("printableDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -469,11 +470,11 @@ async function PayslipBody({
         <Card>
           <CardContent className="p-6 space-y-3 text-sm">
             <p className="text-text-muted leading-relaxed">
-              An original spreadsheet is attached for this period.
+              {t("spreadsheetAttached")}
             </p>
             <Button asChild variant="secondary">
               <a href={`/api/payslips/${payslip.id}/pdf`} download>
-                <FileDown className="h-4 w-4" /> Download original report
+                <FileDown className="h-4 w-4" /> {t("downloadOriginal")}
               </a>
             </Button>
           </CardContent>
@@ -492,7 +493,7 @@ async function PayslipBody({
           {payslip.acknowledgedAt ? (
             <span className="inline-flex items-center gap-1.5 rounded-input bg-success-50 border border-success-200/80 px-3 py-2 text-xs font-medium text-success-700">
               <CircleCheck className="h-3.5 w-3.5" aria-hidden />
-              You acknowledged this payslip
+              {t("youAcknowledged")}
             </span>
           ) : (
             <AcknowledgeButton payslipId={payslip.id} />

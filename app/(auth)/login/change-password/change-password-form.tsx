@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { changePasswordAction } from "./actions";
 
 export function ChangePasswordForm() {
+  const t = useTranslations("auth");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   return (
@@ -21,7 +23,7 @@ export function ChangePasswordForm() {
       className="space-y-4"
     >
       <div className="space-y-1.5">
-        <Label htmlFor="password">New password</Label>
+        <Label htmlFor="password">{t("newPassword")}</Label>
         <Input
           id="password"
           name="password"
@@ -32,7 +34,7 @@ export function ChangePasswordForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="confirm">Confirm</Label>
+        <Label htmlFor="confirm">{t("confirm")}</Label>
         <Input
           id="confirm"
           name="confirm"
@@ -48,7 +50,7 @@ export function ChangePasswordForm() {
         </p>
       )}
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Saving…" : "Save and sign in again"}
+        {pending ? t("saving") : t("saveAndSignIn")}
       </Button>
     </form>
   );

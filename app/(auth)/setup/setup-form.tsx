@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { createOwner } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function SetupForm() {
   const router = useRouter();
+  const t = useTranslations("setup");
+  const tAuth = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -58,7 +61,7 @@ export function SetupForm() {
       className="space-y-5"
     >
       <div className="space-y-1.5">
-        <Label htmlFor="companyName">Company name</Label>
+        <Label htmlFor="companyName">{t("companyName")}</Label>
         <Input
           id="companyName"
           name="companyName"
@@ -76,12 +79,12 @@ export function SetupForm() {
           )}
         />
         {touched.companyName && !validity.companyName ? (
-          <FieldError>Company name is required.</FieldError>
+          <FieldError>{t("companyNameRequired")}</FieldError>
         ) : null}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="email">Owner email</Label>
+        <Label htmlFor="email">{t("ownerEmail")}</Label>
         <Input
           id="email"
           name="email"
@@ -98,12 +101,12 @@ export function SetupForm() {
           )}
         />
         {touched.email && !validity.email ? (
-          <FieldError>Enter a valid email address.</FieldError>
+          <FieldError>{t("invalidEmail")}</FieldError>
         ) : null}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{tAuth("password")}</Label>
         <Input
           id="password"
           name="password"
@@ -131,7 +134,7 @@ export function SetupForm() {
           {validity.password ? (
             <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
           ) : null}
-          <span>Use at least 12 characters. A password manager is recommended.</span>
+          <span>{tAuth("passwordHint")}</span>
         </p>
       </div>
 
@@ -151,7 +154,7 @@ export function SetupForm() {
         className="w-full"
         disabled={pending || !allValid}
       >
-        {pending ? "Creating account..." : "Create owner account"}
+        {pending ? t("submitting") : t("submit")}
       </Button>
     </form>
   );

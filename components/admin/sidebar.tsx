@@ -34,41 +34,42 @@ import {
   Database,
   type LucideIcon,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/brand/wordmark";
 
-type NavItem = { href: string; label: string; icon: LucideIcon };
+type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
-const SECTIONS: { heading: string; items: NavItem[] }[] = [
+const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
-    heading: "Overview",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    headingKey: "overview",
+    items: [{ href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard }],
   },
   {
-    heading: "Manage",
+    headingKey: "manage",
     items: [
-      { href: "/employees", label: "Employees", icon: Users },
-      { href: "/time", label: "Time", icon: CalendarDays },
-      { href: "/payroll", label: "Payroll", icon: Wallet },
-      { href: "/salaried", label: "Salaried", icon: Briefcase },
-      { href: "/calendar", label: "Calendar", icon: CalendarRange },
-      { href: "/requests", label: "Requests", icon: MessageSquareWarning },
+      { href: "/employees", labelKey: "employees", icon: Users },
+      { href: "/time", labelKey: "time", icon: CalendarDays },
+      { href: "/payroll", labelKey: "payroll", icon: Wallet },
+      { href: "/salaried", labelKey: "salaried", icon: Briefcase },
+      { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
+      { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
     ],
   },
   {
-    heading: "Operate",
+    headingKey: "operate",
     items: [
-      { href: "/ngteco", label: "NGTeco", icon: Workflow },
-      { href: "/reports", label: "Reports", icon: BarChart3 },
-      { href: "/audit", label: "Audit", icon: ScrollText },
-      { href: "/db", label: "Database", icon: Database },
+      { href: "/ngteco", labelKey: "ngteco", icon: Workflow },
+      { href: "/reports", labelKey: "reports", icon: BarChart3 },
+      { href: "/audit", labelKey: "audit", icon: ScrollText },
+      { href: "/db", labelKey: "database", icon: Database },
     ],
   },
 ];
 
 const FOOTER_NAV: NavItem = {
   href: "/settings",
-  label: "Settings",
+  labelKey: "settings",
   icon: Settings2,
 };
 
@@ -85,6 +86,7 @@ export function Sidebar({
   systemHealthy?: boolean;
 }) {
   const pathname = usePathname() ?? "";
+  const tNav = useTranslations("nav");
 
   return (
     <aside
@@ -111,16 +113,16 @@ export function Sidebar({
 
       <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
         {SECTIONS.map((sec) => (
-          <div key={sec.heading}>
+          <div key={sec.headingKey}>
             <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-subtle/80">
-              {sec.heading}
+              {tNav(sec.headingKey)}
             </div>
             <ul className="space-y-0.5">
-              {sec.items.map(({ href, label, icon: Icon }) => (
+              {sec.items.map(({ href, labelKey, icon: Icon }) => (
                 <SidebarItem
                   key={href}
                   href={href}
-                  label={label}
+                  label={tNav(labelKey)}
                   Icon={Icon}
                   active={isActive(pathname, href)}
                 />
@@ -133,7 +135,7 @@ export function Sidebar({
       <div className="px-3 pb-3 pt-3 border-t border-border/50 shrink-0 space-y-1">
         <SidebarItem
           href={FOOTER_NAV.href}
-          label={FOOTER_NAV.label}
+          label={tNav(FOOTER_NAV.labelKey)}
           Icon={FOOTER_NAV.icon}
           active={isActive(pathname, FOOTER_NAV.href)}
         />
@@ -193,10 +195,12 @@ function SidebarItem({
 }
 
 function SystemStatus({ healthy }: { healthy: boolean }) {
+  const tNav = useTranslations("nav");
+  const label = healthy ? tNav("systemHealthy") : tNav("systemDegraded");
   return (
     <div
       className="px-3 py-1.5 flex items-center gap-2 text-[11px] text-text-subtle"
-      title={healthy ? "System healthy" : "System degraded"}
+      title={label}
       role="status"
       aria-live="polite"
     >
@@ -210,9 +214,7 @@ function SystemStatus({ healthy }: { healthy: boolean }) {
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn-700" />
         )}
       </span>
-      <span className="font-medium tracking-tight">
-        {healthy ? "All systems normal" : "System degraded"}
-      </span>
+      <span className="font-medium tracking-tight">{label}</span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ export function MissedPunchForm({
   alertId: string;
   date: string;
 }) {
+  const t = useTranslations("employee.missedPunch");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   return (
@@ -28,7 +30,7 @@ export function MissedPunchForm({
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="claimedClockIn">Clock in</Label>
+          <Label htmlFor="claimedClockIn">{t("clockIn")}</Label>
           <Input
             id="claimedClockIn"
             name="claimedClockIn"
@@ -38,7 +40,7 @@ export function MissedPunchForm({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="claimedClockOut">Clock out</Label>
+          <Label htmlFor="claimedClockOut">{t("clockOut")}</Label>
           <Input
             id="claimedClockOut"
             name="claimedClockOut"
@@ -48,7 +50,7 @@ export function MissedPunchForm({
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor="reason">What happened?</Label>
+        <Label htmlFor="reason">{t("whatHappened")}</Label>
         <textarea
           id="reason"
           name="reason"
@@ -61,7 +63,7 @@ export function MissedPunchForm({
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Submitting…" : "Submit fix request"}
+        {pending ? t("submitting") : t("submitFix")}
       </Button>
     </form>
   );

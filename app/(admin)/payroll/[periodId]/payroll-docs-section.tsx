@@ -40,14 +40,22 @@ export function PayrollDocsSection({
   initialDocs: PayrollPeriodDocument[];
   locked: boolean;
 }) {
-  // Only employees opted-in via the per-employee requiresW2Upload flag,
-  // AND whose pay schedule matches this period. Without the schedule
-  // filter, salaried staff with a weekly schedule (e.g. Seri) or no
-  // schedule (e.g. Sahil) would surface under a semi-monthly period
-  // they have nothing to do with.
+  // STRICT schedule isolation. An employee's paystub upload belongs on
+  // the period that matches their pay schedule and nowhere else.
+  // Owner directive: "JUAN IS ALREADY NOTED AS A SEMI MONTHLY...
+  // SERI AND SAHIL ARE SALARIED!!!" — the prior "show all when period
+  // has no schedule" fallback was bleeding semi-monthly + scheduleless
+  // salaried employees onto weekly periods.
+  //
+  //   period.payScheduleId === employee.payScheduleId  → show
+  //   anything else                                     → hide
+  //
+  // Both being NULL is a legacy back-compat case: surfaces when an
+  // unassigned salaried employee lands on an unassigned period. Once
+  // the consolidate-duplicate-periods migration runs and schedules
+  // get tagged, this collapses to "schedule matches schedule".
   const w2Employees = employees.filter((e) => {
     if (!e.requiresW2Upload) return false;
-    if (periodPayScheduleId === null) return true;
     return e.payScheduleId === periodPayScheduleId;
   });
 

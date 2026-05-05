@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { requireSession } from "@/lib/auth-guards";
 import { getMissedPunchAlertById } from "@/lib/db/queries/requests";
 import { ExceptionBadge } from "@/components/domain/exception-badge";
@@ -18,6 +17,7 @@ export default async function MissedPunchFixPage({
   params: Promise<{ alertId: string }>;
 }) {
   const session = await requireSession();
+  const t = await getTranslations("employee.missedPunch");
   if (!session.user.employeeId) notFound();
   const { alertId } = await params;
   const alert = await getMissedPunchAlertById(alertId);
@@ -27,7 +27,7 @@ export default async function MissedPunchFixPage({
     <main className="px-4 py-6 space-y-4">
       <Button asChild variant="ghost" size="sm">
         <Link href="/me/home">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t("back")}
         </Link>
       </Button>
       <Card>

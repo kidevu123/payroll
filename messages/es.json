@@ -315,7 +315,7 @@
       "emptyTitle": "Aún no hay notificaciones",
       "emptyDescription": "Lo que le enviemos aparecerá aquí.",
       "addToHomeScreen": "Primero agregue al inicio",
-      "addToHomeScreenBody": "En iPhone/iPad, las notificaciones push solo llegan desde el icono en la pantalla de inicio, no desde una pestaña normal de Safari. Toque el botón {share} (cuadrado con flecha), elija {add}, luego abra la app desde ese icono y vuelva aquí para activarlas.",
+      "addToHomeScreenBody": "En iPhone/iPad, las notificaciones push solo llegan desde el icono en la pantalla de inicio, no desde una pestaña normal de Safari. Toque el botón <share>Compartir</share> (cuadrado con flecha), elija <add>Agregar a pantalla de inicio</add>, luego abra la app desde ese icono y vuelva aquí para activarlas.",
       "shareButton": "Compartir",
       "addToHomeScreenAction": "Agregar a pantalla de inicio",
       "disabling": "Desactivando...",

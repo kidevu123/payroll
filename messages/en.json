@@ -315,7 +315,7 @@
       "emptyTitle": "No notifications yet",
       "emptyDescription": "Anything we send to you will show up here.",
       "addToHomeScreen": "Add to Home Screen first",
-      "addToHomeScreenBody": "On iPhone/iPad, push only delivers from a Home Screen icon — not a regular Safari tab. Tap the {share} button (the square with an arrow), choose {add}, then open the app from that icon and come back here to enable.",
+      "addToHomeScreenBody": "On iPhone/iPad, push only delivers from a Home Screen icon — not a regular Safari tab. Tap the <share>Share</share> button (the square with an arrow), choose <add>Add to Home Screen</add>, then open the app from that icon and come back here to enable.",
       "shareButton": "Share",
       "addToHomeScreenAction": "Add to Home Screen",
       "disabling": "Disabling...",

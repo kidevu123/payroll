@@ -233,7 +233,6 @@ export default async function PayrollPage({
           <ScheduleTabs
             current={tab}
             basePath="/payroll"
-            hrefs={{ salaried: "/salaried" }}
           />
         </div>
         <div className="text-xs text-text-muted">

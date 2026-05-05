@@ -4,30 +4,34 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { signOutAction } from "./sign-out-action";
 import { CommandPalette, type CommandTarget } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 
-const TITLE_MAP: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/employees": "Employees",
-  "/time": "Time",
-  "/payroll": "Payroll",
-  "/requests": "Requests",
-  "/ngteco": "NGTeco",
-  "/reports": "Reports",
-  "/audit": "Audit",
-  "/settings": "Settings",
+const TITLE_KEY_MAP: Record<string, string> = {
+  "/dashboard": "dashboard",
+  "/employees": "employees",
+  "/time": "time",
+  "/payroll": "payroll",
+  "/requests": "requests",
+  "/ngteco": "ngteco",
+  "/reports": "reports",
+  "/audit": "audit",
+  "/settings": "settings",
 };
 
-function titleFor(pathname: string): { title: string; crumbs: string[] } {
+function titleKeyFor(
+  pathname: string,
+): { titleKey: string | null; rawTitle: string; crumbs: string[] } {
   const segs = pathname.split("/").filter(Boolean);
-  if (segs.length === 0) return { title: "Dashboard", crumbs: [] };
+  if (segs.length === 0) return { titleKey: "dashboard", rawTitle: "Dashboard", crumbs: [] };
   const head = "/" + segs[0];
-  const root = TITLE_MAP[head] ?? segs[0]!;
-  if (segs.length === 1) return { title: root, crumbs: [] };
+  const titleKey = TITLE_KEY_MAP[head] ?? null;
+  const rawTitle = segs[0]!;
+  if (segs.length === 1) return { titleKey, rawTitle, crumbs: [] };
   // Build human-readable crumbs from the rest. Numeric-ish segments and
   // UUIDs are turned into a generic "details" label so the breadcrumb stays
   // legible without dragging the URL into the UI.
@@ -36,7 +40,7 @@ function titleFor(pathname: string): { title: string; crumbs: string[] } {
     return s.replace(/-/g, " ");
   });
   const crumbs = rest.filter((x): x is string => Boolean(x));
-  return { title: root, crumbs };
+  return { titleKey, rawTitle, crumbs };
 }
 
 function initialsFor(email: string): string {
@@ -70,7 +74,10 @@ export function Topbar({
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
-  const { title, crumbs } = titleFor(pathname);
+  const tNav = useTranslations("nav");
+  const tAuth = useTranslations("auth");
+  const { titleKey, rawTitle, crumbs } = titleKeyFor(pathname);
+  const title = titleKey ? tNav(titleKey) : rawTitle;
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement | null>(null);
@@ -151,10 +158,10 @@ export function Topbar({
               "hover:bg-surface-2/50 hover:border-border-strong/70 hover:text-text transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             )}
-            aria-label="Open command palette"
+            aria-label={tNav("openCommandPalette")}
           >
             <Search className="h-3.5 w-3.5 shrink-0 text-text-subtle" aria-hidden />
-            <span className="flex-1 text-left tracking-tight">Search anything</span>
+            <span className="flex-1 text-left tracking-tight">{tNav("search")}</span>
             <kbd className="ml-1 inline-flex items-center gap-0.5 font-mono text-[10px] px-1.5 h-5 rounded-md border border-border/80 bg-surface-2/60 text-text-subtle">
               <span aria-label="Command">⌘</span>K
             </kbd>
@@ -167,7 +174,11 @@ export function Topbar({
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Link
             href="/requests"
-            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+            aria-label={
+              unreadCount > 0
+                ? tNav("notificationsUnreadAriaLabel", { count: unreadCount })
+                : tNav("notificationsAriaLabel")
+            }
             className={cn(
               "relative h-9 w-9 inline-flex items-center justify-center rounded-lg text-text-muted",
               "hover:bg-surface-2/70 hover:text-text transition-colors",
@@ -194,7 +205,7 @@ export function Topbar({
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={userMenuOpen}
-              aria-label="User menu"
+              aria-label={tNav("userMenu")}
               className={cn(
                 "h-9 inline-flex items-center gap-2 pl-1 pr-2 rounded-input hover:bg-surface-2 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
@@ -245,7 +256,7 @@ export function Topbar({
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text transition-colors text-left"
                   >
                     <LogOut className="h-4 w-4 text-text-subtle" aria-hidden />
-                    Sign out
+                    {tAuth("signOut")}
                   </button>
                 </form>
               </div>

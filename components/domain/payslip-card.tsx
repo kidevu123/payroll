@@ -22,6 +22,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronRight, AlertTriangle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { StatusPill, type StatusKind } from "./status-pill";
 import { MoneyDisplay } from "./money-display";
@@ -55,12 +56,8 @@ const STATE_TO_PILL: Record<PayslipCardState, StatusKind> = {
   disputed: "PENDING",
 };
 
-const PILL_LABEL_OVERRIDE: Partial<Record<PayslipCardState, string>> = {
-  acknowledged: "Acknowledged",
-  published: "Awaiting review",
-};
-
 export function PayslipCard(props: PayslipCardProps) {
+  const t = useTranslations("employee.pay");
   const isDisputed = props.state === "disputed";
   const decimals = props.hoursDecimalPlaces ?? 2;
 
@@ -87,7 +84,7 @@ export function PayslipCard(props: PayslipCardProps) {
             {isDisputed ? (
               <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
                 <AlertTriangle className="h-3 w-3" aria-hidden />
-                Problem reported
+                {t("problemReported")}
               </span>
             ) : (
               <CardPill state={props.state} />
@@ -103,7 +100,7 @@ export function PayslipCard(props: PayslipCardProps) {
             </span>
             <span className="text-xs text-text-muted">
               <HoursDisplay hours={props.hours} decimals={decimals} />{" "}
-              <span className="text-text-subtle">hrs</span>
+              <span className="text-text-subtle">{t("hours").toLowerCase()}</span>
             </span>
           </div>
         </div>
@@ -128,8 +125,14 @@ export function PayslipCard(props: PayslipCardProps) {
 }
 
 function CardPill({ state }: { state: PayslipCardState }) {
+  const t = useTranslations("employee.pay");
   const pillKind = STATE_TO_PILL[state];
-  const override = PILL_LABEL_OVERRIDE[state];
+  const override =
+    state === "acknowledged"
+      ? t("stateAcknowledged")
+      : state === "published"
+        ? t("statePending")
+        : null;
   if (!override) return <StatusPill status={pillKind} />;
   // We want a friendlier label than the StatusPill default — render the
   // same chrome inline so visual weight matches the rest of the system.

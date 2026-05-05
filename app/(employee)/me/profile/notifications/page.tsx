@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, BellRing } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +24,7 @@ import { PushToggle } from "./push-toggle";
 
 export default async function NotificationsPage() {
   const session = await requireSession();
+  const t = await getTranslations("employee.notifications");
   const configured = vapidConfigured();
   const [recent, subs] = await Promise.all([
     db
@@ -41,17 +43,15 @@ export default async function NotificationsPage() {
     <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/profile">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t("back")}
         </Link>
       </Button>
 
       <Card>
         <CardHeader>
-          <CardTitle>Push notifications</CardTitle>
+          <CardTitle>{t("pushTitle")}</CardTitle>
           <CardDescription>
-            Get pinged on this device when payroll publishes or a missed-punch
-            alert lands. Tied to this browser; revoking notification permission
-            in your OS clears it on the next reconnect.
+            {t("pushDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -65,12 +65,10 @@ export default async function NotificationsPage() {
               />
               <div className="space-y-1">
                 <p className="font-medium tracking-tight">
-                  Push notifications aren&apos;t set up yet.
+                  {t("notConfiguredTitle")}
                 </p>
                 <p className="text-[11px] leading-relaxed">
-                  Your admin needs to configure VAPID keys before this device
-                  can subscribe. They&apos;ll find the setup steps under{" "}
-                  <strong>Settings → Notifications</strong>.
+                  {t("notConfiguredBody")}
                 </p>
               </div>
             </div>
@@ -80,15 +78,15 @@ export default async function NotificationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent notifications</CardTitle>
-          <CardDescription>Last 20 alerts sent to your account.</CardDescription>
+          <CardTitle>{t("recentTitle")}</CardTitle>
+          <CardDescription>{t("recentDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
             <EmptyState
               icon={BellRing}
-              title="No notifications yet"
-              description="Anything we send to you will show up here."
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
               tone="neutral"
             />
           ) : (

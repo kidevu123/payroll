@@ -12,6 +12,7 @@ import {
   CircleDashed,
   AlertTriangle,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 export type StatusKind =
@@ -39,29 +40,29 @@ export type StatusKind =
 
 type Kind = "neutral" | "success" | "warn" | "danger" | "info";
 
-type Style = { kind: Kind; label: string; Icon: React.ComponentType<{ className?: string }> };
+type Style = { kind: Kind; key: string; Icon: React.ComponentType<{ className?: string }> };
 
 const STYLES: Record<StatusKind, Style> = {
-  OPEN: { kind: "info", label: "Open", Icon: Unlock },
-  LOCKED: { kind: "warn", label: "Locked", Icon: Lock },
-  PAID: { kind: "success", label: "Paid", Icon: CircleCheck },
+  OPEN: { kind: "info", key: "open", Icon: Unlock },
+  LOCKED: { kind: "warn", key: "locked", Icon: Lock },
+  PAID: { kind: "success", key: "paid", Icon: CircleCheck },
 
-  PENDING: { kind: "warn", label: "Pending", Icon: Clock },
-  APPROVED: { kind: "success", label: "Approved", Icon: CircleCheck },
-  REJECTED: { kind: "danger", label: "Rejected", Icon: CircleX },
+  PENDING: { kind: "warn", key: "pending", Icon: Clock },
+  APPROVED: { kind: "success", key: "approved", Icon: CircleCheck },
+  REJECTED: { kind: "danger", key: "rejected", Icon: CircleX },
 
-  ACTIVE: { kind: "success", label: "Active", Icon: Circle },
-  INACTIVE: { kind: "neutral", label: "Inactive", Icon: CircleDashed },
-  TERMINATED: { kind: "neutral", label: "Terminated", Icon: CircleDashed },
+  ACTIVE: { kind: "success", key: "active", Icon: Circle },
+  INACTIVE: { kind: "neutral", key: "inactive", Icon: CircleDashed },
+  TERMINATED: { kind: "neutral", key: "terminated", Icon: CircleDashed },
 
-  SCHEDULED: { kind: "info", label: "Scheduled", Icon: Clock },
-  INGESTING: { kind: "info", label: "Ingesting", Icon: Clock },
-  INGEST_FAILED: { kind: "danger", label: "Ingest failed", Icon: AlertTriangle },
-  AWAITING_EMPLOYEE_FIXES: { kind: "warn", label: "Awaiting fixes", Icon: AlertTriangle },
-  AWAITING_ADMIN_REVIEW: { kind: "warn", label: "Awaiting review", Icon: AlertTriangle },
-  PUBLISHED: { kind: "success", label: "Published", Icon: CircleCheck },
-  FAILED: { kind: "danger", label: "Failed", Icon: CircleX },
-  CANCELLED: { kind: "neutral", label: "Cancelled", Icon: CircleDashed },
+  SCHEDULED: { kind: "info", key: "scheduled", Icon: Clock },
+  INGESTING: { kind: "info", key: "ingesting", Icon: Clock },
+  INGEST_FAILED: { kind: "danger", key: "ingestFailed", Icon: AlertTriangle },
+  AWAITING_EMPLOYEE_FIXES: { kind: "warn", key: "awaitingFixes", Icon: AlertTriangle },
+  AWAITING_ADMIN_REVIEW: { kind: "warn", key: "awaitingReview", Icon: AlertTriangle },
+  PUBLISHED: { kind: "success", key: "published", Icon: CircleCheck },
+  FAILED: { kind: "danger", key: "failed", Icon: CircleX },
+  CANCELLED: { kind: "neutral", key: "cancelled", Icon: CircleDashed },
 };
 
 // Kind classes use a softer hairline border + a subtle inset highlight to
@@ -87,6 +88,7 @@ export function StatusPill({
   status: StatusKind;
   className?: string;
 }) {
+  const t = useTranslations("status");
   const s = STYLES[status];
   const { Icon } = s;
   return (
@@ -98,7 +100,7 @@ export function StatusPill({
       )}
     >
       <Icon className="h-3 w-3" aria-hidden="true" />
-      {s.label}
+      {t(s.key)}
     </span>
   );
 }

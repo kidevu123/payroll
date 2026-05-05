@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { hasAnyUser } from "@/lib/db/queries/users";
 import { AuthLayout } from "@/components/brand/auth-layout";
@@ -9,17 +10,18 @@ export default async function LoginPage() {
   if (!(await hasAnyUser())) redirect("/setup");
   const session = await auth();
   if (session) redirect("/");
+  const t = await getTranslations("auth");
 
   return (
     <AuthLayout
-      eyebrow="Sign in"
-      title="Welcome back"
-      description="Use the email and password your administrator gave you."
+      eyebrow={t("signIn")}
+      title={t("welcomeBack")}
+      description={t("welcomeBackDescription")}
       footer={
         <>
-          Forgot your password?{" "}
+          {t("forgotPassword")}{" "}
           <Link href="/login/reset" className="text-brand-700 underline underline-offset-2 hover:text-brand-800">
-            Reset it
+            {t("resetIt")}
           </Link>
         </>
       }

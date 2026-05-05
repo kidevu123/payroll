@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { signInAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ export function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
   const from = search.get("from") ?? "/";
+  const t = useTranslations("auth");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -38,7 +40,7 @@ export function LoginForm() {
       className="space-y-5"
     >
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t("email")}</Label>
         <Input
           id="email"
           name="email"
@@ -54,7 +56,7 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t("password")}</Label>
         <Input
           id="password"
           name="password"
@@ -80,7 +82,7 @@ export function LoginForm() {
         ) : null}
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Signing in..." : "Sign in"}
+        {pending ? t("signingIn") : t("signIn")}
       </Button>
     </form>
   );

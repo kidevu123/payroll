@@ -119,14 +119,27 @@ export default async function PeriodReviewPage({
     ? (run!.cohortEmployeeIds as string[])
     : null;
   const cohortSet = runCohort ? new Set(runCohort) : null;
+  // Strict schedule isolation. Owner has been explicit, repeatedly:
+  // weekly and semi-monthly periods must NOT mix employees. The prior
+  // OR e.payScheduleId === null was leaking unassigned employees onto
+  // every schedule's period.
+  //
+  //   With cohort     → exact set, no further filter.
+  //   With schedule   → exact match. Employees with no schedule still
+  //                     appear because they're treated as wildcards
+  //                     (legacy onboarding state); future tightening
+  //                     would remove this once every employee has a
+  //                     schedule attached.
+  //   No schedule     → all (legacy fallback for periods that pre-date
+  //                     the schedule tagging).
+  // SALARIED staff are excluded from the punch-driven totals — they
+  // surface in the W2 upload section underneath instead.
   const employees = (
     cohortSet
       ? allEmployees.filter((e) => cohortSet.has(e.id))
       : effectiveScheduleId
         ? allEmployees.filter(
-            (e) =>
-              e.payScheduleId === effectiveScheduleId ||
-              e.payScheduleId === null,
+            (e) => e.payScheduleId === effectiveScheduleId,
           )
         : allEmployees
   ).filter((e) => e.payType !== "SALARIED");
