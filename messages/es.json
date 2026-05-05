@@ -100,8 +100,19 @@
     "tabs": {
       "home": "Inicio",
       "time": "Tiempo",
+      "calendar": "Calendario",
       "pay": "Pago",
       "profile": "Perfil"
+    },
+    "calendar": {
+      "title": "Calendario",
+      "prev": "Mes anterior",
+      "next": "Mes siguiente",
+      "today": "Hoy",
+      "thisMonth": "Este mes",
+      "none": "No hay días libres aprobados en este rango.",
+      "youOff": "Tienes el día libre",
+      "footer": "Mostrando solo días libres aprobados"
     },
     "tour": {
       "welcomeTitle": "Bienvenido a Milo",

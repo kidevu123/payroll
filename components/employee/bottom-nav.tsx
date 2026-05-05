@@ -11,21 +11,24 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, Wallet, User } from "lucide-react";
+import { Home, Calendar, CalendarDays, Wallet, User } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
 // `tour` is the data-tour attribute the AppTour walkthrough targets.
 // Stable string keys that don't change with translations.
 const ALL_TABS = [
-  { href: "/me/home", label: "Home", icon: Home, tour: "nav-home" },
-  { href: "/me/time", label: "Time", icon: Calendar, tour: "nav-time" },
-  { href: "/me/pay", label: "Pay", icon: Wallet, tour: "nav-pay" },
-  { href: "/me/profile", label: "Profile", icon: User, tour: "nav-profile" },
+  { href: "/me/home", labelKey: "home", icon: Home, tour: "nav-home" },
+  { href: "/me/time", labelKey: "time", icon: Calendar, tour: "nav-time" },
+  { href: "/me/calendar", labelKey: "calendar", icon: CalendarDays, tour: "nav-calendar" },
+  { href: "/me/pay", labelKey: "pay", icon: Wallet, tour: "nav-pay" },
+  { href: "/me/profile", labelKey: "profile", icon: User, tour: "nav-profile" },
 ] as const;
 
 export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
+  const t = useTranslations("employee.tabs");
   const tabs = hideTime
-    ? ALL_TABS.filter((t) => t.href !== "/me/time")
+    ? ALL_TABS.filter((tab) => tab.href !== "/me/time")
     : ALL_TABS;
   const pathname = usePathname() ?? "";
   return (
@@ -33,8 +36,13 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
       aria-label="Employee navigation"
       className="fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_2px_0_rgb(15_23_42_/_0.04)]"
     >
-      <ul className={cn("grid max-w-md mx-auto", hideTime ? "grid-cols-3" : "grid-cols-4")}>
-        {tabs.map(({ href, label, icon: Icon, tour }) => {
+      <ul
+        className={cn(
+          "grid max-w-md mx-auto",
+          hideTime ? "grid-cols-4" : "grid-cols-5",
+        )}
+      >
+        {tabs.map(({ href, labelKey, icon: Icon, tour }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={href}>
@@ -59,7 +67,7 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
                   )}
                   aria-hidden="true"
                 />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
               </Link>
             </li>
           );

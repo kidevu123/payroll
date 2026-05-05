@@ -100,8 +100,19 @@
     "tabs": {
       "home": "Home",
       "time": "Time",
+      "calendar": "Calendar",
       "pay": "Pay",
       "profile": "Profile"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "prev": "Previous month",
+      "next": "Next month",
+      "today": "Today",
+      "thisMonth": "This month",
+      "none": "No approved time off in this range.",
+      "youOff": "You're off this day",
+      "footer": "Showing approved time off only"
     },
     "tour": {
       "welcomeTitle": "Welcome to Milo",

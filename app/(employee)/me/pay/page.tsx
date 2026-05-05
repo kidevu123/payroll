@@ -168,25 +168,26 @@ export default async function EmployeePayList() {
                     ? "published"
                     : "pending";
             return (
-              <div key={payslip.id} className="space-y-2">
-                <PayslipCard
-                  payslipId={payslip.id}
-                  periodStart={period.startDate}
-                  periodEnd={period.endDate}
-                  hours={Number(payslip.hoursWorked)}
-                  roundedCents={payslip.roundedPayCents}
-                  hoursDecimalPlaces={payRules.hoursDecimalPlaces}
-                  state={state}
-                  href={`/me/pay/${payslip.periodId}`}
-                />
-                {docs.length > 0 && (
-                  <ul className="ml-3 sm:ml-5 space-y-1.5 border-l border-border/70 pl-3 sm:pl-5">
-                    {docs.map((d) => (
-                      <DocPill key={d.id} doc={d} viewLabel={t("viewDoc")} />
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <PayslipCard
+                key={payslip.id}
+                payslipId={payslip.id}
+                periodStart={period.startDate}
+                periodEnd={period.endDate}
+                hours={Number(payslip.hoursWorked)}
+                roundedCents={payslip.roundedPayCents}
+                hoursDecimalPlaces={payRules.hoursDecimalPlaces}
+                state={state}
+                href={`/me/pay/${payslip.periodId}`}
+                docs={docs.map((d) => ({
+                  id: d.id,
+                  originalFilename: d.originalFilename,
+                  kind: d.kind,
+                  payPeriodStart: d.payPeriodStart,
+                  payPeriodEnd: d.payPeriodEnd,
+                  amountCents: d.amountCents,
+                }))}
+                viewLabel={t("viewDoc")}
+              />
             );
           })}
 

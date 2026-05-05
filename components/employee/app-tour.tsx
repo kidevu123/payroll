@@ -146,26 +146,35 @@ export function AppTour({
   const isLast = stepIdx === STEPS.length - 1;
 
   // Tooltip placement: above for nav-tour items (placement="top") so we
-  // don't blanket the navbar.
+  // don't blanket the navbar. Clamp X within the viewport so the
+  // tooltip never overflows the right edge — was happening on the last
+  // step (rightmost bottom-nav item) on narrow phones.
   const tooltipStyle: React.CSSProperties = (() => {
+    const TOOLTIP_W = 288; // matches w-72
+    const MARGIN = 12;
+    const viewportW =
+      typeof window !== "undefined" ? window.innerWidth : 360;
     if (!rect) {
       return {
         position: "fixed",
         bottom: "20%",
-        left: "50%",
-        transform: "translateX(-50%)",
+        left: Math.max(MARGIN, (viewportW - TOOLTIP_W) / 2),
+        width: Math.min(TOOLTIP_W, viewportW - MARGIN * 2),
       };
     }
-    const top = step.placement === "top" ? rect.top - 12 : rect.bottom + 12;
-    const left = rect.left + rect.width / 2;
+    const desiredLeft = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+    const clampedLeft = Math.max(
+      MARGIN,
+      Math.min(desiredLeft, viewportW - TOOLTIP_W - MARGIN),
+    );
+    const baseTop =
+      step.placement === "top" ? rect.top - 12 : rect.bottom + 12;
     return {
       position: "fixed",
-      top,
-      left,
-      transform:
-        step.placement === "top"
-          ? "translate(-50%, -100%)"
-          : "translate(-50%, 0)",
+      top: baseTop,
+      left: clampedLeft,
+      width: Math.min(TOOLTIP_W, viewportW - MARGIN * 2),
+      transform: step.placement === "top" ? "translateY(-100%)" : undefined,
     };
   })();
 
@@ -192,7 +201,7 @@ export function AppTour({
       <div
         role="dialog"
         aria-modal="true"
-        className="z-[70] w-72 max-w-[88vw] rounded-card bg-surface p-4 shadow-pop space-y-2.5"
+        className="z-[70] rounded-card bg-surface p-4 shadow-pop space-y-2.5"
         style={tooltipStyle}
       >
         <div className="flex items-center justify-between gap-2">

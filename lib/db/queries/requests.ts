@@ -208,6 +208,27 @@ export async function listTimeOffRequestsForEmployee(
     .orderBy(desc(timeOffRequests.createdAt));
 }
 
+/**
+ * Approved time-off whose date range overlaps [from, to]. Used by the
+ * employee Calendar tab so colleagues can see who's off this week.
+ */
+export async function listApprovedTimeOffOverlapping(args: {
+  from: string; // YYYY-MM-DD inclusive
+  to: string; // YYYY-MM-DD inclusive
+}): Promise<TimeOffRequest[]> {
+  return db
+    .select()
+    .from(timeOffRequests)
+    .where(
+      and(
+        eq(timeOffRequests.status, "APPROVED"),
+        sql`${timeOffRequests.startDate} <= ${args.to}`,
+        sql`${timeOffRequests.endDate} >= ${args.from}`,
+      ),
+    )
+    .orderBy(timeOffRequests.startDate);
+}
+
 export async function createTimeOffRequest(
   input: NewTimeOffRequest,
   actor: Actor,
