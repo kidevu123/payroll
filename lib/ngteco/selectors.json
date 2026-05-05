@@ -30,8 +30,8 @@
     "verifyTypeCell": "td:nth-child(5), [role='cell']:nth-child(5)",
     "timezoneCell": "td:nth-child(6), [role='cell']:nth-child(6)",
     "sourceCell": "td:nth-child(7), [role='cell']:nth-child(7)",
-    "nextPageButton": "button[aria-label*='next' i], button:has-text(/›|Next/i)",
-    "pageInfo": "text=/of \\d+/i"
+    "nextPageButton": "button.btn-next:not([disabled]), button[aria-label*='next' i]:not([disabled]), .el-pagination button.btn-next:not([disabled])",
+    "pageInfo": ".el-pagination, [class*='pagination']"
   },
   "challenge": {
     "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",
