@@ -340,7 +340,33 @@ export async function scrapeViewAttendance(
         page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
         page.click(sel.login.submit),
       ]);
-      await page.waitForSelector(sel.login.loggedInLandmark, { timeout: 15_000 });
+      // Post-login readiness: try the configured landmark first
+      // (often "Quickly Setting" or similar dashboard text). If the
+      // operator-saved selector is stale (NGTeco renamed the menu
+      // again), fall back to "any sidebar nav rendered + URL is no
+      // longer /login". The downstream Attendance click has its own
+      // text/role fallbacks, so we don't need this landmark to be
+      // pixel-perfect — just enough to know the SPA is mounted.
+      try {
+        await page.waitForSelector(sel.login.loggedInLandmark, {
+          timeout: 6_000,
+        });
+      } catch {
+        try {
+          await page.waitForFunction(
+            () =>
+              !/\/login/i.test(window.location.pathname) &&
+              document.querySelectorAll("nav, aside, [role=navigation]").length >
+                0,
+            null,
+            { timeout: 8_000 },
+          );
+        } catch {
+          // Give the SPA one more beat — many MUI dashboards finish
+          // hydrating right around the 2s mark.
+          await page.waitForTimeout(1_500);
+        }
+      }
     }
 
     // SPA navigation only — page.goto() to a deep URL was nuking the

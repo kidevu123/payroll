@@ -248,13 +248,6 @@ function fmtTime(t: string | undefined): string {
 }
 
 export function AdminReport({ data }: { data: AdminReportInput }) {
-  const shifts = new Map<string, AdminReportInput["employees"]>();
-  for (const e of data.employees) {
-    const k = e.shiftName ?? "Unassigned";
-    const list = shifts.get(k) ?? [];
-    list.push(e);
-    shifts.set(k, list);
-  }
   let grandHours = 0;
   let grandGrossCents = 0;
   let grandRoundedCents = 0;
@@ -270,7 +263,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
     <Document
       title={`Admin Report ${data.period.startDate} to ${data.period.endDate}`}
     >
-      <Page size="LETTER" style={styles.page} wrap>
+      <Page size="LETTER" orientation="landscape" style={styles.page} wrap>
         <Text style={[styles.summaryTitle, { color: brand }]}>
           {data.company.name} — Payroll {data.period.startDate} to {data.period.endDate}
         </Text>
@@ -280,65 +273,41 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
           generated {data.generatedAt}
         </Text>
 
+        {/* Owner ask: drop the Shift column + Day/Unassigned subtotals
+            and let the page run landscape so the summary stays
+            single-page. Employees are now a flat alphabetical list
+            with one grand-total row at the end. */}
         <View style={styles.table}>
           <View style={styles.th}>
             <Text style={styles.cId}>ID</Text>
             <Text style={styles.cName}>Employee</Text>
-            <Text style={styles.cShift}>Shift</Text>
             <Text style={styles.cHours}>Hours</Text>
             <Text style={styles.cPay}>Total</Text>
             <Text style={styles.cRounded}>Rounded</Text>
           </View>
 
-          {[...shifts.entries()].map(([shiftName, rows]) => {
-            let sHours = 0;
-            let sGross = 0;
-            let sRounded = 0;
-            for (const r of rows) {
-              sHours += r.totals.hours;
-              sGross += r.totals.grossCents;
-              sRounded += r.totals.roundedCents;
-            }
-            return (
-              <View key={`shift-${shiftName}`}>
-                {rows.map((r, i) => (
-                  <View key={`row-${shiftName}-${i}`} style={styles.tr}>
-                    <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
-                    <Text style={styles.cName}>{r.displayName}</Text>
-                    <Text style={styles.cShift}>{r.shiftName ?? "Unassigned"}</Text>
-                    <Text style={styles.cHours}>
-                      {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
-                    </Text>
-                    <Text style={styles.cPay}>
-                      {money(r.totals.grossCents, data.company.locale)}
-                    </Text>
-                    <Text style={styles.cRounded}>
-                      {moneyWhole(r.totals.roundedCents, data.company.locale)}
-                    </Text>
-                  </View>
-                ))}
-                <View style={styles.shiftSubtotal}>
-                  <Text style={styles.cId} />
-                  <Text style={styles.cName}>{shiftName} subtotal</Text>
-                  <Text style={styles.cShift} />
-                  <Text style={styles.cHours}>
-                    {hrs(sHours, data.rules.hoursDecimalPlaces)}
-                  </Text>
-                  <Text style={styles.cPay}>
-                    {money(sGross, data.company.locale)}
-                  </Text>
-                  <Text style={styles.cRounded}>
-                    {moneyWhole(sRounded, data.company.locale)}
-                  </Text>
-                </View>
+          {data.employees
+            .slice()
+            .sort((a, b) => a.displayName.localeCompare(b.displayName))
+            .map((r, i) => (
+              <View key={`row-${i}`} style={styles.tr}>
+                <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
+                <Text style={styles.cName}>{r.displayName}</Text>
+                <Text style={styles.cHours}>
+                  {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
+                </Text>
+                <Text style={styles.cPay}>
+                  {money(r.totals.grossCents, data.company.locale)}
+                </Text>
+                <Text style={styles.cRounded}>
+                  {moneyWhole(r.totals.roundedCents, data.company.locale)}
+                </Text>
               </View>
-            );
-          })}
+            ))}
 
           <View style={styles.grandTotal}>
             <Text style={styles.cId} />
             <Text style={styles.cName}>GRAND TOTAL</Text>
-            <Text style={styles.cShift} />
             <Text style={styles.cHours}>
               {hrs(grandHours, data.rules.hoursDecimalPlaces)}
             </Text>
@@ -369,9 +338,8 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                   )}
                 </View>
                 <Text style={styles.blockMeta}>
-                  {e.shiftName ?? "Unassigned"}
                   {e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
-                    ? ` · ${money(e.hourlyRateCents, data.company.locale)}/hr`
+                    ? `${money(e.hourlyRateCents, data.company.locale)}/hr`
                     : ""}
                 </Text>
 
