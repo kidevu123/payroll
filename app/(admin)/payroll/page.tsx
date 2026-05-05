@@ -1,9 +1,22 @@
 // /payroll — "Run payroll" launcher. Historical reports moved to /reports;
 // this page is for actively driving a run (kick NGTeco scrape, upload a CSV,
 // review in-flight runs awaiting admin action).
+//
+// Visual layout (post-redesign):
+//   • ScheduleTabs strip on top (existing).
+//   • One "Active workflow" hero per tab:
+//       - left: current period summary (range, state, days remaining)
+//       - right: 2-3 primary CTAs (Open period, Pull NGTeco, Upload CSV)
+//       - bottom strip: realtime poll + key metrics
+//     The hero gets a left accent bar matching SchedulePill colors so the
+//     two cadences are visually segregated even before the user reads the
+//     tab label. Owner directive: weekly vs semi-monthly workflows must
+//     LOOK different, not just be filtered different.
+//   • In-flight runs (single-line rows).
+//   • Recent periods (open + locked only — paid lives in /reports).
 
 import Link from "next/link";
-import { Wallet, Upload, Play, ArrowRight } from "lucide-react";
+import { Wallet, Upload, ArrowRight, FileText } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -18,10 +31,16 @@ import {
   ScheduleTabs,
   parseScheduleTab,
   scheduleTabToKind,
+  type ScheduleTab,
 } from "@/components/domain/schedule-tabs";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import { db } from "@/lib/db";
-import { payrollRuns, payPeriods, paySchedules } from "@/lib/db/schema";
+import {
+  payrollRuns,
+  payPeriods,
+  paySchedules,
+  employees,
+} from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
@@ -31,6 +50,66 @@ import { PeriodDeleteButton } from "./period-delete-button";
 
 export const dynamic = "force-dynamic";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Tab → accent palette. Single source so the hero, accent bar, and "subtle
+// page tint" all agree. Mirrors components/domain/schedule-pill.tsx so the
+// /payroll page reads as the same color family as the chips in tables.
+// ─────────────────────────────────────────────────────────────────────────────
+const TAB_THEME: Record<
+  ScheduleTab,
+  {
+    accentBar: string;
+    heroTint: string;
+    badge: string;
+    label: string;
+  }
+> = {
+  all: {
+    accentBar: "bg-text/30",
+    heroTint: "bg-surface",
+    badge: "bg-surface-2 text-text-muted ring-border",
+    label: "All schedules",
+  },
+  weekly: {
+    accentBar: "bg-blue-500",
+    heroTint:
+      "bg-gradient-to-br from-blue-50/60 via-surface to-surface",
+    badge: "bg-blue-50 text-blue-700 ring-blue-200",
+    label: "Weekly payroll",
+  },
+  semi: {
+    accentBar: "bg-purple-500",
+    heroTint:
+      "bg-gradient-to-br from-purple-50/60 via-surface to-surface",
+    badge: "bg-purple-50 text-purple-700 ring-purple-200",
+    label: "Semi-monthly payroll",
+  },
+  salaried: {
+    // /payroll's salaried tab links out to /salaried, so this branch never
+    // actually renders the hero — but keep a record for type-completeness.
+    accentBar: "bg-emerald-500",
+    heroTint: "bg-surface",
+    badge: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    label: "Salaried payroll",
+  },
+};
+
+function daysBetween(aIso: string, bIso: string): number {
+  const a = new Date(`${aIso}T12:00:00Z`).getTime();
+  const b = new Date(`${bIso}T12:00:00Z`).getTime();
+  return Math.round((b - a) / 86_400_000);
+}
+
+function formatShortRange(startIso: string, endIso: string): string {
+  const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const a = new Date(`${startIso}T12:00:00Z`);
+  const b = new Date(`${endIso}T12:00:00Z`);
+  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
+  const left = `${MO[a.getUTCMonth()]} ${a.getUTCDate()}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
+  const right = `${MO[b.getUTCMonth()]} ${b.getUTCDate()}, ${b.getUTCFullYear()}`;
+  return `${left} – ${right}`;
+}
+
 export default async function PayrollPage({
   searchParams,
 }: {
@@ -39,62 +118,108 @@ export default async function PayrollPage({
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
-  const [openPeriods, recentInFlight, schedules, lastPoll] = await Promise.all([
-    (async () => {
-      // "Recent periods" = the period(s) the admin still has work to do on.
-      // PAID periods are historical — they belong in /reports, not on the
-      // run-launcher page. Filter them out at the query level.
-      const base = db
-        .select({
-          id: payPeriods.id,
-          startDate: payPeriods.startDate,
-          endDate: payPeriods.endDate,
-          state: payPeriods.state,
-          scheduleName: paySchedules.name,
-          scheduleKind: paySchedules.periodKind,
-        })
-        .from(payPeriods)
-        .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
-      const stateFilter = sql`${payPeriods.state} IN ('OPEN','LOCKED')`;
-      const q = kindFilter
-        ? base.where(
-            sql`${paySchedules.periodKind} = ${kindFilter} AND ${stateFilter}`,
-          )
-        : base.where(stateFilter);
-      return q.orderBy(desc(payPeriods.startDate)).limit(8);
-    })(),
-    (async () => {
-      // In-flight runs honor the schedule tab — Weekly tab must never
-      // show a Semi-monthly in-flight (and vice versa). Owner directive:
-      // workflows stay separate. The All tab still shows everything.
-      const stateClause = sql`${payrollRuns.state} IN ('SCHEDULED','INGESTING','INGEST_FAILED','AWAITING_EMPLOYEE_FIXES','AWAITING_ADMIN_REVIEW','APPROVED')`;
-      const base = db
-        .select({
-          id: payrollRuns.id,
-          periodId: payrollRuns.periodId,
-          state: payrollRuns.state,
-          startDate: payPeriods.startDate,
-          endDate: payPeriods.endDate,
-          scheduleName: paySchedules.name,
-          createdAt: payrollRuns.createdAt,
-        })
-        .from(payrollRuns)
-        .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
-        .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id));
-      const where = kindFilter
-        ? sql`${stateClause} AND ${paySchedules.periodKind} = ${kindFilter}`
-        : stateClause;
-      return base.where(where).orderBy(desc(payrollRuns.createdAt)).limit(10);
-    })(),
-    db.select().from(paySchedules).where(eq(paySchedules.active, true)),
-    getLastPoll(),
-  ]);
+  const theme = TAB_THEME[tab];
+
+  const [openPeriods, recentInFlight, schedules, lastPoll, employeeCount] =
+    await Promise.all([
+      (async () => {
+        // "Recent periods" = the period(s) the admin still has work to do on.
+        // PAID periods are historical — they belong in /reports, not on the
+        // run-launcher page. Filter them out at the query level.
+        const base = db
+          .select({
+            id: payPeriods.id,
+            startDate: payPeriods.startDate,
+            endDate: payPeriods.endDate,
+            state: payPeriods.state,
+            scheduleName: paySchedules.name,
+            scheduleKind: paySchedules.periodKind,
+          })
+          .from(payPeriods)
+          .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id));
+        const stateFilter = sql`${payPeriods.state} IN ('OPEN','LOCKED')`;
+        const q = kindFilter
+          ? base.where(
+              sql`${paySchedules.periodKind} = ${kindFilter} AND ${stateFilter}`,
+            )
+          : base.where(stateFilter);
+        return q.orderBy(desc(payPeriods.startDate)).limit(8);
+      })(),
+      (async () => {
+        // In-flight runs honor the schedule tab — Weekly tab must never
+        // show a Semi-monthly in-flight (and vice versa). Owner directive:
+        // workflows stay separate. The All tab still shows everything.
+        const stateClause = sql`${payrollRuns.state} IN ('SCHEDULED','INGESTING','INGEST_FAILED','AWAITING_EMPLOYEE_FIXES','AWAITING_ADMIN_REVIEW','APPROVED')`;
+        const base = db
+          .select({
+            id: payrollRuns.id,
+            periodId: payrollRuns.periodId,
+            state: payrollRuns.state,
+            startDate: payPeriods.startDate,
+            endDate: payPeriods.endDate,
+            scheduleName: paySchedules.name,
+            createdAt: payrollRuns.createdAt,
+          })
+          .from(payrollRuns)
+          .leftJoin(payPeriods, eq(payrollRuns.periodId, payPeriods.id))
+          .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id));
+        const where = kindFilter
+          ? sql`${stateClause} AND ${paySchedules.periodKind} = ${kindFilter}`
+          : stateClause;
+        return base.where(where).orderBy(desc(payrollRuns.createdAt)).limit(10);
+      })(),
+      db.select().from(paySchedules).where(eq(paySchedules.active, true)),
+      getLastPoll(),
+      // Active employee headcount on this cadence — surfaces as a hero
+      // metric so the admin sees "12 employees on this schedule" before
+      // they kick the import. Skips when the tab is "all".
+      (async () => {
+        if (!kindFilter) return null;
+        const rows = await db
+          .select({ c: sql<number>`count(*)::int` })
+          .from(employees)
+          .leftJoin(paySchedules, eq(employees.payScheduleId, paySchedules.id))
+          .where(
+            sql`${employees.status} = 'ACTIVE' AND ${paySchedules.periodKind} = ${kindFilter}`,
+          );
+        return rows[0]?.c ?? 0;
+      })(),
+    ]);
+
   // openPeriods is filtered to OPEN+LOCKED only (PAID lives in /reports).
   const openCount = openPeriods.filter((p) => p.state === "OPEN").length;
   const lockedCount = openPeriods.filter((p) => p.state === "LOCKED").length;
 
+  // Current period for the hero = most recent OPEN, falling back to most
+  // recent LOCKED. openPeriods is already ordered desc by startDate.
+  const currentOpen = openPeriods.find((p) => p.state === "OPEN");
+  const currentLocked = openPeriods.find((p) => p.state === "LOCKED");
+  const currentPeriod = currentOpen ?? currentLocked ?? null;
+
+  const today = new Date();
+  const todayIso = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-${String(today.getUTCDate()).padStart(2, "0")}`;
+
+  // For weekly tab the displayed end honors the canonical Mon-Sun pay week
+  // even when the period's stored end is shorter (Mon-Fri short upload).
+  const heroDisplayEnd = currentPeriod
+    ? canonicalEndForScheduleName(
+        currentPeriod.startDate,
+        currentPeriod.endDate,
+        currentPeriod.scheduleName,
+      )
+    : null;
+
+  // Days remaining is "days until canonical end". Negative means the
+  // period is closed and just hasn't been LOCKED yet — surface as
+  // "closed N days ago" so the admin treats it as urgent.
+  const daysRemaining =
+    currentPeriod && heroDisplayEnd
+      ? daysBetween(todayIso, heroDisplayEnd)
+      : null;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Header: title + tabs + summary chips. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-2">
           <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
@@ -118,93 +243,152 @@ export default async function PayrollPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="bg-surface-2 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Play className="h-4 w-4 text-brand-700" /> Pull from NGTeco
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <NgtecoRunNowButton size="md" />
-            <p className="text-xs text-text-muted">
-              The scheduled cron(s) still fire on their own:{" "}
-              {schedules.length === 0
-                ? "no active schedules — add one in Settings → Pay schedules."
-                : schedules.map((s) => s.name).join(", ")}
-              .
-            </p>
-            <div className="border-t border-border pt-3">
-              <p className="text-xs font-medium text-text mb-1.5">
-                Realtime punch poll
-              </p>
-              <p className="text-xs text-text-muted mb-2">
-                Pull the latest in/out events from NGTeco without creating a
-                new payroll run. Use this to confirm someone&apos;s punch is
-                visible.
-              </p>
-              <PollPunchesNowButton
-                initialLast={
-                  lastPoll
-                    ? {
-                        startedAt: lastPoll.startedAt.toISOString(),
-                        finishedAt:
-                          lastPoll.finishedAt?.toISOString() ?? null,
-                        ok: lastPoll.ok,
-                        triggeredBy: lastPoll.triggeredBy,
-                        pairsInserted: lastPoll.pairsInserted,
-                        pairsUpdated: lastPoll.pairsUpdated,
-                        errorMessage: lastPoll.errorMessage,
-                      }
-                    : null
-                }
-              />
+      {/* Hero: active workflow. The left accent bar + tinted background
+          give weekly vs semi-monthly distinct visual identities. The "All"
+          tab uses a neutral surface — the user explicitly opted out of
+          per-cadence focus, so don't impose a color choice. */}
+      <Card className={`relative overflow-hidden ${theme.heroTint}`}>
+        <div
+          aria-hidden
+          className={`absolute left-0 top-0 h-full w-1 ${theme.accentBar}`}
+        />
+        <CardHeader className="border-b-0 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center rounded-chip px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${theme.badge}`}
+              >
+                {theme.label}
+              </span>
+              {tab === "all" && (
+                <span className="text-[11px] text-text-muted">
+                  Pick a cadence above to focus the workflow.
+                </span>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <CardTitle className="text-lg">
+            {currentPeriod
+              ? "Active period"
+              : tab === "all"
+                ? "Run payroll"
+                : "No active period"}
+          </CardTitle>
+          <CardDescription>
+            {currentPeriod
+              ? "This is what needs your attention this cycle."
+              : "Trigger an import or upload a CSV to start the next period."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-3">
+          {/* Summary row: dates + state + days-remaining badge. */}
+          {currentPeriod && heroDisplayEnd ? (
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <Link
+                href={`/payroll/${currentPeriod.id}`}
+                className="flex items-baseline gap-2 text-xl font-semibold tracking-tight hover:text-brand-700 transition-colors"
+              >
+                {formatShortRange(currentPeriod.startDate, heroDisplayEnd)}
+              </Link>
+              <SchedulePill name={currentPeriod.scheduleName} />
+              <StatusPill status={currentPeriod.state} />
+              {daysRemaining !== null && (
+                <span className="text-xs text-text-muted">
+                  {daysRemaining > 0
+                    ? `${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining`
+                    : daysRemaining === 0
+                      ? "ends today"
+                      : `closed ${Math.abs(daysRemaining)} day${Math.abs(daysRemaining) === 1 ? "" : "s"} ago`}
+                </span>
+              )}
+            </div>
+          ) : null}
 
-        <Card className="bg-surface-2 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Upload className="h-4 w-4 text-brand-700" /> Upload CSV instead
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
+          {/* Primary CTA row: Open period (when one exists) + Pull NGTeco
+              + Upload CSV. NgtecoRunNowButton renders its own confirm
+              flow, so we let it own its space. CSV is demoted to a
+              compact secondary button — the owner uses NGTeco 95% of
+              the time, but CSV stays one click away. */}
+          <div className="flex flex-wrap items-center gap-2">
+            {currentPeriod && (
+              <Button asChild>
+                <Link href={`/payroll/${currentPeriod.id}`}>
+                  Open period <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            <NgtecoRunNowButton size="md" />
+            <Button asChild variant="secondary">
               <Link href="/run-payroll/upload">
-                Open upload form <ArrowRight className="h-4 w-4" />
+                <Upload className="h-4 w-4" /> Upload CSV
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between space-y-0">
-          <div>
-            <CardTitle className="text-base">In-flight runs</CardTitle>
-            <CardDescription>
-              {recentInFlight.length === 0
-                ? "Nothing is awaiting your action right now."
-                : `${recentInFlight.length} run${recentInFlight.length === 1 ? "" : "s"} awaiting review or fixes.`}
-            </CardDescription>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {recentInFlight.length === 0 ? (
-            <p className="text-sm text-text-muted">
-              {openCount > 0
-                ? `${openCount} open period${openCount === 1 ? "" : "s"} ready for the next tick.${
-                    lockedCount > 0
-                      ? ` ${lockedCount} locked, awaiting payment.`
-                      : ""
-                  }`
-                : lockedCount > 0
-                  ? `${lockedCount} locked period${lockedCount === 1 ? "" : "s"} awaiting payment. Mark paid from the period detail page once payment is sent.`
-                  : "Nothing currently in-flight. Historical reports live in Reports."}
-            </p>
-          ) : (
-            recentInFlight.map((r) => (
+
+          {/* Metric / cron / poll strip. Lives at the bottom of the hero
+              so the admin's eye lands on actions first, info second. */}
+          <div className="mt-4 pt-4 border-t border-border/60 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted">
+            {employeeCount !== null && (
+              <span>
+                <span className="font-medium text-text">{employeeCount}</span>{" "}
+                active employee{employeeCount === 1 ? "" : "s"} on this schedule
+              </span>
+            )}
+            <span>
+              {schedules.length === 0
+                ? "no active cron — add one in Settings → Pay schedules"
+                : `cron: ${schedules
+                    .filter((s) =>
+                      tab === "all"
+                        ? true
+                        : tab === "weekly"
+                          ? s.periodKind === "WEEKLY"
+                          : tab === "semi"
+                            ? s.periodKind === "SEMI_MONTHLY"
+                            : true,
+                    )
+                    .map((s) => s.name)
+                    .join(", ") || "—"}`}
+            </span>
+            <div className="flex-1" />
+            <PollPunchesNowButton
+              initialLast={
+                lastPoll
+                  ? {
+                      startedAt: lastPoll.startedAt.toISOString(),
+                      finishedAt:
+                        lastPoll.finishedAt?.toISOString() ?? null,
+                      ok: lastPoll.ok,
+                      triggeredBy: lastPoll.triggeredBy,
+                      pairsInserted: lastPoll.pairsInserted,
+                      pairsUpdated: lastPoll.pairsUpdated,
+                      errorMessage: lastPoll.errorMessage,
+                    }
+                  : null
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* In-flight runs: single-line-per-row list, only renders when there
+          are actually rows. Empty state collapses into a one-line
+          contextual hint under the hero rather than its own large card. */}
+      {recentInFlight.length > 0 ? (
+        <Card>
+          <CardHeader className="flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="h-4 w-4 text-brand-700" /> In-flight runs
+              </CardTitle>
+              <CardDescription>
+                {recentInFlight.length} run{recentInFlight.length === 1 ? "" : "s"}{" "}
+                awaiting review or fixes.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentInFlight.map((r) => (
               <InFlightRow
                 key={r.id}
                 runId={r.id}
@@ -215,16 +399,26 @@ export default async function PayrollPage({
                 state={r.state}
                 createdAt={r.createdAt.toISOString()}
               />
-            ))
-          )}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
+      {/* Recent periods. The accent bar is repeated on each row so the
+          cadence is recognizable in a glance even when the user is on
+          the All tab. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Wallet className="h-4 w-4 text-brand-700" /> Recent periods
           </CardTitle>
+          <CardDescription>
+            Open and locked periods awaiting work. Paid periods live in{" "}
+            <Link href="/reports" className="text-brand-700 underline underline-offset-2">
+              Reports
+            </Link>
+            .
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {openPeriods.length === 0 ? (
@@ -239,14 +433,20 @@ export default async function PayrollPage({
                 p.endDate,
                 p.scheduleName,
               );
+              const rowAccent =
+                p.scheduleKind === "WEEKLY"
+                  ? "before:bg-blue-500"
+                  : p.scheduleKind === "SEMI_MONTHLY"
+                    ? "before:bg-purple-500"
+                    : "before:bg-text/30";
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
+                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 ${rowAccent}`}
                 >
                   <Link
                     href={`/payroll/${p.id}`}
-                    className="flex items-center gap-3 font-medium flex-1 min-w-0"
+                    className="flex items-center gap-3 font-medium flex-1 min-w-0 pl-1"
                   >
                     <span>
                       {p.startDate} – {displayEnd}

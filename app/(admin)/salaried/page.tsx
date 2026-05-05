@@ -10,12 +10,11 @@ import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/domain/avatar";
 import { SalariedUploadSlot } from "./salaried-upload-slot";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ export default async function SalariedPage() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Salaried</h1>
+          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
           <p className="text-sm text-text-muted">
             Salaried employees are paid externally (W2). Upload paystubs here
             and they appear on each employee&apos;s portal under Pay.
@@ -58,29 +57,38 @@ export default async function SalariedPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Salaried</h1>
-        <p className="text-sm text-text-muted">
-          Upload W2 / paystub documents for salaried staff. Each employee
-          sees their own documents on their Pay tab.
-        </p>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
+          <p className="text-sm text-text-muted">
+            Upload W2 / paystub documents for salaried staff. Each employee
+            sees their own documents on their Pay tab.
+          </p>
+        </div>
+        <span className="text-xs text-text-muted shrink-0">
+          {salaried.length} {salaried.length === 1 ? "person" : "people"}
+        </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {docsByEmployee.map(({ employee, docs }) => (
           <Card key={employee.id}>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-purple-700" />
-                  {employee.displayName}
-                </CardTitle>
-                <CardDescription>
-                  {employee.email} · hired {employee.hiredOn}
-                  {docs.length > 0
-                    ? ` · ${docs.length} document${docs.length === 1 ? "" : "s"} uploaded`
-                    : " · no documents yet"}
-                </CardDescription>
+            <CardHeader className="py-3 flex flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar name={employee.displayName} size="sm" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm truncate">
+                      {employee.displayName}
+                    </span>
+                    <span className="text-[11px] text-text-subtle tabular-nums">
+                      {docs.length} {docs.length === 1 ? "doc" : "docs"}
+                    </span>
+                  </div>
+                  <div className="text-xs text-text-subtle truncate">
+                    {employee.email} · hired {employee.hiredOn}
+                  </div>
+                </div>
               </div>
               <Button asChild size="sm" variant="ghost">
                 <Link href={`/employees/${employee.id}`}>
@@ -88,7 +96,7 @@ export default async function SalariedPage() {
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="py-3">
               <SalariedUploadSlot
                 employeeId={employee.id}
                 docs={docs.map((d) => ({

@@ -1,5 +1,6 @@
-// Reports landing — legacy-style table of every payroll_run, newest first.
-// Each row links to the per-period admin detail at /payroll/[periodId].
+// Reports landing — newest first, grouped per pay-period card. Each
+// period's runs share a left-edge accent matching the schedule color so
+// Weekly vs Semi-monthly vs Salaried separate at a glance.
 
 import Link from "next/link";
 import { Download } from "lucide-react";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -38,26 +40,29 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-xs text-text-muted">
             {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.
           </p>
-          <ScheduleTabs
-            current={tab}
-            basePath="/reports"
-            hrefs={{ salaried: "/salaried" }}
-          />
         </div>
+        <ScheduleTabs
+          current={tab}
+          basePath="/reports"
+          hrefs={{ salaried: "/salaried" }}
+        />
       </div>
 
       <ReportsTable reports={reports} zohoOrgs={orgs} />
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-          <Download className="h-5 w-5 text-brand-700" />
+          <Download className="h-4 w-4 text-brand-700" />
           <CardTitle className="text-base">CSV exports</CardTitle>
+          <CardDescription className="ml-auto hidden sm:block">
+            Pull the underlying data for any period or audit window.
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
           <ExportLink type="employees" label="Employees" />

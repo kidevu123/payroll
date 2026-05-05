@@ -1,5 +1,19 @@
 "use client";
 
+// Reports table — premium redesign.
+//
+// Layout: each pay PERIOD is a self-contained "card row" with a left-edge
+// accent matching the schedule's color (blue=weekly, purple=semi-monthly,
+// teal=biweekly, amber=monthly). Inside the card sits the period summary
+// header and one or more run rows beneath it, separated by hairline
+// dividers. Months are visually segregated by a thin label divider —
+// just enough to chunk a long historical list into scannable groups.
+//
+// Per-row controls: View (eye, primary quick action) + Download PDF stay
+// outside as icon buttons. Everything else (signature print, publish,
+// Haute push, Boomin push, delete) lives behind a single MoreHorizontal
+// overflow menu so the row stays calm even when 7 actions are wired up.
+
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -11,12 +25,24 @@ import {
   Trash2,
   CheckCircle2,
   CircleDot,
+  MoreHorizontal,
+  Upload,
+  FileText,
 } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import {
   deleteReportAction,
   publishReportAction,
@@ -25,6 +51,20 @@ import {
 } from "./actions";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 function formatRange(startIso: string, endIso: string): string {
   if (!startIso || !endIso) return "—";
@@ -36,16 +76,89 @@ function formatRange(startIso: string, endIso: string): string {
   return `${left} – ${right}`;
 }
 
-// Canonical end (start + 6) for weekly schedules lives in
-// lib/payroll/period-boundaries.ts — single source of truth across
-// /payroll, /reports, /payroll/[periodId], /time, the admin-report PDF,
-// and the Zoho expense reference.
-import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
-
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
   const dt = d instanceof Date ? d : new Date(d);
   return `${MONTH_SHORT[dt.getMonth()]} ${String(dt.getDate()).padStart(2, "0")}, ${dt.getFullYear()}`;
+}
+
+/**
+ * Map a schedule name to a left-border accent color + soft tint for the
+ * period summary row. Mirrors `SchedulePill` so a period's chip and the
+ * row's accent agree at a glance.
+ */
+function scheduleAccent(name: string | null | undefined): {
+  border: string;
+  tint: string;
+} {
+  const n = (name ?? "").toLowerCase();
+  if (n.includes("semi")) {
+    return { border: "border-l-purple-500", tint: "bg-purple-50/40" };
+  }
+  if (n.includes("bi") || n.includes("two-week")) {
+    return { border: "border-l-teal-500", tint: "bg-teal-50/40" };
+  }
+  if (n.includes("month") && !n.includes("semi")) {
+    return { border: "border-l-amber-500", tint: "bg-amber-50/40" };
+  }
+  if (n.includes("week")) {
+    return { border: "border-l-blue-500", tint: "bg-blue-50/40" };
+  }
+  return { border: "border-l-border-strong", tint: "bg-surface-2/50" };
+}
+
+/** "May 2026" header for the month-cohort divider. */
+function monthLabel(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  return `${MONTH_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function monthKey(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(`${iso}T12:00:00Z`);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+type GroupedReport = {
+  periodId: string;
+  periodStart: string;
+  periodEnd: string;
+  scheduleName: string | null;
+  tempLaborCents: number;
+  runs: ReportRow[];
+};
+
+/** Group runs by periodId while preserving the newest-first ordering of
+ *  the input list. Each group keeps the metadata of its first run (which
+ *  represents the period). */
+function groupByPeriod(reports: ReportRow[]): GroupedReport[] {
+  const groups: GroupedReport[] = [];
+  const indexById = new Map<string, number>();
+  for (const r of reports) {
+    let idx = indexById.get(r.periodId);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexById.set(r.periodId, idx);
+      groups.push({
+        periodId: r.periodId,
+        periodStart: r.startDate,
+        periodEnd: r.endDate,
+        scheduleName: r.scheduleName,
+        tempLaborCents: r.tempLaborCents,
+        runs: [],
+      });
+    }
+    const group = groups[idx];
+    if (group) group.runs.push(r);
+  }
+  return groups;
+}
+
+function sumGroupTotal(g: GroupedReport): number {
+  let total = 0;
+  for (const r of g.runs) total += r.amountCents;
+  return total + g.tempLaborCents;
 }
 
 export function ReportsTable({
@@ -93,11 +206,6 @@ export function ReportsTable({
     const result = await repushReportToZohoAction(reportId, orgId);
     setBusyId(null);
     if ("error" in result && result.error) {
-      // If the Zoho delete failed (often: 401 because OAuth scope
-      // doesn't include expenses.DELETE, or 404 because the expense is
-      // already gone from Zoho), offer a Force re-push that skips the
-      // delete and just posts fresh. Admin verifies the orphan expense
-      // status separately in Zoho.
       const isDeleteFailure = result.error.includes("Could not delete prior");
       if (isDeleteFailure) {
         const force = window.confirm(
@@ -139,301 +247,451 @@ export function ReportsTable({
 
   if (reports.length === 0) {
     return (
-      <div className="rounded-card border border-border bg-surface-2 p-10 text-center text-sm text-text-muted shadow-sm">
+      <div className="rounded-card border border-border/70 bg-surface p-10 text-center text-sm text-text-muted shadow-card">
         No payroll runs yet. They appear here once a run completes (cron, manual
         upload, or legacy import).
       </div>
     );
   }
 
+  const groups = groupByPeriod(reports);
+
   return (
-    <div className="rounded-card border border-border bg-surface-2 shadow-sm">
+    <div className="space-y-4">
       {error && (
-        <div className="border-b border-border bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div className="rounded-card border border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
           {error}
         </div>
       )}
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-            <tr>
-              <th className="py-2 pl-4 pr-3 font-medium">Run</th>
-              <th className="py-2 px-3 font-medium text-right">Amount</th>
-              <th className="py-2 px-3 font-medium">Created by</th>
-              <th className="py-2 px-3 font-medium">Posted</th>
-              <th className="py-2 px-3 font-medium">Visibility</th>
-              <th className="py-2 px-3 font-medium text-right pr-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {reports.map((r, idx) => {
-              const pushedHaute = r.zohoPushes.find((p) => p.orgId === haute?.id);
-              const pushedBoomin = r.zohoPushes.find((p) => p.orgId === boomin?.id);
-              const published = r.publishedToPortalAt !== null;
-              const isLegacy = r.source === "LEGACY_IMPORT";
-              const prev = idx > 0 ? reports[idx - 1] : null;
-              const newPeriod = prev?.periodId !== r.periodId;
-              // Sum every run row that shares this period (they're already
-              // adjacent because listReports orders by post date and runs
-              // for one period almost always cluster). For perfect group
-              // totals across mis-ordered rows we'd need a pre-pass, but
-              // the temp_labor_cents field is already per-period so the
-              // grand total below is correct regardless.
-              const periodGrandTotal = sumPeriodRuns(reports, r.periodId);
-              return (
-                <React.Fragment key={r.id}>
-                  {newPeriod && (
-                    <tr className="bg-surface-3 border-t-[3px] border-brand-700/30">
-                      <td colSpan={6} className="px-4 py-2.5">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div className="flex items-baseline gap-3 flex-wrap">
-                            <span className="font-semibold text-text whitespace-nowrap">
-                              {formatRange(
-                                r.startDate,
-                                canonicalEndForScheduleName(
-                                  r.startDate,
-                                  r.endDate,
-                                  r.scheduleName,
-                                ),
-                              )}
-                            </span>
-                            <SchedulePill name={r.scheduleName} />
-                            <span className="text-[10px] uppercase tracking-wider text-text-subtle">
-                              Period total
-                            </span>
-                          </div>
-                          <div className="flex items-baseline gap-3 text-right whitespace-nowrap">
-                            <span className="font-mono tabular-nums font-semibold text-text">
-                              <MoneyDisplay cents={periodGrandTotal} />
-                            </span>
-                            {r.tempLaborCents > 0 && (
-                              <span className="text-[10px] text-text-muted">
-                                incl. <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                <tr className="hover:bg-surface/40 transition-colors">
-                  <td className="py-2 pl-8 pr-3 whitespace-nowrap">
+
+      {(() => {
+        // Render groups, injecting a month divider whenever the month
+        // changes. The divider is keyed by month so React reconciles
+        // cleanly when the filter changes.
+        const out: React.ReactNode[] = [];
+        let lastMonth: string | null = null;
+        for (const g of groups) {
+          const mk = monthKey(g.periodStart);
+          if (mk && mk !== lastMonth) {
+            out.push(
+              <div
+                key={`m:${mk}`}
+                className="flex items-center gap-3 pt-2 pb-1 first:pt-0"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
+                  {monthLabel(g.periodStart)}
+                </span>
+                <span className="h-px flex-1 bg-border/70" />
+              </div>,
+            );
+            lastMonth = mk;
+          }
+          out.push(
+            <PeriodGroup
+              key={g.periodId}
+              group={g}
+              busyId={busyId}
+              confirmDelete={confirmDelete}
+              setConfirmDelete={setConfirmDelete}
+              onPush={onPush}
+              onRepush={onRepush}
+              onPublish={onPublish}
+              onDelete={onDelete}
+              haute={haute}
+              boomin={boomin}
+            />,
+          );
+        }
+        return out;
+      })()}
+    </div>
+  );
+}
+
+function PeriodGroup({
+  group,
+  busyId,
+  confirmDelete,
+  setConfirmDelete,
+  onPush,
+  onRepush,
+  onPublish,
+  onDelete,
+  haute,
+  boomin,
+}: {
+  group: GroupedReport;
+  busyId: string | null;
+  confirmDelete: string | null;
+  setConfirmDelete: (v: string | null) => void;
+  onPush: (reportId: string, orgId: string | undefined, label: string) => void;
+  onRepush: (
+    reportId: string,
+    orgId: string | undefined,
+    label: string,
+    expenseId: string | null,
+  ) => void;
+  onPublish: (id: string) => void;
+  onDelete: (id: string) => void;
+  haute: ZohoOrganization | undefined;
+  boomin: ZohoOrganization | undefined;
+}) {
+  const accent = scheduleAccent(group.scheduleName);
+  const periodTotal = sumGroupTotal(group);
+  const canonicalEnd = canonicalEndForScheduleName(
+    group.periodStart,
+    group.periodEnd,
+    group.scheduleName,
+  );
+
+  return (
+    <div
+      className={`rounded-card border border-border/70 bg-surface shadow-card overflow-hidden border-l-[3px] ${accent.border}`}
+    >
+      {/* Period summary row */}
+      <div className={`flex items-center justify-between gap-4 px-4 py-3 ${accent.tint}`}>
+        <div className="flex items-baseline gap-3 flex-wrap min-w-0">
+          <span className="font-semibold tracking-tight text-base text-text whitespace-nowrap">
+            {formatRange(group.periodStart, canonicalEnd)}
+          </span>
+          <SchedulePill name={group.scheduleName} />
+          <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+            Period total
+          </span>
+        </div>
+        <div className="flex items-baseline gap-3 text-right whitespace-nowrap">
+          <span className="font-mono tabular-nums font-semibold text-text">
+            <MoneyDisplay cents={periodTotal} />
+          </span>
+          {group.tempLaborCents > 0 && (
+            <span className="text-[10px] text-text-muted">
+              incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Run rows */}
+      <div className="divide-y divide-border/60">
+        {group.runs.map((r) => {
+          const pushedHaute = r.zohoPushes.find((p) => p.orgId === haute?.id);
+          const pushedBoomin = r.zohoPushes.find((p) => p.orgId === boomin?.id);
+          const published = r.publishedToPortalAt !== null;
+          const isLegacy = r.source === "LEGACY_IMPORT";
+
+          return (
+            <div
+              key={r.id}
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2/50 transition-colors"
+            >
+              {/* Run identity (source + short id) */}
+              <Link
+                href={`/payroll/${r.periodId}`}
+                className="flex items-baseline gap-1.5 min-w-0 hover:text-brand-700 transition-colors"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-wider text-text-subtle">
+                  {r.source.replace(/_/g, " ")}
+                </span>
+                <span className="text-text-subtle">·</span>
+                <span className="font-mono text-xs text-text">{r.id.slice(0, 8)}</span>
+              </Link>
+
+              {/* Created by */}
+              <span className="text-xs text-text-muted truncate max-w-[10rem]">
+                {r.createdByDisplay}
+              </span>
+
+              {/* Posted */}
+              <span className="text-xs text-text-muted whitespace-nowrap">
+                {formatDate(r.postedAt)}
+              </span>
+
+              {/* Push status badges (read-only summary; mutate via menu) */}
+              <div className="flex items-center gap-1.5">
+                {pushedHaute && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                    title={`Haute · expense ${pushedHaute.expenseId ?? "—"}`}
+                  >
+                    <CheckCircle2 className="h-2.5 w-2.5" /> Haute
+                  </span>
+                )}
+                {pushedBoomin && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+                    title={`Boomin · expense ${pushedBoomin.expenseId ?? "—"}`}
+                  >
+                    <CheckCircle2 className="h-2.5 w-2.5" /> Boomin
+                  </span>
+                )}
+              </div>
+
+              <span className="flex-1" />
+
+              {/* Visibility chip */}
+              {published ? (
+                <span className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Published
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-chip bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+                  <CircleDot className="h-2.5 w-2.5" /> Internal
+                </span>
+              )}
+
+              {/* Run amount */}
+              <div className="text-right whitespace-nowrap min-w-[5.5rem]">
+                <div className="font-mono tabular-nums font-semibold text-sm text-text">
+                  <MoneyDisplay cents={r.amountCents} />
+                </div>
+                {r.tempLaborCents > 0 && (
+                  <div className="text-[10px] font-normal text-text-muted">
+                    + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
+                  </div>
+                )}
+              </div>
+
+              {/* Quick actions */}
+              <div className="flex items-center gap-0.5 ml-1">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  title="Open admin report"
+                >
+                  <Link href={`/payroll/${r.periodId}`}>
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                </Button>
+                {r.pdfPath ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    title="Download report PDF"
+                  >
                     <Link
-                      href={`/payroll/${r.periodId}`}
-                      className="text-sm text-text hover:text-brand-700 hover:underline underline-offset-2 inline-flex items-baseline gap-1.5"
+                      href={`/api/reports/${r.id}/pdf`}
+                      target="_blank"
+                      rel="noopener"
                     >
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-text-subtle">
-                        {r.source.replace(/_/g, " ")}
-                      </span>
-                      <span className="text-text-subtle">·</span>
-                      <span className="font-mono text-xs">{r.id.slice(0, 8)}</span>
+                      <Download className="h-4 w-4" />
                     </Link>
-                  </td>
-                  <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-text whitespace-nowrap">
-                    <MoneyDisplay cents={r.amountCents} />
-                    {r.tempLaborCents > 0 && (
-                      <div className="text-[10px] font-normal text-text-muted">
-                        + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">{r.createdByDisplay}</td>
-                  <td className="py-2 px-3 text-text-muted whitespace-nowrap">{formatDate(r.postedAt)}</td>
-                  <td className="py-3 px-3">
-                    {published ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-input bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        <CheckCircle2 className="h-3 w-3" /> Published
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-input bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        <CircleDot className="h-3 w-3" /> Internal
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 px-3 pr-4 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        title="Open admin report"
-                      >
-                        <Link href={`/payroll/${r.periodId}`}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        title="Open signature report (print + employee sign-off)"
-                      >
-                        <Link
-                          href={`/api/payslips/period/${r.periodId}/signature`}
-                          target="_blank"
-                          rel="noopener"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      {r.pdfPath ? (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="ghost"
-                          title="Download report file"
-                        >
-                          <Link
-                            href={`/api/reports/${r.id}/pdf`}
-                            target="_blank"
-                            rel="noopener"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="ghost" disabled title="No PDF">
-                          <Download className="h-3.5 w-3.5 opacity-30" />
-                        </Button>
-                      )}
-                      {!published && !isLegacy && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title="Publish to employee portal"
-                          disabled={busyId === `${r.id}:publish`}
-                          onClick={() => onPublish(r.id)}
-                        >
-                          {busyId === `${r.id}:publish` ? "…" : "Publish"}
-                        </Button>
-                      )}
-                      <PushPill
-                        label="Haute"
-                        pushed={pushedHaute}
-                        busy={busyId === `${r.id}:push:${haute?.id ?? ""}`}
-                        onClick={() => onPush(r.id, haute?.id, "Haute")}
-                        onRepush={() =>
-                          onRepush(
-                            r.id,
-                            haute?.id,
-                            "Haute",
-                            pushedHaute?.expenseId ?? null,
-                          )
-                        }
-                      />
-                      <PushPill
-                        label="Boomin"
-                        pushed={pushedBoomin}
-                        busy={busyId === `${r.id}:push:${boomin?.id ?? ""}`}
-                        onClick={() => onPush(r.id, boomin?.id, "Boomin")}
-                        onRepush={() =>
-                          onRepush(
-                            r.id,
-                            boomin?.id,
-                            "Boomin",
-                            pushedBoomin?.expenseId ?? null,
-                          )
-                        }
-                      />
-                      {confirmDelete === r.id ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setConfirmDelete(null)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === `${r.id}:delete`}
-                            onClick={() => onDelete(r.id)}
-                            className="text-red-700"
-                          >
-                            {busyId === `${r.id}:delete` ? "…" : "Confirm"}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title="Delete report"
-                          onClick={() => setConfirmDelete(r.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    disabled
+                    title="No PDF"
+                  >
+                    <Download className="h-4 w-4 opacity-30" />
+                  </Button>
+                )}
+
+                {confirmDelete === r.id ? (
+                  <span className="inline-flex items-center gap-0.5 rounded-input border border-danger-200/80 bg-danger-50 pl-2">
+                    <span className="text-[11px] font-medium text-danger-700">
+                      Delete?
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setConfirmDelete(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-[11px] text-danger-700 hover:bg-danger-100"
+                      disabled={busyId === `${r.id}:delete`}
+                      onClick={() => onDelete(r.id)}
+                    >
+                      {busyId === `${r.id}:delete` ? "…" : "Confirm"}
+                    </Button>
+                  </span>
+                ) : (
+                  <RowOverflowMenu
+                    runId={r.id}
+                    periodId={r.periodId}
+                    published={published}
+                    isLegacy={isLegacy}
+                    busyId={busyId}
+                    pushedHaute={pushedHaute}
+                    pushedBoomin={pushedBoomin}
+                    hauteOrgId={haute?.id}
+                    boominOrgId={boomin?.id}
+                    onPublish={() => onPublish(r.id)}
+                    onPushHaute={() => onPush(r.id, haute?.id, "Haute")}
+                    onPushBoomin={() => onPush(r.id, boomin?.id, "Boomin")}
+                    onRepushHaute={() =>
+                      onRepush(
+                        r.id,
+                        haute?.id,
+                        "Haute",
+                        pushedHaute?.expenseId ?? null,
+                      )
+                    }
+                    onRepushBoomin={() =>
+                      onRepush(
+                        r.id,
+                        boomin?.id,
+                        "Boomin",
+                        pushedBoomin?.expenseId ?? null,
+                      )
+                    }
+                    onDeleteRequest={() => setConfirmDelete(r.id)}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function sumPeriodRuns(reports: ReportRow[], periodId: string): number {
-  let total = 0;
-  let temp = 0;
-  for (const r of reports) {
-    if (r.periodId === periodId) {
-      total += r.amountCents;
-      temp = r.tempLaborCents; // same value across rows in this period
-    }
-  }
-  return total + temp;
-}
-
-function PushPill({
-  label,
-  pushed,
-  busy,
-  onClick,
-  onRepush,
+function RowOverflowMenu({
+  runId,
+  periodId,
+  published,
+  isLegacy,
+  busyId,
+  pushedHaute,
+  pushedBoomin,
+  hauteOrgId,
+  boominOrgId,
+  onPublish,
+  onPushHaute,
+  onPushBoomin,
+  onRepushHaute,
+  onRepushBoomin,
+  onDeleteRequest,
 }: {
-  label: string;
-  pushed: ReportRow["zohoPushes"][number] | undefined;
-  busy: boolean;
-  onClick: () => void;
-  onRepush: () => void;
+  runId: string;
+  periodId: string;
+  published: boolean;
+  isLegacy: boolean;
+  busyId: string | null;
+  pushedHaute: ReportRow["zohoPushes"][number] | undefined;
+  pushedBoomin: ReportRow["zohoPushes"][number] | undefined;
+  hauteOrgId: string | undefined;
+  boominOrgId: string | undefined;
+  onPublish: () => void;
+  onPushHaute: () => void;
+  onPushBoomin: () => void;
+  onRepushHaute: () => void;
+  onRepushBoomin: () => void;
+  onDeleteRequest: () => void;
 }) {
-  if (pushed) {
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        <span
-          className="inline-flex items-center gap-1 rounded-l-input bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700"
-          title={`Expense ${pushed.expenseId ?? "—"} — click the refresh icon to delete this expense in Zoho and re-push the current period total.`}
-        >
-          <CheckCircle2 className="h-3 w-3" /> {label}
-        </span>
+  const publishBusy = busyId === `${runId}:publish`;
+  const hauteBusy = busyId === `${runId}:push:${hauteOrgId ?? ""}`;
+  const boominBusy = busyId === `${runId}:push:${boominOrgId ?? ""}`;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           size="sm"
           variant="ghost"
-          disabled={busy}
-          onClick={onRepush}
-          title={`Delete expense ${pushed.expenseId ?? "—"} in Zoho and re-push fresh (use after a fix changes the period total).`}
-          className="h-5 rounded-r-input rounded-l-none px-1 py-0 text-[11px] text-emerald-700 hover:bg-emerald-100"
+          className="h-8 w-8 p-0"
+          title="More actions"
         >
-          {busy ? "…" : <RefreshCw className="h-3 w-3" />}
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
-      </span>
-    );
-  }
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      title={`Push to ${label}`}
-      disabled={busy}
-      onClick={onClick}
-      className="text-xs"
-    >
-      <Send className="h-3 w-3" /> {label}
-    </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[14rem]">
+        <DropdownMenuLabel>Documents</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link
+            href={`/api/payslips/period/${periodId}/signature`}
+            target="_blank"
+            rel="noopener"
+          >
+            <Printer className="h-3.5 w-3.5" /> Signature report
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/payroll/${periodId}`}>
+            <FileText className="h-3.5 w-3.5" /> Open admin report
+          </Link>
+        </DropdownMenuItem>
+
+        {!published && !isLegacy && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Visibility</DropdownMenuLabel>
+            <DropdownMenuItem
+              disabled={publishBusy}
+              onSelect={(e) => {
+                e.preventDefault();
+                onPublish();
+              }}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {publishBusy ? "Publishing…" : "Publish to portal"}
+            </DropdownMenuItem>
+          </>
+        )}
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Zoho Books</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={hauteBusy}
+          onSelect={(e) => {
+            e.preventDefault();
+            if (pushedHaute) onRepushHaute();
+            else onPushHaute();
+          }}
+        >
+          {pushedHaute ? (
+            <RefreshCw className="h-3.5 w-3.5" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+          {hauteBusy
+            ? "Working…"
+            : pushedHaute
+            ? "Re-push to Haute"
+            : "Push to Haute"}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={boominBusy}
+          onSelect={(e) => {
+            e.preventDefault();
+            if (pushedBoomin) onRepushBoomin();
+            else onPushBoomin();
+          }}
+        >
+          {pushedBoomin ? (
+            <RefreshCw className="h-3.5 w-3.5" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+          {boominBusy
+            ? "Working…"
+            : pushedBoomin
+            ? "Re-push to Boomin"
+            : "Push to Boomin"}
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          destructive
+          onSelect={(e) => {
+            e.preventDefault();
+            onDeleteRequest();
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" /> Delete report…
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

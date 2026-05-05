@@ -19,12 +19,17 @@ export type WordmarkProps = {
   className?: string;
 };
 
+// `logoMaxW` caps how wide the rendered logo can grow. Without a cap, a
+// wide wordmark (e.g. "Acme Industries") at the sidebar's md size would
+// overflow the 256-px-wide rail. With a cap, the image scales down via
+// object-contain to fit, preserving aspect ratio. `logoMinW` keeps the
+// tile from collapsing if a future stylesheet bug zeros the height.
 const SIZES = {
-  sm: { box: "h-6 w-6", logoH: "h-7", text: "text-sm", radius: "rounded-md" },
-  md: { box: "h-8 w-8", logoH: "h-12", text: "text-base", radius: "rounded-lg" },
-  lg: { box: "h-10 w-10", logoH: "h-16", text: "text-lg", radius: "rounded-xl" },
-  xl: { box: "h-14 w-14", logoH: "h-24", text: "text-2xl", radius: "rounded-2xl" },
-  "2xl": { box: "h-20 w-20", logoH: "h-36", text: "text-3xl", radius: "rounded-2xl" },
+  sm: { box: "h-6 w-6", logoH: "h-7", logoMinW: "min-w-[28px]", logoMaxW: "max-w-[160px]", text: "text-sm", radius: "rounded-md" },
+  md: { box: "h-8 w-8", logoH: "h-12", logoMinW: "min-w-[48px]", logoMaxW: "max-w-[192px]", text: "text-base", radius: "rounded-lg" },
+  lg: { box: "h-10 w-10", logoH: "h-16", logoMinW: "min-w-[64px]", logoMaxW: "max-w-[280px]", text: "text-lg", radius: "rounded-xl" },
+  xl: { box: "h-14 w-14", logoH: "h-24", logoMinW: "min-w-[96px]", logoMaxW: "max-w-[360px]", text: "text-2xl", radius: "rounded-2xl" },
+  "2xl": { box: "h-20 w-20", logoH: "h-36", logoMinW: "min-w-[144px]", logoMaxW: "max-w-[480px]", text: "text-3xl", radius: "rounded-2xl" },
 } as const;
 
 function initialsFor(name: string): string {
@@ -67,7 +72,12 @@ export function Wordmark({
           <img
             src={logoPath}
             alt={name}
-            className={cn("w-auto object-contain", s.logoH)}
+            className={cn(
+              "w-auto object-contain",
+              s.logoH,
+              s.logoMinW,
+              s.logoMaxW,
+            )}
           />
         </span>
       </span>

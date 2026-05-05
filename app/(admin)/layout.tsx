@@ -4,6 +4,7 @@ import { Topbar } from "@/components/admin/topbar";
 import { AppFooter } from "@/components/app-footer";
 import { unreadCount } from "@/lib/notifications/in-app";
 import { getSetting } from "@/lib/settings/runtime";
+import { assetVersion } from "@/lib/branding/storage";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPeriods } from "@/lib/db/queries/pay-periods";
 import { resolveLocale } from "@/lib/i18n";
@@ -24,16 +25,25 @@ const SETTINGS_TARGETS: CommandTarget[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
-  const [unread, company, employees, periods, locale] = await Promise.all([
+  const [unread, company, employees, periods, locale, logoVersion] = await Promise.all([
     unreadCount(session.user.id).catch(() => 0),
     getSetting("company").catch(() => null),
     listEmployees({ status: "ACTIVE" }).catch(() => []),
     listPeriods({ limit: 12 }).catch(() => []),
     resolveLocale(),
+    assetVersion("logo").catch(() => "default"),
   ]);
+  // Override the stored logoPath's cache-bust with a fresh mtime stamp so
+  // any server-side post-processing of the asset (e.g. transparent-margin
+  // trimming) shows up in browsers that cached an earlier URL. The stored
+  // path is keyed off the upload time only, which goes stale when we
+  // reprocess existing files.
+  const logoHref = company?.logoPath
+    ? `/api/branding/logo?v=${logoVersion}`
+    : null;
   const companyForBrand = {
     name: company?.name ?? "Payroll",
-    logoPath: company?.logoPath ?? null,
+    logoPath: logoHref,
   };
 
   const employeeTargets: CommandTarget[] = employees.map((e) => ({

@@ -1,8 +1,10 @@
 // Admin sidebar — sectioned nav with active accent. Lucide icons only (§9).
 // Top-level groups follow the operator's mental model: Overview / Manage /
-// Operate / Settings sit at the foot. Active route gets a 2-px brand bar on
-// the left and the brand-50 surface treatment so the eye lands on it before
-// reading the label.
+// Operate / Settings sit at the foot. Active route gets a brand-tinted
+// surface treatment + a 2-px brand bar on the left so the eye lands on it
+// before reading the label. The wordmark slot has explicit min dimensions
+// so a missing/late logo asset can never collapse the header to zero
+// height (the "invisible logo" bug from the v6 deploy).
 
 "use client";
 
@@ -19,7 +21,6 @@ import {
   BarChart3,
   ScrollText,
   Settings2,
-  Circle,
   Briefcase,
   CalendarRange,
   Database,
@@ -79,8 +80,13 @@ export function Sidebar({
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-border bg-surface sticky top-0 h-dvh">
-      <div className="px-5 pt-5 pb-6 shrink-0">
-        <Wordmark name={company.name} logoPath={company.logoPath} size="md" />
+      {/* Wordmark slot. Explicit min height so a missing/late-loading logo
+          can never collapse the header to zero (regression guard for the
+          invisible-logo bug). */}
+      <div className="px-5 pt-5 pb-6 shrink-0 min-h-[64px] flex items-center">
+        <span className="inline-flex min-w-32 min-h-8 items-center">
+          <Wordmark name={company.name} logoPath={company.logoPath} size="md" />
+        </span>
       </div>
 
       <nav className="flex-1 px-3 space-y-6 overflow-y-auto">
@@ -96,8 +102,10 @@ export function Sidebar({
                   <li key={href}>
                     <Link
                       href={href}
+                      aria-current={active ? "page" : undefined}
                       className={cn(
                         "relative flex items-center gap-3 px-3 py-2 rounded-input text-sm transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
                         active
                           ? "bg-brand-50 text-brand-800 font-medium"
                           : "text-text-muted hover:bg-surface-2 hover:text-text",
@@ -106,7 +114,7 @@ export function Sidebar({
                       {active ? (
                         <span
                           aria-hidden="true"
-                          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-brand-700"
+                          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-brand-700"
                         />
                       ) : null}
                       <Icon
@@ -129,30 +137,55 @@ export function Sidebar({
       <div className="px-3 pb-3 pt-4 border-t border-border shrink-0">
         <Link
           href={FOOTER_NAV.href}
+          aria-current={isActive(pathname, FOOTER_NAV.href) ? "page" : undefined}
           className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-input text-sm",
+            "relative flex items-center gap-3 px-3 py-2 rounded-input text-sm transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             isActive(pathname, FOOTER_NAV.href)
               ? "bg-brand-50 text-brand-800 font-medium"
               : "text-text-muted hover:bg-surface-2 hover:text-text",
           )}
         >
-          <FOOTER_NAV.icon className="h-4 w-4 text-text-subtle" aria-hidden />
-          {FOOTER_NAV.label}
-        </Link>
-        <div
-          className="mt-2 px-3 py-2 flex items-center gap-2 text-xs text-text-muted"
-          title={systemHealthy ? "System healthy" : "System degraded"}
-        >
-          <Circle
+          {isActive(pathname, FOOTER_NAV.href) ? (
+            <span
+              aria-hidden="true"
+              className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-brand-700"
+            />
+          ) : null}
+          <FOOTER_NAV.icon
             className={cn(
-              "h-2 w-2 fill-current",
-              systemHealthy ? "text-success-700" : "text-warn-700",
+              "h-4 w-4",
+              isActive(pathname, FOOTER_NAV.href) ? "text-brand-700" : "text-text-subtle",
             )}
             aria-hidden
           />
-          <span>{systemHealthy ? "All systems normal" : "System degraded"}</span>
-        </div>
+          {FOOTER_NAV.label}
+        </Link>
+        <SystemStatus healthy={systemHealthy} />
       </div>
     </aside>
+  );
+}
+
+function SystemStatus({ healthy }: { healthy: boolean }) {
+  return (
+    <div
+      className="mt-2 px-3 py-2 flex items-center gap-2 text-xs text-text-muted"
+      title={healthy ? "System healthy" : "System degraded"}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="relative inline-flex h-2 w-2 shrink-0" aria-hidden>
+        {healthy ? (
+          <>
+            <span className="absolute inset-0 rounded-full bg-brand-500/60 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-600" />
+          </>
+        ) : (
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-warn-700" />
+        )}
+      </span>
+      <span>{healthy ? "All systems normal" : "System degraded"}</span>
+    </div>
   );
 }

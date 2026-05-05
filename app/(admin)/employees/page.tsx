@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { Users, Plus } from "lucide-react";
+import { Users, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EmployeeRow } from "@/components/domain/employee-row";
+import { cn } from "@/lib/utils";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listActiveShifts } from "@/lib/db/queries/shifts";
 
+type StatusFilter = "ACTIVE" | "INACTIVE" | "TERMINATED";
+
 type SearchParams = Promise<{
   q?: string;
-  status?: "ACTIVE" | "INACTIVE" | "TERMINATED";
+  status?: StatusFilter;
   shift?: string;
 }>;
 
@@ -28,13 +31,40 @@ export default async function EmployeesPage({
   ]);
   const shiftById = new Map(shifts.map((s) => [s.id, s]));
 
+  // Counts for the pill toggles — the unfiltered roster is small (≤100), so
+  // re-fetching each status total without a search filter is cheap and
+  // keeps the toggle UI honest about what each click will reveal.
+  const [allActive, allInactive, allTerminated] = await Promise.all([
+    listEmployees({ status: "ACTIVE", ...(params.q ? { search: params.q } : {}) }),
+    listEmployees({ status: "INACTIVE", ...(params.q ? { search: params.q } : {}) }),
+    listEmployees({ status: "TERMINATED", ...(params.q ? { search: params.q } : {}) }),
+  ]);
+  const allCount = allActive.length + allInactive.length + allTerminated.length;
+
+  const buildHref = (overrides: Partial<{ q: string; status: StatusFilter | ""; shift: string }>) => {
+    const sp = new URLSearchParams();
+    const q = overrides.q ?? params.q ?? "";
+    const status = overrides.status !== undefined ? overrides.status : params.status ?? "";
+    const shift = overrides.shift !== undefined ? overrides.shift : params.shift ?? "";
+    if (q) sp.set("q", q);
+    if (status) sp.set("status", status);
+    if (shift) sp.set("shift", shift);
+    const qs = sp.toString();
+    return qs ? `/employees?${qs}` : "/employees";
+  };
+
+  const currentStatus = params.status ?? "ACTIVE"; // default to Active for the toggle UI
+  const explicitStatus = params.status; // null when "All" selected
+  const currentShift = params.shift ?? "";
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Employees</h1>
+          <h1 className="text-title font-semibold tracking-tight">Employees</h1>
           <p className="text-sm text-text-muted">
-            {employees.length} {employees.length === 1 ? "person" : "people"}
+            {employees.length} of {allCount}{" "}
+            {allCount === 1 ? "person" : "people"}
           </p>
         </div>
         <Button asChild>
@@ -44,43 +74,73 @@ export default async function EmployeesPage({
         </Button>
       </div>
 
+      {/* Filter / search bar */}
       <form
         action="/employees"
         method="GET"
-        className="flex flex-wrap items-end gap-2 rounded-card border border-border bg-surface p-3"
+        className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3"
       >
-        <input
-          name="q"
-          defaultValue={params.q ?? ""}
-          placeholder="Search name or email"
-          className="h-9 flex-1 min-w-[12rem] rounded-input border border-border bg-surface px-3 text-sm"
-        />
-        <select
-          name="status"
-          defaultValue={params.status ?? ""}
-          className="h-9 rounded-input border border-border bg-surface px-2 text-sm"
-        >
-          <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-          <option value="TERMINATED">Terminated</option>
-        </select>
-        <select
-          name="shift"
-          defaultValue={params.shift ?? ""}
-          className="h-9 rounded-input border border-border bg-surface px-2 text-sm"
-        >
-          <option value="">All shifts</option>
-          {shifts.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" size="sm" variant="secondary">
-          Apply
-        </Button>
-        {(params.q || params.status || params.shift) && (
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" aria-hidden="true" />
+          <input
+            name="q"
+            defaultValue={params.q ?? ""}
+            placeholder="Search name or email"
+            className="h-9 w-full rounded-input border border-border bg-surface pl-9 pr-3 text-sm placeholder:text-text-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+          />
+          {/* Preserve other params on submit */}
+          {explicitStatus ? <input type="hidden" name="status" value={explicitStatus} /> : null}
+          {currentShift ? <input type="hidden" name="shift" value={currentShift} /> : null}
+        </div>
+
+        {/* Pill toggle group: status */}
+        <div className="inline-flex h-9 items-center rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
+          <PillToggle
+            href={buildHref({ status: "" })}
+            active={!explicitStatus}
+            label="All"
+            count={allCount}
+          />
+          <PillToggle
+            href={buildHref({ status: "ACTIVE" })}
+            active={currentStatus === "ACTIVE" && !!explicitStatus}
+            label="Active"
+            count={allActive.length}
+          />
+          <PillToggle
+            href={buildHref({ status: "INACTIVE" })}
+            active={currentStatus === "INACTIVE"}
+            label="Inactive"
+            count={allInactive.length}
+          />
+          <PillToggle
+            href={buildHref({ status: "TERMINATED" })}
+            active={currentStatus === "TERMINATED"}
+            label="Terminated"
+            count={allTerminated.length}
+          />
+        </div>
+
+        {/* Pill toggle group: shift */}
+        {shifts.length > 0 && (
+          <div className="inline-flex h-9 items-center rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
+            <PillToggle
+              href={buildHref({ shift: "" })}
+              active={!currentShift}
+              label="All shifts"
+            />
+            {shifts.map((s) => (
+              <PillToggle
+                key={s.id}
+                href={buildHref({ shift: s.id })}
+                active={currentShift === s.id}
+                label={s.name}
+              />
+            ))}
+          </div>
+        )}
+
+        {(params.q || explicitStatus || currentShift) && (
           <Button asChild size="sm" variant="ghost">
             <Link href="/employees">Clear</Link>
           </Button>
@@ -101,7 +161,7 @@ export default async function EmployeesPage({
           }
         />
       ) : (
-        <div className="space-y-2">
+        <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden divide-y divide-border/60">
           {employees.map((e) => (
             <EmployeeRow
               key={e.id}
@@ -113,5 +173,41 @@ export default async function EmployeesPage({
         </div>
       )}
     </div>
+  );
+}
+
+function PillToggle({
+  href,
+  active,
+  label,
+  count,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-chip px-2.5 h-8 font-medium tracking-tight transition-colors",
+        active
+          ? "bg-brand-700 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]"
+          : "text-text-muted hover:bg-surface-2 hover:text-text",
+      )}
+    >
+      {label}
+      {typeof count === "number" && (
+        <span
+          className={cn(
+            "tabular-nums text-[10px]",
+            active ? "text-white/80" : "text-text-subtle",
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </Link>
   );
 }

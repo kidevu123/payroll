@@ -139,13 +139,17 @@ export async function importPunchPoll(
           summary.pairsUpdated++;
         }
       } else {
-        // ON CONFLICT DO NOTHING — concurrent poll runs (or a poll racing
-        // a manual upload) can otherwise throw 23505 mid-batch and abort
-        // the rest of the loop. The unique index on ngteco_record_hash
-        // is the de-dupe contract; silently skipping a duplicate is fine.
-        const inserted = await db
-          .insert(punches)
-          .values({
+        // The unique index on ngteco_record_hash is PARTIAL (only when
+        // hash IS NOT NULL). Postgres rejects `ON CONFLICT (col)` against
+        // a partial index unless the matching WHERE clause is supplied;
+        // drizzle's onConflictDoNothing emits the bare form, so we get
+        //   "no unique or exclusion constraint matching the ON CONFLICT
+        //    specification" (SQLSTATE 42P10).
+        // We've already done the explicit `existing.length > 0` check
+        // above, so the only race-window left is two pollers inserting
+        // the same hash simultaneously. Catch 23505 and treat as skip.
+        try {
+          await db.insert(punches).values({
             employeeId: g.empId,
             periodId,
             clockIn,
@@ -153,10 +157,19 @@ export async function importPunchPoll(
             source: "NGTECO_AUTO",
             ngtecoRecordHash: hash,
             notes: note,
-          })
-          .onConflictDoNothing({ target: punches.ngtecoRecordHash })
-          .returning({ id: punches.id });
-        if (inserted.length > 0) summary.pairsInserted++;
+          });
+          summary.pairsInserted++;
+        } catch (err) {
+          const code =
+            err && typeof err === "object" && "code" in err
+              ? (err as { code?: string }).code
+              : null;
+          if (code === "23505") {
+            // Concurrent insert won the race — fine, the hash is unique.
+            continue;
+          }
+          throw err;
+        }
       }
     }
   }
