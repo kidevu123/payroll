@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth-guards";
+import { requireAdmin, requireAdminStrict } from "@/lib/auth-guards";
 import {
   generateTempPasswordForUser,
   inviteEmployeeUser,
@@ -70,13 +70,14 @@ export async function toggleDisabledAction(
   }
 }
 
-const roleSchema = z.object({ role: z.enum(["EMPLOYEE", "ADMIN"]) });
+const roleSchema = z.object({ role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ADMIN"]) });
 
 export async function setRoleAction(
   userId: string,
   formData: FormData,
 ): Promise<{ error?: string } | void> {
-  const session = await requireAdmin();
+  // Owner + Admin only — payroll staff can't promote anyone.
+  const session = await requireAdminStrict();
   if (!idSchema.safeParse(userId).success) return { error: "Invalid id." };
   const parsed = roleSchema.safeParse({ role: formData.get("role") });
   if (!parsed.success) return { error: "Invalid role." };
@@ -93,7 +94,7 @@ export async function setRoleAction(
 
 const inviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["EMPLOYEE", "ADMIN"]),
+  role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ADMIN"]),
 });
 
 export async function inviteEmployeeAction(

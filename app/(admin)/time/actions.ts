@@ -102,6 +102,12 @@ export async function createPunchAction(
     if (err instanceof Error && err.message === "PERIOD_PAID") {
       return { error: "Period is paid. Unmark paid before editing punches." };
     }
+    if (err instanceof Error && err.message === "PUNCH_OUT_OF_PERIOD") {
+      return {
+        error:
+          "Punch falls outside this pay period's date range. Open the correct period or fix the times.",
+      };
+    }
     throw err;
   }
   revalidatePath("/time");
@@ -153,6 +159,12 @@ export async function editPunchAction(
   } catch (err) {
     if (err instanceof Error && err.message === "PERIOD_PAID") {
       return { error: "Period is paid. Unmark paid before editing punches." };
+    }
+    if (err instanceof Error && err.message === "PUNCH_OUT_OF_PERIOD") {
+      return {
+        error:
+          "Punch falls outside this pay period's date range. Open the correct period or fix the times.",
+      };
     }
     throw err;
   }

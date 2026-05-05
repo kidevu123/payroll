@@ -17,7 +17,7 @@ import { writeAudit } from "@/lib/db/audit";
 
 export type Actor = {
   id: string;
-  role: "OWNER" | "ADMIN" | "EMPLOYEE";
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
 };
 
 export type EmployeeListFilters = {
@@ -166,6 +166,7 @@ const UPDATABLE_FIELDS = new Set<keyof UpdateEmployeePatch>([
   "hiredOn",
   "status",
   "requiresW2Upload",
+  "birthday",
 ]);
 
 function whitelistPatch(patch: UpdateEmployeePatch): UpdateEmployeePatch {

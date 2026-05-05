@@ -194,6 +194,7 @@ export function AccountSection({
               className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
             >
               <option value="EMPLOYEE">Employee</option>
+              <option value="PAYROLL_STAFF">Payroll staff</option>
               <option value="ADMIN">Admin</option>
               {user.role === "OWNER" && <option value="OWNER">Owner (fixed)</option>}
             </select>

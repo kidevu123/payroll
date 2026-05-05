@@ -9,6 +9,9 @@ const schema = z.object({
   displayName: z.string().min(1).max(120),
   phone: z.string().max(40).optional().nullable(),
   language: z.enum(["en", "es"]),
+  birthday: z
+    .union([z.string().date(), z.literal("").transform(() => null)])
+    .nullable(),
 });
 
 export async function saveProfileAction(
@@ -20,6 +23,7 @@ export async function saveProfileAction(
     displayName: formData.get("displayName"),
     phone: formData.get("phone") || null,
     language: formData.get("language") || "en",
+    birthday: formData.get("birthday") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -30,6 +34,7 @@ export async function saveProfileAction(
       displayName: parsed.data.displayName,
       phone: parsed.data.phone ?? null,
       language: parsed.data.language,
+      birthday: parsed.data.birthday ?? null,
     },
     { id: session.user.id, role: session.user.role },
   );

@@ -294,6 +294,8 @@
       "legalName": "Legal name",
       "email": "Email",
       "phone": "Phone",
+      "birthday": "Birthday",
+      "birthdayHint": "Year stays private. We show your colleagues a chip on the day so they can wish you happy birthday.",
       "language": "Language",
       "languageEn": "English",
       "languageEs": "Español",

@@ -294,6 +294,8 @@
       "legalName": "Nombre legal",
       "email": "Correo electrónico",
       "phone": "Teléfono",
+      "birthday": "Cumpleaños",
+      "birthdayHint": "El año queda privado. Mostramos un indicador a tus colegas el día para que puedan felicitarte.",
       "language": "Idioma",
       "languageEn": "Inglés",
       "languageEs": "Español",

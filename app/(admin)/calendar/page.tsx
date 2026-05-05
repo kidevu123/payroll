@@ -3,7 +3,7 @@
 // week without scrolling through the requests inbox.
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cake } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -101,18 +101,20 @@ export default async function CalendarPage({
   ]);
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
 
-  // Bucket requests by ISO day for fast cell lookup.
+  // Bucket requests by ISO day for fast cell lookup. Birthdays match
+  // by month-day across any year.
   const cellByDay = new Map<
     string,
     {
       approved: { id: string; type: string; emp: string }[];
       pending: { id: string; type: string; emp: string }[];
+      birthdays: { name: string }[];
     }
   >();
   for (const r of approved) {
     for (const day of eachDayBetween(r.startDate, r.endDate)) {
       if (day < startIso || day > endIso) continue;
-      const cell = cellByDay.get(day) ?? { approved: [], pending: [] };
+      const cell = cellByDay.get(day) ?? { approved: [], pending: [], birthdays: [] };
       cell.approved.push({
         id: r.id,
         type: r.type,
@@ -124,12 +126,26 @@ export default async function CalendarPage({
   for (const r of pending) {
     for (const day of eachDayBetween(r.startDate, r.endDate)) {
       if (day < startIso || day > endIso) continue;
-      const cell = cellByDay.get(day) ?? { approved: [], pending: [] };
+      const cell = cellByDay.get(day) ?? { approved: [], pending: [], birthdays: [] };
       cell.pending.push({
         id: r.id,
         type: r.type,
         emp: nameFromMap(empMap, r.employeeId),
       });
+      cellByDay.set(day, cell);
+    }
+  }
+
+  // Birthdays — match employees.birthday MM-DD against each day in the
+  // grid (year ignored). Inactive/terminated employees skipped.
+  for (const e of employees) {
+    if (!e.birthday) continue;
+    if (e.status === "TERMINATED") continue;
+    const md = e.birthday.slice(5); // "YYYY-MM-DD" -> "MM-DD"
+    for (const day of eachDayBetween(startIso, endIso)) {
+      if (day.slice(5) !== md) continue;
+      const cell = cellByDay.get(day) ?? { approved: [], pending: [], birthdays: [] };
+      cell.birthdays.push({ name: e.displayName });
       cellByDay.set(day, cell);
     }
   }
@@ -206,6 +222,7 @@ export default async function CalendarPage({
               const cell = cellByDay.get(day) ?? {
                 approved: [],
                 pending: [],
+                birthdays: [],
               };
               const inMonth = day >= startIso && day <= endIso;
               const isToday = day === todayIso;
@@ -242,6 +259,16 @@ export default async function CalendarPage({
                         title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type} (pending)`}
                       >
                         {r.emp}
+                      </div>
+                    ))}
+                    {cell.birthdays.map((b, i) => (
+                      <div
+                        key={`bd-${i}`}
+                        className="inline-flex items-center gap-1 truncate rounded border border-pink-200 bg-pink-50 px-1 py-0.5 text-[10px] text-pink-800 w-full"
+                        title={`Birthday — ${b.name}`}
+                      >
+                        <Cake className="h-2.5 w-2.5 shrink-0" aria-hidden />
+                        <span className="truncate">{b.name}</span>
                       </div>
                     ))}
                     {cell.approved.length + cell.pending.length > 5 && (

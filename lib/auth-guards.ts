@@ -4,7 +4,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
-type Role = "OWNER" | "ADMIN" | "EMPLOYEE";
+type Role = "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
 
 export async function requireSession() {
   const session = await auth();
@@ -38,7 +38,25 @@ export async function requireRole(...roles: Role[]) {
   return session;
 }
 
+/**
+ * "Admin-grade" gate. Owner + Admin both qualify; PAYROLL_STAFF is
+ * also accepted everywhere `requireAdmin` is the gate — it's a
+ * scoped sub-admin that can run payroll but cannot do owner-only
+ * operations (cleanup, role assignment, DB browser). Use
+ * requireAdminStrict when you need to exclude PAYROLL_STAFF.
+ */
 export async function requireAdmin() {
+  return requireRole("OWNER", "ADMIN", "PAYROLL_STAFF");
+}
+
+/**
+ * Strict admin gate — excludes PAYROLL_STAFF. Use for screens that
+ * change the operating shape (role assignment, cleanup, schema-ish
+ * settings). The owner asked for a payroll-staff role that "shouldn't
+ * have the same options as I do", so anything truly owner-flavoured
+ * stays gated by requireAdminStrict / requireOwner.
+ */
+export async function requireAdminStrict() {
   return requireRole("OWNER", "ADMIN");
 }
 

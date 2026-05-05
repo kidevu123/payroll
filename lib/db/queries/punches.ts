@@ -24,6 +24,40 @@ async function assertPeriodMutable(
   if (row?.state === "PAID") throw new Error("PERIOD_PAID");
 }
 
+/**
+ * Refuse a punch whose clock_in OR clock_out falls outside the
+ * period's [start, end] range. Owner directive: "this shouldnt even
+ * carry over especially if we have weekly gates". Without this guard,
+ * a Sun May 3 punch could be attached to the May 4-10 period (because
+ * the form's hidden `periodId` is whatever week the admin was looking
+ * at), and the misassigned punch then bled into the May 4-10 totals.
+ *
+ * Comparison is wall-clock-in-tz so an 11pm-ET punch doesn't get
+ * pushed to "next day" by UTC bias.
+ */
+async function assertPunchWithinPeriod(
+  tx: typeof db,
+  periodId: string,
+  clockIn: Date,
+  clockOut: Date | null,
+  tz: string,
+): Promise<void> {
+  const [period] = await tx
+    .select({ startDate: payPeriods.startDate, endDate: payPeriods.endDate })
+    .from(payPeriods)
+    .where(eq(payPeriods.id, periodId));
+  if (!period) throw new Error("PERIOD_NOT_FOUND");
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
+  const inDay = fmt.format(clockIn);
+  const outDay = clockOut ? fmt.format(clockOut) : inDay;
+  if (inDay < period.startDate || inDay > period.endDate) {
+    throw new Error("PUNCH_OUT_OF_PERIOD");
+  }
+  if (outDay < period.startDate || outDay > period.endDate) {
+    throw new Error("PUNCH_OUT_OF_PERIOD");
+  }
+}
+
 export type ListPunchesFilters = {
   periodId?: string;
   employeeId?: string;
@@ -57,6 +91,20 @@ export async function createPunch(
 ): Promise<Punch> {
   return db.transaction(async (tx) => {
     await assertPeriodMutable(tx as unknown as typeof db, input.periodId);
+    // Strict period gate: refuse a punch whose times fall outside the
+    // chosen period's date range. The company tz is fetched once at
+    // call time. (Inline import avoids a circular dep with settings.)
+    {
+      const { getSetting } = await import("@/lib/settings/runtime");
+      const company = await getSetting("company");
+      await assertPunchWithinPeriod(
+        tx as unknown as typeof db,
+        input.periodId,
+        input.clockIn,
+        input.clockOut ?? null,
+        company.timezone,
+      );
+    }
     const [row] = await tx.insert(punches).values(input).returning();
     if (!row) throw new Error("createPunch: insert returned no row");
     await writeAudit(
@@ -91,6 +139,20 @@ export async function editPunch(
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`editPunch: ${id} not found`);
     await assertPeriodMutable(tx as unknown as typeof db, before.periodId);
+    {
+      const { getSetting } = await import("@/lib/settings/runtime");
+      const company = await getSetting("company");
+      const nextIn = patch.clockIn ?? before.clockIn;
+      const nextOut =
+        patch.clockOut !== undefined ? patch.clockOut : before.clockOut;
+      await assertPunchWithinPeriod(
+        tx as unknown as typeof db,
+        before.periodId,
+        nextIn,
+        nextOut ?? null,
+        company.timezone,
+      );
+    }
     const next = {
       ...patch,
       // First edit captures original timestamps; subsequent edits keep them.

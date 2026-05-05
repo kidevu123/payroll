@@ -195,12 +195,16 @@ function EditablePunch({
         timezone={timezone}
         rightSlot={
           periodLocked ? null : (
-            <div className="flex items-center gap-1">
-              <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
                 Edit
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setVoidOpen(true)}>
-                <Trash2 className="h-3.5 w-3.5" />
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setVoidOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
               </Button>
             </div>
           )

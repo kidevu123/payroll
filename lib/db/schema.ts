@@ -44,7 +44,15 @@ const citext = customType<{ data: string; driverData: string }>({
 // Enums
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const userRoleEnum = pgEnum("user_role", ["OWNER", "ADMIN", "EMPLOYEE"]);
+export const userRoleEnum = pgEnum("user_role", [
+  "OWNER",
+  "ADMIN",
+  // PAYROLL_STAFF: same access as ADMIN to payroll-running surfaces
+  // (time grid, periods, runs, NGTeco, requests) but cannot reset
+  // OWNER-only knobs (cleanup actions, DB browser, role assignment).
+  "PAYROLL_STAFF",
+  "EMPLOYEE",
+]);
 
 export const employeeStatusEnum = pgEnum("employee_status", [
   "ACTIVE",
@@ -259,6 +267,11 @@ export const employees = pgTable(
     defaultFlatAmountCents: integer("default_flat_amount_cents"),
     language: languageEnum("language").notNull().default("en"),
     hiredOn: date("hired_on").notNull(),
+    // YYYY-MM-DD; year is informational only. The admin calendar surfaces
+    // upcoming birthdays as a colored chip on the day so colleagues can
+    // wish them happy birthday. Self-editable from the employee
+    // portal's profile page.
+    birthday: date("birthday"),
     ngtecoEmployeeRef: text("ngteco_employee_ref"),
     notes: text("notes"),
     /**

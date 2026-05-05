@@ -49,7 +49,7 @@ export const getSetting = cache(async <K extends SettingKey>(
 export async function setSetting<K extends SettingKey>(
   key: K,
   value: SettingInput<K>,
-  ctx: { actorId: string; actorRole: "OWNER" | "ADMIN" | "EMPLOYEE" },
+  ctx: { actorId: string; actorRole: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE" },
 ): Promise<void> {
   const schema = settingsRegistry[key];
   const parsed = schema.parse(value);

@@ -20,6 +20,7 @@ import {
   Users,
   ScrollText,
   Database,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const CONFIG_TABS: readonly Tab[] = [
 // the admin back here.
 const TOOL_TABS: readonly Tab[] = [
   { href: "/employees", label: "Employees", icon: Users },
+  { href: "/punches", label: "All punches", icon: Clock },
   { href: "/ngteco", label: "NGTeco runs", icon: Workflow },
   { href: "/audit", label: "Audit log", icon: ScrollText },
   { href: "/db", label: "Database", icon: Database },

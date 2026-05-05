@@ -53,6 +53,16 @@ export function ProfileForm({ employee }: { employee: Employee }) {
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="birthday">{t("birthday")}</Label>
+            <Input
+              id="birthday"
+              name="birthday"
+              type="date"
+              defaultValue={employee.birthday ?? ""}
+            />
+            <p className="text-[11px] text-text-subtle">{t("birthdayHint")}</p>
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="language">{t("language")}</Label>
             <select
               id="language"

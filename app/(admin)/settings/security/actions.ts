@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth-guards";
+import { requireAdminStrict } from "@/lib/auth-guards";
 import { setSetting } from "@/lib/settings/runtime";
 import { securitySchema } from "@/lib/settings/schemas";
 
@@ -18,7 +18,7 @@ const formSchema = z.object({
 export async function saveSecurity(
   formData: FormData,
 ): Promise<{ error?: string } | void> {
-  const session = await requireAdmin();
+  const session = await requireAdminStrict();
   const parsed = formSchema.safeParse({
     adminTwoFactorRequired: formData.get("adminTwoFactorRequired") ?? undefined,
     sessionTimeoutDays: formData.get("sessionTimeoutDays"),

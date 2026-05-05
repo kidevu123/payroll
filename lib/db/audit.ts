@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 
 export type AuditEntry = {
   actorId: string | null;
-  actorRole: "OWNER" | "ADMIN" | "EMPLOYEE" | null;
+  actorRole: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE" | null;
   action: string;
   targetType: string;
   targetId: string;

@@ -15,7 +15,7 @@ const ARGON = {
 
 export type Actor = {
   id: string;
-  role: "OWNER" | "ADMIN" | "EMPLOYEE";
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
 };
 
 async function hashPassword(plain: string): Promise<string> {
@@ -201,7 +201,7 @@ export async function setUserDisabled(
 
 export async function setUserRole(
   userId: string,
-  role: "OWNER" | "ADMIN" | "EMPLOYEE",
+  role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE",
   actor: Actor,
 ): Promise<void> {
   if (role === "OWNER" && actor.role !== "OWNER") {
@@ -244,7 +244,7 @@ export async function inviteEmployeeUser(
   input: {
     employeeId: string;
     email: string;
-    role: "ADMIN" | "EMPLOYEE";
+    role: "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
   },
   actor: Actor,
 ): Promise<{ user: User; tempPassword: string }> {

@@ -6,14 +6,14 @@ declare module "next-auth" {
     user: {
       id: string;
       email: string;
-      role: "OWNER" | "ADMIN" | "EMPLOYEE";
+      role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
       employeeId?: string | undefined;
       mustChangePassword?: boolean | undefined;
     };
   }
   interface User {
     id?: string;
-    role?: "OWNER" | "ADMIN" | "EMPLOYEE";
+    role?: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
     employeeId?: string | undefined;
     mustChangePassword?: boolean | undefined;
   }
@@ -22,7 +22,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
-    role?: "OWNER" | "ADMIN" | "EMPLOYEE";
+    role?: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
     employeeId?: string | undefined;
     mustChangePassword?: boolean | undefined;
   }

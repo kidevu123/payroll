@@ -98,7 +98,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, trigger }) {
       if (user) {
         if (user.id !== undefined) token.id = user.id;
-        token.role = (user as { role: "OWNER" | "ADMIN" | "EMPLOYEE" }).role;
+        token.role = (user as { role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE" }).role;
         token.employeeId = (user as { employeeId?: string }).employeeId;
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
       }
@@ -122,7 +122,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "OWNER" | "ADMIN" | "EMPLOYEE";
+        session.user.role = token.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
         session.user.employeeId = token.employeeId as string | undefined;
         session.user.mustChangePassword = token.mustChangePassword as boolean | undefined;
       }
