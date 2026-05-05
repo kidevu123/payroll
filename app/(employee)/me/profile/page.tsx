@@ -25,6 +25,7 @@ import { signOutAction } from "@/components/admin/sign-out-action";
 import { LanguageSwitcher } from "@/components/admin/language-switcher";
 import { resolveLocale } from "@/lib/i18n";
 import { ProfileForm } from "./profile-form";
+import { PhotoUpload } from "./photo-upload";
 
 export default async function EmployeeProfile() {
   const session = await requireSession();
@@ -63,7 +64,15 @@ export default async function EmployeeProfile() {
           "this is YOU" without needing a photo upload feature. */}
       <Card>
         <CardContent className="px-6 py-5 flex items-center gap-4">
-          <Avatar name={employee.displayName} size="lg" />
+          <Avatar
+            name={employee.displayName}
+            size="lg"
+            photoUrl={
+              employee.photoPath
+                ? `/api/employees/${employee.id}/photo?v=${employee.id.slice(0, 8)}`
+                : null
+            }
+          />
           <div className="min-w-0 flex-1 space-y-0.5">
             <h1 className="text-base font-semibold tracking-tight antialiased truncate">
               {employee.displayName}
@@ -77,6 +86,23 @@ export default async function EmployeeProfile() {
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("profilePhoto")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PhotoUpload
+            employeeId={employee.id}
+            name={employee.displayName}
+            initialPhotoUrl={
+              employee.photoPath
+                ? `/api/employees/${employee.id}/photo?v=${employee.id.slice(0, 8)}`
+                : null
+            }
+          />
         </CardContent>
       </Card>
 

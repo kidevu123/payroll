@@ -116,14 +116,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 1,
   },
-  totalLabel: { fontSize: 8, fontFamily: "Helvetica-Bold" },
-  totalValue: { fontSize: 8, fontFamily: "Courier-Bold", textAlign: "right" },
-  roundedLabel: { fontSize: 7.5, color: "#475569" },
-  roundedValue: {
-    fontSize: 7.5,
-    fontFamily: "Courier",
+  // Owner ask: bold Rounded Pay (the amount actually paid) and
+  // de-emphasize the gross "Total". Total stays visible as a
+  // breakdown line but Rounded Pay is now the headline.
+  totalLabel: { fontSize: 7, color: "#64748b" },
+  totalValue: {
+    fontSize: 7,
+    fontFamily: "Helvetica",
     textAlign: "right",
-    color: "#475569",
+    color: "#64748b",
+  },
+  roundedLabel: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f172a",
+  },
+  roundedValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "right",
   },
   empty: { color: "#94a3b8" },
   footer: {
@@ -249,14 +260,13 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                 <View style={styles.totalsBlock}>
                   <View style={styles.totalLine}>
                     <Text style={styles.totalLabel}>
-                      Total Hours: {e.totals.hours.toFixed(2)}
-                    </Text>
-                    <Text style={styles.totalValue}>
+                      Total Hours: {e.totals.hours.toFixed(2)} · gross{" "}
                       {money(e.totals.grossCents, data.company.locale)}
                     </Text>
+                    <Text style={styles.totalValue} />
                   </View>
                   <View style={styles.totalLine}>
-                    <Text style={styles.roundedLabel}>Rounded Pay:</Text>
+                    <Text style={styles.roundedLabel}>Pay:</Text>
                     <Text
                       style={[
                         styles.roundedValue,
