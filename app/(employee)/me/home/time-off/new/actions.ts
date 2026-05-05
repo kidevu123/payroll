@@ -32,16 +32,26 @@ export async function submitTimeOffAction(
   if (parsed.data.endDate < parsed.data.startDate) {
     return { error: "End date can't be before start date." };
   }
-  await createTimeOffRequest(
-    {
-      employeeId: session.user.employeeId,
-      startDate: parsed.data.startDate,
-      endDate: parsed.data.endDate,
-      type: parsed.data.type,
-      reason: parsed.data.reason ?? null,
-    },
-    { id: session.user.id, role: session.user.role },
-  );
+  try {
+    await createTimeOffRequest(
+      {
+        employeeId: session.user.employeeId,
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        type: parsed.data.type,
+        reason: parsed.data.reason ?? null,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_OVERLAP") {
+      return {
+        error:
+          "You already have a pending or approved time-off request that overlaps these dates.",
+      };
+    }
+    throw err;
+  }
   const admins = await adminUserIds();
   if (admins.length > 0) {
     await dispatch(

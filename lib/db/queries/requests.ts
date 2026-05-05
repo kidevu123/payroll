@@ -3,7 +3,7 @@
 // approveMissedPunchRequest is the moneyball: it creates the resulting
 // Punch, links the alert + request, all in one transaction with audit.
 
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   missedPunchAlerts,
@@ -213,6 +213,27 @@ export async function createTimeOffRequest(
   actor: Actor,
 ): Promise<TimeOffRequest> {
   return db.transaction(async (tx) => {
+    // Reject overlap with any pending or approved request for the
+    // same employee. Rejected/cancelled rows are ignored. Range
+    // overlap test: existing.start <= new.end AND existing.end >= new.start.
+    const overlap = await tx
+      .select({ id: timeOffRequests.id })
+      .from(timeOffRequests)
+      .where(
+        and(
+          eq(timeOffRequests.employeeId, input.employeeId),
+          or(
+            eq(timeOffRequests.status, "PENDING"),
+            eq(timeOffRequests.status, "APPROVED"),
+          ),
+          sql`${timeOffRequests.startDate} <= ${input.endDate}`,
+          sql`${timeOffRequests.endDate} >= ${input.startDate}`,
+        ),
+      )
+      .limit(1);
+    if (overlap.length > 0) {
+      throw new Error("TIME_OFF_OVERLAP");
+    }
     const [row] = await tx.insert(timeOffRequests).values(input).returning();
     if (!row) throw new Error("createTimeOffRequest: insert empty");
     await writeAudit(

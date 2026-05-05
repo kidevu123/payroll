@@ -147,16 +147,23 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // ── ngteco.punch.poll — per-punch realtime ingestion ──────────────────
   // Handler dynamically imported so its transitive dependencies (vault,
   // playwright scraper) don't enter the edge bundle for instrumentation.ts.
+  // teamSize/teamConcurrency=1 enforces single-runner semantics: a long
+  // scrape that overruns its 15-min cron tick won't get a sibling polling
+  // the same NGTeco profile (Playwright would crash on the locked profile).
   await boss.createQueue("ngteco.punch.poll");
-  await boss.work("ngteco.punch.poll", async () => {
-    const auto = await getSetting("automation").catch(() => null);
-    if (!auto?.ngtecoPunchPoll?.enabled) {
-      logger.info("ngteco.punch.poll: disabled in settings; skipping");
-      return;
-    }
-    const { runPollAndLog } = await import("./handlers/punch-poll-runner");
-    await runPollAndLog({ triggeredBy: "CRON" });
-  });
+  await boss.work(
+    "ngteco.punch.poll",
+    { teamSize: 1, teamConcurrency: 1 } as Parameters<typeof boss.work>[1],
+    async () => {
+      const auto = await getSetting("automation").catch(() => null);
+      if (!auto?.ngtecoPunchPoll?.enabled) {
+        logger.info("ngteco.punch.poll: disabled in settings; skipping");
+        return;
+      }
+      const { runPollAndLog } = await import("./handlers/punch-poll-runner");
+      await runPollAndLog({ triggeredBy: "CRON" });
+    },
+  );
   if (cronEnabled && automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(
       "ngteco.punch.poll",

@@ -187,6 +187,21 @@ export async function recomputePayslipAction(
 ): Promise<{ error?: string; ok?: true }> {
   const session = await requireAdmin();
   if (!idSchema.safeParse(payslipId).success) return { error: "Invalid id." };
+  // PAID guard: refuse to mutate paid history. Admin must "Unmark paid"
+  // first — that step writes its own audit row.
+  {
+    const { db } = await import("@/lib/db");
+    const { payslips, payPeriods } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ state: payPeriods.state })
+      .from(payslips)
+      .innerJoin(payPeriods, eq(payslips.periodId, payPeriods.id))
+      .where(eq(payslips.id, payslipId));
+    if (row?.state === "PAID") {
+      return { error: "Period is paid. Unmark paid before recomputing." };
+    }
+  }
   try {
     await recomputePayslip(payslipId, {
       id: session.user.id,
@@ -227,8 +242,18 @@ export async function recomputeAllPayslipsOnPeriodAction(
   const session = await requireAdmin();
   if (!idSchema.safeParse(periodId).success) return { error: "Invalid period id." };
   const { db } = await import("@/lib/db");
-  const { payslips, payrollRuns } = await import("@/lib/db/schema");
+  const { payslips, payrollRuns, payPeriods } = await import("@/lib/db/schema");
   const { and, eq, isNull, sql } = await import("drizzle-orm");
+  // PAID guard: refuse to recompute money on a paid period.
+  {
+    const [pr] = await db
+      .select({ state: payPeriods.state })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, periodId));
+    if (pr?.state === "PAID") {
+      return { error: "Period is paid. Unmark paid before recomputing." };
+    }
+  }
   // Snapshot every active payslip on this period before recomputing
   // so we can return the delta to the caller.
   const snapshots = await db

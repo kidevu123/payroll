@@ -9,9 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyState } from "@/components/ui/empty-state";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { AutoRefresh } from "@/components/employee/auto-refresh";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
+import { getEmployee } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 
@@ -58,6 +60,14 @@ export default async function EmployeeTime() {
         </p>
       </main>
     );
+  }
+  // Salaried employees don't punch a clock — bottom-nav already hides
+  // this tab, but a direct URL was rendering an empty page that
+  // auto-refreshed forever. Bounce them to /me so the salaried home
+  // surface (paystubs + time-off) is what they see.
+  const me = await getEmployee(session.user.employeeId);
+  if (me?.payType === "SALARIED") {
+    redirect("/me");
   }
   const company = await getSetting("company");
   const payRules = await getSetting("payRules");

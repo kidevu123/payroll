@@ -70,8 +70,9 @@ export function PunchEditor({
         <div className="space-y-2 rounded-card border border-dashed border-border bg-surface p-5">
           <h2 className="text-lg font-semibold">Add manual punch</h2>
           <p className="text-xs text-text-muted">
-            Source will be MANUAL_ADMIN. Editing later preserves the original
-            timestamps and requires a reason.
+            Times are entered as Eastern Time (America/New_York). Source will
+            be MANUAL_ADMIN. Editing later preserves the original timestamps
+            and requires a reason.
           </p>
           <CreateForm
             periodId={periodId}
@@ -125,7 +126,7 @@ function CreateForm({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="clockIn">Clock in</Label>
+          <Label htmlFor="clockIn">Clock in (ET)</Label>
           <Input
             id="clockIn"
             name="clockIn"
@@ -135,7 +136,7 @@ function CreateForm({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="clockOut">Clock out (optional)</Label>
+          <Label htmlFor="clockOut">Clock out (ET, optional)</Label>
           <Input
             id="clockOut"
             name="clockOut"
@@ -245,7 +246,7 @@ function EditablePunch({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Clock in</Label>
+          <Label>Clock in (ET)</Label>
           <Input
             name="clockIn"
             type="datetime-local"
@@ -254,7 +255,7 @@ function EditablePunch({
           />
         </div>
         <div className="space-y-1">
-          <Label>Clock out</Label>
+          <Label>Clock out (ET)</Label>
           <Input
             name="clockOut"
             type="datetime-local"

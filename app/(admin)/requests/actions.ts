@@ -205,20 +205,31 @@ export async function createTimeOffOnBehalfAction(
   // Create as APPROVED directly — this is admin recording an arrangement
   // they already agreed to, not employee → admin → resolve. resolvedById /
   // resolvedAt point at the admin so audit history reads cleanly.
-  const created = await createTimeOffRequest(
-    {
-      employeeId: parsed.data.employeeId,
-      startDate: parsed.data.startDate,
-      endDate: parsed.data.endDate,
-      type: parsed.data.type,
-      reason: parsed.data.reason ?? null,
-      status: "APPROVED",
-      resolvedById: session.user.id,
-      resolvedAt: new Date(),
-      resolutionNote: "Recorded by admin on behalf of employee.",
-    },
-    { id: session.user.id, role: session.user.role },
-  );
+  let created;
+  try {
+    created = await createTimeOffRequest(
+      {
+        employeeId: parsed.data.employeeId,
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        type: parsed.data.type,
+        reason: parsed.data.reason ?? null,
+        status: "APPROVED",
+        resolvedById: session.user.id,
+        resolvedAt: new Date(),
+        resolutionNote: "Recorded by admin on behalf of employee.",
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_OVERLAP") {
+      return {
+        error:
+          "Employee already has a pending or approved time-off request overlapping these dates.",
+      };
+    }
+    throw err;
+  }
 
   // Notify the employee — push + in-app — so they see the time off appear
   // on their portal calendar even though they never opened a ticket.

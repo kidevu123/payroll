@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
+import { writeAudit } from "@/lib/db/audit";
 
 const schema = z.object({
   endpoint: z.string().url(),
@@ -41,14 +42,33 @@ export async function POST(req: Request): Promise<Response> {
         userAgent: parsed.data.userAgent ?? existing.userAgent,
       })
       .where(eq(pushSubscriptions.id, existing.id));
-  } else {
-    await db.insert(pushSubscriptions).values({
-      userId: session.user.id,
-      endpoint: parsed.data.endpoint,
-      p256dh: parsed.data.keys.p256dh,
-      auth: parsed.data.keys.auth,
-      userAgent: parsed.data.userAgent ?? null,
+    await writeAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "push.subscription.update",
+      targetType: "PushSubscription",
+      targetId: existing.id,
     });
+  } else {
+    const [row] = await db
+      .insert(pushSubscriptions)
+      .values({
+        userId: session.user.id,
+        endpoint: parsed.data.endpoint,
+        p256dh: parsed.data.keys.p256dh,
+        auth: parsed.data.keys.auth,
+        userAgent: parsed.data.userAgent ?? null,
+      })
+      .returning();
+    if (row) {
+      await writeAudit({
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        action: "push.subscription.create",
+        targetType: "PushSubscription",
+        targetId: row.id,
+      });
+    }
   }
   return NextResponse.json({ ok: true });
 }

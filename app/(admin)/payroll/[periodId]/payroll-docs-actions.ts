@@ -29,6 +29,21 @@ export async function uploadPayrollDocAction(
 ): Promise<{ error?: string; ok?: true }> {
   const session = await requireAdmin();
   if (!idSchema.safeParse(periodId).success) return { error: "Invalid period." };
+  // PAID guard: server-enforced even though the UI hides the upload
+  // slot — a stale form replay or scripted POST can otherwise mutate
+  // documents on a paid period.
+  {
+    const { db } = await import("@/lib/db");
+    const { payPeriods } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [pr] = await db
+      .select({ state: payPeriods.state })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, periodId));
+    if (pr?.state === "PAID") {
+      return { error: "Period is paid. Unmark paid before uploading documents." };
+    }
+  }
   const employeeId = formData.get("employeeId");
   if (typeof employeeId !== "string" || !idSchema.safeParse(employeeId).success) {
     return { error: "Invalid employee." };
@@ -133,6 +148,20 @@ export async function deletePayrollDocAction(
   if (!idSchema.safeParse(docId).success) return { error: "Invalid id." };
   const doc = await getDoc(docId);
   if (!doc) return { error: "Document not found." };
+  // PAID guard. Skip when the doc isn't tied to a period (free-form
+  // salaried paystubs may have a date range only).
+  if (doc.periodId) {
+    const { db } = await import("@/lib/db");
+    const { payPeriods } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const [pr] = await db
+      .select({ state: payPeriods.state })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, doc.periodId));
+    if (pr?.state === "PAID") {
+      return { error: "Period is paid. Unmark paid before deleting documents." };
+    }
+  }
   try {
     await deleteDoc(docId, {
       id: session.user.id,

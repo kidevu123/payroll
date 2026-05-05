@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
+import { writeAudit } from "@/lib/db/audit";
 
 const schema = z.object({ endpoint: z.string().url() });
 
@@ -21,13 +22,23 @@ export async function POST(req: Request): Promise<Response> {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid input" }, { status: 400 });
   }
-  await db
+  const removed = await db
     .delete(pushSubscriptions)
     .where(
       and(
         eq(pushSubscriptions.endpoint, parsed.data.endpoint),
         eq(pushSubscriptions.userId, session.user.id),
       ),
-    );
+    )
+    .returning({ id: pushSubscriptions.id });
+  for (const r of removed) {
+    await writeAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "push.subscription.delete",
+      targetType: "PushSubscription",
+      targetId: r.id,
+    });
+  }
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch, editPunch, voidPunch } from "@/lib/db/queries/punches";
+import { getSetting } from "@/lib/settings/runtime";
+import { wallClockToUtc, isBareWallClock } from "@/lib/time/wall-clock";
+
+/**
+ * Parse a punch-editor datetime-local string as company-timezone
+ * wall-clock and return the UTC Date. Owner: "everything should be in
+ * EST... there is no other time zones". Without this, the LXC's UTC
+ * locale would re-interpret "2026-05-04T20:00" as 8 PM UTC instead of
+ * 8 PM ET.
+ */
+async function parsePunchInput(input: string): Promise<Date | null> {
+  if (isBareWallClock(input)) {
+    const company = await getSetting("company");
+    return wallClockToUtc(input, company.timezone);
+  }
+  const d = new Date(input);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 // ISO datetime regex — input must be e.g. "2026-04-15T07:30" or
 // "2026-04-15T07:30:00Z". Without this, garbage like "2026-13-99"
@@ -38,10 +56,12 @@ export async function createPunchAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const clockInD = new Date(parsed.data.clockIn);
-  const clockOutD = parsed.data.clockOut ? new Date(parsed.data.clockOut) : null;
-  if (Number.isNaN(clockInD.getTime())) return { error: "Invalid clock-in." };
-  if (clockOutD && Number.isNaN(clockOutD.getTime())) {
+  const clockInD = await parsePunchInput(parsed.data.clockIn);
+  const clockOutD = parsed.data.clockOut
+    ? await parsePunchInput(parsed.data.clockOut)
+    : null;
+  if (!clockInD) return { error: "Invalid clock-in." };
+  if (parsed.data.clockOut && !clockOutD) {
     return { error: "Invalid clock-out." };
   }
   try {
@@ -91,10 +111,12 @@ export async function editPunchAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const clockInD = new Date(parsed.data.clockIn);
-  const clockOutD = parsed.data.clockOut ? new Date(parsed.data.clockOut) : null;
-  if (Number.isNaN(clockInD.getTime())) return { error: "Invalid clock-in." };
-  if (clockOutD && Number.isNaN(clockOutD.getTime())) {
+  const clockInD = await parsePunchInput(parsed.data.clockIn);
+  const clockOutD = parsed.data.clockOut
+    ? await parsePunchInput(parsed.data.clockOut)
+    : null;
+  if (!clockInD) return { error: "Invalid clock-in." };
+  if (parsed.data.clockOut && !clockOutD) {
     return { error: "Invalid clock-out." };
   }
   try {
