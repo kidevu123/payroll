@@ -82,6 +82,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           targetType: "User",
           targetId: user.id,
         });
+        // Usage metric — Grafana derives DAU/WAU + role-mix from this.
+        try {
+          const { authSignins } = await import("@/lib/telemetry");
+          authSignins.add(1, { role: user.role });
+        } catch {
+          /* metric SDK may not be initialized in tests */
+        }
 
         return {
           id: user.id,

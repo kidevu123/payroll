@@ -24,6 +24,14 @@ export default async function EmployeeLayout({
   children: React.ReactNode;
 }) {
   const session = await requireSession();
+  // Usage metric — every employee page render. Cheap fire-and-forget.
+  try {
+    const { sessionPing, pageRenders } = await import("@/lib/telemetry");
+    sessionPing.add(1, { role: session.user.role, surface: "employee" });
+    pageRenders.add(1, { surface: "employee" });
+  } catch {
+    /* metrics not critical to render */
+  }
   const [employee, subs, t] = await Promise.all([
     session.user.employeeId
       ? getEmployee(session.user.employeeId)

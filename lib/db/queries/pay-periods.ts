@@ -51,6 +51,32 @@ export async function getCurrentPeriod(today: string): Promise<PayPeriod | null>
   return row ?? null;
 }
 
+/**
+ * Period covering `today` for the given pay-schedule id. Used by the
+ * employee Home tab to pick the WEEKLY period for a weekly employee
+ * even when a SEMI-MONTHLY period also overlaps today (and vice versa).
+ * Without this filter, getCurrentPeriod returned whichever row sorted
+ * first, so a weekly employee saw "10 days left" against the semi-
+ * monthly window.
+ */
+export async function getCurrentPeriodForSchedule(args: {
+  today: string;
+  payScheduleId: string;
+}): Promise<PayPeriod | null> {
+  const [row] = await db
+    .select()
+    .from(payPeriods)
+    .where(
+      and(
+        eq(payPeriods.payScheduleId, args.payScheduleId),
+        lte(payPeriods.startDate, args.today),
+        gte(payPeriods.endDate, args.today),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 export async function lockPeriod(id: string, actor: Actor): Promise<PayPeriod> {
   return db.transaction(async (tx) => {
     const [before] = await tx

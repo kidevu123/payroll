@@ -29,6 +29,15 @@ const SETTINGS_TARGETS: CommandTarget[] = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin();
+  // Usage metrics — one ping per admin page render. Grafana aggregates
+  // these into DAU/WAU + active-admin counts. Cheap fire-and-forget.
+  try {
+    const { sessionPing, pageRenders } = await import("@/lib/telemetry");
+    sessionPing.add(1, { role: session.user.role, surface: "admin" });
+    pageRenders.add(1, { surface: "admin" });
+  } catch {
+    /* metrics not critical to render */
+  }
   // Bell badge reflects what the admin will SEE on /requests — pending
   // missed-punch + pending time-off requests. Was previously
   // unreadCount(notifications), which drifted from the page contents and

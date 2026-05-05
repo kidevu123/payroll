@@ -33,7 +33,11 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
 import { listRecentForEmployee } from "@/lib/db/queries/time-off";
-import { getCurrentPeriod, getPeriodById } from "@/lib/db/queries/pay-periods";
+import {
+  getCurrentPeriod,
+  getCurrentPeriodForSchedule,
+  getPeriodById,
+} from "@/lib/db/queries/pay-periods";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
@@ -78,8 +82,16 @@ export default async function EmployeeHome() {
     getSetting("payRules"),
   ]);
   const today = todayInTz(company.timezone);
-  // Read-only — period creation is admin-only via CSV upload.
-  const period = await getCurrentPeriod(today);
+  // Pick the period that matches THIS employee's pay schedule. A weekly
+  // employee on May 5 should see the May 4-10 weekly period, not the
+  // overlapping May 1-15 semi-monthly one. Falls back to the generic
+  // by-date lookup only when the employee has no schedule assigned.
+  const period = employee.payScheduleId
+    ? await getCurrentPeriodForSchedule({
+        today,
+        payScheduleId: employee.payScheduleId,
+      })
+    : await getCurrentPeriod(today);
 
   // Recent time-off request history for this employee — visible to all
   // classifications (salaried + hourly all submit requests).

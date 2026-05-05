@@ -79,6 +79,56 @@ export const errorEvents = meter.createCounter("app.errors", {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Usage metrics — "how many people are using the app" per Grafana.
+// All counters/histograms; aggregate by role/surface in dashboards.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One increment per successful sign-in. Labeled by role. */
+export const authSignins = meter.createCounter("app.auth.signins", {
+  description: "Successful sign-ins, labeled by role",
+});
+
+/** Active session ping — fired when an authenticated request hits the
+ *  app shell. Use `count by (user_id)` over 5m to derive DAU/WAU. */
+export const sessionPing = meter.createCounter("app.session.ping", {
+  description: "Authenticated request seen — one per page render",
+});
+
+/** Server-action invocations. Label with the action name so Grafana
+ *  can break down which features are used most. */
+export const serverActionInvocations = meter.createCounter(
+  "app.action.invocations",
+  {
+    description: "Server actions invoked, labeled by action name",
+  },
+);
+
+/** Histogram of server-action durations in ms. Same labels as
+ *  serverActionInvocations. */
+export const serverActionDuration = meter.createHistogram(
+  "app.action.duration_ms",
+  {
+    description: "Server-action wall-clock duration",
+    unit: "ms",
+  },
+);
+
+/** A page render. Labeled by surface (admin / employee / login). The
+ *  per-route auto-instrumentation already tracks HTTP routes; this
+ *  one is for high-level "how many active sessions" rollups. */
+export const pageRenders = meter.createCounter("app.page.renders", {
+  description: "Page renders by surface",
+});
+
+/** Notifications dispatched (in-app + push). Label by kind. */
+export const notificationsSent = meter.createCounter(
+  "app.notifications.sent",
+  {
+    description: "Notifications dispatched, labeled by channel + kind",
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Build / deploy info. Single emission at boot — labels carry the SHA,
 // version, and start time so Grafana can render a CI/CD section without
 // scraping git or systemd. The systemd deploy unit writes the current SHA
