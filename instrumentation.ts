@@ -115,6 +115,13 @@ export async function register() {
   );
   sdk.start();
 
+  // Eager-load lib/telemetry so its Counter priming + observable
+  // gauge callbacks register IMMEDIATELY. Without this, the metrics
+  // module would lazy-load on the first server-action call, leaving
+  // /metrics empty until traffic hits — which is exactly what
+  // populated the "no data" panels on a fresh deploy.
+  await import("@/lib/telemetry");
+
   // Boot pg-boss after telemetry so its logs/spans are captured.
   const { getBoss } = await import("@/lib/jobs");
   await getBoss();

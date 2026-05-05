@@ -128,6 +128,99 @@ export const notificationsSent = meter.createCounter(
   },
 );
 
+// Prime each Counter so a `_total = 0` series shows up at /metrics
+// before the first real event. The OTel SDK only emits Counter
+// series after the first `.add()`, so without this Grafana panels
+// would read "no data" on a fresh deploy until someone signs in.
+authSignins.add(0, { role: "_init" });
+sessionPing.add(0, { role: "_init", surface: "_init" });
+serverActionInvocations.add(0, { action: "_init" });
+pageRenders.add(0, { surface: "_init" });
+notificationsSent.add(0, { channel: "_init", kind: "_init" });
+errorEvents.add(0, { source: "_init" });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live-state gauges. Read the DB at every Prometheus scrape (~15s) and
+// emit a fresh value. These always have data even on a fresh deploy —
+// good for the "is the app being used" question without waiting for
+// counters to tick. Failures are swallowed so a transient DB blip
+// doesn't crash the meter callback.
+// ─────────────────────────────────────────────────────────────────────────────
+const employeesByStatus = meter.createObservableGauge(
+  "app.employees.count",
+  { description: "Employees by status" },
+);
+const usersActive24h = meter.createObservableGauge(
+  "app.users.active_24h",
+  { description: "Users with successful login in last 24h" },
+);
+const periodsByState = meter.createObservableGauge("app.periods.count", {
+  description: "Pay periods by state",
+});
+const feedbackOpen = meter.createObservableGauge("app.feedback.open", {
+  description: "Open (unresolved) feedback / bug reports",
+});
+
+employeesByStatus.addCallback(async (result) => {
+  try {
+    const { db } = await import("@/lib/db");
+    const { employees } = await import("@/lib/db/schema");
+    const { sql } = await import("drizzle-orm");
+    const rows = await db
+      .select({ status: employees.status, n: sql<number>`count(*)::int` })
+      .from(employees)
+      .groupBy(employees.status);
+    for (const r of rows) result.observe(Number(r.n), { status: r.status });
+  } catch {
+    /* DB unavailable — skip this scrape */
+  }
+});
+
+usersActive24h.addCallback(async (result) => {
+  try {
+    const { db } = await import("@/lib/db");
+    const { users } = await import("@/lib/db/schema");
+    const { sql } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(sql`${users.lastLoginAt} > now() - interval '24 hours'`);
+    result.observe(Number(row?.n ?? 0));
+  } catch {
+    /* skip */
+  }
+});
+
+periodsByState.addCallback(async (result) => {
+  try {
+    const { db } = await import("@/lib/db");
+    const { payPeriods } = await import("@/lib/db/schema");
+    const { sql } = await import("drizzle-orm");
+    const rows = await db
+      .select({ state: payPeriods.state, n: sql<number>`count(*)::int` })
+      .from(payPeriods)
+      .groupBy(payPeriods.state);
+    for (const r of rows) result.observe(Number(r.n), { state: r.state });
+  } catch {
+    /* skip */
+  }
+});
+
+feedbackOpen.addCallback(async (result) => {
+  try {
+    const { db } = await import("@/lib/db");
+    const { appFeedback } = await import("@/lib/db/schema");
+    const { sql, isNull } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(appFeedback)
+      .where(isNull(appFeedback.resolvedAt));
+    result.observe(Number(row?.n ?? 0));
+  } catch {
+    /* skip */
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Build / deploy info. Single emission at boot — labels carry the SHA,
 // version, and start time so Grafana can render a CI/CD section without
