@@ -21,17 +21,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
   CalendarDays,
   Wallet,
   MessageSquareWarning,
-  Workflow,
   BarChart3,
-  ScrollText,
   Settings2,
   Briefcase,
   CalendarRange,
-  Database,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -48,7 +44,6 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: "manage",
     items: [
-      { href: "/employees", labelKey: "employees", icon: Users },
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
       { href: "/salaried", labelKey: "salaried", icon: Briefcase },
@@ -58,12 +53,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
   {
     headingKey: "operate",
-    items: [
-      { href: "/ngteco", labelKey: "ngteco", icon: Workflow },
-      { href: "/reports", labelKey: "reports", icon: BarChart3 },
-      { href: "/audit", labelKey: "audit", icon: ScrollText },
-      { href: "/db", labelKey: "database", icon: Database },
-    ],
+    items: [{ href: "/reports", labelKey: "reports", icon: BarChart3 }],
   },
 ];
 

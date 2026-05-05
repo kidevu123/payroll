@@ -5,13 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Users,
   CalendarDays,
   Wallet,
   MessageSquareWarning,
-  Workflow,
   BarChart3,
-  ScrollText,
   Settings2,
   Menu,
   X,
@@ -31,7 +28,6 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: "manage",
     items: [
-      { href: "/employees", labelKey: "employees", icon: Users },
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
       { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
@@ -39,11 +35,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
   {
     headingKey: "operate",
-    items: [
-      { href: "/ngteco", labelKey: "ngteco", icon: Workflow },
-      { href: "/reports", labelKey: "reports", icon: BarChart3 },
-      { href: "/audit", labelKey: "audit", icon: ScrollText },
-    ],
+    items: [{ href: "/reports", labelKey: "reports", icon: BarChart3 }],
   },
   {
     headingKey: "system",
