@@ -98,17 +98,26 @@ export function OnboardingBanner({
   }
 
   async function onInstallClick() {
-    if (installPromptEvent) {
-      // Chrome/Android: native install dialog.
-      await installPromptEvent.prompt();
-      const choice = await installPromptEvent.userChoice;
-      if (choice.outcome === "accepted") {
-        setInstallPromptEvent(null);
-      }
-      return;
-    }
-    // iOS Safari + desktop Safari: show share-menu instructions.
+    // Always open the instructions sheet on click. On Chrome/Android we
+    // ALSO fire the native install prompt so the user gets the OS dialog
+    // they're used to; on iOS Safari that API doesn't exist (Safari has
+    // never implemented `beforeinstallprompt`), so the sheet is the only
+    // path. Previously we early-returned on the native path and only
+    // showed the sheet when the event was missing — but if the event
+    // failed to capture for any reason the click looked like a no-op.
     setShowInstallSheet(true);
+    if (installPromptEvent) {
+      try {
+        await installPromptEvent.prompt();
+        const choice = await installPromptEvent.userChoice;
+        if (choice.outcome === "accepted") {
+          setInstallPromptEvent(null);
+          setShowInstallSheet(false);
+        }
+      } catch {
+        /* user dismissed; sheet stays as fallback instructions */
+      }
+    }
   }
 
   async function onEnableNotifications() {
@@ -243,7 +252,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55"
       onClick={onClose}
     >
       <div
@@ -251,9 +260,19 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong/70" />
-        <h3 className="text-base font-semibold tracking-tight antialiased">
-          Save Milo to your Home Screen
-        </h3>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-base font-semibold tracking-tight antialiased">
+            Save Milo to your Home Screen
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-m-1 p-1 text-text-muted hover:text-text rounded-md"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
         <p className="mt-1 text-xs text-text-muted leading-relaxed">
           Adds a Milo icon next to your other apps. Tap it any time to open
           Milo without typing a URL.
