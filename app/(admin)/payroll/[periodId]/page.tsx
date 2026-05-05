@@ -105,6 +105,15 @@ export default async function PeriodReviewPage({
     .orderBy(desc(payrollRuns.createdAt))
     .limit(1);
   const runScheduleId = run?.payScheduleId ?? null;
+  // Resolve the schedule label using BOTH sources — the period's stored
+  // pay_schedule_id is the source of truth; fall back to the most-recent
+  // run's schedule_id if the period itself wasn't tagged. Driving the
+  // pill and the AssignScheduleButton from the same value keeps them
+  // honest: pill says UNASSIGNED iff the button is offered.
+  const headerScheduleId = period.payScheduleId ?? runScheduleId;
+  const headerSchedule = headerScheduleId
+    ? schedules.find((s) => s.id === headerScheduleId) ?? null
+    : null;
   const runSchedule = runScheduleId
     ? schedules.find((s) => s.id === runScheduleId)
     : null;
@@ -342,8 +351,8 @@ export default async function PeriodReviewPage({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
               <StatusPill status={period.state} />
-              <SchedulePill name={runSchedule?.name ?? null} />
-              {!period.payScheduleId && (
+              <SchedulePill name={headerSchedule?.name ?? null} />
+              {!headerScheduleId && (
                 <AssignScheduleButton
                   periodId={period.id}
                   schedules={schedules
