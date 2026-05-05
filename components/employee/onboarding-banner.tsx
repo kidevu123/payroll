@@ -230,16 +230,27 @@ export function OnboardingBanner({
 
 function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
   const ios = typeof navigator !== "undefined" && isIOSSafari();
+  // Lock body scroll while the sheet is open so the page underneath
+  // doesn't scroll when the user touches the backdrop.
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-text/40 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-t-2xl bg-surface p-5 pb-8 shadow-pop animate-in slide-in-from-bottom"
+        className="w-full max-w-md rounded-t-2xl bg-surface p-5 pb-8 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-border" />
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong/70" />
         <h3 className="text-base font-semibold tracking-tight antialiased">
           Save Milo to your Home Screen
         </h3>

@@ -72,6 +72,36 @@
       "pay": "Pago",
       "profile": "Perfil"
     },
+    "tour": {
+      "welcomeTitle": "Bienvenido a Milo",
+      "welcomeBody": "Tu lugar para horas, pago y tiempo libre — vamos a darle un vistazo rápido.",
+      "start": "Mostrarme",
+      "skip": "Ahora no",
+      "next": "Siguiente",
+      "done": "Entendido",
+      "steps": {
+        "home": {
+          "title": "Inicio",
+          "body": "Tu semana de un vistazo: horas trabajadas, último recibo de pago y cualquier cosa que necesite tu atención."
+        },
+        "time": {
+          "title": "Tiempo",
+          "body": "Cada entrada y salida del período actual. ¿Falta una marcación? Tócala aquí para reportarla."
+        },
+        "pay": {
+          "title": "Pago",
+          "body": "Cada recibo aparece aquí cuando se publica la nómina. Ábrelo para confirmar o reportar un problema."
+        },
+        "profile": {
+          "title": "Perfil",
+          "body": "Cambia el idioma, gestiona notificaciones y cierra sesión. Las notificaciones te avisan en día de pago."
+        },
+        "notifications": {
+          "title": "Notificaciones",
+          "body": "Actívalas para que te avisemos al instante cuando tu recibo esté listo o una marcación necesite atención."
+        }
+      }
+    },
     "home": {
       "greeting": "Hola, {name}",
       "weekTitle": "Esta semana",

@@ -72,6 +72,36 @@
       "pay": "Pay",
       "profile": "Profile"
     },
+    "tour": {
+      "welcomeTitle": "Welcome to Milo",
+      "welcomeBody": "Your home for hours, pay, and time off — let's take a quick look around.",
+      "start": "Show me around",
+      "skip": "Skip for now",
+      "next": "Next",
+      "done": "Got it",
+      "steps": {
+        "home": {
+          "title": "Home",
+          "body": "Your week at a glance: hours so far, latest payslip, and anything that needs your attention."
+        },
+        "time": {
+          "title": "Time",
+          "body": "Every clock-in and clock-out for this period. Spot a missing punch? Tap to report it from here."
+        },
+        "pay": {
+          "title": "Pay",
+          "body": "Every payslip lands here when payroll publishes. Open one to acknowledge or report a problem."
+        },
+        "profile": {
+          "title": "Profile",
+          "body": "Change your language, manage notifications, and sign out. Notifications keep you in the loop on payday."
+        },
+        "notifications": {
+          "title": "Notifications",
+          "body": "Turn these on so we can ping you the moment your payslip is ready or a punch needs attention."
+        }
+      }
+    },
     "home": {
       "greeting": "Hi, {name}",
       "weekTitle": "This week",

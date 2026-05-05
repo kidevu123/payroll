@@ -14,11 +14,13 @@ import { usePathname } from "next/navigation";
 import { Home, Calendar, Wallet, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// `tour` is the data-tour attribute the AppTour walkthrough targets.
+// Stable string keys that don't change with translations.
 const ALL_TABS = [
-  { href: "/me/home", label: "Home", icon: Home },
-  { href: "/me/time", label: "Time", icon: Calendar },
-  { href: "/me/pay", label: "Pay", icon: Wallet },
-  { href: "/me/profile", label: "Profile", icon: User },
+  { href: "/me/home", label: "Home", icon: Home, tour: "nav-home" },
+  { href: "/me/time", label: "Time", icon: Calendar, tour: "nav-time" },
+  { href: "/me/pay", label: "Pay", icon: Wallet, tour: "nav-pay" },
+  { href: "/me/profile", label: "Profile", icon: User, tour: "nav-profile" },
 ] as const;
 
 export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
@@ -32,12 +34,13 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
       className="fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_2px_0_rgb(15_23_42_/_0.04)]"
     >
       <ul className={cn("grid max-w-md mx-auto", hideTime ? "grid-cols-3" : "grid-cols-4")}>
-        {tabs.map(({ href, label, icon: Icon }) => {
+        {tabs.map(({ href, label, icon: Icon, tour }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <li key={href}>
               <Link
                 href={href}
+                data-tour={tour}
                 className={cn(
                   "relative flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] transition-colors",
                   active ? "text-brand-700 font-medium" : "text-text-subtle hover:text-text",
