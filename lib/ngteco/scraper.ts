@@ -406,34 +406,67 @@ export async function scrapeViewAttendance(
     let pages = 0;
     while (events.length < maxRows && pages < 50) {
       pages++;
-      // Snapshot the table.
-      const rows = page.locator(sel.viewPunch.rowsContainer);
-      const rowCount = await rows.count();
-      for (let i = 0; i < rowCount; i++) {
-        const row = rows.nth(i);
-        const cells = await Promise.all([
-          row.locator(sel.viewPunch.personNameCell).first().textContent(),
-          row.locator(sel.viewPunch.personIdCell).first().textContent(),
-          row.locator(sel.viewPunch.punchDateCell).first().textContent(),
-          row.locator(sel.viewPunch.punchTimeCell).first().textContent(),
-          row.locator(sel.viewPunch.verifyTypeCell).first().textContent(),
-          row.locator(sel.viewPunch.timezoneCell).first().textContent(),
-          row.locator(sel.viewPunch.sourceCell).first().textContent(),
-        ]);
-        const personName = (cells[0] ?? "").trim();
-        const personId = (cells[1] ?? "").trim();
-        const dateRaw = (cells[2] ?? "").trim();
-        const timeRaw = (cells[3] ?? "").trim();
-        const verifyType = (cells[4] ?? "").trim();
-        const tzRaw = (cells[5] ?? "").trim();
-        const source = (cells[6] ?? "").trim();
-        if (!personId || !dateRaw || !timeRaw) continue;
-        const punchAt = composeIso(dateRaw, timeRaw, tzRaw);
+      // Read every row's cells in ONE pass via page.evaluate. Per-row
+      // .locator().nth(N) was timing out on MuiDataGrid because the grid
+      // virtualizes rows — only on-screen rows live in the DOM, so when
+      // we asked for row N=8 while the grid had scrolled it out, the
+      // selector hung waiting for an element that no longer existed.
+      // page.evaluate runs in-browser, snapshots the visible row HTML,
+      // and never blocks on Playwright's auto-wait.
+      const evalArgs = {
+        rowSel: sel.viewPunch.rowsContainer,
+        nameSel: sel.viewPunch.personNameCell,
+        idSel: sel.viewPunch.personIdCell,
+        dateSel: sel.viewPunch.punchDateCell,
+        timeSel: sel.viewPunch.punchTimeCell,
+        verifySel: sel.viewPunch.verifyTypeCell,
+        tzSel: sel.viewPunch.timezoneCell,
+        sourceSel: sel.viewPunch.sourceCell,
+      };
+      const rowsRaw = (await page.evaluate(
+        (a: typeof evalArgs) => {
+          const out: Array<Record<string, string>> = [];
+          const rows = document.querySelectorAll(a.rowSel);
+          for (const row of Array.from(rows)) {
+            const get = (s: string) =>
+              (row.querySelector(s) as HTMLElement | null)?.textContent?.trim() ??
+              "";
+            out.push({
+              personName: get(a.nameSel),
+              personId: get(a.idSel),
+              dateRaw: get(a.dateSel),
+              timeRaw: get(a.timeSel),
+              verifyType: get(a.verifySel),
+              tzRaw: get(a.tzSel),
+              source: get(a.sourceSel),
+            });
+          }
+          return out;
+        },
+        evalArgs,
+      )) as Array<{
+        personName: string;
+        personId: string;
+        dateRaw: string;
+        timeRaw: string;
+        verifyType: string;
+        tzRaw: string;
+        source: string;
+      }>;
+      for (const r of rowsRaw) {
+        if (!r.personId || !r.dateRaw || !r.timeRaw) continue;
+        const punchAt = composeIso(r.dateRaw, r.timeRaw, r.tzRaw);
         if (!punchAt) continue;
-        const key = `${personId}|${punchAt}`;
+        const key = `${r.personId}|${punchAt}`;
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
-        events.push({ personId, personName, punchAt, verifyType, source });
+        events.push({
+          personId: r.personId,
+          personName: r.personName,
+          punchAt,
+          verifyType: r.verifyType,
+          source: r.source,
+        });
       }
       // Try to advance.
       const next = page.locator(sel.viewPunch.nextPageButton).first();

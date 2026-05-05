@@ -3,11 +3,11 @@
 // callers pass the company record (name, logoPath optional). No fetching here
 // so it can render in both server and client trees without async friction.
 //
-// When an uploaded logo is present we treat it as a self-contained brand
-// mark (e.g. a wordmark like "milo" that already contains the company name)
-// and render the image at a fixed height with auto width, hiding the text
-// label so the image speaks for itself. When no logo is uploaded we fall
-// back to initials in a brand-coloured square + the company name as text.
+// The uploaded logo is treated as the GLYPH only — "Milo" (or the company
+// name) renders as a text wordmark next to it. Owner directive: the app
+// is branded "Milo" and the sidebar must say so even when the uploaded
+// logo is just an icon. Pass showName={false} when the upload itself
+// already contains the wordmark text.
 
 import { cn } from "@/lib/utils";
 
@@ -48,9 +48,11 @@ export function Wordmark({
 }: WordmarkProps) {
   const s = SIZES[size];
 
-  // Logo uploaded → render the image as the brand mark, no extra text.
-  // The uploaded asset is expected to be a complete wordmark or icon and
-  // shouldn't be paired with a duplicate text label.
+  // Logo uploaded → render the image as the GLYPH and pair it with the
+  // app name as a text wordmark. The owner-uploaded logo is a glyph
+  // (the "m" mark) — Milo branding still needs to read as words next to
+  // it. Callers that already have a full wordmark image can opt out via
+  // showName={false}.
   //
   // Light wordmarks (white-on-transparent) vanish on light surfaces; dark
   // wordmarks vanish on dark. Wrap in a neutral surface tile so the logo
@@ -59,13 +61,14 @@ export function Wordmark({
     return (
       <span
         className={cn(
-          "inline-flex items-center font-semibold tracking-tight",
+          "inline-flex items-center gap-3 font-semibold tracking-tight antialiased",
+          s.text,
           className,
         )}
       >
         <span
           className={cn(
-            "inline-flex items-center justify-center rounded-lg bg-white px-2 py-1 ring-1 ring-border shadow-sm",
+            "inline-flex items-center justify-center rounded-lg bg-white px-2 py-1 ring-1 ring-border shadow-sm shrink-0",
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,6 +83,9 @@ export function Wordmark({
             )}
           />
         </span>
+        {showName ? (
+          <span className="truncate leading-none">{name}</span>
+        ) : null}
       </span>
     );
   }

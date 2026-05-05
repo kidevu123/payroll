@@ -85,7 +85,10 @@ export function Sidebar({
           invisible-logo bug). */}
       <div className="px-5 pt-5 pb-6 shrink-0 min-h-[64px] flex items-center">
         <span className="inline-flex min-w-32 min-h-8 items-center">
-          <Wordmark name={company.name} logoPath={company.logoPath} size="md" />
+          {/* App is "Milo" — the company-uploaded logo is the glyph and
+              "Milo" reads as the wordmark next to it. The company name
+              still surfaces in /settings/branding + the topbar context. */}
+          <Wordmark name="Milo" logoPath={company.logoPath} size="md" />
         </span>
       </div>
 

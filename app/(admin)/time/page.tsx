@@ -10,6 +10,7 @@ import {
 } from "@/components/domain/schedule-tabs";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
+import { listApprovedInRange } from "@/lib/db/queries/time-off";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
@@ -237,7 +238,15 @@ function nextWindowAfter(
   };
 }
 
-type CellState = "complete" | "incomplete" | "missed" | "inactive";
+type CellState =
+  | "complete"
+  | "incomplete"
+  | "missed"
+  | "inactive"
+  | "pto" // approved PERSONAL / paid time off
+  | "sick" // approved SICK
+  | "unpaid" // approved UNPAID
+  | "other"; // approved OTHER
 
 function cellClasses(state: CellState): string {
   switch (state) {
@@ -249,6 +258,47 @@ function cellClasses(state: CellState): string {
       return "bg-red-50 text-red-700 border-red-200";
     case "inactive":
       return "bg-surface-2 text-text-muted border-border";
+    // Time-off cells reuse the calendar's color language so admin can
+    // recognize "Elvia is off today" instantly. Approved-only — pending
+    // requests still render as the default state until admin resolves.
+    case "pto":
+      return "bg-emerald-100 text-emerald-900 border-emerald-300";
+    case "sick":
+      return "bg-amber-100 text-amber-900 border-amber-300";
+    case "unpaid":
+      return "bg-surface-2 text-text-muted border-border-strong";
+    case "other":
+      return "bg-purple-100 text-purple-900 border-purple-300";
+  }
+}
+
+function timeOffStateFor(
+  type: "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
+): CellState {
+  switch (type) {
+    case "PERSONAL":
+      return "pto";
+    case "SICK":
+      return "sick";
+    case "UNPAID":
+      return "unpaid";
+    case "OTHER":
+      return "other";
+  }
+}
+
+function timeOffLabel(state: CellState): string {
+  switch (state) {
+    case "pto":
+      return "PTO";
+    case "sick":
+      return "Sick";
+    case "unpaid":
+      return "Unpaid";
+    case "other":
+      return "Off";
+    default:
+      return "";
   }
 }
 
@@ -298,7 +348,7 @@ export default async function TimePage({
   const lastDay =
     period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
   const days = eachDay(period.startDate, lastDay);
-  const [allActive, punches] = await Promise.all([
+  const [allActive, punches, approvedTimeOff] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
     // Synthetic forward-rolled period (period.id === "") has no real
     // payPeriods row yet — fetch every active punch and filter by date
@@ -307,7 +357,26 @@ export default async function TimePage({
     period.id
       ? listPunches({ periodId: period.id })
       : listPunches({}),
+    // Approved time-off intersecting the displayed grid window. Owner
+    // ask: "if I'm looking at Elvia's time it would help to know right
+    // away she was off". So the cell shows the time-off type instead
+    // of a missed-punch red.
+    listApprovedInRange(period.startDate, lastDay),
   ]);
+  // Build employeeId+date → time-off-type map for O(1) cell lookup.
+  const timeOffByDay = new Map<string, "UNPAID" | "SICK" | "PERSONAL" | "OTHER">();
+  for (const r of approvedTimeOff) {
+    const start = new Date(`${r.startDate}T00:00:00Z`);
+    const end = new Date(`${r.endDate}T00:00:00Z`);
+    for (
+      let d = new Date(start);
+      d.getTime() <= end.getTime();
+      d = new Date(d.getTime() + 24 * 60 * 60 * 1000)
+    ) {
+      const dayIso = d.toISOString().slice(0, 10);
+      timeOffByDay.set(`${r.employeeId}|${dayIso}`, r.type);
+    }
+  }
   const startEpoch = new Date(`${period.startDate}T00:00:00Z`).getTime();
   const endEpoch = new Date(`${period.endDate}T23:59:59Z`).getTime();
   const punchesInRange = period.id
@@ -407,10 +476,19 @@ export default async function TimePage({
                 <td className="px-3 py-2 font-medium">{e.displayName}</td>
                 {days.map((d) => {
                   const list = grid.get(e.id)?.get(d) ?? [];
+                  const offType = timeOffByDay.get(`${e.id}|${d}`);
                   let state: CellState;
-                  if (list.length === 0) state = "missed";
-                  else if (list.some((p) => !p.clockOut)) state = "incomplete";
-                  else state = "complete";
+                  if (list.length === 0) {
+                    // No punches: was the employee approved off? If so,
+                    // render the time-off chip rather than a "missed"
+                    // red. Punches override (employee may have clocked
+                    // in even with PTO on file — don't hide that).
+                    state = offType ? timeOffStateFor(offType) : "missed";
+                  } else if (list.some((p) => !p.clockOut)) {
+                    state = "incomplete";
+                  } else {
+                    state = "complete";
+                  }
                   if (e.status !== "ACTIVE") state = "inactive";
 
                   // Sort by clockIn so first-in / last-out are stable.
@@ -495,6 +573,22 @@ function PunchCellContent({
   hours: number;
   tz: string;
 }) {
+  // Time-off state: render the type label instead of "—" or punches.
+  // No punches landed today AND the employee is approved off → show
+  // "PTO" / "Sick" / "Unpaid" / "Off" so the row reads correctly at a
+  // glance.
+  if (
+    state === "pto" ||
+    state === "sick" ||
+    state === "unpaid" ||
+    state === "other"
+  ) {
+    return (
+      <span className="text-center font-medium tracking-wide text-[10px] uppercase">
+        {timeOffLabel(state)}
+      </span>
+    );
+  }
   if (state === "inactive" || !first) {
     return (
       <span className="font-mono tabular-nums text-center opacity-70">—</span>
@@ -517,6 +611,10 @@ function PunchCellContent({
 
 function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string {
   if (state === "inactive") return "Inactive employee";
+  if (state === "pto") return "Approved time off — PTO";
+  if (state === "sick") return "Approved time off — Sick";
+  if (state === "unpaid") return "Approved time off — Unpaid";
+  if (state === "other") return "Approved time off";
   if (list.length === 0) return "No punches — missed day";
   const lines = list.map((p) => {
     const inS = formatTimeShort(p.clockIn, tz);
