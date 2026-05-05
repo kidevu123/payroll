@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Download, FileText, Wallet } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PayslipCard } from "@/components/domain/payslip-card";
+import { PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
@@ -137,8 +137,15 @@ export default async function EmployeePayList() {
   const orphanDocs = payrollDocs.filter((d) => !matchedIds.has(d.id));
 
   return (
-    <div className="space-y-6 p-4 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-semibold">My pay</h1>
+    <main className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight antialiased">
+          My pay
+        </h1>
+        <p className="text-sm text-text-muted leading-relaxed">
+          Every payslip your employer has published for you.
+        </p>
+      </header>
 
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState
@@ -147,11 +154,19 @@ export default async function EmployeePayList() {
           description="Your first payslip lands here when payroll publishes."
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-5">
           {rows.map(({ payslip, period }) => {
             const docs = docsByPeriodId.get(period.id) ?? [];
+            const state: PayslipCardState =
+              payslip.disputedAt && !payslip.disputeResolvedAt
+                ? "disputed"
+                : payslip.acknowledgedAt
+                  ? "acknowledged"
+                  : payslip.publishedAt
+                    ? "published"
+                    : "pending";
             return (
-              <div key={payslip.id} className="space-y-1.5">
+              <div key={payslip.id} className="space-y-2">
                 <PayslipCard
                   payslipId={payslip.id}
                   periodStart={period.startDate}
@@ -159,17 +174,11 @@ export default async function EmployeePayList() {
                   hours={Number(payslip.hoursWorked)}
                   roundedCents={payslip.roundedPayCents}
                   hoursDecimalPlaces={payRules.hoursDecimalPlaces}
-                  state={
-                    payslip.acknowledgedAt
-                      ? "acknowledged"
-                      : payslip.publishedAt
-                        ? "published"
-                        : "pending"
-                  }
+                  state={state}
                   href={`/me/pay/${payslip.periodId}`}
                 />
                 {docs.length > 0 && (
-                  <ul className="ml-4 space-y-1">
+                  <ul className="ml-3 sm:ml-5 space-y-1.5 border-l border-border/70 pl-3 sm:pl-5">
                     {docs.map((d) => (
                       <DocPill key={d.id} doc={d} />
                     ))}
@@ -180,8 +189,8 @@ export default async function EmployeePayList() {
           })}
 
           {orphanDocs.length > 0 && (
-            <div className="space-y-2 pt-3 border-t border-border">
-              <h2 className="text-sm font-medium text-text-muted">
+            <section className="space-y-3 pt-5 border-t border-border/70">
+              <h2 className="text-xs font-medium uppercase tracking-wider text-text-subtle">
                 Other documents from your employer
               </h2>
               <ul className="space-y-1.5">
@@ -189,22 +198,26 @@ export default async function EmployeePayList() {
                   <DocPill key={d.id} doc={d} />
                 ))}
               </ul>
-            </div>
+            </section>
           )}
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
 function DocPill({ doc: d }: { doc: PayrollPeriodDocument }) {
   return (
-    <li className="flex items-center justify-between gap-2 rounded-input border border-border bg-surface px-3 py-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <FileText className="h-3.5 w-3.5 text-text-muted shrink-0" />
+    <li className="group flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5 shadow-[0_1px_2px_0_rgb(15_23_42_/_0.03)] transition-shadow duration-200 hover:shadow-card">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-input bg-brand-50 ring-1 ring-inset ring-brand-100">
+          <FileText className="h-3.5 w-3.5 text-brand-700" aria-hidden />
+        </span>
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium">{d.originalFilename}</p>
-          <p className="text-[10px] text-text-muted">
+          <p className="truncate text-xs font-medium text-text antialiased">
+            {d.originalFilename}
+          </p>
+          <p className="text-[10px] text-text-muted leading-relaxed">
             {d.kind}
             {d.payPeriodStart && d.payPeriodEnd
               ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
@@ -219,7 +232,7 @@ function DocPill({ doc: d }: { doc: PayrollPeriodDocument }) {
         href={`/api/payroll-docs/${d.id}`}
         target="_blank"
         rel="noopener"
-        className="flex items-center gap-1 rounded-input border border-border px-2 py-1 text-xs hover:bg-surface-2"
+        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
       >
         <Download className="h-3 w-3" /> View
       </Link>

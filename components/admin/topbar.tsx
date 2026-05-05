@@ -3,8 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, Search, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, LogOut, Search, ChevronRight, ChevronDown } from "lucide-react";
 import { signOutAction } from "./sign-out-action";
 import { CommandPalette, type CommandTarget } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
@@ -40,6 +39,20 @@ function titleFor(pathname: string): { title: string; crumbs: string[] } {
   return { title: root, crumbs };
 }
 
+function initialsFor(email: string): string {
+  // Email-derived initial(s). For "first.last@domain" → "FL"; otherwise → first letter.
+  const local = email.split("@")[0] ?? email;
+  const parts = local.split(/[._-]+/).filter(Boolean);
+  if (parts.length === 0) return email.slice(0, 1).toUpperCase() || "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return ((parts[0]![0] ?? "") + (parts[parts.length - 1]![0] ?? "")).toUpperCase();
+}
+
+function roleLabel(role: string): string {
+  const lower = role.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
 export function Topbar({
   email,
   role,
@@ -59,6 +72,8 @@ export function Topbar({
   const pathname = usePathname() ?? "";
   const { title, crumbs } = titleFor(pathname);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -68,17 +83,38 @@ export function Topbar({
         e.preventDefault();
         setPaletteOpen((v) => !v);
       }
+      if (e.key === "Escape") setUserMenuOpen(false);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  React.useEffect(() => {
+    if (!userMenuOpen) return;
+    function onClick(e: MouseEvent) {
+      if (!userMenuRef.current) return;
+      if (!userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [userMenuOpen]);
+
+  // Close menu on route change.
+  React.useEffect(() => {
+    setUserMenuOpen(false);
+  }, [pathname]);
+
+  const initials = initialsFor(email);
+  const roleText = roleLabel(role);
+
   return (
     <>
       <div className="h-14 border-b border-border bg-surface flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6">
         <MobileNav company={company} />
-        <div className="min-w-0 flex-1 flex items-center gap-2">
-          <h1 className="text-sm font-semibold tracking-tight truncate">
+        <div className="min-w-0 flex items-center gap-2 shrink-0">
+          <h1 className="text-sm font-semibold tracking-tight antialiased truncate">
             {title}
           </h1>
           {crumbs.map((c, i) => (
@@ -92,54 +128,116 @@ export function Topbar({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          className={cn(
-            "hidden md:inline-flex items-center gap-2 h-9 px-3 rounded-input border border-border bg-surface-2/60",
-            "text-xs text-text-muted hover:bg-surface-2 hover:text-text transition-colors",
-          )}
-          aria-label="Open command palette"
-        >
-          <Search className="h-3.5 w-3.5" aria-hidden />
-          <span>Search</span>
-          <kbd className="ml-1 inline-flex items-center gap-0.5 font-mono text-[10px] px-1.5 py-0.5 rounded-chip border border-border bg-surface text-text-subtle">
-            <span aria-label="Command">⌘</span>K
-          </kbd>
-        </button>
-
-        <Link
-          href="/requests"
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
-          className="relative h-9 w-9 inline-flex items-center justify-center rounded-input hover:bg-surface-2"
-        >
-          <Bell className="h-4 w-4" aria-hidden />
-          {unreadCount > 0 ? (
-            <span
-              aria-hidden="true"
-              className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger-700 text-white text-[10px] font-semibold flex items-center justify-center"
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          ) : null}
-        </Link>
-
-        <LanguageSwitcher current={currentLocale} />
-
-        <div className="hidden md:block text-right leading-tight max-w-[180px]">
-          <div className="text-sm truncate" title={email}>
-            {email}
-          </div>
-          <div className="text-[10px] uppercase tracking-wide text-text-subtle">
-            {role}
-          </div>
+        {/* Search — anchored center on wide screens, hidden on small. */}
+        <div className="flex-1 hidden md:flex items-center justify-center px-4">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className={cn(
+              "inline-flex items-center gap-2 h-9 w-full max-w-md px-3 rounded-input border border-border bg-surface-2/60",
+              "text-xs text-text-muted hover:bg-surface-2 hover:text-text transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+            )}
+            aria-label="Open command palette"
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="flex-1 text-left">Search anything</span>
+            <kbd className="ml-1 inline-flex items-center gap-0.5 font-mono text-[10px] px-1.5 py-0.5 rounded-chip border border-border bg-surface text-text-subtle">
+              <span aria-label="Command">⌘</span>K
+            </kbd>
+          </button>
         </div>
 
-        <form action={signOutAction}>
-          <Button variant="ghost" size="icon" aria-label="Sign out">
-            <LogOut className="h-4 w-4" aria-hidden />
-          </Button>
-        </form>
+        {/* Spacer for small screens so the right cluster pins to the edge. */}
+        <div className="md:hidden flex-1" />
+
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Link
+            href="/requests"
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+            className={cn(
+              "relative h-9 w-9 inline-flex items-center justify-center rounded-input hover:bg-surface-2 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+            )}
+          >
+            <Bell className="h-4 w-4" aria-hidden />
+            {unreadCount > 0 ? (
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger-700 text-white text-[10px] font-semibold flex items-center justify-center font-mono tabular-nums"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
+          </Link>
+
+          <LanguageSwitcher current={currentLocale} />
+
+          {/* User menu */}
+          <div className="relative" ref={userMenuRef}>
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              aria-label="User menu"
+              className={cn(
+                "h-9 inline-flex items-center gap-2 pl-1 pr-2 rounded-input hover:bg-surface-2 transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+              )}
+            >
+              <span
+                aria-hidden
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-brand-fg text-[11px] font-semibold tracking-tight"
+              >
+                {initials}
+              </span>
+              <span className="hidden lg:flex flex-col items-start leading-tight max-w-[160px]">
+                <span className="text-xs truncate w-full text-text" title={email}>
+                  {email}
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+                  {roleText}
+                </span>
+              </span>
+              <ChevronDown className="hidden lg:block h-3.5 w-3.5 text-text-subtle" aria-hidden />
+            </button>
+
+            {userMenuOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 top-11 z-40 w-64 rounded-card border border-border bg-surface shadow-pop overflow-hidden"
+              >
+                <div className="px-4 py-3 border-b border-border/70 flex items-center gap-3">
+                  <span
+                    aria-hidden
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-brand-fg text-xs font-semibold tracking-tight"
+                  >
+                    {initials}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs truncate text-text" title={email}>
+                      {email}
+                    </div>
+                    <div className="mt-0.5 inline-flex items-center rounded-chip border border-border/80 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
+                      {roleText}
+                    </div>
+                  </div>
+                </div>
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text transition-colors text-left"
+                  >
+                    <LogOut className="h-4 w-4 text-text-subtle" aria-hidden />
+                    Sign out
+                  </button>
+                </form>
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <CommandPalette

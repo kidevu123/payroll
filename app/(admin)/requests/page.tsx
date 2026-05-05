@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageSquareWarning, Plane } from "lucide-react";
 import { MissedPunchActions, TimeOffActions } from "./request-actions";
+import { TimeOffOnBehalfForm } from "./time-off-on-behalf-form";
 
 function shortDate(d: Date | string): string {
   const s = typeof d === "string" ? d : d.toISOString();
@@ -26,11 +27,18 @@ export default async function RequestsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Requests</h1>
-        <p className="text-sm text-text-muted">
-          {missedPunches.length} missed-punch · {timeOff.length} time-off
-        </p>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold">Requests</h1>
+          <p className="text-sm text-text-muted">
+            {missedPunches.length} missed-punch · {timeOff.length} time-off
+          </p>
+        </div>
+        <TimeOffOnBehalfForm
+          employees={employees
+            .filter((e) => e.status !== "TERMINATED")
+            .map((e) => ({ id: e.id, displayName: e.displayName }))}
+        />
       </div>
 
       <Card>

@@ -6,11 +6,12 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileDown } from "lucide-react";
+import { ArrowLeft, FileDown, AlertTriangle, CircleCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
+import { StatusPill } from "@/components/domain/status-pill";
 import { requireSession } from "@/lib/auth-guards";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import {
@@ -122,8 +123,8 @@ export default async function EmployeePayslipViewer({
   }
 
   return (
-    <div className="space-y-4 p-4 max-w-3xl mx-auto">
-      <Button asChild variant="ghost" size="sm">
+    <main className="space-y-5 p-4 sm:p-6 max-w-3xl mx-auto">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/pay">
           <ArrowLeft className="h-4 w-4" /> All payslips
         </Link>
@@ -138,7 +139,7 @@ export default async function EmployeePayslipViewer({
             <CardDescription>No payslip yet for this period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-text-muted leading-relaxed">
               When the run publishes, your payslip lands here automatically.
             </p>
           </CardContent>
@@ -153,7 +154,7 @@ export default async function EmployeePayslipViewer({
           payType={employee?.payType ?? "HOURLY"}
         />
       )}
-    </div>
+    </main>
   );
 }
 
@@ -220,39 +221,85 @@ async function PayslipBody({
       : payslip.grossPayCents;
   const discrepancy = Math.abs(storedHours - liveHours) > 0.5;
 
+  const isDisputed = !!payslip.disputedAt && !payslip.disputeResolvedAt;
+  const isAcknowledged = !!payslip.acknowledgedAt && !isDisputed;
+
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {period.startDate} – {period.endDate}
-          </CardTitle>
-          <CardDescription>
-            {payslip.disputedAt && !payslip.disputeResolvedAt
-              ? "Problem reported — admin has been notified."
-              : payslip.acknowledgedAt
-                ? `Acknowledged ${payslip.acknowledgedAt.toISOString().slice(0, 16).replace("T", " ")}`
-                : "Published — please review and acknowledge."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <Stat label="Hours">
+      {/* Hero summary — Net pay is the headline figure. Period dates +
+          status pill above; secondary stats (hours / gross) below. The
+          "Problem reported" badge is prominent when active. */}
+      <Card
+        className={
+          isDisputed
+            ? "relative overflow-hidden before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warn-700/80"
+            : undefined
+        }
+      >
+        <CardContent className="px-6 py-6 sm:px-7 sm:py-7 space-y-5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
+                Pay period
+              </p>
+              <p className="text-base font-semibold tracking-tight text-text antialiased">
+                {period.startDate}{" "}
+                <span className="text-text-subtle font-normal">–</span>{" "}
+                {period.endDate}
+              </p>
+            </div>
+            {isDisputed ? (
+              <span className="inline-flex items-center gap-1.5 rounded-chip border border-warn-200/80 bg-warn-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warn-700">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                Problem reported
+              </span>
+            ) : isAcknowledged ? (
+              <StatusPill status="APPROVED" />
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-info-700">
+                Awaiting review
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
+              Net pay
+            </p>
+            <p className="text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
+              <MoneyDisplay
+                cents={payslip.roundedPayCents}
+                monospace={false}
+              />
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-1 border-t border-border/60">
+            <HeroStat label="Hours">
               <HoursDisplay
                 hours={storedHours}
                 decimals={payRules.hoursDecimalPlaces}
+                className="font-sans"
               />
-            </Stat>
-            <Stat label="Gross">
-              <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
-            </Stat>
-            <Stat label="Net (rounded)">
-              <MoneyDisplay cents={payslip.roundedPayCents} monospace={false} />
-            </Stat>
+            </HeroStat>
+            <HeroStat label="Gross">
+              <MoneyDisplay
+                cents={payslip.grossPayCents}
+                monospace={false}
+              />
+            </HeroStat>
           </div>
 
+          <p className="text-[11px] text-text-muted leading-relaxed">
+            {isDisputed
+              ? "Admin has been notified about your report and will follow up."
+              : isAcknowledged
+                ? `Acknowledged ${payslip.acknowledgedAt!.toISOString().slice(0, 16).replace("T", " ")} UTC`
+                : "Please review the breakdown below and acknowledge once you're satisfied."}
+          </p>
+
           {discrepancy && (
-            <div className="rounded-card border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+            <div className="rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-xs text-warn-700 space-y-1.5 leading-relaxed">
               <p className="font-medium">
                 Heads-up: the stored payslip total and the daily breakdown
                 disagree.
@@ -262,6 +309,7 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={storedHours}
                   decimals={payRules.hoursDecimalPlaces}
+                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
               </p>
@@ -270,6 +318,7 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={liveHours}
                   decimals={payRules.hoursDecimalPlaces}
+                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={liveCents} monospace={false} />
               </p>
@@ -286,27 +335,29 @@ async function PayslipBody({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Daily breakdown</CardTitle>
+          <CardTitle>Daily breakdown</CardTitle>
           <CardDescription>
             Times shown in your local timezone ({tz.replace("_", " ")}).
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-4 py-2">
           {days.length === 0 ? (
-            <p className="text-sm text-text-muted">
+            <p className="px-4 py-4 text-sm text-text-muted leading-relaxed">
               No clock-in records on file for this period.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-                  <tr>
-                    <th className="py-2 pr-3 font-medium">Day</th>
-                    <th className="py-2 px-3 font-medium">In</th>
-                    <th className="py-2 px-3 font-medium">Out</th>
-                    <th className="py-2 px-3 font-medium text-right">Hours</th>
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+                    <th className="px-3 py-3 font-medium">Day</th>
+                    <th className="px-3 py-3 font-medium">In</th>
+                    <th className="px-3 py-3 font-medium">Out</th>
+                    <th className="px-3 py-3 font-medium text-right">Hours</th>
                     {payType === "HOURLY" && (
-                      <th className="py-2 px-3 font-medium text-right">Est. pay</th>
+                      <th className="px-3 py-3 font-medium text-right">
+                        Est. pay
+                      </th>
                     )}
                   </tr>
                 </thead>
@@ -317,13 +368,22 @@ async function PayslipBody({
                         .get(d)!
                         .slice()
                         .sort((a, b) => {
-                          const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
-                          const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+                          const ai =
+                            a.clockIn instanceof Date
+                              ? a.clockIn
+                              : new Date(a.clockIn);
+                          const bi =
+                            b.clockIn instanceof Date
+                              ? b.clockIn
+                              : new Date(b.clockIn);
                           return ai.getTime() - bi.getTime();
                         }),
                     );
                     return list.map((p, i) => {
-                      const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+                      const inT =
+                        p.clockIn instanceof Date
+                          ? p.clockIn
+                          : new Date(p.clockIn);
                       const outT = p.clockOut
                         ? p.clockOut instanceof Date
                           ? p.clockOut
@@ -333,23 +393,35 @@ async function PayslipBody({
                         ? (outT.getTime() - inT.getTime()) / MS_PER_HOUR
                         : null;
                       const estCents =
-                        hours !== null && rateCents !== null && payType === "HOURLY"
+                        hours !== null &&
+                        rateCents !== null &&
+                        payType === "HOURLY"
                           ? Math.round(hours * rateCents)
                           : null;
                       return (
-                        <tr key={p.id} className="hover:bg-surface-2/30">
-                          <td className="py-1.5 pr-3 text-text-muted">
+                        <tr
+                          key={p.id}
+                          className="transition-colors hover:bg-surface-2/40"
+                        >
+                          <td className="px-3 py-3 text-xs font-medium text-text">
                             {i === 0 ? fmtDayLabel(d, tz) : ""}
                           </td>
-                          <td className="py-1.5 px-3 font-mono">{fmtTime(inT, tz)}</td>
-                          <td className="py-1.5 px-3 font-mono">{fmtTime(outT, tz)}</td>
-                          <td className="py-1.5 px-3 text-right font-mono tabular-nums">
+                          <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            {fmtTime(inT, tz)}
+                          </td>
+                          <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            {fmtTime(outT, tz)}
+                          </td>
+                          <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
                             {hours !== null ? hours.toFixed(2) : "—"}
                           </td>
                           {payType === "HOURLY" && (
-                            <td className="py-1.5 px-3 text-right font-mono tabular-nums">
+                            <td className="px-3 py-3 text-right text-xs tabular-nums text-text">
                               {estCents !== null ? (
-                                <MoneyDisplay cents={estCents} monospace={false} />
+                                <MoneyDisplay
+                                  cents={estCents}
+                                  monospace={false}
+                                />
                               ) : (
                                 "—"
                               )}
@@ -363,8 +435,8 @@ async function PayslipBody({
               </table>
             </div>
           )}
-          <p className="mt-3 text-xs text-text-muted">
-            &quot;Est. pay&quot; is rate × hours per day before the period
+          <p className="mt-3 px-3 text-[11px] text-text-muted leading-relaxed">
+            &ldquo;Est. pay&rdquo; is rate × hours per day before the period
             rounding rule (currently{" "}
             {payRules.rounding.toLowerCase().replace(/_/g, " ")}). Your final
             paycheck is the rounded total above.
@@ -375,20 +447,23 @@ async function PayslipBody({
       {payslip.pdfPath && payslip.pdfPath.toLowerCase().endsWith(".pdf") ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Printable payslip</CardTitle>
+            <CardTitle>Printable payslip</CardTitle>
+            <CardDescription>
+              The PDF copy your employer published.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <iframe
               title={`Payslip ${period.startDate}`}
               src={`/api/payslips/${payslip.id}/pdf`}
-              className="w-full h-[70vh] rounded-card border border-border bg-surface"
+              className="w-full h-[70vh] rounded-input border border-border/70 bg-surface"
             />
           </CardContent>
         </Card>
       ) : payslip.pdfPath ? (
         <Card>
           <CardContent className="p-6 space-y-3 text-sm">
-            <p className="text-text-muted">
+            <p className="text-text-muted leading-relaxed">
               An original spreadsheet is attached for this period.
             </p>
             <Button asChild variant="secondary">
@@ -400,26 +475,44 @@ async function PayslipBody({
         </Card>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <ReportProblemButton
-          payslipId={payslip.id}
-          alreadyDisputed={
-            !!payslip.disputedAt && !payslip.disputeResolvedAt
-          }
-        />
-        {!payslip.acknowledgedAt && (
-          <AcknowledgeButton payslipId={payslip.id} />
-        )}
-      </div>
+      {/* Sticky-feeling actions footer. Acknowledge is the primary CTA;
+          Report-a-problem stays a quiet ghost. The whole strip sits in a
+          slim card so on mobile it visually anchors below the breakdown. */}
+      <Card className="bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+        <CardContent className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <ReportProblemButton
+            payslipId={payslip.id}
+            alreadyDisputed={isDisputed}
+          />
+          {payslip.acknowledgedAt ? (
+            <span className="inline-flex items-center gap-1.5 rounded-input bg-success-50 border border-success-200/80 px-3 py-2 text-xs font-medium text-success-700">
+              <CircleCheck className="h-3.5 w-3.5" aria-hidden />
+              You acknowledged this payslip
+            </span>
+          ) : (
+            <AcknowledgeButton payslipId={payslip.id} />
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
 
-function Stat({ label, children }: { label: string; children: React.ReactNode }) {
+function HeroStat({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <div className="text-xs text-text-muted">{label}</div>
-      <div className="font-semibold text-base">{children}</div>
+    <div className="space-y-0.5 pt-3">
+      <div className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
+        {label}
+      </div>
+      <div className="text-base font-semibold tracking-tight tabular-nums text-text antialiased">
+        {children}
+      </div>
     </div>
   );
 }
