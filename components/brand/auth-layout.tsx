@@ -41,7 +41,16 @@ export async function AuthLayout({
             className="rounded-card bg-surface border border-border/70 shadow-card-strong px-8 pt-8 pb-7 sm:px-10 sm:pt-10 sm:pb-8"
           >
             <div className="flex flex-col items-center text-center">
-              <Wordmark name={company.name} logoPath={company.logoPath} size="lg" />
+              {/* When the company has uploaded a logo, that image already
+                  carries the wordmark — don't repeat the name next to it.
+                  Initials-only fallback (no logo) keeps the name so the
+                  shell still tells you what the app is. */}
+              <Wordmark
+                name={company.name}
+                logoPath={company.logoPath}
+                size="lg"
+                showName={!company.logoPath}
+              />
             </div>
             <div className="mt-7 text-center">
               {eyebrow ? (

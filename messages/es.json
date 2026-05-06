@@ -171,6 +171,7 @@
       "sick": "Enfermedad",
       "unpaid": "Sin goce de sueldo",
       "other": "Otro",
+      "cancelTimeOffConfirm": "¿Cancelar esta solicitud de tiempo libre? Puede enviar otra si cambia de opinión.",
       "salariedTitle": "Cuenta asalariada",
       "salariedBody1": "Está en un plan asalariado. Sus recibos y formularios W2 aparecen en <payLink>Pago</payLink>.",
       "salariedBody2": "Use el botón \"Solicitar tiempo libre\" de arriba para vacaciones o días por enfermedad.",

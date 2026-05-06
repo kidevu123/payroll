@@ -114,6 +114,13 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
         url: "/requests",
         tag: "request_submitted",
       };
+    case "time_off.request_cancelled":
+      return {
+        title: "Time-off request cancelled",
+        body: "Employee cancelled their request.",
+        url: "/requests",
+        tag: "request_cancelled",
+      };
     case "payslip.disputed": {
       const employeeName =
         typeof e.payload.employeeName === "string"

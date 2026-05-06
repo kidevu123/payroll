@@ -13,6 +13,10 @@ import {
   getMissedPunchRequest,
 } from "@/lib/db/queries/requests";
 import {
+  cancelTimeOffRequest,
+  getTimeOffRequest,
+} from "@/lib/db/queries/time-off";
+import {
   userIdForEmployee,
 } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
@@ -168,6 +172,65 @@ export async function resolveTimeOffAction(
   }
 
   revalidatePath("/requests");
+}
+
+const cancelSchema = z.object({
+  resolutionNote: z.string().max(500).optional().nullable(),
+});
+
+/** Admin-cancel a time-off request — handles both PENDING (rare) and
+ *  APPROVED (the actual case: "she asked off but actually came in").
+ *  When cancelling an APPROVED one, also pull the Google Calendar
+ *  event so the owner's calendar reflects reality. */
+export async function adminCancelTimeOffAction(
+  requestId: string,
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(requestId).success) return { error: "Invalid id." };
+  const parsed = cancelSchema.safeParse({
+    resolutionNote: formData.get("resolutionNote") || null,
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+  const before = await getTimeOffRequest(requestId);
+  if (!before) return { error: "Not found." };
+  if (before.status === "CANCELLED") return; // idempotent
+  await cancelTimeOffRequest(
+    requestId,
+    session.user.id,
+    parsed.data.resolutionNote ?? null,
+  );
+
+  // If it was previously APPROVED, the calendar event was pushed —
+  // pull it back. Best-effort, like the resolve flow.
+  if (before.status === "APPROVED") {
+    try {
+      const cfg = await getSetting("googleCalendar");
+      if (cfg.refreshTokenSealed && cfg.calendarId) {
+        const { deleteTimeOffEvent } = await import("@/lib/google/calendar");
+        await deleteTimeOffEvent(requestId);
+      }
+    } catch (err) {
+      const { logger } = await import("@/lib/telemetry");
+      logger.warn({ err, requestId }, "google.calendar.cancel_failed");
+    }
+  }
+
+  // Notify the employee — symmetric with the resolve flow.
+  const recipientId = await userIdForEmployee(before.employeeId);
+  if (recipientId) {
+    await dispatch([
+      {
+        recipientId,
+        kind: "time_off.request_resolved",
+        payload: { requestId, status: "CANCELLED" },
+      },
+    ]);
+  }
+
+  revalidatePath("/requests");
+  revalidatePath("/calendar");
+  revalidatePath("/me/home");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -171,6 +171,7 @@
       "sick": "Sick",
       "unpaid": "Unpaid",
       "other": "Other",
+      "cancelTimeOffConfirm": "Cancel this time-off request? You can submit a new one if you change your mind.",
       "salariedTitle": "Salaried account",
       "salariedBody1": "You're on a salaried plan. Your paystubs and W2 documents appear under <payLink>Pay</payLink>.",
       "salariedBody2": "Use the \"Request time off\" button above for vacation or sick days.",

@@ -14,6 +14,7 @@ export type NotificationKind =
   | "missed_punch.request_resolved"
   | "time_off.request_submitted"
   | "time_off.request_resolved"
+  | "time_off.request_cancelled"
   | "payroll_run.ingest_failed"
   | "payroll_run.awaiting_review"
   | "payroll_run.published"

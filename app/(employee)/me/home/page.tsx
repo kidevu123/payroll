@@ -33,6 +33,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
 import { listRecentForEmployee } from "@/lib/db/queries/time-off";
+import { CancelTimeOffButton } from "./cancel-time-off-button";
 import {
   getCurrentPeriod,
   getCurrentPeriodForSchedule,
@@ -313,12 +314,7 @@ export default async function EmployeeHome() {
             ) : (
               <ul className="space-y-1.5">
                 {recentTimeOff.map((r) => {
-                  const status =
-                    r.status === "APPROVED"
-                      ? "APPROVED"
-                      : r.status === "REJECTED"
-                        ? "REJECTED"
-                        : "PENDING";
+                  const status = r.status; // PENDING | APPROVED | REJECTED | CANCELLED
                   const typeLabel =
                     r.type === "PERSONAL"
                       ? t("ptoVacation")
@@ -327,13 +323,26 @@ export default async function EmployeeHome() {
                         : r.type === "UNPAID"
                           ? t("unpaid")
                           : t("other");
+                  const isCancelled = status === "CANCELLED";
                   return (
                     <li
                       key={r.id}
-                      className="flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2"
+                      className={
+                        "flex items-center justify-between gap-3 rounded-input border bg-surface px-3 py-2 " +
+                        (isCancelled
+                          ? "border-border/40 opacity-60"
+                          : "border-border/70")
+                      }
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-medium tracking-tight text-text antialiased truncate">
+                        <p
+                          className={
+                            "text-sm font-medium tracking-tight antialiased truncate " +
+                            (isCancelled
+                              ? "text-text-muted line-through"
+                              : "text-text")
+                          }
+                        >
                           {typeLabel}
                         </p>
                         <p className="text-[11px] text-text-muted tabular-nums">
@@ -341,7 +350,15 @@ export default async function EmployeeHome() {
                           {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
                         </p>
                       </div>
-                      <StatusPill status={status} className="shrink-0" />
+                      <div className="shrink-0 inline-flex items-center gap-2">
+                        <StatusPill status={status} />
+                        {status === "PENDING" && (
+                          <CancelTimeOffButton
+                            requestId={r.id}
+                            confirmText={t("cancelTimeOffConfirm")}
+                          />
+                        )}
+                      </div>
                     </li>
                   );
                 })}

@@ -108,6 +108,7 @@ export const requestStatusEnum = pgEnum("request_status", [
   "PENDING",
   "APPROVED",
   "REJECTED",
+  "CANCELLED",
 ]);
 
 export const timeOffTypeEnum = pgEnum("time_off_type", [

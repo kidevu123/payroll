@@ -5,11 +5,16 @@ import {
   listPendingMissedPunchRequests,
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
+import { listApprovedInRange } from "@/lib/db/queries/time-off";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MessageSquareWarning, Plane } from "lucide-react";
-import { MissedPunchActions, TimeOffActions } from "./request-actions";
+import { MessageSquareWarning, Plane, CalendarCheck } from "lucide-react";
+import {
+  MissedPunchActions,
+  TimeOffActions,
+  CancelTimeOffActionButton,
+} from "./request-actions";
 import { TimeOffOnBehalfForm } from "./time-off-on-behalf-form";
 
 function shortDate(d: Date | string): string {
@@ -18,9 +23,14 @@ function shortDate(d: Date | string): string {
 }
 
 export default async function RequestsPage() {
-  const [missedPunches, timeOff, employees] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10);
+  const ninetyDaysOut = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const [missedPunches, timeOff, approvedUpcoming, employees] = await Promise.all([
     listPendingMissedPunchRequests(),
     listPendingTimeOffRequests(),
+    listApprovedInRange(today, ninetyDaysOut),
     listEmployees(),
   ]);
   const empById = new Map(employees.map((e) => [e.id, e]));
@@ -118,7 +128,55 @@ export default async function RequestsPage() {
                     </div>
                   </div>
                   {r.reason && <p className="text-sm">{r.reason}</p>}
-                  <TimeOffActions requestId={r.id} employeeId={r.employeeId} />
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <TimeOffActions requestId={r.id} employeeId={r.employeeId} />
+                    <CancelTimeOffActionButton requestId={r.id} status="PENDING" />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming approved time-off — admin can walk back an approval
+          (employee actually came in, plans changed, etc). Cancelling
+          here also pulls the Google Calendar event. */}
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0">
+          <CalendarCheck className="h-5 w-5 text-emerald-700" />
+          <CardTitle className="text-base">Upcoming approved time-off</CardTitle>
+          <span className="text-xs text-text-muted ml-auto">next 90 days</span>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {approvedUpcoming.length === 0 ? (
+            <EmptyState
+              icon={CalendarCheck}
+              title="Nothing approved coming up"
+              description="When an approved request lands in the next 90 days, it shows here so you can cancel it if plans change."
+            />
+          ) : (
+            approvedUpcoming.map((r) => {
+              const emp = empById.get(r.employeeId);
+              return (
+                <div
+                  key={r.id}
+                  className="rounded-card border border-border bg-surface p-3 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {emp?.displayName ?? r.employeeId}
+                    </div>
+                    <div className="text-xs text-text-muted tabular-nums">
+                      {r.startDate}
+                      {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""} ·{" "}
+                      {r.type.toLowerCase()}
+                    </div>
+                  </div>
+                  <CancelTimeOffActionButton
+                    requestId={r.id}
+                    status="APPROVED"
+                  />
                 </div>
               );
             })

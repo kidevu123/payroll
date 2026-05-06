@@ -8,6 +8,7 @@ import {
   approveMissedPunchAction,
   rejectMissedPunchAction,
   resolveTimeOffAction,
+  adminCancelTimeOffAction,
 } from "./actions";
 
 export function MissedPunchActions({ requestId }: { requestId: string }) {
@@ -144,6 +145,56 @@ export function TimeOffActions({
       </Button>
       <Button size="sm" variant="ghost" onClick={() => setMode("rejecting")}>
         <CircleX className="h-4 w-4" /> Reject
+      </Button>
+      {error && <span className="text-xs text-red-700">{error}</span>}
+    </div>
+  );
+}
+
+/** Admin-cancel button — works on PENDING (rare) and APPROVED (the
+ *  common case where the owner wants to walk back an approval). On
+ *  APPROVED, also pulls the Google Calendar event server-side. */
+export function CancelTimeOffActionButton({
+  requestId,
+  status,
+}: {
+  requestId: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+}) {
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  if (status === "CANCELLED" || status === "REJECTED") return null;
+  return (
+    <div className="inline-flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={pending}
+        onClick={async () => {
+          if (
+            !confirm(
+              status === "APPROVED"
+                ? "Cancel this approved time-off? The Google Calendar event will be removed and the employee notified."
+                : "Cancel this pending time-off request?",
+            )
+          ) {
+            return;
+          }
+          setPending(true);
+          setError(null);
+          try {
+            const form = new FormData();
+            form.set("resolutionNote", "Cancelled by admin");
+            const r = await adminCancelTimeOffAction(requestId, form);
+            if (r && "error" in r && r.error) setError(r.error);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Cancel failed.");
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        <CircleX className="h-4 w-4" /> {pending ? "Cancelling…" : "Cancel"}
       </Button>
       {error && <span className="text-xs text-red-700">{error}</span>}
     </div>

@@ -82,6 +82,43 @@ export async function listPendingInRange(
     );
 }
 
+/** Cancel a time-off request. Used by:
+ *  - the employee from /me/home when they catch a mistake (only their
+ *    own PENDING requests; APPROVED ones need the admin),
+ *  - the admin from /requests when an approval needs walking back.
+ *  Sets status = CANCELLED + audit fields. Idempotent: re-canceling
+ *  a CANCELLED request is a no-op. */
+export async function cancelTimeOffRequest(
+  requestId: string,
+  resolverUserId: string,
+  resolutionNote: string | null,
+): Promise<TimeOffRequest | null> {
+  const [out] = await db
+    .update(timeOffRequests)
+    .set({
+      status: "CANCELLED",
+      resolvedById: resolverUserId,
+      resolvedAt: new Date(),
+      resolutionNote,
+    })
+    .where(eq(timeOffRequests.id, requestId))
+    .returning();
+  return out ?? null;
+}
+
+/** Look up a request by id. Used to verify ownership / status before
+ *  letting an employee cancel. */
+export async function getTimeOffRequest(
+  requestId: string,
+): Promise<TimeOffRequest | null> {
+  const [row] = await db
+    .select()
+    .from(timeOffRequests)
+    .where(eq(timeOffRequests.id, requestId))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listApprovedTimeOffInRange(
   startDate: string,
   endDate: string,
