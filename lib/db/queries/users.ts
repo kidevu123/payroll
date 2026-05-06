@@ -244,7 +244,7 @@ export async function inviteEmployeeUser(
   input: {
     employeeId: string;
     email: string;
-    role: "ADMIN" | "PAYROLL_STAFF" | "EMPLOYEE";
+    role: "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
   },
   actor: Actor,
 ): Promise<{ user: User; tempPassword: string }> {

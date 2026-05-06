@@ -70,7 +70,7 @@ export async function toggleDisabledAction(
   }
 }
 
-const roleSchema = z.object({ role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ADMIN"]) });
+const roleSchema = z.object({ role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ACCOUNTANT", "ADMIN"]) });
 
 export async function setRoleAction(
   userId: string,
@@ -94,7 +94,7 @@ export async function setRoleAction(
 
 const inviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ADMIN"]),
+  role: z.enum(["EMPLOYEE", "PAYROLL_STAFF", "ACCOUNTANT", "ADMIN"]),
 });
 
 export async function inviteEmployeeAction(
