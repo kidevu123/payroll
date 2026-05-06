@@ -21,6 +21,7 @@ import {
   ScrollText,
   Database,
   Clock,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const CONFIG_TABS: readonly Tab[] = [
   { href: "/settings/google-calendar", label: "Google Calendar", icon: CalendarCheck },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
   { href: "/settings/security", label: "Security", icon: ShieldCheck },
+  { href: "/settings/roles", label: "Roles & access", icon: KeyRound },
   { href: "/settings/holidays", label: "Holidays", icon: PartyPopper },
   { href: "/settings/cleanup", label: "Data cleanup", icon: Wrench },
 ] as const;

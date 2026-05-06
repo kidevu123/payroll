@@ -114,7 +114,10 @@
       "thisMonth": "This month",
       "none": "No approved time off in this range.",
       "youOff": "You're off this day",
-      "footer": "Showing approved time off only"
+      "footer": "Showing approved time off only",
+      "viewAll": "Everyone",
+      "viewMe": "Just me",
+      "noneMe": "No approved time off scheduled for you."
     },
     "tour": {
       "welcomeTitle": "Welcome to Milo",

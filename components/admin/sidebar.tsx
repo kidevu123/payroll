@@ -61,18 +61,6 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
 ];
 
-// When an Accountant is signed in we collapse the sidebar to just
-// their one allowed page. Owner/Admin/Payroll-staff see everything
-// else as before.
-const ACCOUNTANT_SECTIONS: { headingKey: string; items: NavItem[] }[] = [
-  {
-    headingKey: "operate",
-    items: [
-      { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
-    ],
-  },
-];
-
 const FOOTER_NAV: NavItem = {
   href: "/settings",
   labelKey: "settings",
@@ -88,16 +76,28 @@ export function Sidebar({
   company,
   systemHealthy = true,
   role = "ADMIN",
+  allowedSurfaces,
 }: {
   company: { name: string; logoPath: string | null };
   systemHealthy?: boolean;
-  /** Drives sidebar contents — ACCOUNTANT gets the cash-drawer-only
-   *  variant; everyone else sees the full admin nav. */
   role?: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT";
+  /** Surface keys this role can reach — derived from the editable
+   *  role matrix in /settings/roles. If omitted the full nav is shown
+   *  (owner-equivalent fallback for safety). */
+  allowedSurfaces?: ReadonlyArray<string>;
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
-  const sections = role === "ACCOUNTANT" ? ACCOUNTANT_SECTIONS : SECTIONS;
+  // Filter the canonical nav by what this role can reach. We keep
+  // section structure but drop empty sections to avoid orphan headings.
+  const allowSet = allowedSurfaces ? new Set(allowedSurfaces) : null;
+  const sections = SECTIONS.map((sec) => ({
+    ...sec,
+    items: allowSet
+      ? sec.items.filter((it) => allowSet.has(it.href))
+      : sec.items,
+  })).filter((sec) => sec.items.length > 0);
+  const settingsAllowed = allowSet ? allowSet.has("/settings") : true;
 
   return (
     <aside
@@ -158,7 +158,7 @@ export function Sidebar({
           aria-hidden
           className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-brand-500/0 via-brand-500/60 to-purple-500/0 pointer-events-none"
         />
-        {role !== "ACCOUNTANT" && (
+        {settingsAllowed && (
           <SidebarItem
             href={FOOTER_NAV.href}
             label={tNav(FOOTER_NAV.labelKey)}

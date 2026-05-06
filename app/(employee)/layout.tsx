@@ -70,11 +70,15 @@ export default async function EmployeeLayout({
   return (
     <div className="min-h-dvh pb-20 bg-page">
       <ServiceWorkerRegister />
-      <div className="max-w-md mx-auto page-enter">
+      {/* Phone-first shell: max-w-md feels right on a phone, but on
+          tablet (sm+) the 448px cap looked cramped — esp. the calendar
+          and pay-history. Bumping to max-w-2xl (672px) above sm gives
+          tablets breathing room without touching the phone layout. */}
+      <div className="max-w-md sm:max-w-2xl mx-auto page-enter">
         <OnboardingBanner alreadySubscribed={subs.length > 0} />
         {children}
       </div>
-      <AppFooter className="pb-2 max-w-md mx-auto" />
+      <AppFooter className="pb-2 max-w-md sm:max-w-2xl mx-auto" />
       <BottomNav hideTime={isSalaried} />
       <AppTour strings={tourStrings} />
     </div>

@@ -226,6 +226,17 @@ export default async function CalendarPage({
               };
               const inMonth = day >= startIso && day <= endIso;
               const isToday = day === todayIso;
+              // Combine approved + pending into one ordered list so we
+              // present a single "people off" stack per day. Approved
+              // first, then pending. Cap at MAX_VISIBLE; the rest is
+              // summarised with a hover-revealed list.
+              const MAX_VISIBLE = 3;
+              const stack = [
+                ...cell.approved.map((r) => ({ ...r, pending: false })),
+                ...cell.pending.map((r) => ({ ...r, pending: true })),
+              ];
+              const visible = stack.slice(0, MAX_VISIBLE);
+              const overflow = stack.slice(MAX_VISIBLE);
               return (
                 <div
                   key={day}
@@ -235,46 +246,60 @@ export default async function CalendarPage({
                     isToday ? "ring-2 ring-brand-700" : "border-border"
                   }`}
                 >
-                  <div className="text-[10px] font-medium text-text-muted">
-                    {Number(day.slice(8))}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-text-muted">
+                      {Number(day.slice(8))}
+                    </span>
+                    {cell.birthdays.length > 0 && (
+                      <span
+                        className="inline-flex items-center gap-0.5 text-pink-600"
+                        title={cell.birthdays.map((b) => b.name).join(", ")}
+                        aria-label="Birthdays"
+                      >
+                        <Cake className="h-3 w-3" aria-hidden />
+                        {cell.birthdays.length > 1 && (
+                          <span className="text-[10px]">{cell.birthdays.length}</span>
+                        )}
+                      </span>
+                    )}
                   </div>
-                  <div className="mt-1 space-y-0.5">
-                    {cell.approved.slice(0, 3).map((r) => (
+                  <div className="mt-1 space-y-1">
+                    {visible.map((r) => (
                       <div
                         key={r.id}
-                        className={`truncate rounded border px-1 py-0.5 text-[10px] ${
-                          TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER
-                        }`}
-                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type}`}
+                        className={
+                          "truncate rounded border px-1.5 py-0.5 text-[11px] leading-tight " +
+                          (TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER) +
+                          (r.pending ? " border-dashed opacity-70" : "")
+                        }
+                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type}${r.pending ? " (pending)" : ""}`}
                       >
                         {r.emp}
                       </div>
                     ))}
-                    {cell.pending.slice(0, 2).map((r) => (
-                      <div
-                        key={r.id}
-                        className={`truncate rounded border border-dashed px-1 py-0.5 text-[10px] opacity-60 ${
-                          TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER
-                        }`}
-                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type} (pending)`}
-                      >
-                        {r.emp}
-                      </div>
-                    ))}
-                    {cell.birthdays.map((b, i) => (
-                      <div
-                        key={`bd-${i}`}
-                        className="inline-flex items-center gap-1 truncate rounded border border-pink-200 bg-pink-50 px-1 py-0.5 text-[10px] text-pink-800 w-full"
-                        title={`Birthday — ${b.name}`}
-                      >
-                        <Cake className="h-2.5 w-2.5 shrink-0" aria-hidden />
-                        <span className="truncate">{b.name}</span>
-                      </div>
-                    ))}
-                    {cell.approved.length + cell.pending.length > 5 && (
-                      <div className="text-[10px] text-text-muted">
-                        +{cell.approved.length + cell.pending.length - 5} more
-                      </div>
+                    {overflow.length > 0 && (
+                      <details className="group">
+                        <summary
+                          className="cursor-pointer list-none text-[11px] font-medium text-text-muted hover:text-text"
+                          title={overflow.map((r) => r.emp).join(", ")}
+                        >
+                          +{overflow.length} more
+                        </summary>
+                        <div className="mt-1 space-y-0.5 rounded-card border border-border bg-surface-2 p-1">
+                          {overflow.map((r) => (
+                            <div
+                              key={r.id}
+                              className={
+                                "truncate rounded px-1.5 py-0.5 text-[10px] leading-tight " +
+                                (TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER) +
+                                (r.pending ? " opacity-70" : "")
+                              }
+                            >
+                              {r.emp}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 </div>

@@ -1,15 +1,9 @@
 // Authorization helpers. Use in server actions and route handlers — middleware
 // only redirects, actions enforce. Defense in depth (§13).
 
-import { auth } from "@/lib/auth";
+import { auth, type Role } from "@/lib/auth";
 import { redirect } from "next/navigation";
-
-type Role =
-  | "OWNER"
-  | "ADMIN"
-  | "PAYROLL_STAFF"
-  | "ACCOUNTANT"
-  | "EMPLOYEE";
+import { canAccessSurface, type Surface } from "@/lib/auth/role-matrix";
 
 export async function requireSession() {
   const session = await auth();
@@ -67,6 +61,18 @@ export async function requireAdminStrict() {
 
 export async function requireOwner() {
   return requireRole("OWNER");
+}
+
+/**
+ * Surface-scoped gate. Honours the owner-editable role × surface matrix
+ * at /settings/roles. Use this on admin pages so the owner can flip a
+ * role's access without a deploy. Owner is always allowed.
+ */
+export async function requireSurface(surface: Surface) {
+  const session = await requireSession();
+  const ok = await canAccessSurface(session.user.role, surface);
+  if (!ok) redirect("/");
+  return session;
 }
 
 /**

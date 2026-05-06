@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth-guards";
+import { effectiveSurfacesFor, type Surface } from "@/lib/auth/role-matrix";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
@@ -40,11 +41,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     "PAYROLL_STAFF",
     "ACCOUNTANT",
   );
-  if (session.user.role === "ACCOUNTANT") {
+  // Resolve the user's allowed admin surfaces from the editable role
+  // matrix (defaults baked in if unset). We use this to (a) drive the
+  // sidebar nav and (b) bounce the user off any surface they don't have
+  // access to. Owners always pass.
+  const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
+  if (session.user.role !== "OWNER") {
     const h = await headers();
     const pathname = h.get("x-pathname") ?? h.get("x-invoke-path") ?? "";
-    if (pathname && !pathname.startsWith("/cash-drawer")) {
-      redirect("/cash-drawer");
+    if (pathname) {
+      // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
+      const allowedRoots = new Set(allowedSurfaces);
+      const matchesAllowed = [...allowedRoots].some(
+        (s) => pathname === s || pathname.startsWith(s + "/"),
+      );
+      if (!matchesAllowed && pathname !== "/") {
+        // Fall through to the first allowed surface, or "/" if the user
+        // has no admin surfaces (employee role landing here by mistake).
+        const fallback = allowedSurfaces[0] ?? "/";
+        redirect(fallback);
+      }
     }
   }
   // Usage metrics — one ping per admin page render. Grafana aggregates
@@ -100,7 +116,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-dvh flex bg-page">
-      <Sidebar company={companyForBrand} role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"} />
+      <Sidebar
+        company={companyForBrand}
+        role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}
+        allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+      />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
           email={session.user.email}

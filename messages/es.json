@@ -114,7 +114,10 @@
       "thisMonth": "Este mes",
       "none": "No hay días libres aprobados en este rango.",
       "youOff": "Tienes el día libre",
-      "footer": "Mostrando solo días libres aprobados"
+      "footer": "Mostrando solo días libres aprobados",
+      "viewAll": "Todos",
+      "viewMe": "Solo yo",
+      "noneMe": "No tienes días libres aprobados programados."
     },
     "tour": {
       "welcomeTitle": "Bienvenido a Milo",

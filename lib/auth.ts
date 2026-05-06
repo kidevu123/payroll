@@ -22,6 +22,13 @@ const ARGON = {
   parallelism: 4,
 } as const;
 
+export type Role =
+  | "OWNER"
+  | "ADMIN"
+  | "PAYROLL_STAFF"
+  | "ACCOUNTANT"
+  | "EMPLOYEE";
+
 export async function hashPassword(plain: string): Promise<string> {
   return argonHash(plain, ARGON);
 }

@@ -239,6 +239,22 @@ export const securitySchema = z.object({
 });
 export type SecuritySettings = z.infer<typeof securitySchema>;
 
+// ─── Role permissions ─────────────────────────────────────────────────────
+// Owner-editable matrix of (role × surface). Stored as a list of allowed
+// surface keys per editable role (PAYROLL_STAFF, ACCOUNTANT, ADMIN). When
+// unset the matrix falls back to the hardcoded defaults in lib/auth/role-matrix.
+
+export const rolePermissionsSchema = z.object({
+  overrides: z
+    .object({
+      PAYROLL_STAFF: z.array(z.string()).optional(),
+      ACCOUNTANT: z.array(z.string()).optional(),
+      ADMIN: z.array(z.string()).optional(),
+    })
+    .default({}),
+});
+export type RolePermissionsSettings = z.infer<typeof rolePermissionsSchema>;
+
 // ─── Registry ────────────────────────────────────────────────────────────────
 // One source of truth that maps a key to its schema. The runtime layer uses this
 // to validate reads and writes.
@@ -252,6 +268,7 @@ export const settingsRegistry = {
   notifications: notificationsSchema,
   security: securitySchema,
   googleCalendar: googleCalendarSchema,
+  rolePermissions: rolePermissionsSchema,
 } as const;
 
 export type SettingKey = keyof typeof settingsRegistry;

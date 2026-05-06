@@ -142,22 +142,26 @@ export default async function EmployeeTime() {
               {todayPunches.map((p) => (
                 <div
                   key={p.id}
-                  className={`flex items-center justify-between text-sm rounded-input border border-border px-3 py-2 ${
+                  className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm rounded-input border border-border px-3 py-2 ${
                     p.voidedAt ? "opacity-50 line-through" : ""
                   }`}
                 >
-                  <span>
-                    <span className="text-text-muted">{t("in")}: </span>
-                    <span className="font-mono">
-                      {fmtTime(p.clockIn, company.timezone, dateLocale)}
+                  <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
+                    <span>
+                      <span className="text-text-muted">{t("in")}: </span>
+                      <span className="font-mono">
+                        {fmtTime(p.clockIn, company.timezone, dateLocale)}
+                      </span>
                     </span>
-                    <span className="text-text-muted ml-3">{t("out")}: </span>
-                    <span className="font-mono">
-                      {fmtTime(p.clockOut, company.timezone, dateLocale)}
+                    <span>
+                      <span className="text-text-muted">{t("out")}: </span>
+                      <span className="font-mono">
+                        {fmtTime(p.clockOut, company.timezone, dateLocale)}
+                      </span>
                     </span>
                   </span>
                   {!p.clockOut && (
-                    <span className="text-xs text-emerald-700 font-medium">{t("onTheClock")}</span>
+                    <span className="text-xs text-emerald-700 font-medium shrink-0">{t("onTheClock")}</span>
                   )}
                 </div>
               ))}

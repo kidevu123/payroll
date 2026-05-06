@@ -36,24 +36,31 @@ function monthSpan(monthOffset: number): { from: string; to: string; first: Date
 export default async function EmployeeCalendar({
   searchParams,
 }: {
-  searchParams: Promise<{ m?: string }>;
+  searchParams: Promise<{ m?: string; view?: string }>;
 }) {
   const session = await requireSession();
   const sp = await searchParams;
   const offset = Number.isFinite(parseInt(sp.m ?? "0", 10))
     ? parseInt(sp.m ?? "0", 10)
     : 0;
+  // "me" → personal-only events; "all" (default) → whole-team view.
+  const viewMode: "all" | "me" = sp.view === "me" ? "me" : "all";
   const t = await getTranslations("employee.calendar");
   const locale = await resolveLocale();
   const dateLocale = locale === "es" ? "es-MX" : "en-US";
 
   const { from, to, first } = monthSpan(offset);
-  const [requests, employees, company] = await Promise.all([
+  const [requestsRaw, employees, company] = await Promise.all([
     listApprovedTimeOffOverlapping({ from, to }),
     listEmployees({ status: "ACTIVE" }),
     getSetting("company"),
   ]);
   const empById = new Map(employees.map((e) => [e.id, e]));
+  // Filter once for "Just me" so all downstream rendering matches.
+  const requests =
+    viewMode === "me"
+      ? requestsRaw.filter((r) => r.employeeId === session.user.employeeId)
+      : requestsRaw;
 
   // Build a day -> array of { name, type } for the grid.
   const byDay = new Map<string, { name: string; type: string; selfId: string }[]>();
@@ -107,7 +114,7 @@ export default async function EmployeeCalendar({
 
   return (
     <main className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto pb-32">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight antialiased">
             {t("title")}
@@ -116,29 +123,70 @@ export default async function EmployeeCalendar({
             {fmtMonthYear(first, dateLocale)}
           </p>
         </div>
-        <div className="inline-flex items-center rounded-input border border-border bg-surface p-0.5 text-xs">
-          <a
-            href={`/me/calendar?m=${offset - 1}`}
-            className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
-            aria-label={t("prev")}
-          >
-            ‹
-          </a>
-          {offset !== 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View toggle: All employees ↔ Just me. Preserves the
+              current month offset so switching doesn't snap back to
+              "today". */}
+          <div className="inline-flex items-center rounded-input border border-border bg-surface p-0.5 text-xs">
             <a
-              href="/me/calendar"
-              className="inline-flex items-center px-2.5 h-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              href={`/me/calendar?${new URLSearchParams(
+                offset === 0 ? { view: "all" } : { m: String(offset), view: "all" },
+              ).toString()}`}
+              aria-current={viewMode === "all" ? "page" : undefined}
+              className={
+                "inline-flex items-center px-2.5 h-8 rounded-chip " +
+                (viewMode === "all"
+                  ? "bg-brand-50 text-brand-800 font-medium"
+                  : "text-text-muted hover:bg-surface-2 hover:text-text")
+              }
             >
-              {t("today")}
+              {t("viewAll")}
             </a>
-          )}
-          <a
-            href={`/me/calendar?m=${offset + 1}`}
-            className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
-            aria-label={t("next")}
-          >
-            ›
-          </a>
+            <a
+              href={`/me/calendar?${new URLSearchParams(
+                offset === 0 ? { view: "me" } : { m: String(offset), view: "me" },
+              ).toString()}`}
+              aria-current={viewMode === "me" ? "page" : undefined}
+              className={
+                "inline-flex items-center px-2.5 h-8 rounded-chip " +
+                (viewMode === "me"
+                  ? "bg-brand-50 text-brand-800 font-medium"
+                  : "text-text-muted hover:bg-surface-2 hover:text-text")
+              }
+            >
+              {t("viewMe")}
+            </a>
+          </div>
+          <div className="inline-flex items-center rounded-input border border-border bg-surface p-0.5 text-xs">
+            <a
+              href={`/me/calendar?${new URLSearchParams({
+                m: String(offset - 1),
+                view: viewMode,
+              }).toString()}`}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              aria-label={t("prev")}
+            >
+              ‹
+            </a>
+            {offset !== 0 && (
+              <a
+                href={`/me/calendar?view=${viewMode}`}
+                className="inline-flex items-center px-2.5 h-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              >
+                {t("today")}
+              </a>
+            )}
+            <a
+              href={`/me/calendar?${new URLSearchParams({
+                m: String(offset + 1),
+                view: viewMode,
+              }).toString()}`}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              aria-label={t("next")}
+            >
+              ›
+            </a>
+          </div>
         </div>
       </header>
 
@@ -173,12 +221,12 @@ export default async function EmployeeCalendar({
                     <span className="inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-label={t("youOff")} />
                   )}
                 </div>
-                <div className="space-y-0.5">
-                  {events.slice(0, 3).map((e, j) => (
+                <div className="space-y-1">
+                  {events.slice(0, 2).map((e, j) => (
                     <div
                       key={j}
                       className={
-                        "truncate rounded px-1 py-0.5 text-[10px] border " +
+                        "truncate rounded px-1.5 py-0.5 text-[11px] leading-tight border " +
                         (TYPE_COLORS[e.type] ?? TYPE_COLORS.OTHER)
                       }
                       title={`${e.name} · ${e.type}`}
@@ -186,8 +234,31 @@ export default async function EmployeeCalendar({
                       {e.name}
                     </div>
                   ))}
-                  {events.length > 3 && (
-                    <div className="text-[10px] text-text-subtle">+{events.length - 3}</div>
+                  {events.length > 2 && (
+                    <details className="group">
+                      <summary
+                        className="cursor-pointer list-none text-[11px] font-medium text-text-subtle hover:text-text"
+                        title={events
+                          .slice(2)
+                          .map((e) => `${e.name} (${e.type.toLowerCase()})`)
+                          .join(", ")}
+                      >
+                        +{events.length - 2} more
+                      </summary>
+                      <div className="mt-1 space-y-0.5 rounded border border-border/60 bg-surface-2/80 p-1">
+                        {events.slice(2).map((e, j) => (
+                          <div
+                            key={`o-${j}`}
+                            className={
+                              "truncate rounded px-1.5 py-0.5 text-[10px] " +
+                              (TYPE_COLORS[e.type] ?? TYPE_COLORS.OTHER)
+                            }
+                          >
+                            {e.name}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   )}
                 </div>
               </div>
@@ -197,7 +268,9 @@ export default async function EmployeeCalendar({
       </div>
 
       {allRequests.length === 0 ? (
-        <p className="text-sm text-text-muted">{t("none")}</p>
+        <p className="text-sm text-text-muted">
+          {viewMode === "me" ? t("noneMe") : t("none")}
+        </p>
       ) : (
         <section className="space-y-2">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-text-subtle">
