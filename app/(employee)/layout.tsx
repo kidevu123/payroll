@@ -7,6 +7,7 @@
 // session user's payType.
 
 import { eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/lib/auth-guards";
 import { getEmployee } from "@/lib/db/queries/employees";
@@ -24,6 +25,13 @@ export default async function EmployeeLayout({
   children: React.ReactNode;
 }) {
   const session = await requireSession();
+  // Hard guard: only EMPLOYEE-role users belong in the employee shell.
+  // Anyone else (Owner/Admin/Payroll-staff/Accountant) lands on /me/*
+  // by mistake — usually because the root redirect sent them here in
+  // an older build. Bounce them to root, which routes by role.
+  if (session.user.role !== "EMPLOYEE") {
+    redirect("/");
+  }
   // Usage metric — every employee page render. Cheap fire-and-forget.
   try {
     const { sessionPing, pageRenders } = await import("@/lib/telemetry");

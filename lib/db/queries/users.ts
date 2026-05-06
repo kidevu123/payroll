@@ -233,6 +233,59 @@ export async function setUserRole(
 }
 
 /**
+ * List staff users (no employee link) — used by the owner-only roles
+ * page to manage logins for accountants / payroll-staff / admins that
+ * never punch a clock.
+ */
+export async function listStaffUsers(): Promise<User[]> {
+  const rows = await db
+    .select()
+    .from(users)
+    .where(sql`${users.employeeId} is null`);
+  return rows;
+}
+
+/**
+ * Create a standalone staff user — no Employee row, no shift, no pay
+ * type. Returns the generated temp password so the inviter can share
+ * it once. Used for accountants / payroll-staff / admins who only need
+ * portal access, not clocks-and-paychecks.
+ */
+export async function createStaffUser(
+  input: {
+    email: string;
+    role: "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT";
+  },
+  actor: Actor,
+): Promise<{ user: User; tempPassword: string }> {
+  const tempPlain = generateTempPasswordPlain();
+  const hash = await hashPassword(tempPlain);
+  const collision = await findUserByEmail(input.email);
+  if (collision) {
+    throw new Error("A user with that email already exists.");
+  }
+  const [row] = await db
+    .insert(users)
+    .values({
+      email: input.email,
+      passwordHash: hash,
+      role: input.role,
+      mustChangePassword: true,
+    })
+    .returning();
+  if (!row) throw new Error("createStaffUser: insert returned no row");
+  await writeAudit({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: "user.staff_create",
+    targetType: "User",
+    targetId: row.id,
+    after: { email: row.email, role: row.role },
+  });
+  return { user: row, tempPassword: tempPlain };
+}
+
+/**
  * Create or attach a User row for an Employee. Returns the temp password
  * generated for them so the admin UI can display it once.
  *

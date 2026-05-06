@@ -1,7 +1,9 @@
 import { requireOwner } from "@/lib/auth-guards";
 import { getSetting } from "@/lib/settings/runtime";
 import { defaultSurfacesFor, SURFACES, SURFACE_LABEL, type EditableRole, type Surface } from "@/lib/auth/role-matrix";
+import { listStaffUsers } from "@/lib/db/queries/users";
 import { RolesMatrixForm } from "./roles-form";
+import { StaffUsersPanel } from "./staff-users-panel";
 
 const ROLES: ReadonlyArray<EditableRole> = ["PAYROLL_STAFF", "ACCOUNTANT", "ADMIN"];
 
@@ -14,7 +16,10 @@ const ROLE_LABEL: Record<EditableRole, string> = {
 export default async function Page() {
   // Owner-only — this matrix can grant/revoke access to every other role.
   await requireOwner();
-  const cfg = await getSetting("rolePermissions");
+  const [cfg, staffUsers] = await Promise.all([
+    getSetting("rolePermissions"),
+    listStaffUsers(),
+  ]);
   const overrides = cfg?.overrides ?? {};
 
   // Build the resolved matrix the form should render: for each role,
@@ -38,10 +43,26 @@ export default async function Page() {
     };
   });
 
+  // Surface staff users without an Employee link separately. The
+  // /employees page handles linked employees; this panel is for
+  // standalone admin / payroll-staff / accountant logins.
+  const staff = staffUsers
+    .filter((u) => u.role !== "OWNER" && u.role !== "EMPLOYEE")
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      role: u.role as EditableRole,
+      disabled: u.disabledAt !== null,
+      mustChangePassword: u.mustChangePassword,
+    }));
+
   return (
-    <RolesMatrixForm
-      rows={rows}
-      surfaces={SURFACES.map((s) => ({ key: s, label: SURFACE_LABEL[s] }))}
-    />
+    <div className="space-y-8">
+      <RolesMatrixForm
+        rows={rows}
+        surfaces={SURFACES.map((s) => ({ key: s, label: SURFACE_LABEL[s] }))}
+      />
+      <StaffUsersPanel staff={staff} />
+    </div>
   );
 }
