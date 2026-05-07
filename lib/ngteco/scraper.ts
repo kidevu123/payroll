@@ -570,6 +570,24 @@ export async function scrapeViewAttendance(
       }
     }
 
+    // Wait for the sidebar to actually have *some* link text we can
+    // reason about. Without this, we can race the SPA's lazy menu
+    // mount and get a "no element found" timeout that looks like
+    // NGTeco changed copy when really the SPA wasn't ready.
+    try {
+      await page.waitForFunction(
+        () => {
+          const nav = document.querySelector("nav, aside, [role=navigation]");
+          return !!nav && (nav.textContent ?? "").trim().length > 20;
+        },
+        null,
+        { timeout: 8_000 },
+      );
+    } catch {
+      /* proceed anyway — we'll fall through to the failure capture
+         which records the page so we can see what's there */
+    }
+
     let clicked = false;
     if (sel.navigation.viewAttendancePunchLink) {
       try {
@@ -592,9 +610,66 @@ export async function scrapeViewAttendance(
       }
     }
     if (!clicked) {
-      await page.getByText(/view attendance punch/i).first().click({
-        timeout: 8_000,
-      });
+      try {
+        await page.getByText(/view attendance punch/i).first().click({
+          timeout: 6_000,
+        });
+        clicked = true;
+      } catch {
+        /* fall through to broader variants — NGTeco has shipped
+           "View Attendance Punch", "Attendance Punch", and just
+           "Punch Records" at different points */
+      }
+    }
+    if (!clicked) {
+      // Wider net: any sidebar entry that looks punch-related. We
+      // collect candidates so the failure path can log them.
+      const variants: Array<RegExp> = [
+        /view\s*attendance\s*punch/i,
+        /attendance\s*punch/i,
+        /punch\s*record/i,
+        /view\s*punch/i,
+      ];
+      for (const re of variants) {
+        try {
+          await page.getByText(re).first().click({ timeout: 4_000 });
+          clicked = true;
+          break;
+        } catch {
+          /* try next variant */
+        }
+      }
+    }
+    if (!clicked) {
+      // Snapshot what the sidebar actually contains so the failure
+      // is diagnosable without an SSH-and-grep round trip. We dump
+      // every top-level link/button label we can see.
+      let sidebarLabels: string = "(unable to read)";
+      try {
+        sidebarLabels = await page.evaluate(() => {
+          const root = document.querySelector("nav, aside, [role=navigation]") ?? document.body;
+          const items = Array.from(
+            root.querySelectorAll("a, [role=button], [role=menuitem], li, p, span"),
+          );
+          const seen = new Set<string>();
+          const labels: string[] = [];
+          for (const el of items) {
+            const t = (el.textContent ?? "").trim().replace(/\s+/g, " ");
+            if (t && t.length < 80 && !seen.has(t)) {
+              seen.add(t);
+              labels.push(t);
+            }
+            if (labels.length >= 60) break;
+          }
+          return labels.join(" | ");
+        });
+      } catch {
+        /* keep placeholder */
+      }
+      throw new ScrapeFailure(
+        `NGTeco navigation: could not find a "View Attendance Punch" link or any close variant. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. If the sidebar looks empty, the saved login session is stale — clear /data/ngteco/profile inside the LXC (rm -rf) and retry; the next poll will log in fresh. If the labels show new copy, update lib/ngteco/selectors.json#navigation.viewAttendancePunchLink to match.`,
+        {},
+      );
     }
     await page.waitForSelector(sel.viewPunch.tableLandmark, {
       timeout: 15_000,

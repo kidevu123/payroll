@@ -30,7 +30,7 @@ export async function setPasswordAction(
       id: session.user.id,
       role: session.user.role,
     });
-    revalidatePath(`/employees`);
+    revalidatePath(`/employees`, "layout");
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed." };
   }
@@ -46,7 +46,7 @@ export async function generateTempPasswordAction(
       id: session.user.id,
       role: session.user.role,
     });
-    revalidatePath(`/employees`);
+    revalidatePath(`/employees`, "layout");
     return { tempPassword };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed." };
@@ -64,7 +64,7 @@ export async function toggleDisabledAction(
       id: session.user.id,
       role: session.user.role,
     });
-    revalidatePath(`/employees`);
+    revalidatePath(`/employees`, "layout");
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed." };
   }
@@ -86,7 +86,10 @@ export async function setRoleAction(
       id: session.user.id,
       role: session.user.role,
     });
-    revalidatePath(`/employees`);
+    // Layout scope: the form lives at /employees/[id], not the index;
+    // revalidating only `/employees` left the detail page showing the
+    // pre-save role and looked like the action silently no-op'd.
+    revalidatePath(`/employees`, "layout");
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed." };
   }
@@ -117,7 +120,7 @@ export async function inviteEmployeeAction(
       { employeeId, email: parsed.data.email, role: parsed.data.role },
       { id: session.user.id, role: session.user.role },
     );
-    revalidatePath(`/employees`);
+    revalidatePath(`/employees`, "layout");
     return { tempPassword: result.tempPassword };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed." };

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Copy, Power, PowerOff, KeyRound, RefreshCw, Send } from "lucide-react";
 import type { User } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export function AccountSection({
   employeeEmail: string;
   user: User | null;
 }) {
+  const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [tempPassword, setTempPassword] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState<string | null>(null);
@@ -176,12 +178,19 @@ export function AccountSection({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <form
+            // key tied to user.role: when revalidation hands us a new
+            // role from the server, React reuses the existing <select>
+            // and ignores the changed defaultValue, leaving the form
+            // showing the pre-save value. Keying on the role forces a
+            // remount so the new role is what the user sees.
+            key={`role-${user.role}`}
             action={async (form) => {
               setPending("role");
               setError(null);
               const result = await setRoleAction(user.id, form);
               setPending(null);
               if (result?.error) setError(result.error);
+              else router.refresh();
             }}
             className="space-y-2 rounded-card border border-border bg-surface-2 p-4 shadow-sm"
           >
@@ -225,6 +234,7 @@ export function AccountSection({
                 const result = await toggleDisabledAction(user.id, !user.disabledAt);
                 setPending(null);
                 if (result?.error) setError(result.error);
+                else router.refresh();
               }}
             >
               {user.disabledAt ? (

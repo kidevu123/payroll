@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Copy, Power, PowerOff, RefreshCw, Send, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ const ROLE_LABEL: Record<EditableRole, string> = {
 };
 
 export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
+  const router = useRouter();
   const [pending, setPending] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [tempPassword, setTempPassword] = React.useState<{
@@ -152,12 +154,14 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                   </td>
                   <td className="px-4 py-2.5 align-middle">
                     <form
+                      key={`role-${s.id}-${s.role}`}
                       action={async (form) => {
                         setPending(`role:${s.id}`);
                         setError(null);
                         const r = await setStaffRoleAction(s.id, form);
                         setPending(null);
                         if (r?.error) setError(r.error);
+                        else router.refresh();
                       }}
                       className="flex items-center gap-2"
                     >
@@ -217,6 +221,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                           const r = await setStaffDisabledAction(s.id, !s.disabled);
                           setPending(null);
                           if (r?.error) setError(r.error);
+                          else router.refresh();
                         }}
                       >
                         {s.disabled ? (

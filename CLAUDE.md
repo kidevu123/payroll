@@ -53,9 +53,9 @@ Next.js 15 (App Router) + React 19 + TypeScript strict (`noUncheckedIndexedAcces
 
 ## Current status
 
-- **Phase 0 (Foundation): live on LX120.** Branch `rebuild/foundation` deployed via systemd timer. Healthy.
-- **Phase 0.5 (pre-flight bug fixes): pending.** See `docs/phases.md` — `setSetting` audit-before throws on missing required-no-default fields.
-- **Phases 1-6: queued.** Owner has explicitly authorized autonomous execution.
+- **Phases 0 → 6: live on LX120.** Branch `rebuild/foundation` deployed via systemd timer. Healthy.
+- **Phase 6 polish in flight.** Recent shipped work on top of the Phase 6 baseline: cash drawer + accountant role + payment-method tracking, cancellable time-off, role × surface matrix at every admin section, staff-login flow for non-employee roles, role-permissions matrix UI at `/settings/roles`, central punch admin, calendar polish + birthday display, employee onboarding PDF, NGTeco MUI login selector fixes, observability gauges/counters, employee profile photo upload.
+- **Bug-fix discipline.** Bugs uncovered while building are fixed in place per autonomous-mode rules. When a fix lands, update the relevant section here in the SAME commit — this file is the briefing every future session reads cold.
 
 ## What you (Claude Code) should do first
 
