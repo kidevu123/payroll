@@ -188,10 +188,25 @@ function assertNotOnLoginPage(
  *    3. semantic input attribute (input[type="password"], etc.).
  *    4. configured CSS selector (legacy / operator override).
  *
- *  Notes: getByLabel() *does not* work here because the live form
- *  sets aria-label="description" on both inputs (a stale MUI
- *  default), so a name-based label match never resolves. Reads the
- *  value back to confirm the fill landed in the visible field. */
+ *  CRITICAL: every strategy is filtered to VISIBLE inputs only. The
+ *  bug that motivated this comment: NGTeco's MUI form has hidden
+ *  helper inputs (autocomplete shadow inputs, form-state mirrors)
+ *  that share name="username" / name="password" with the visible
+ *  field. fill() against `.first()` writes to the hidden one, the
+ *  inputValue() readback returns our value (it really did go in),
+ *  the helper happily returns success — but MUI's validation then
+ *  flags the visible field as required=empty and submit is rejected.
+ *  Symptom: form helper-text "This field is required!" while the
+ *  scraper insists it filled both fields.
+ *
+ *  After every fill we additionally do a "post-fill audit" — read
+ *  back the value of every same-name input on the page and confirm
+ *  at least one VISIBLE one carries our value. If the audit fails,
+ *  we treat the strategy as failed and try the next.
+ *
+ *  Note: getByLabel() does not work here because the live form sets
+ *  aria-label="description" on both inputs (stale MUI default), so a
+ *  name-based label match never resolves. */
 async function fillLoginField(
   page: import("playwright-core").Page,
   kind: "username" | "password",
@@ -206,39 +221,140 @@ async function fillLoginField(
       ? 'input[type="email"], input[name*="email" i], input[name*="account" i], input[name*="user" i]'
       : 'input[type="password"]';
 
-  const tryFill = async (loc: import("playwright-core").Locator): Promise<boolean> => {
-    if (!(await loc.count())) return false;
+  /** Verify a *visible* input matching `auditSelector` actually
+   *  carries the value we just wrote. Catches the "filled the hidden
+   *  shadow input" failure mode. */
+  const auditFill = async (auditSelector: string): Promise<boolean> => {
     try {
-      await loc.fill("");
-      await loc.fill(value, { timeout: 5_000 });
-      const filled = await loc.inputValue();
-      return filled === value;
+      const visibleVal = await page.evaluate(
+        ({ sel, expected }: { sel: string; expected: string }) => {
+          const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(sel));
+          for (const inp of inputs) {
+            // jQuery-style :visible heuristic — MUI inputs have non-zero
+            // box and are not display:none / visibility:hidden / opacity:0.
+            const box = inp.getBoundingClientRect();
+            const cs = getComputedStyle(inp);
+            const visible =
+              box.width > 0 &&
+              box.height > 0 &&
+              cs.visibility !== "hidden" &&
+              cs.display !== "none" &&
+              cs.opacity !== "0";
+            if (visible && inp.value === expected) return true;
+          }
+          return false;
+        },
+        { sel: auditSelector, expected: value },
+      );
+      return visibleVal;
     } catch {
       return false;
     }
   };
 
-  // Strategy 1: input[name="username"] / input[name="password"]
-  if (await tryFill(page.locator(nameSelector).first())) return;
+  const tryFill = async (
+    loc: import("playwright-core").Locator,
+    auditSelector: string,
+  ): Promise<boolean> => {
+    if (!(await loc.count())) return false;
+    try {
+      await loc.fill("");
+      await loc.fill(value, { timeout: 5_000 });
+      // The classic check: did fill() set inputValue on the locator
+      // we acted on? Cheap and catches typos.
+      const filled = await loc.inputValue();
+      if (filled !== value) return false;
+      // The IMPORTANT check: is at least one visible input on the
+      // page carrying our value? If only the hidden shadow input has
+      // it, this returns false and we fall through to the next
+      // strategy.
+      if (!(await auditFill(auditSelector))) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
-  // Strategy 2: getByPlaceholder("Email" / "Password")
-  if (await tryFill(page.getByPlaceholder(placeholder, { exact: true }).first())) return;
+  // Visibility-filtered locators. Playwright's :visible engine pseudo
+  // matches "any element with non-zero size, not hidden by CSS, not
+  // covered" — exactly what we need to skip the shadow inputs that
+  // share name="username".
+  const visibleNameLoc = page.locator(`${nameSelector}:visible`);
+  const visibleSemanticLoc = page.locator(`${semanticSelector}:visible`);
 
-  // Strategy 3: semantic attribute fallback
-  if (await tryFill(page.locator(semanticSelector).first())) return;
+  const auditAny =
+    kind === "username"
+      ? `input[name="username"], input[type="email"], input[name*="email" i], input[name*="user" i]`
+      : `input[name="password"], input[type="password"]`;
 
-  // Strategy 4: configured selector (legacy / operator override).
+  // Strategy 1: visible input by name
+  if (await tryFill(visibleNameLoc.first(), auditAny)) return;
+
+  // Strategy 2: getByRole textbox with accessible name (placeholder
+  // is part of accessible name in MUI). Naturally targets the
+  // visible control because the role tree omits hidden helpers.
+  const roleNameRe = kind === "username" ? /email|account|user/i : /password/i;
+  if (
+    await tryFill(
+      page.getByRole("textbox", { name: roleNameRe }).first(),
+      auditAny,
+    )
+  )
+    return;
+
+  // Strategy 3: getByPlaceholder("Email" / "Password") — placeholder
+  // text is render-attached to the visible input, not the shadow one.
+  if (
+    await tryFill(
+      page.getByPlaceholder(placeholder, { exact: true }).first(),
+      auditAny,
+    )
+  )
+    return;
+
+  // Strategy 4: semantic attribute, visibility-filtered
+  if (await tryFill(visibleSemanticLoc.first(), auditAny)) return;
+
+  // Strategy 5: configured selector (legacy / operator override).
+  // Still audit-checked — if a stale operator override targets a
+  // hidden input, we want to know so we can fall through to the
+  // diagnostic dump rather than submit a half-filled form.
   if (configuredSelector) {
     try {
       await page.fill(configuredSelector, value, { timeout: 5_000 });
-      return;
+      if (await auditFill(auditAny)) return;
     } catch {
-      /* fall through to error */
+      /* fall through to diagnostic */
     }
   }
 
+  // Final: dump enough structure to debug *what* inputs are on the
+  // page. Without this, the same failure recurs every poll with no
+  // progressing diagnostics.
+  let inventory = "(unable to read)";
+  try {
+    inventory = await page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input"));
+      return inputs
+        .slice(0, 20)
+        .map((i) => {
+          const box = i.getBoundingClientRect();
+          const cs = getComputedStyle(i);
+          const visible =
+            box.width > 0 &&
+            box.height > 0 &&
+            cs.visibility !== "hidden" &&
+            cs.display !== "none" &&
+            cs.opacity !== "0";
+          return `${visible ? "•" : "·"}{name=${i.name || "-"}, type=${i.type}, placeholder=${i.placeholder || "-"}, ariaLabel=${i.getAttribute("aria-label") ?? "-"}}`;
+        })
+        .join(" ");
+    });
+  } catch {
+    /* keep placeholder */
+  }
   throw new ScrapeFailure(
-    `Could not locate the ${kind} field. Tried name attribute, placeholder, semantic, and configured selectors.`,
+    `Could not locate a visible ${kind} field that accepts our value. Inputs on page (• = visible, · = hidden): ${inventory}. NGTeco probably renamed the field; update lib/ngteco/scraper.ts fillLoginField with the new attributes shown above.`,
     {},
   );
 }
@@ -583,23 +699,57 @@ export async function scrapeViewAttendance(
         // the operator *why* login failed (wrong password vs locked
         // account vs captcha) instead of a generic "did not complete".
         let helper = "";
+        // Also dump what's actually IN the visible inputs at submit
+        // time. "This field is required!" with our scraper insisting
+        // it filled both fields means fill landed in a hidden helper
+        // input — the inventory tells us which field was actually empty.
+        let fieldDump = "";
         try {
-          helper = await page.evaluate(() => {
+          const diag = await page.evaluate(() => {
             const errs = Array.from(
               document.querySelectorAll(
                 ".MuiFormHelperText-root.Mui-error, [role=alert], .MuiAlert-message",
               ),
-            );
-            return errs
+            )
               .map((e) => (e.textContent ?? "").trim())
               .filter(Boolean)
               .join(" | ");
+            const inputs = Array.from(
+              document.querySelectorAll<HTMLInputElement>("input"),
+            )
+              .filter((i) => {
+                const box = i.getBoundingClientRect();
+                const cs = getComputedStyle(i);
+                return (
+                  box.width > 0 &&
+                  box.height > 0 &&
+                  cs.visibility !== "hidden" &&
+                  cs.display !== "none" &&
+                  cs.opacity !== "0"
+                );
+              })
+              .slice(0, 8)
+              .map((i) => {
+                const lenLabel =
+                  i.type === "password"
+                    ? i.value.length
+                      ? `${i.value.length} chars`
+                      : "EMPTY"
+                    : i.value
+                      ? `"${i.value.slice(0, 24)}"`
+                      : "EMPTY";
+                return `${i.name || i.placeholder || i.type}=${lenLabel}`;
+              })
+              .join(", ");
+            return { errs, inputs };
           });
+          helper = diag.errs;
+          fieldDump = diag.inputs;
         } catch {
           /* best-effort */
         }
         throw new ScrapeFailure(
-          `NGTeco login did not complete — page still on ${url}.${helper ? ` Form said: ${helper}.` : ""} Most likely the saved credentials in Settings → NGTeco are out of date, or NGTeco changed login validation. Check the failure screenshot.`,
+          `NGTeco login did not complete — page still on ${url}.${helper ? ` Form said: ${helper}.` : ""}${fieldDump ? ` Visible inputs at submit: ${fieldDump}.` : ""} If a field is EMPTY despite us claiming we filled it, NGTeco renamed/duplicated the input — update fillLoginField. Otherwise the credentials in Settings → NGTeco are out of date.`,
           {},
         );
       }
