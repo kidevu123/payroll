@@ -20,12 +20,17 @@ import {
 } from "@/lib/db/queries/poll-history";
 import {
   handlePunchPoll,
+  type PollOptions,
   type PollSummary,
 } from "./punch-poll";
 
 export async function runPollAndLog(opts: {
   triggeredBy: "CRON" | "MANUAL";
   triggeredById?: string | null;
+  /** Pass through to handlePunchPoll. Used by the backfill action; the
+   *  cron + the "Poll punches now" button leave it undefined for the
+   *  fast today-only path. */
+  pollOptions?: PollOptions;
 }): Promise<PollSummary> {
   const log = await startPoll({
     triggeredBy: opts.triggeredBy,
@@ -33,7 +38,7 @@ export async function runPollAndLog(opts: {
   });
   const t0 = Date.now();
   try {
-    const summary = await handlePunchPoll();
+    const summary = await handlePunchPoll(opts.pollOptions ?? {});
     await finishPoll(log.id, {
       ok: summary.ok,
       ...(summary.eventsScraped !== undefined ? { eventsScraped: summary.eventsScraped } : {}),

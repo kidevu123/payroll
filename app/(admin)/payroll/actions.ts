@@ -152,6 +152,48 @@ export async function pollNowAction(): Promise<PollNowResult> {
   }
 }
 
+const backfillSchema = z.object({
+  // 1 = today + yesterday; 14 is the practical cap because NGTeco's
+  // "View Attendance Punch" view holds a rolling window we can scroll
+  // back through, but at typical density the virtualized grid runs
+  // out beyond ~2 weeks.
+  daysBack: z.number().int().min(1).max(14),
+});
+
+/**
+ * Manually trigger a NGTeco poll that ingests the last `daysBack` days,
+ * not just today. Use case: cron didn't run for some reason (login bug,
+ * server downtime, NGTeco outage), and now there are punches missing
+ * from earlier in the week. Importer dedupes by ngteco_record_hash so
+ * re-scraping today's punches in the same window is safe.
+ */
+export async function backfillPollAction(
+  daysBack: number,
+): Promise<PollNowResult> {
+  const session = await requireAdmin();
+  const parsed = backfillSchema.safeParse({ daysBack });
+  if (!parsed.success) {
+    return { error: "Invalid daysBack — pick a value between 1 and 14." };
+  }
+  const { runPollAndLog } = await import(
+    "@/lib/jobs/handlers/punch-poll-runner"
+  );
+  try {
+    const summary = await runPollAndLog({
+      triggeredBy: "MANUAL",
+      triggeredById: session.user.id,
+      pollOptions: { daysBack: parsed.data.daysBack },
+    });
+    revalidatePath("/payroll");
+    revalidatePath("/time");
+    return { ok: true, summary };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Backfill failed.",
+    };
+  }
+}
+
 const voidPayslipSchema = z.object({ reason: z.string().min(1).max(500) });
 
 /**

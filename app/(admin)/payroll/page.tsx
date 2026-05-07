@@ -49,6 +49,7 @@ import {
 import { desc, eq, sql } from "drizzle-orm";
 import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
+import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import { InFlightRow } from "./in-flight-row";
 import { PeriodDeleteButton } from "./period-delete-button";
@@ -380,6 +381,7 @@ export default async function PayrollPage({
                   : null
               }
             />
+            <BackfillPunchesButton />
           </div>
         </CardContent>
       </Card>

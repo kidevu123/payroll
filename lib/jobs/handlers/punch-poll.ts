@@ -25,22 +25,41 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
 }
 
 /**
- * ISO timestamp for 00:00 (midnight) of TODAY's calendar date in `tz`.
- * Used as the lower bound when filtering scraped NGTeco events. Owner
- * directive: poll runs multiple times a day; each poll only ingests
- * today's punches. Yesterday's data is locked in by the time we move on.
+ * ISO timestamp for 00:00 (midnight) of TODAY (or N days ago) in `tz`.
+ * Used as the lower bound when filtering scraped NGTeco events.
  *
- * Returned in the form scraper events use ("YYYY-MM-DDTHH:mm:ss"
- * with a tz offset truncated). String compare against punchAt which
- * has the form "YYYY-MM-DDTHH:mm:ss-04:00" — works because the date
- * portion is identical-prefix when "today" matches and lex-greater
- * when "today" is later.
+ * Default behaviour (daysBack=0): each poll only ingests today's
+ * punches. Yesterday's data is locked in by the time we hit a new
+ * calendar day. Owner directive when the system is healthy.
+ *
+ * Backfill behaviour (daysBack>0): the operator triggered a recovery
+ * because the cron didn't run for some interval. We slide the lower
+ * bound back N days so previously-missed punches make it in. Existing
+ * rows are deduped by ngteco_record_hash inside the importer, so
+ * re-scraping today is safe.
+ *
+ * Returned in the form scraper events use ("YYYY-MM-DDTHH:mm:ss" with
+ * the tz offset truncated). String compare against punchAt which has
+ * the form "YYYY-MM-DDTHH:mm:ss-04:00" — works because the date
+ * portion is identical-prefix when dates match.
  */
-function startOfTodayIso(tz: string): string {
+function startOfDayIso(tz: string, daysBack: number): string {
+  // Get today's calendar date in `tz`, then subtract daysBack days.
+  // Doing this on the date string (not the Date object) avoids DST
+  // edge cases — we want calendar-day arithmetic, not 24h-clock.
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
     new Date(),
   );
-  return `${todayStr}T00:00:00`;
+  if (daysBack <= 0) return `${todayStr}T00:00:00`;
+  const [y, m, d] = todayStr.split("-").map(Number);
+  // Date.UTC gives us a stable point we can subtract days from. The
+  // calendar date we want is in `tz`, so we treat the UTC representation
+  // of that date as our anchor and step back N times. The output is the
+  // resulting calendar-date string regardless of `tz`'s DST shifts.
+  const ms = Date.UTC(y!, m! - 1, d!) - daysBack * 86_400_000;
+  const back = new Date(ms);
+  const backStr = `${back.getUTCFullYear()}-${String(back.getUTCMonth() + 1).padStart(2, "0")}-${String(back.getUTCDate()).padStart(2, "0")}`;
+  return `${backStr}T00:00:00`;
 }
 
 export type PollSummary = {
@@ -55,9 +74,30 @@ export type PollSummary = {
   durationMs?: number;
   /** When set, callers (esp. the manual button) can show the screenshot link. */
   screenshotPath?: string;
+  /** Number of calendar days the poll covered (1 = today only,
+   *  2 = today + yesterday, etc.). Lets the UI show "Backfilled
+   *  3 days, 12 new pairs" instead of just a count. */
+  daysCovered?: number;
 };
 
-export async function handlePunchPoll(): Promise<PollSummary> {
+/**
+ * Options for running a poll. The cron + the "Poll punches now" button
+ * call with no options — that's the today-only fast path. The
+ * backfill action passes `daysBack` so the operator can recover punches
+ * from days when the cron didn't run (login bug, NGTeco outage, server
+ * downtime). NGTeco's View Attendance Punch keeps the most recent
+ * window; for daysBack > ~5 the importer relies on the maxRows bump
+ * to scroll the virtual grid back far enough.
+ */
+export type PollOptions = {
+  /** How many calendar days back to ingest, in the company timezone.
+   *  0 (default) = today only. 1 = today + yesterday. 7 = last 7 days. */
+  daysBack?: number;
+};
+
+export async function handlePunchPoll(
+  opts: PollOptions = {},
+): Promise<PollSummary> {
   const ngteco = await getSetting("ngteco").catch(() => null);
   const company = await getSetting("company").catch(() => null);
   if (!ngteco || !company) {
@@ -89,6 +129,14 @@ export async function handlePunchPoll(): Promise<PollSummary> {
   const username = openSealed(ngteco.usernameEncrypted);
   const password = openSealed(ngteco.passwordEncrypted);
 
+  // Backfill bumps maxRows so the virtual-scrolling MuiDataGrid is
+  // walked back far enough to cover the requested window. Default
+  // 1000 is fine for ~5 days at typical 50-employee, 4-punch/day
+  // density; multiply by daysBack with a floor of 1000 to keep
+  // today-only polls fast.
+  const daysBack = Math.max(0, Math.floor(opts.daysBack ?? 0));
+  const maxRows = daysBack > 0 ? Math.max(1000, daysBack * 400) : undefined;
+
   try {
     const result = await scrapeViewAttendance({
       portalUrl: ngteco.portalUrl,
@@ -96,6 +144,7 @@ export async function handlePunchPoll(): Promise<PollSummary> {
       password,
       headless: ngteco.headless,
       runId,
+      ...(maxRows !== undefined ? { maxRows } : {}),
     });
     logger.info(
       { runId, events: result.events.length, durationMs: result.durationMs },
@@ -108,6 +157,7 @@ export async function handlePunchPoll(): Promise<PollSummary> {
         pairsInserted: 0,
         pairsUpdated: 0,
         durationMs: result.durationMs,
+        daysCovered: daysBack + 1,
       };
     }
     // Per owner directive: each poll only ingests TODAY's punches. The
@@ -128,18 +178,21 @@ export async function handlePunchPoll(): Promise<PollSummary> {
     // Net: poll twice a day, ten times a day, no duplicate rows ever
     // accumulate. The unique partial index on punches.ngteco_record_hash
     // is the de-dupe contract.
-    const todayStartIso = startOfTodayIso(company.timezone);
+    const windowStartIso = startOfDayIso(company.timezone, daysBack);
     const filtered = result.events.filter(
-      (e) => e.punchAt >= todayStartIso,
+      (e) => e.punchAt >= windowStartIso,
     );
     logger.info(
       {
         runId,
         scraped: result.events.length,
-        today: filtered.length,
-        todayStartIso,
+        kept: filtered.length,
+        windowStartIso,
+        daysBack,
       },
-      "punch.poll: window-filtered to today",
+      daysBack > 0
+        ? "punch.poll: backfill — window-filtered to N days"
+        : "punch.poll: window-filtered to today",
     );
     const summary = await importPunchPoll(filtered, {
       timezone: company.timezone,
@@ -167,6 +220,7 @@ export async function handlePunchPoll(): Promise<PollSummary> {
       unmatchedRefs: summary.unmatchedRefs,
       openShifts: summary.openShifts,
       durationMs: result.durationMs,
+      daysCovered: daysBack + 1,
     };
   } catch (err) {
     if (err instanceof ChallengeDetectedError) {
