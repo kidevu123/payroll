@@ -187,8 +187,8 @@ export function CronPicker({
                   placeholder="e.g. 1, 16"
                 />
                 <p className="mt-1 text-[11px] text-text-muted">
-                  Comma-separated. Use single days (1, 15) or "last" via
-                  Custom mode.
+                  Comma-separated. Use single days (1, 15) or
+                  &ldquo;last&rdquo; via Custom mode.
                 </p>
               </div>
             </div>

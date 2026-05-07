@@ -84,7 +84,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
               </button>
             ))}
             <div className="border-t border-border/70 px-3 py-2 text-[11px] text-text-muted">
-              Existing punches are deduplicated, so it's safe to re-run.
+              Existing punches are deduplicated, so it&apos;s safe to re-run.
             </div>
           </div>
         )}
