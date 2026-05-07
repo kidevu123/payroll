@@ -16,6 +16,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
+import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -446,6 +447,12 @@ export default async function TimePage({
               <Plus className="h-4 w-4" /> Add manual punch
             </Link>
           </Button>
+          {/* Recovery affordance: when an operator is staring at the
+              grid and sees a column of "open" cells from a missed-sync
+              day, the fix needs to be one click away. Same component
+              the /payroll page surfaces; deduped by hash + open-punch
+              fallback so re-running is always safe. */}
+          <BackfillPunchesButton />
           <div className="flex items-center gap-3 text-xs">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />

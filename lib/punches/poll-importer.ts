@@ -133,10 +133,60 @@ export async function importPunchPoll(
       ].filter(Boolean);
       const note = noteParts.length ? noteParts.join(" · ") : null;
 
-      const existing = await db
+      let existing = await db
         .select({ id: punches.id, clockOut: punches.clockOut })
         .from(punches)
         .where(eq(punches.ngtecoRecordHash, hash));
+
+      // Fallback match — backfill recovery scenario. The original
+      // IN-only poll stored the punch with a hash from THAT scrape's
+      // punchAt; today's backfill might compose punchAt slightly
+      // differently (NGTeco refining the second-precision after the
+      // device fully synced, the row's tz cell rendering differently,
+      // etc.). When that happens the hash mismatches and we'd insert
+      // a brand-new row, leaving the original IN-only punch open
+      // forever — exactly the "yesterday's closing hours never
+      // filled" failure mode operators hit.
+      //
+      // So if no exact-hash match: look for an OPEN punch on the same
+      // (employee, day) whose clockIn sits within ±5 minutes of our
+      // new IN event. If found, treat them as the same shift and
+      // update its clockOut. We also re-stamp the hash so the next
+      // poll converges on the canonical key.
+      if (existing.length === 0) {
+        const dayStart = new Date(`${g.day}T00:00:00Z`);
+        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const candidates = await db
+          .select({
+            id: punches.id,
+            clockIn: punches.clockIn,
+            clockOut: punches.clockOut,
+          })
+          .from(punches)
+          .where(
+            and(
+              eq(punches.employeeId, g.empId),
+              sql`${punches.clockIn} >= ${dayStart.toISOString()}::timestamptz`,
+              sql`${punches.clockIn} < ${dayEnd.toISOString()}::timestamptz`,
+              sql`${punches.clockOut} IS NULL`,
+            ),
+          );
+        const targetMs = clockIn.getTime();
+        const TOLERANCE_MS = 5 * 60 * 1000;
+        const matched = candidates.find(
+          (c) => Math.abs(c.clockIn.getTime() - targetMs) <= TOLERANCE_MS,
+        );
+        if (matched) {
+          existing = [{ id: matched.id, clockOut: matched.clockOut }];
+          // Re-stamp the hash so the next scrape's exact-hash lookup
+          // hits this row directly without going through the fallback.
+          await db
+            .update(punches)
+            .set({ ngtecoRecordHash: hash })
+            .where(eq(punches.id, matched.id));
+        }
+      }
+
       if (existing.length > 0) {
         const row = existing[0]!;
         if (
@@ -197,7 +247,6 @@ export async function importPunchPoll(
       after: summary,
     });
   }
-  void and;
   return summary;
 }
 
