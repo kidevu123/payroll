@@ -202,6 +202,7 @@ export default async function CalendarPage({
             <Legend label="Sick" className={TYPE_COLORS.SICK!} />
             <Legend label="Unpaid" className={TYPE_COLORS.UNPAID!} />
             <Legend label="Other" className={TYPE_COLORS.OTHER!} />
+            <Legend label="Birthday" className="bg-pink-100 text-pink-800 border-pink-300" />
             <span className="text-text-muted">
               · Faded = pending approval
             </span>
@@ -251,18 +252,29 @@ export default async function CalendarPage({
                       {Number(day.slice(8))}
                     </span>
                     {cell.birthdays.length > 0 && (
-                      <span
-                        className="inline-flex items-center gap-0.5 text-pink-600"
-                        title={cell.birthdays.map((b) => b.name).join(", ")}
-                        aria-label="Birthdays"
-                      >
-                        <Cake className="h-3 w-3" aria-hidden />
-                        {cell.birthdays.length > 1 && (
-                          <span className="text-[10px]">{cell.birthdays.length}</span>
-                        )}
-                      </span>
+                      <Cake
+                        className="h-3 w-3 text-pink-600"
+                        aria-hidden
+                      />
                     )}
                   </div>
+                  {cell.birthdays.length > 0 && (
+                    // Always render the actual name. The previous build
+                    // hid them in a `title` tooltip, which doesn't fire
+                    // on touch — owner couldn't tell whose birthday it
+                    // was without going to the employees page.
+                    <div className="mt-1 space-y-0.5">
+                      {cell.birthdays.map((b, i) => (
+                        <div
+                          key={`bday-${day}-${i}`}
+                          className="truncate rounded border border-pink-300 bg-pink-50 px-1.5 py-0.5 text-[11px] leading-tight text-pink-800"
+                          title={`${b.name} — birthday`}
+                        >
+                          {b.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-1 space-y-1">
                     {visible.map((r) => (
                       <div

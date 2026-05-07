@@ -125,7 +125,16 @@ export function Topbar({
           // sidebar's softer separation language). 2px brand-tinted
           // accent gradient at the very top — adds color without
           // shouting (Vercel / Linear pattern).
-          "relative h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
+          //
+          // z-50: <main> uses .page-enter which animates a transform,
+          // creating its own stacking context. Without an explicit
+          // z-index here, the user-menu dropdown (z-40 inside topbar)
+          // gets painted UNDER the page content where the panel
+          // overlaps it — calendar month-nav showing through the
+          // dropdown was the visible symptom. Lifting the whole
+          // topbar to z-50 keeps every popover anchored from it
+          // above page content regardless of route.
+          "relative z-50 h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
           "shadow-[0_1px_0_0_rgb(15_23_42_/_0.02)]",
           "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-[2px]",
