@@ -4,31 +4,45 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export type CronPreset = {
-  label: string;
-  value: string;
-  hint?: string;
-};
+/* Friendly cron picker.
+ *
+ * The point: an operator who's never written cron in their life should
+ * be able to set "Every Sunday at 7pm" without seeing the string
+ * "0 19 * * 0" anywhere except as a confirmation. There are three modes:
+ *
+ *   1. "Every N minutes / hours"  — a small preset list for the
+ *      real-time poll case (every 5/15/30 min, every hour).
+ *   2. "On specific days at a specific time" — day-of-week checkboxes
+ *      + a real <input type="time"> picker. Composes the cron string
+ *      under the hood.
+ *   3. "Once a month on these dates at this time" — day-of-month
+ *      multi-select + time picker. Covers the 1st-and-16th case.
+ *   4. "Custom (advanced)" — raw text input for anything else.
+ *
+ * The hidden form field always carries the resolved cron string, so
+ * downstream code (pg-boss) is unchanged. */
 
-const PRESETS: CronPreset[] = [
-  { label: "Every 5 minutes", value: "*/5 * * * *", hint: "Realtime poll" },
-  { label: "Every 15 minutes", value: "*/15 * * * *", hint: "Realtime poll" },
-  { label: "Every 30 minutes", value: "*/30 * * * *", hint: "Realtime poll" },
-  { label: "Every hour", value: "0 * * * *", hint: "Hourly poll" },
-  { label: "Every Sunday at 7pm", value: "0 19 * * 0", hint: "Weekly close after Saturday's punches" },
-  { label: "Every Saturday at 7pm", value: "0 19 * * 6", hint: "Weekly close on Saturday" },
-  { label: "Every Friday at 5pm", value: "0 17 * * 5", hint: "End-of-week Friday cutoff" },
-  { label: "Every weekday at 6pm", value: "0 18 * * 1-5", hint: "Mon–Fri end of day" },
-  { label: "1st & 16th at 7pm", value: "0 19 1,16 * *", hint: "Semi-monthly cycle" },
-  { label: "Last day of month at 7pm", value: "0 19 28-31 * *", hint: "Monthly close" },
+type Mode = "interval" | "weekly" | "monthly" | "custom";
+
+type IntervalPreset = { label: string; value: string };
+
+const INTERVAL_PRESETS: ReadonlyArray<IntervalPreset> = [
+  { label: "Every 5 minutes", value: "*/5 * * * *" },
+  { label: "Every 15 minutes", value: "*/15 * * * *" },
+  { label: "Every 30 minutes", value: "*/30 * * * *" },
+  { label: "Every hour, on the hour", value: "0 * * * *" },
 ];
 
-/**
- * Cron picker. Renders a friendly preset dropdown + a hidden text input
- * named `name` that the form submits. "Custom (advanced)" reveals the
- * raw cron field for unusual schedules. Live-validates the cron pattern
- * against a permissive 5-field regex.
- */
+const DOW = [
+  { value: 0, short: "Sun", long: "Sunday" },
+  { value: 1, short: "Mon", long: "Monday" },
+  { value: 2, short: "Tue", long: "Tuesday" },
+  { value: 3, short: "Wed", long: "Wednesday" },
+  { value: 4, short: "Thu", long: "Thursday" },
+  { value: 5, short: "Fri", long: "Friday" },
+  { value: 6, short: "Sat", long: "Saturday" },
+] as const;
+
 export function CronPicker({
   name,
   defaultValue,
@@ -40,101 +54,395 @@ export function CronPicker({
   label?: string;
   required?: boolean;
 }) {
-  const initialMatchedPreset =
-    PRESETS.find((p) => p.value === defaultValue) ?? null;
-  const [selected, setSelected] = React.useState<string>(
-    initialMatchedPreset ? initialMatchedPreset.value : "__custom__",
+  const initial = parseCron(defaultValue);
+  const [mode, setMode] = React.useState<Mode>(initial.mode);
+
+  // Mode-specific state. We hydrate every state from `initial` so a
+  // mode switch back-and-forth doesn't lose what was there.
+  const [intervalValue, setIntervalValue] = React.useState<string>(
+    initial.mode === "interval" ? defaultValue : "*/15 * * * *",
+  );
+  const [weeklyDays, setWeeklyDays] = React.useState<Set<number>>(
+    initial.mode === "weekly" ? new Set(initial.weeklyDays) : new Set([0]),
+  );
+  const [weeklyTime, setWeeklyTime] = React.useState<string>(
+    initial.mode === "weekly" ? initial.timeHHMM : "19:00",
+  );
+  const [monthlyDays, setMonthlyDays] = React.useState<string>(
+    initial.mode === "monthly" ? initial.monthlyDays.join(",") : "1,16",
+  );
+  const [monthlyTime, setMonthlyTime] = React.useState<string>(
+    initial.mode === "monthly" ? initial.timeHHMM : "19:00",
   );
   const [custom, setCustom] = React.useState<string>(defaultValue);
 
-  const value = selected === "__custom__" ? custom : selected;
-  // Permissive cron regex: digits, *, /, ,, -, plus whitespace. The 5-field
-  // length check below makes the malformed-banner light up.
-  const validCron =
-    /^[\d*/,\- ]+$/.test(value) && value.trim().split(/\s+/).length === 5;
+  const value = React.useMemo(() => {
+    if (mode === "interval") return intervalValue;
+    if (mode === "weekly") return composeWeekly(weeklyTime, weeklyDays);
+    if (mode === "monthly") return composeMonthly(monthlyTime, monthlyDays);
+    return custom;
+  }, [mode, intervalValue, weeklyTime, weeklyDays, monthlyTime, monthlyDays, custom]);
 
   const description = React.useMemo(() => describeCron(value), [value]);
+  const valid = isValidCron(value);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <Label>{label}</Label>
-      <select
-        value={selected}
-        onChange={(e) => {
-          const v = e.target.value;
-          setSelected(v);
-          if (v !== "__custom__") setCustom(v);
-        }}
-        className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
-      >
-        {PRESETS.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label} ({p.value})
-          </option>
-        ))}
-        <option value="__custom__">Custom (advanced)</option>
-      </select>
-      {selected === "__custom__" ? (
-        <div className="space-y-1">
-          <Input
-            name={name}
-            required={required}
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            placeholder="0 19 * * 0"
-            className="font-mono"
+
+      <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <ModeChip
+            active={mode === "interval"}
+            onClick={() => setMode("interval")}
+            label="Every few minutes / hours"
           />
-          <p className="text-xs text-text-muted">
-            Five fields: minute hour day-of-month month day-of-week. Use{" "}
-            <a
-              href="https://crontab.guru/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand-700 underline"
-            >
-              crontab.guru
-            </a>{" "}
-            to translate.
-          </p>
+          <ModeChip
+            active={mode === "weekly"}
+            onClick={() => setMode("weekly")}
+            label="Pick days of the week"
+          />
+          <ModeChip
+            active={mode === "monthly"}
+            onClick={() => setMode("monthly")}
+            label="Pick days of the month"
+          />
+          <ModeChip
+            active={mode === "custom"}
+            onClick={() => setMode("custom")}
+            label="Custom (advanced)"
+          />
         </div>
-      ) : (
-        // Render a hidden input so the form still submits the resolved value.
-        <input type="hidden" name={name} value={value} />
-      )}
+
+        {mode === "interval" && (
+          <select
+            value={intervalValue}
+            onChange={(e) => setIntervalValue(e.target.value)}
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+          >
+            {INTERVAL_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {mode === "weekly" && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-text-muted">Which days?</Label>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {DOW.map((d) => {
+                  const active = weeklyDays.has(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => {
+                        setWeeklyDays((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(d.value)) next.delete(d.value);
+                          else next.add(d.value);
+                          // Don't allow empty selection — fall back to Sun.
+                          if (next.size === 0) next.add(0);
+                          return next;
+                        });
+                      }}
+                      className={`h-9 min-w-12 px-3 rounded-input border text-xs font-medium transition-colors ${
+                        active
+                          ? "border-brand-700 bg-brand-50 text-brand-700"
+                          : "border-border bg-surface text-text-muted hover:bg-surface-2"
+                      }`}
+                    >
+                      {d.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label htmlFor={`${name}-time`} className="text-xs text-text-muted shrink-0">
+                What time?
+              </Label>
+              <Input
+                id={`${name}-time`}
+                type="time"
+                value={weeklyTime}
+                onChange={(e) => setWeeklyTime(e.target.value)}
+                className="w-40"
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === "monthly" && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-text-muted">Which days of the month?</Label>
+              <div className="mt-1">
+                <Input
+                  value={monthlyDays}
+                  onChange={(e) => setMonthlyDays(e.target.value)}
+                  placeholder="e.g. 1, 16"
+                />
+                <p className="mt-1 text-[11px] text-text-muted">
+                  Comma-separated. Use single days (1, 15) or "last" via
+                  Custom mode.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label
+                htmlFor={`${name}-month-time`}
+                className="text-xs text-text-muted shrink-0"
+              >
+                What time?
+              </Label>
+              <Input
+                id={`${name}-month-time`}
+                type="time"
+                value={monthlyTime}
+                onChange={(e) => setMonthlyTime(e.target.value)}
+                className="w-40"
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === "custom" && (
+          <div className="space-y-1">
+            <Input
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              placeholder="0 19 * * 0"
+              className="font-mono"
+            />
+            <p className="text-xs text-text-muted">
+              Five fields: minute hour day-of-month month day-of-week.
+              Use{" "}
+              <a
+                href="https://crontab.guru/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-700 underline"
+              >
+                crontab.guru
+              </a>{" "}
+              if you need help — most users want one of the friendlier
+              modes above.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* The form's actual submitted value. Always the resolved cron. */}
+      <input type="hidden" name={name} value={value} required={required} />
+
       <div
         className={`rounded-input border px-3 py-2 text-xs ${
-          validCron
+          valid
             ? "border-emerald-300 bg-emerald-50 text-emerald-800"
             : "border-amber-300 bg-amber-50 text-amber-800"
         }`}
       >
-        <span className="font-mono mr-2">{value || "—"}</span>
-        <span>{validCron ? description : "Cron string looks malformed."}</span>
+        <span className="block font-medium">
+          {valid ? description : "Schedule looks malformed — fix before saving."}
+        </span>
+        <span className="font-mono text-[11px] text-text-muted">
+          (cron: {value || "—"})
+        </span>
       </div>
     </div>
   );
 }
 
-const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function ModeChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-8 px-3 rounded-chip border text-xs font-medium transition-colors ${
+        active
+          ? "border-brand-700 bg-brand-700 text-brand-fg"
+          : "border-border bg-surface text-text-muted hover:bg-surface-2"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
-/** Best-effort cron-to-English. Handles the common patterns we ship. */
+/* ──────────────────────────────────────────────────────────────────── */
+
+type ParsedCron =
+  | { mode: "interval" }
+  | { mode: "weekly"; weeklyDays: number[]; timeHHMM: string }
+  | { mode: "monthly"; monthlyDays: number[]; timeHHMM: string }
+  | { mode: "custom" };
+
+function parseCron(c: string): ParsedCron {
+  const parts = c.trim().split(/\s+/);
+  if (parts.length !== 5) return { mode: "custom" };
+  const [min, hour, dom, mon, dow] = parts as [string, string, string, string, string];
+
+  // Interval: */N * * * * or 0 * * * * (every hour) or 0 */N * * *
+  if (
+    /^\*\/\d+$/.test(min) &&
+    hour === "*" &&
+    dom === "*" &&
+    mon === "*" &&
+    dow === "*"
+  )
+    return { mode: "interval" };
+  if (
+    min === "0" &&
+    (hour === "*" || /^\*\/\d+$/.test(hour)) &&
+    dom === "*" &&
+    mon === "*" &&
+    dow === "*"
+  )
+    return { mode: "interval" };
+
+  // Weekly: minute hour * * dow (single day, list, or range)
+  if (
+    /^\d+$/.test(min) &&
+    /^\d+$/.test(hour) &&
+    dom === "*" &&
+    mon === "*" &&
+    dow !== "*"
+  ) {
+    const days = expandList(dow);
+    if (days && days.every((d) => d >= 0 && d <= 6)) {
+      return {
+        mode: "weekly",
+        weeklyDays: days,
+        timeHHMM: `${hour.padStart(2, "0")}:${min.padStart(2, "0")}`,
+      };
+    }
+  }
+
+  // Monthly: minute hour dom * *
+  if (
+    /^\d+$/.test(min) &&
+    /^\d+$/.test(hour) &&
+    dom !== "*" &&
+    mon === "*" &&
+    dow === "*"
+  ) {
+    const days = expandList(dom);
+    if (days && days.every((d) => d >= 1 && d <= 31)) {
+      return {
+        mode: "monthly",
+        monthlyDays: days,
+        timeHHMM: `${hour.padStart(2, "0")}:${min.padStart(2, "0")}`,
+      };
+    }
+  }
+
+  return { mode: "custom" };
+}
+
+function expandList(s: string): number[] | null {
+  // Accepts "5" / "1,15" / "1-3" — for the simple cases. Returns null
+  // on anything else so we fall through to custom mode.
+  if (/^\d+$/.test(s)) return [Number(s)];
+  if (/^\d+(,\d+)+$/.test(s)) return s.split(",").map(Number);
+  if (/^\d+-\d+$/.test(s)) {
+    const [a, b] = s.split("-").map(Number);
+    if (a == null || b == null || a > b) return null;
+    const out: number[] = [];
+    for (let i = a; i <= b; i++) out.push(i);
+    return out;
+  }
+  return null;
+}
+
+function composeWeekly(timeHHMM: string, days: Set<number>): string {
+  const [h, m] = parseTime(timeHHMM);
+  const sorted = Array.from(days).sort((a, b) => a - b);
+  return `${m} ${h} * * ${sorted.join(",")}`;
+}
+
+function composeMonthly(timeHHMM: string, daysCsv: string): string {
+  const [h, m] = parseTime(timeHHMM);
+  const cleaned = daysCsv
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => /^\d+$/.test(s) && Number(s) >= 1 && Number(s) <= 31)
+    .join(",");
+  return `${m} ${h} ${cleaned || "1"} * *`;
+}
+
+function parseTime(t: string): [number, number] {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if (!m) return [0, 0];
+  return [Number(m[1]), Number(m[2])];
+}
+
+function isValidCron(c: string): boolean {
+  return (
+    /^[\d*/,\- ]+$/.test(c.trim()) && c.trim().split(/\s+/).length === 5
+  );
+}
+
+const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 function describeCron(c: string): string {
   const parts = c.trim().split(/\s+/);
   if (parts.length !== 5) return "Invalid cron length.";
-  const [minRaw, hourRaw, domRaw, monRaw, dowRaw] = parts as [string, string, string, string, string];
+  const [minRaw, hourRaw, domRaw, monRaw, dowRaw] = parts as [
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
 
-  // Stride patterns: "*/N * * * *" → every N minutes / hours.
   const stride = /^\*\/(\d+)$/.exec(minRaw);
   if (stride && hourRaw === "*" && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
-    return `Every ${stride[1]} minute${stride[1] === "1" ? "" : "s"}.`;
+    return `Runs every ${stride[1]} minute${stride[1] === "1" ? "" : "s"}.`;
   }
-  if (minRaw === "0" && /^\*\/(\d+)$/.exec(hourRaw) && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
+  if (
+    minRaw === "0" &&
+    /^\*\/(\d+)$/.exec(hourRaw) &&
+    domRaw === "*" &&
+    monRaw === "*" &&
+    dowRaw === "*"
+  ) {
     const h = /^\*\/(\d+)$/.exec(hourRaw)![1]!;
-    return `Every ${h} hour${h === "1" ? "" : "s"}.`;
+    return `Runs every ${h} hour${h === "1" ? "" : "s"}.`;
   }
-  if (minRaw === "0" && hourRaw === "*" && domRaw === "*" && monRaw === "*" && dowRaw === "*") {
-    return "Every hour, on the hour.";
+  if (
+    minRaw === "0" &&
+    hourRaw === "*" &&
+    domRaw === "*" &&
+    monRaw === "*" &&
+    dowRaw === "*"
+  ) {
+    return "Runs every hour, on the hour.";
   }
 
   const time = (() => {
@@ -148,44 +456,47 @@ function describeCron(c: string): string {
 
   if (!time) return `Fires when minute matches ${minRaw} and hour matches ${hourRaw}.`;
 
-  // Day-of-week handling
   if (domRaw === "*" && monRaw === "*" && dowRaw !== "*") {
     if (/^\d+$/.test(dowRaw)) {
-      return `Every ${DOW_NAMES[Number(dowRaw)] ?? dowRaw}day at ${time}.`;
+      return `Runs every ${DOW_NAMES[Number(dowRaw)] ?? dowRaw}day at ${time}.`;
     }
     if (/^\d+(,\d+)+$/.test(dowRaw)) {
-      const days = dowRaw.split(",").map((d) => DOW_NAMES[Number(d)] ?? d).join(", ");
-      return `${days} at ${time}.`;
+      const days = dowRaw
+        .split(",")
+        .map((d) => DOW_NAMES[Number(d)] ?? d)
+        .join(", ");
+      return `Runs ${days} at ${time}.`;
     }
     if (/^\d+-\d+$/.test(dowRaw)) {
       const [a, b] = dowRaw.split("-").map(Number);
-      return `${DOW_NAMES[a!]} through ${DOW_NAMES[b!]} at ${time}.`;
+      return `Runs ${DOW_NAMES[a!]} through ${DOW_NAMES[b!]} at ${time}.`;
     }
   }
 
-  // Day-of-month handling
   if (dowRaw === "*" && monRaw === "*" && domRaw !== "*") {
-    if (/^\d+$/.test(domRaw)) return `On the ${ordinal(Number(domRaw))} of every month at ${time}.`;
+    if (/^\d+$/.test(domRaw)) return `Runs on the ${ordinal(Number(domRaw))} of every month at ${time}.`;
     if (/^\d+(,\d+)+$/.test(domRaw)) {
-      const days = domRaw.split(",").map((d) => ordinal(Number(d))).join(" and ");
-      return `On the ${days} of every month at ${time}.`;
+      const days = domRaw
+        .split(",")
+        .map((d) => ordinal(Number(d)))
+        .join(" and ");
+      return `Runs on the ${days} of every month at ${time}.`;
     }
     if (/^\d+-\d+$/.test(domRaw)) {
       const [a, b] = domRaw.split("-").map(Number);
-      return `On the ${ordinal(a!)} through ${ordinal(b!)} of every month at ${time}.`;
+      return `Runs on the ${ordinal(a!)} through ${ordinal(b!)} of every month at ${time}.`;
     }
   }
 
-  // Month + DoM
   if (dowRaw === "*" && /^\d+$/.test(monRaw) && /^\d+$/.test(domRaw)) {
-    return `Every ${MONTH_NAMES[Number(monRaw) - 1] ?? monRaw} ${ordinal(Number(domRaw))} at ${time}.`;
+    return `Runs every ${MONTH_NAMES[Number(monRaw) - 1] ?? monRaw} ${ordinal(Number(domRaw))} at ${time}.`;
   }
 
   if (domRaw === "*" && monRaw === "*" && dowRaw === "*") {
-    return `Every day at ${time}.`;
+    return `Runs every day at ${time}.`;
   }
 
-  return `Fires per cron pattern at ${time}.`;
+  return `Runs per cron pattern at ${time}.`;
 }
 
 function ordinal(n: number): string {

@@ -83,7 +83,7 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
             </p>
             <CronPicker
               name="punchPollCron"
-              label="Poll interval (cron)"
+              label="How often should we pull punches?"
               defaultValue={automation.ngtecoPunchPoll.cron}
             />
           </div>
