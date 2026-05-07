@@ -178,60 +178,78 @@ function assertNotOnLoginPage(
   }
 }
 
-/** Fill a login field using the most reliable strategy first.
- *  Strategy order, derived from the live office.ngteco.com DOM:
- *    1. input[name="username"] / input[name="password"] — MUI's
- *       form names are stable across visual themes. ✔ confirmed
- *       working against the live portal.
- *    2. getByPlaceholder — "Email" / "Password" placeholders are
- *       human-readable and survive class refactors.
- *    3. semantic input attribute (input[type="password"], etc.).
- *    4. configured CSS selector (legacy / operator override).
+/** Fill a login field, surviving React's controlled-input quirk.
  *
- *  CRITICAL: every strategy is filtered to VISIBLE inputs only. The
- *  bug that motivated this comment: NGTeco's MUI form has hidden
- *  helper inputs (autocomplete shadow inputs, form-state mirrors)
- *  that share name="username" / name="password" with the visible
- *  field. fill() against `.first()` writes to the hidden one, the
- *  inputValue() readback returns our value (it really did go in),
- *  the helper happily returns success — but MUI's validation then
- *  flags the visible field as required=empty and submit is rejected.
- *  Symptom: form helper-text "This field is required!" while the
- *  scraper insists it filled both fields.
+ *  History of failures, in order:
+ *    1. Original used `page.fill(configured_css)` — silently mis-
+ *       targeted hidden shadow inputs that share name="username"
+ *       with the visible MUI control. inputValue() read back fine,
+ *       but MUI's validation said "This field is required!".
+ *    2. Visible-filtered locator + post-fill audit caught the
+ *       shadow-input case, but introduced a new failure: even
+ *       when fill() landed in the visible input and audit briefly
+ *       saw the value, MUI's React state didn't update. On the
+ *       very next render React's controlled-input mechanism
+ *       overwrote our value with its own (empty) state, so by
+ *       submit time the field read EMPTY again.
  *
- *  After every fill we additionally do a "post-fill audit" — read
- *  back the value of every same-name input on the page and confirm
- *  at least one VISIBLE one carries our value. If the audit fails,
- *  we treat the strategy as failed and try the next.
+ *  Root cause of (2): React tracks controlled-input values via
+ *  HTMLInputElement.prototype's value setter, which it patches.
+ *  Playwright's fill() goes through that path most of the time,
+ *  but with MUI v5's TextField wrapping + adornments + theme
+ *  overrides, the synthetic input event is intermittently NOT
+ *  registered as a "real change". This is documented:
+ *    • facebook/react#11600 — dispatchEvent('input') doesn't
+ *      trigger onChange unless the value was set via the original
+ *      prototype setter
+ *    • microsoft/playwright#36395 — fill not sticking, regression
+ *    • microsoft/playwright#15925 — second fill clears the first
+ *    • mui/material-ui#46734 — recent MUI Autocomplete + fill
+ *      regression confirming this class of bug is alive in 2026
  *
- *  Note: getByLabel() does not work here because the live form sets
- *  aria-label="description" on both inputs (stale MUI default), so a
- *  name-based label match never resolves. */
+ *  Fix used here:
+ *    • Strategy 1 — `pressSequentially` per character with a tiny
+ *      delay. This produces real keydown/keypress/input/keyup
+ *      events that React MUST honour. Equivalent to a human
+ *      typing. Recommended by Playwright docs for React/MUI.
+ *    • Strategy 2 — native-prototype-setter + bubbled input event
+ *      via page.evaluate. The documented React workaround when
+ *      keystrokes still don't stick.
+ *    • Audit step is unchanged: we only return success if a VISIBLE
+ *      input matching the audit selector has our value AT THE TIME
+ *      OF AUDIT.
+ *
+ *  A separate pre-submit re-check (in the caller) verifies values
+ *  are STILL there right before clicking Login, and re-fills via
+ *  the prototype-setter path if the field went empty. */
 async function fillLoginField(
   page: import("playwright-core").Page,
   kind: "username" | "password",
-  configuredSelector: string | undefined,
+  _configuredSelector: string | undefined,
   value: string,
 ): Promise<void> {
-  const placeholder = kind === "username" ? "Email" : "Password";
-  const nameSelector =
-    kind === "username" ? 'input[name="username"]' : 'input[name="password"]';
-  const semanticSelector =
-    kind === "username"
-      ? 'input[type="email"], input[name*="email" i], input[name*="account" i], input[name*="user" i]'
-      : 'input[type="password"]';
+  // _configuredSelector is intentionally unused now: every selector
+  // that previously appeared as configured was a CSS string targeting
+  // a single DOM shape, and the failures that motivated the rewrite
+  // were never about the selector — they were about how the value
+  // gets into the input. Keeping the parameter for caller compat.
+  void _configuredSelector;
 
-  /** Verify a *visible* input matching `auditSelector` actually
-   *  carries the value we just wrote. Catches the "filled the hidden
-   *  shadow input" failure mode. */
-  const auditFill = async (auditSelector: string): Promise<boolean> => {
+  const auditAny =
+    kind === "username"
+      ? `input[name="username"], input[type="email"], input[name*="email" i], input[name*="user" i]`
+      : `input[name="password"], input[type="password"]`;
+
+  /** Verify at least one VISIBLE input matching `auditSelector` has
+   *  the exact value we wrote. Catches the hidden-shadow-input case. */
+  const auditFill = async (): Promise<boolean> => {
     try {
-      const visibleVal = await page.evaluate(
+      return await page.evaluate(
         ({ sel, expected }: { sel: string; expected: string }) => {
-          const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(sel));
+          const inputs = Array.from(
+            document.querySelectorAll<HTMLInputElement>(sel),
+          );
           for (const inp of inputs) {
-            // jQuery-style :visible heuristic — MUI inputs have non-zero
-            // box and are not display:none / visibility:hidden / opacity:0.
             const box = inp.getBoundingClientRect();
             const cs = getComputedStyle(inp);
             const visible =
@@ -244,85 +262,96 @@ async function fillLoginField(
           }
           return false;
         },
-        { sel: auditSelector, expected: value },
+        { sel: auditAny, expected: value },
       );
-      return visibleVal;
     } catch {
       return false;
     }
   };
 
-  const tryFill = async (
-    loc: import("playwright-core").Locator,
-    auditSelector: string,
-  ): Promise<boolean> => {
-    if (!(await loc.count())) return false;
+  /** Pick the visible input locator. We try several strategies but
+   *  ALWAYS act on the same single resolved locator across the
+   *  click/clear/type sequence to avoid racing locator resolution. */
+  const resolveVisibleLocator =
+    async (): Promise<import("playwright-core").Locator | null> => {
+      const candidates: Array<() => import("playwright-core").Locator> = [
+        () =>
+          page.locator(
+            kind === "username"
+              ? 'input[name="username"]:visible'
+              : 'input[name="password"]:visible',
+          ),
+        () =>
+          page.getByRole("textbox", {
+            name: kind === "username" ? /email|account|user/i : /password/i,
+          }),
+        () =>
+          page.getByPlaceholder(kind === "username" ? "Email" : "Password", {
+            exact: true,
+          }),
+        () =>
+          page.locator(
+            kind === "username"
+              ? 'input[type="email"]:visible, input[name*="email" i]:visible, input[name*="user" i]:visible'
+              : 'input[type="password"]:visible',
+          ),
+      ];
+      for (const make of candidates) {
+        const loc = make().first();
+        const count = await loc.count().catch(() => 0);
+        if (count > 0) return loc;
+      }
+      return null;
+    };
+
+  const loc = await resolveVisibleLocator();
+  if (!loc) {
+    // No visible input at all — fall through to the diagnostic dump
+    // at the bottom of this function.
+  } else {
+    // Strategy 1: click → keyboard.pressSequentially. Real keydown/
+    // input/keyup events MUI's React onChange MUST honour. This is
+    // what Playwright's docs recommend for React-controlled inputs.
     try {
-      await loc.fill("");
-      await loc.fill(value, { timeout: 5_000 });
-      // The classic check: did fill() set inputValue on the locator
-      // we acted on? Cheap and catches typos.
-      const filled = await loc.inputValue();
-      if (filled !== value) return false;
-      // The IMPORTANT check: is at least one visible input on the
-      // page carrying our value? If only the hidden shadow input has
-      // it, this returns false and we fall through to the next
-      // strategy.
-      if (!(await auditFill(auditSelector))) return false;
-      return true;
+      await loc.click({ timeout: 5_000 });
+      // Clear without using fill() — select-all + delete is the
+      // keyboard equivalent and goes through React's event path.
+      await page.keyboard.press("Control+A");
+      await page.keyboard.press("Meta+A"); // mac equivalent (no-op on Linux)
+      await page.keyboard.press("Delete");
+      await loc.pressSequentially(value, { delay: 15, timeout: 8_000 });
+      // Blur to let MUI commit any pending state. Some MUI configs
+      // only validate on blur; without this the next focus event
+      // on the agreement checkbox can race the value commit.
+      await loc.evaluate((el) => (el as HTMLInputElement).blur());
+      if (await auditFill()) return;
     } catch {
-      return false;
+      /* fall through to native-setter fallback */
     }
-  };
 
-  // Visibility-filtered locators. Playwright's :visible engine pseudo
-  // matches "any element with non-zero size, not hidden by CSS, not
-  // covered" — exactly what we need to skip the shadow inputs that
-  // share name="username".
-  const visibleNameLoc = page.locator(`${nameSelector}:visible`);
-  const visibleSemanticLoc = page.locator(`${semanticSelector}:visible`);
-
-  const auditAny =
-    kind === "username"
-      ? `input[name="username"], input[type="email"], input[name*="email" i], input[name*="user" i]`
-      : `input[name="password"], input[type="password"]`;
-
-  // Strategy 1: visible input by name
-  if (await tryFill(visibleNameLoc.first(), auditAny)) return;
-
-  // Strategy 2: getByRole textbox with accessible name (placeholder
-  // is part of accessible name in MUI). Naturally targets the
-  // visible control because the role tree omits hidden helpers.
-  const roleNameRe = kind === "username" ? /email|account|user/i : /password/i;
-  if (
-    await tryFill(
-      page.getByRole("textbox", { name: roleNameRe }).first(),
-      auditAny,
-    )
-  )
-    return;
-
-  // Strategy 3: getByPlaceholder("Email" / "Password") — placeholder
-  // text is render-attached to the visible input, not the shadow one.
-  if (
-    await tryFill(
-      page.getByPlaceholder(placeholder, { exact: true }).first(),
-      auditAny,
-    )
-  )
-    return;
-
-  // Strategy 4: semantic attribute, visibility-filtered
-  if (await tryFill(visibleSemanticLoc.first(), auditAny)) return;
-
-  // Strategy 5: configured selector (legacy / operator override).
-  // Still audit-checked — if a stale operator override targets a
-  // hidden input, we want to know so we can fall through to the
-  // diagnostic dump rather than submit a half-filled form.
-  if (configuredSelector) {
+    // Strategy 2: native-prototype-setter + bubbled input event,
+    // executed inside the browser. This is THE documented React
+    // workaround (facebook/react#11600). When keystrokes don't
+    // stick (extremely unusual but possible with autoFill polyfills
+    // or InputAdornment wrappers intercepting events), this forces
+    // React's value tracker to register a change.
     try {
-      await page.fill(configuredSelector, value, { timeout: 5_000 });
-      if (await auditFill(auditAny)) return;
+      await loc.evaluate((el, v) => {
+        const input = el as HTMLInputElement;
+        const proto = Object.getPrototypeOf(input);
+        const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+        const fallbackSetter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )?.set;
+        const apply = setter ?? fallbackSetter;
+        if (apply) apply.call(input, v);
+        else input.value = v;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        input.blur();
+      }, value);
+      if (await auditFill()) return;
     } catch {
       /* fall through to diagnostic */
     }
@@ -357,6 +386,83 @@ async function fillLoginField(
     `Could not locate a visible ${kind} field that accepts our value. Inputs on page (• = visible, · = hidden): ${inventory}. NGTeco probably renamed the field; update lib/ngteco/scraper.ts fillLoginField with the new attributes shown above.`,
     {},
   );
+}
+
+/** Right before submit, verify that a visible input still has the
+ *  value we wrote. If it doesn't (MUI/React reconciled it back to
+ *  empty), force a re-fill via the native prototype setter + bubbled
+ *  input event. This is the documented React workaround
+ *  (facebook/react#11600) and bypasses any React-controlled-input
+ *  state issues that swallowed our earlier keystroke-based fill. */
+async function primeIfCleared(
+  page: import("playwright-core").Page,
+  kind: "username" | "password",
+  value: string,
+): Promise<void> {
+  const auditAny =
+    kind === "username"
+      ? `input[name="username"], input[type="email"], input[name*="email" i], input[name*="user" i]`
+      : `input[name="password"], input[type="password"]`;
+  try {
+    const stillFilled = await page.evaluate(
+      ({ sel, expected }: { sel: string; expected: string }) => {
+        const inputs = Array.from(
+          document.querySelectorAll<HTMLInputElement>(sel),
+        );
+        for (const inp of inputs) {
+          const box = inp.getBoundingClientRect();
+          const cs = getComputedStyle(inp);
+          const visible =
+            box.width > 0 &&
+            box.height > 0 &&
+            cs.visibility !== "hidden" &&
+            cs.display !== "none" &&
+            cs.opacity !== "0";
+          if (visible && inp.value === expected) return true;
+        }
+        return false;
+      },
+      { sel: auditAny, expected: value },
+    );
+    if (stillFilled) return;
+    // Cleared — re-prime via the native setter against the FIRST
+    // visible matching input.
+    await page.evaluate(
+      ({ sel, v }: { sel: string; v: string }) => {
+        const inputs = Array.from(
+          document.querySelectorAll<HTMLInputElement>(sel),
+        );
+        for (const inp of inputs) {
+          const box = inp.getBoundingClientRect();
+          const cs = getComputedStyle(inp);
+          const visible =
+            box.width > 0 &&
+            box.height > 0 &&
+            cs.visibility !== "hidden" &&
+            cs.display !== "none" &&
+            cs.opacity !== "0";
+          if (!visible) continue;
+          const proto = Object.getPrototypeOf(inp);
+          const setter =
+            Object.getOwnPropertyDescriptor(proto, "value")?.set ??
+            Object.getOwnPropertyDescriptor(
+              HTMLInputElement.prototype,
+              "value",
+            )?.set;
+          if (setter) setter.call(inp, v);
+          else inp.value = v;
+          inp.dispatchEvent(new Event("input", { bubbles: true }));
+          inp.dispatchEvent(new Event("change", { bubbles: true }));
+          return; // first visible match is enough
+        }
+      },
+      { sel: auditAny, v: value },
+    );
+  } catch {
+    /* best-effort — if it still fails, the post-submit error path
+       reports the empty field with the visible-inputs dump and the
+       operator can act on it directly. */
+  }
 }
 
 /** Tick the "I have read and agree to the User Agreement & Privacy
@@ -670,6 +776,16 @@ export async function scrapeViewAttendance(
       // MUI login disables the submit button until it's checked, so
       // skipping this step silently kept the form on /login.
       await ensureAgreementChecked(page);
+      // Pre-submit re-check. The agreement checkbox click can blur a
+      // freshly-typed input; in some MUI configs, a blur with React
+      // state-not-yet-reconciled flushes the value back to empty (this
+      // was the exact failure the operator hit: "Visible inputs at
+      // submit: username=EMPTY, password=EMPTY"). Read the visible
+      // values right before clicking Login; if either dropped, re-prime
+      // through the native-setter + dispatch-event path which forces
+      // React's value tracker to register a change.
+      await primeIfCleared(page, "username", input.username);
+      await primeIfCleared(page, "password", input.password);
       await Promise.all([
         page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
         clickLoginSubmit(page, sel.login.submit),
