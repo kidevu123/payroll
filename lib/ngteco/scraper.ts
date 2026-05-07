@@ -119,13 +119,33 @@ export class ScrapeFailure extends Error {
   }
 }
 
-/** Are we on the login page? Looks for any of: a label/input that
- *  says Email, an input[type=password], a "Login" button, or the
- *  configured username selector. Any match counts. */
+/** True if any path segment is exactly "login". Catches /user/login,
+ *  /login, /admin/login/, etc., but not /login-help or /relogin. */
+function isLoginPath(pathname: string): boolean {
+  return pathname.split("/").filter(Boolean).some((seg) => seg.toLowerCase() === "login");
+}
+
+/** Are we on the login page? URL is checked first (most reliable);
+ *  DOM probes (label/input/password field) are a fallback for portals
+ *  whose login route doesn't include "login" in the path. */
 async function detectLoginPage(
   page: import("playwright-core").Page,
   sel: Selectors,
 ): Promise<boolean> {
+  // URL is the most reliable signal. NGTeco's SPA mounts on
+  // domcontentloaded but MUI's password input is added a beat later,
+  // and the original DOM-only check raced that hydration: we'd land on
+  // /user/login, see no password field yet, decide we were "logged in",
+  // skip the login flow, and 30s later fail navigation with a sidebar
+  // that read like the login page (because it WAS the login page).
+  // The pathname always reflects /login the moment NGTeco redirects,
+  // so check it first.
+  try {
+    const path = new URL(page.url()).pathname;
+    if (isLoginPath(path)) return true;
+  } catch {
+    /* page.url() is invalid? proceed with DOM checks */
+  }
   if (sel.login.username && (await page.locator(sel.login.username).count()) > 0) {
     return true;
   }
@@ -133,6 +153,29 @@ async function detectLoginPage(
   if ((await page.getByLabel(/email/i).count()) > 0) return true;
   if ((await page.locator('input[type="password"]').count()) > 0) return true;
   return false;
+}
+
+/** Hard assertion: throws if the page is currently on /login. Use at
+ *  boundary points where being on /login means a session bounce
+ *  (cookies expired) or a credential rejection — failing loudly is
+ *  better than letting downstream selectors time out 30s later with
+ *  no clue why. */
+function assertNotOnLoginPage(
+  page: import("playwright-core").Page,
+  context: string,
+): void {
+  let path = "";
+  try {
+    path = new URL(page.url()).pathname;
+  } catch {
+    return;
+  }
+  if (isLoginPath(path)) {
+    throw new ScrapeFailure(
+      `NGTeco session bounce at ${context}: page is on ${page.url()}. The persistent browser session has expired and the saved credentials no longer let us in. Clear /data/ngteco/profile inside the LXC (rm -rf) so the next poll logs in fresh; if that still fails, the credentials in Settings → NGTeco are out of date.`,
+      {},
+    );
+  }
 }
 
 /** Fill a login field using the most reliable strategy first.
@@ -464,6 +507,24 @@ export async function scrapeViewAttendance(
   try {
     await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
 
+    // Wait for the SPA to actually mount before we look at the DOM.
+    // domcontentloaded fires before MUI hydrates, and the post-redirect
+    // /user/login page has an empty body for a beat — without this
+    // wait, detectLoginPage can race the hydration and decide we're
+    // already inside the dashboard. networkidle is too aggressive on
+    // MUI (their telemetry pings keep the connection busy), so we wait
+    // for body to actually have content as a proxy for "first paint
+    // happened".
+    try {
+      await page.waitForFunction(
+        () => (document.body?.textContent ?? "").trim().length > 50,
+        null,
+        { timeout: 8_000 },
+      );
+    } catch {
+      /* proceed; downstream selector probes will catch a still-blank page */
+    }
+
     // Challenge gates first.
     if ((await page.locator(sel.challenge.twoFactorLandmark).count()) > 0) {
       await ctx.close();
@@ -502,22 +563,52 @@ export async function scrapeViewAttendance(
       // and keep the SPA on the login route — that needs to fail
       // loudly here, not 30s later when a menu click times out.
       try {
+        // Inlined segment check — same logic as isLoginPath, but
+        // page.waitForFunction runs in the browser so no Node import.
+        // /login-help wouldn't false-trigger; only an exact "login"
+        // segment counts.
         await page.waitForFunction(
-          () => !/\/login/i.test(window.location.pathname),
+          () =>
+            !window.location.pathname
+              .split("/")
+              .filter(Boolean)
+              .map((s) => s.toLowerCase())
+              .includes("login"),
           null,
           { timeout: 10_000 },
         );
       } catch {
         const url = page.url();
-        // If we're still on /login the form rejected us. Surface that
-        // directly so the operator sees "login failed" instead of a
-        // confusing menu-selector timeout.
+        // Read any visible MUI form helper-text error so we can tell
+        // the operator *why* login failed (wrong password vs locked
+        // account vs captcha) instead of a generic "did not complete".
+        let helper = "";
+        try {
+          helper = await page.evaluate(() => {
+            const errs = Array.from(
+              document.querySelectorAll(
+                ".MuiFormHelperText-root.Mui-error, [role=alert], .MuiAlert-message",
+              ),
+            );
+            return errs
+              .map((e) => (e.textContent ?? "").trim())
+              .filter(Boolean)
+              .join(" | ");
+          });
+        } catch {
+          /* best-effort */
+        }
         throw new ScrapeFailure(
-          `NGTeco login did not complete — page still on ${url}. Most likely either credentials are wrong or the email/password selectors no longer match the page. Check the failure screenshot.`,
+          `NGTeco login did not complete — page still on ${url}.${helper ? ` Form said: ${helper}.` : ""} Most likely the saved credentials in Settings → NGTeco are out of date, or NGTeco changed login validation. Check the failure screenshot.`,
           {},
         );
       }
-      // Post-login: wait for the SPA to mount its sidebar (any nav).
+      // Post-login: confirm we're actually on a logged-in surface.
+      // The original code accepted "any nav element exists" as proof,
+      // but the /login page itself has nav elements (language picker,
+      // marketing footer), so a session that bounced straight back to
+      // /login satisfied the check. Now we wait for the loggedInLandmark
+      // *or* a nav with substantive text, AND re-check URL.
       try {
         await page.waitForSelector(sel.login.loggedInLandmark, {
           timeout: 4_000,
@@ -525,9 +616,14 @@ export async function scrapeViewAttendance(
       } catch {
         try {
           await page.waitForFunction(
-            () =>
-              document.querySelectorAll("nav, aside, [role=navigation]").length >
-              0,
+            () => {
+              const navs = Array.from(
+                document.querySelectorAll("nav, aside, [role=navigation]"),
+              );
+              return navs.some(
+                (n) => (n.textContent ?? "").trim().length > 40,
+              );
+            },
             null,
             { timeout: 6_000 },
           );
@@ -535,6 +631,19 @@ export async function scrapeViewAttendance(
           await page.waitForTimeout(1_500);
         }
       }
+      // Final hard check: the post-login waits succeeded, but did we
+      // actually leave /login? A short SPA flash through a different
+      // route and back to /login can satisfy the URL waitForFunction
+      // above. Catch that here — without this, the navigation step
+      // proceeds against a login page and surfaces a confusing
+      // "couldn't find View Attendance Punch" error.
+      assertNotOnLoginPage(page, "post-login confirmation");
+    } else {
+      // Persistent profile said "already logged in". Trust but verify:
+      // make sure we aren't sitting on /login despite the DOM checks
+      // (e.g., MUI hadn't hydrated yet so the password field wasn't
+      // visible, but the URL has been /login the whole time).
+      assertNotOnLoginPage(page, "initial page-load detection");
     }
 
     // SPA navigation only — page.goto() to a deep URL was nuking the
@@ -552,6 +661,13 @@ export async function scrapeViewAttendance(
     // fallback works against either. Past failure mode: a configured
     // `p:text-is("…")` selector timed out for 15s every poll because
     // the new MUI sidebar renders text in `<span>` not `<p>`.
+    // Last gate before we start clicking sidebar links: confirm we
+    // aren't on /login. If we are, the post-login confirmation has
+    // already passed but the SPA bounced us back (rare, but happens
+    // when NGTeco's session cookie is set but instantly invalidated
+    // server-side — e.g., when an admin force-logged-out the account).
+    assertNotOnLoginPage(page, "pre-navigation");
+
     if (sel.navigation.attendanceMenu) {
       try {
         await page.locator(sel.navigation.attendanceMenu).first().click({
