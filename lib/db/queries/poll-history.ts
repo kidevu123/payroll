@@ -53,6 +53,19 @@ export async function getLastPoll(): Promise<NgtecoPollLogRow | null> {
   return row ?? null;
 }
 
+/** Most recent poll where ok=true. Drives auto-backfill: if this is
+ *  more than a few hours old, the cron widens its window to include
+ *  the gap days so the operator never has to click "Backfill". */
+export async function getLastSuccessfulPoll(): Promise<NgtecoPollLogRow | null> {
+  const [row] = await db
+    .select()
+    .from(ngtecoPollLog)
+    .where(eq(ngtecoPollLog.ok, true))
+    .orderBy(desc(ngtecoPollLog.startedAt))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function listRecentPolls(limit = 20): Promise<NgtecoPollLogRow[]> {
   return db
     .select()

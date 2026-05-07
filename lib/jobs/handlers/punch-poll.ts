@@ -78,6 +78,11 @@ export type PollSummary = {
    *  2 = today + yesterday, etc.). Lets the UI show "Backfilled
    *  3 days, 12 new pairs" instead of just a count. */
   daysCovered?: number;
+  /** When the cron auto-widens its window because the last
+   *  successful poll was hours/days ago, this carries the human
+   *  reason ("last successful poll 18.4h ago — auto-widening to
+   *  1 day") so the UI / logs can show what happened. */
+  autoBackfillReason?: string;
 };
 
 /**
@@ -134,7 +139,68 @@ export async function handlePunchPoll(
   // 1000 is fine for ~5 days at typical 50-employee, 4-punch/day
   // density; multiply by daysBack with a floor of 1000 to keep
   // today-only polls fast.
-  const daysBack = Math.max(0, Math.floor(opts.daysBack ?? 0));
+  let daysBack = Math.max(0, Math.floor(opts.daysBack ?? 0));
+
+  // AUTO-RECOVERY. The whole point of this system is "owner runs
+  // payroll in <5 min/week" — so the cron has to self-heal when it's
+  // been broken for a stretch. Look at the last *successful* poll;
+  // if that's more than a few hours stale, widen our window to span
+  // the gap so missed days fill in without any human action. The
+  // open-punch fallback in poll-importer.ts then closes any IN-only
+  // shifts the prior, broken polls left behind. Capped at 14 days
+  // to match the manual button's contract and to bound how far the
+  // virtual grid is asked to scroll.
+  //
+  // Skipped when the caller already specified daysBack > 0 (the
+  // operator-triggered "Backfill missing days" button) — their
+  // explicit window wins.
+  let autoBackfillReason: string | null = null;
+  if (daysBack === 0) {
+    try {
+      const { getLastSuccessfulPoll } = await import(
+        "@/lib/db/queries/poll-history"
+      );
+      const last = await getLastSuccessfulPoll();
+      const hoursStale = last
+        ? (Date.now() - new Date(last.startedAt).getTime()) / 3_600_000
+        : Infinity;
+      // 4h is the threshold — anything tighter and a routine outage
+      // (cron worker restart, brief NGTeco hiccup) would unnecessarily
+      // widen the window. 4h reliably means "we missed at least one
+      // 15-min cron tick AND a few retries."
+      //
+      // Cap at 30 days: covers the "owner is in a car wreck and out
+      // for a month" scenario that motivates this whole self-healing
+      // path. NGTeco's View Attendance Punch view typically holds a
+      // rolling 30-90 day window; the scraper's page cap was raised
+      // to 200 in lockstep so we can actually walk that far back.
+      // Beyond 30 days the legacy CSV-export "Run NGTeco import now"
+      // flow is the right tool — it scopes by period dates.
+      if (hoursStale >= 4) {
+        const gapDays = Math.min(
+          30,
+          Math.max(1, Math.ceil(hoursStale / 24)),
+        );
+        daysBack = gapDays;
+        autoBackfillReason = last
+          ? `last successful poll ${hoursStale.toFixed(1)}h ago — auto-widening to ${gapDays} day${gapDays === 1 ? "" : "s"}`
+          : `no successful poll on record — auto-widening to ${gapDays} days`;
+        logger.info(
+          {
+            hoursStale: Number(hoursStale.toFixed(2)),
+            gapDays,
+            lastSuccessfulAt: last?.startedAt ?? null,
+          },
+          "punch.poll: auto-backfill triggered",
+        );
+      }
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "punch.poll: auto-backfill probe failed (continuing today-only)",
+      );
+    }
+  }
   const maxRows = daysBack > 0 ? Math.max(1000, daysBack * 400) : undefined;
 
   try {
@@ -158,6 +224,7 @@ export async function handlePunchPoll(
         pairsUpdated: 0,
         durationMs: result.durationMs,
         daysCovered: daysBack + 1,
+        ...(autoBackfillReason ? { autoBackfillReason } : {}),
       };
     }
     // Per owner directive: each poll only ingests TODAY's punches. The
@@ -221,6 +288,7 @@ export async function handlePunchPoll(
       openShifts: summary.openShifts,
       durationMs: result.durationMs,
       daysCovered: daysBack + 1,
+      ...(autoBackfillReason ? { autoBackfillReason } : {}),
     };
   } catch (err) {
     if (err instanceof ChallengeDetectedError) {

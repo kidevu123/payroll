@@ -18,6 +18,7 @@ const PRESETS: Array<{ daysBack: number; label: string }> = [
   { daysBack: 3, label: "Last 3 days" },
   { daysBack: 7, label: "Last 7 days" },
   { daysBack: 14, label: "Last 14 days" },
+  { daysBack: 30, label: "Last 30 days" },
 ];
 
 export function BackfillPunchesButton(): React.JSX.Element {

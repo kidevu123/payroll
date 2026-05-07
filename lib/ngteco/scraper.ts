@@ -1088,7 +1088,12 @@ export async function scrapeViewAttendance(
     const events: RawPunchEvent[] = [];
     const seenKeys = new Set<string>();
     let pages = 0;
-    while (events.length < maxRows && pages < 50) {
+    // 200-page cap (was 50). At ~100 rows/page on NGTeco's View
+    // Attendance Punch grid that's ~20k rows — enough to walk back
+    // ~30 days at a 50-employee × 4-punch/day density. Auto-backfill
+    // and the catastrophic "owner was out for a month" recovery
+    // path both depend on this; 50 capped recovery at ~5 days.
+    while (events.length < maxRows && pages < 200) {
       pages++;
       // MuiDataGrid uses ROW VIRTUALIZATION — even on a paginated grid,
       // only the rows currently in the viewport buffer render in the

@@ -153,11 +153,14 @@ export async function pollNowAction(): Promise<PollNowResult> {
 }
 
 const backfillSchema = z.object({
-  // 1 = today + yesterday; 14 is the practical cap because NGTeco's
-  // "View Attendance Punch" view holds a rolling window we can scroll
-  // back through, but at typical density the virtualized grid runs
-  // out beyond ~2 weeks.
-  daysBack: z.number().int().min(1).max(14),
+  // 30-day ceiling: matches the auto-recovery cap in punch-poll.ts.
+  // NGTeco's "View Attendance Punch" view holds a rolling window
+  // (typically 30-90 days) and the scraper's page cap was raised
+  // to 200 to actually walk that far back. Operators who need
+  // longer should use the legacy "Run NGTeco import now" CSV path
+  // which scopes by period dates rather than scrolling the live
+  // grid.
+  daysBack: z.number().int().min(1).max(30),
 });
 
 /**
