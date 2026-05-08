@@ -19,7 +19,13 @@ export type NotificationKind =
   | "payroll_run.awaiting_review"
   | "payroll_run.published"
   | "period.locked"
-  | "payslip.disputed";
+  | "payslip.disputed"
+  // Admin-composed broadcast. payload carries the title/body/link
+  // typed by the sender; the dispatcher passes a pre-built PushPayload
+  // alongside so the push surface can render the exact message
+  // (no canned fallback for announcements — the words ARE the
+  // message).
+  | "admin.announcement";
 
 export type DispatchEntry = {
   recipientId: string;

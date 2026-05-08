@@ -141,6 +141,23 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
     }
     case "period.locked":
       return null; // admins-only on in-app, push is overkill
+    case "admin.announcement": {
+      // Defensive fallback — every callsite that fires this kind
+      // SHOULD pass an explicit `push` payload carrying the operator-
+      // typed message, but if anyone forgets we still surface
+      // something useful instead of dropping the push silently.
+      const title =
+        typeof e.payload.title === "string" ? e.payload.title : "Announcement";
+      const body =
+        typeof e.payload.body === "string"
+          ? e.payload.body
+          : "Open the app to read the announcement.";
+      const link =
+        typeof e.payload.link === "string" && e.payload.link.length > 0
+          ? e.payload.link
+          : "/me/home";
+      return { title, body, url: link, tag: "announcement" };
+    }
     default:
       return null;
   }

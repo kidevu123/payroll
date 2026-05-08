@@ -28,6 +28,7 @@ import {
   Briefcase,
   CalendarRange,
   Banknote,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -60,6 +61,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
     items: [
       { href: "/reports", labelKey: "reports", icon: BarChart3 },
       { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
+      { href: "/notifications", labelKey: "notifications", icon: Megaphone },
     ],
   },
 ];

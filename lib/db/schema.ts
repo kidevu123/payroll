@@ -872,6 +872,56 @@ export const payslips = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Announcements
+// Persisted log of admin-composed broadcasts. The notifications + push
+// dispatchers fan-out to recipients; this table is the audit + history
+// view ("what did we send, to whom, when, by whom"). Recipient targeting
+// is captured as a small JSON object so the history page can render
+// "All employees" / "Hourly only" / "5 specific" without needing to
+// re-resolve the audience later.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const announcementAudienceKindEnum = pgEnum("announcement_audience_kind", [
+  "ALL",
+  "BY_ROLE",
+  "BY_SCHEDULE",
+  "SPECIFIC",
+]);
+
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    /** Optional deep-link the recipient lands on when tapping the
+     *  push / clicking the in-app row. Free-form so admins can point at
+     *  any internal route. */
+    link: text("link"),
+    audienceKind: announcementAudienceKindEnum("audience_kind").notNull(),
+    /** Free-form labels for the audience filter. For BY_ROLE: ["HOURLY"].
+     *  For BY_SCHEDULE: ["WEEKLY"]. For SPECIFIC: array of employee ids
+     *  (kept in audienceIds, see below). */
+    audienceLabels: jsonb("audience_labels"),
+    /** Employee ids when audienceKind === SPECIFIC. NULL otherwise. */
+    audienceIds: jsonb("audience_ids"),
+    /** Total recipients reached. The dispatcher counts users that
+     *  actually got a row inserted. */
+    recipientCount: integer("recipient_count").notNull().default(0),
+    sentById: uuid("sent_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    sentAt: timestamp("sent_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("announcements_sent_at_idx").on(t.sentAt)],
+);
+
+export type Announcement = typeof announcements.$inferSelect;
+export type NewAnnouncement = typeof announcements.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Notifications
 // ─────────────────────────────────────────────────────────────────────────────
 

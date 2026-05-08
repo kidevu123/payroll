@@ -218,6 +218,13 @@
       "when": 1779400000000,
       "tag": "0030_partial_day_and_schedule_note",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0031_admin_announcements",
+      "breakpoints": true
     }
   ]
 }
