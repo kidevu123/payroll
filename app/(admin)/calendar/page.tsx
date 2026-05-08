@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   listApprovedInRange,
   listPendingInRange,
+  tallyTimeOffByEmployeeForYear,
 } from "@/lib/db/queries/time-off";
 import {
   listPendingMissedPunchRequests,
@@ -90,9 +91,10 @@ function nameFromMap(
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ year?: string; month?: string }>;
+  searchParams: Promise<{ year?: string; month?: string; tab?: string }>;
 }) {
   const params = await searchParams;
+  const tab = params.tab === "totals" ? "totals" : "calendar";
   const today = new Date();
   const year = Number(params.year) || today.getUTCFullYear();
   const month0 = Math.max(
@@ -218,6 +220,35 @@ export default async function CalendarPage({
 
   const pendingTotal = pendingMissedPunches.length + pendingTimeOff.length;
 
+  // Totals tab — compact YTD list. Computed only when the tab is open
+  // so the calendar tab pays no DB cost. listApprovedTimeOffInRange-
+  // style joins are intentionally NOT done here; the year-end
+  // /reports/time-off page is the place for the full per-type
+  // breakdown. This view stays "name + total days" so the cumulative
+  // signal is one number per row.
+  type TotalRow = { id: string; name: string; days: number };
+  let totals: TotalRow[] = [];
+  if (tab === "totals") {
+    const yearForTotals = today.getUTCFullYear();
+    const tally = await tallyTimeOffByEmployeeForYear(yearForTotals);
+    totals = tally
+      .map((t) => {
+        const emp = empById.get(t.employeeId);
+        if (!emp) return null;
+        // Days = sum of all full-day rows. SCHEDULE_NOTE hours
+        // intentionally excluded here — they're heads-up partials,
+        // not actual time off, and surfacing them blurs the signal
+        // we're trying to preserve. Full breakdown is one click away.
+        const days =
+          t.unpaidDays + t.sickDays + t.personalDays + t.otherDays;
+        return days > 0
+          ? { id: t.employeeId, name: emp.displayName, days }
+          : null;
+      })
+      .filter((r): r is TotalRow => r !== null)
+      .sort((a, b) => b.days - a.days || a.name.localeCompare(b.name));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -226,31 +257,85 @@ export default async function CalendarPage({
             Calendar &amp; requests
           </h1>
           <p className="text-sm text-text-muted">
-            Approved time-off across all employees. Pending requests show as
-            faded bars on the grid and as actionable rows in the rail.
+            {tab === "totals"
+              ? `Time off taken so far in ${today.getUTCFullYear()}.`
+              : "Approved time-off across all employees. Pending requests show as faded bars on the grid and as actionable rows in the rail."}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link
-              href={`/calendar?year=${prev.getUTCFullYear()}&month=${prev.getUTCMonth() + 1}`}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <span className="font-medium">{monthName}</span>
-          <Button asChild variant="ghost" size="sm">
-            <Link
-              href={`/calendar?year=${next.getUTCFullYear()}&month=${next.getUTCMonth() + 1}`}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="secondary">
-            <Link href="/calendar">Today</Link>
-          </Button>
+          {tab === "calendar" && (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link
+                  href={`/calendar?year=${prev.getUTCFullYear()}&month=${prev.getUTCMonth() + 1}`}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <span className="font-medium">{monthName}</span>
+              <Button asChild variant="ghost" size="sm">
+                <Link
+                  href={`/calendar?year=${next.getUTCFullYear()}&month=${next.getUTCMonth() + 1}`}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/calendar">Today</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Tab nav. Two pills, no chrome — keeps the page header light. */}
+      <div className="flex items-center gap-1 border-b border-border">
+        <TabPill href="/calendar" label="Calendar" active={tab === "calendar"} />
+        <TabPill
+          href="/calendar?tab=totals"
+          label="Time off totals"
+          active={tab === "totals"}
+        />
+      </div>
+
+      {tab === "totals" && (
+        <div className="rounded-card border border-border bg-surface">
+          {totals.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-text-muted">
+              No approved time-off yet this year.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {totals.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-baseline justify-between gap-3 px-4 py-2.5"
+                >
+                  <Link
+                    href={`/employees/${r.id}`}
+                    className="text-sm font-medium hover:underline truncate"
+                  >
+                    {r.name}
+                  </Link>
+                  <span className="text-sm tabular-nums text-text-muted shrink-0">
+                    {r.days} {r.days === 1 ? "day" : "days"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="border-t border-border px-4 py-2.5 text-xs">
+            <Link
+              href="/reports/time-off"
+              className="text-brand-700 hover:underline"
+            >
+              View full breakdown →
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {tab === "calendar" && (
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>
@@ -496,7 +581,31 @@ export default async function CalendarPage({
           )}
         </aside>
       </div>
+      )}
     </div>
+  );
+}
+
+function TabPill({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+        active
+          ? "border-brand-700 text-text"
+          : "border-transparent text-text-muted hover:text-text"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
 
