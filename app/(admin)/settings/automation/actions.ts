@@ -91,19 +91,30 @@ export async function updateAutomationAction(
   try {
     const { getBoss } = await import("@/lib/jobs");
     const boss = await getBoss();
+    // Cron expressions are interpreted in the company timezone, not
+    // UTC. Without this option pg-boss treats "11:15 Mon-Sat" as UTC,
+    // which fires at 6/7am ET. Mirror the registerJobs() behavior so
+    // the boot path and the live-save path agree.
+    const company = await getSetting("company").catch(() => null);
+    const tzOpts = { tz: company?.timezone ?? "America/New_York" };
     if (v.cronEnabled === true && v.enabled === true) {
-      await boss.schedule("payroll.run.tick", v.cron);
+      await boss.schedule("payroll.run.tick", v.cron, undefined, tzOpts);
     } else {
       await boss.unschedule("payroll.run.tick").catch(() => undefined);
     }
     if (v.cronEnabled === true && v.punchPollEnabled === true) {
-      await boss.schedule("ngteco.punch.poll", v.punchPollCron);
+      await boss.schedule(
+        "ngteco.punch.poll",
+        v.punchPollCron,
+        undefined,
+        tzOpts,
+      );
     } else {
       await boss.unschedule("ngteco.punch.poll").catch(() => undefined);
     }
     if (v.cronEnabled === true) {
-      await boss.schedule("noop.heartbeat", "* * * * *");
-      await boss.schedule("period.rollover", "30 0 * * *");
+      await boss.schedule("noop.heartbeat", "* * * * *", undefined, tzOpts);
+      await boss.schedule("period.rollover", "30 0 * * *", undefined, tzOpts);
     } else {
       await boss.unschedule("noop.heartbeat").catch(() => undefined);
       await boss.unschedule("period.rollover").catch(() => undefined);

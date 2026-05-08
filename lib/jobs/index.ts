@@ -58,6 +58,14 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // owner uses this for full-manual mode while reconciling data.
   const initialAuto = await getSetting("automation").catch(() => null);
   const cronEnabled = initialAuto?.cronEnabled ?? true;
+  // Cron expressions are evaluated in the company timezone, not UTC.
+  // Without this, "11:15 Mon-Sat" at the company in America/New_York
+  // would fire at 11:15 UTC (= 7:15am ET in summer / 6:15am ET in
+  // winter). pg-boss accepts an IANA tz on each schedule. Default to
+  // America/New_York if the setting hasn't been configured yet.
+  const company = await getSetting("company").catch(() => null);
+  const tz = company?.timezone ?? "America/New_York";
+  const tzOpts = { tz };
 
   // pg-boss v10 removed implicit queue creation; create explicitly first.
   await boss.createQueue("noop.heartbeat");
@@ -65,7 +73,7 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     logger.debug({ count: jobs.length }, "heartbeat tick");
   });
   if (cronEnabled) {
-    await boss.schedule("noop.heartbeat", "* * * * *");
+    await boss.schedule("noop.heartbeat", "* * * * *", undefined, tzOpts);
   } else {
     await boss.unschedule("noop.heartbeat").catch(() => undefined);
   }
@@ -76,7 +84,7 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   });
   // 00:30 daily; the handler reads company timezone to decide what "today" is.
   if (cronEnabled) {
-    await boss.schedule("period.rollover", "30 0 * * *");
+    await boss.schedule("period.rollover", "30 0 * * *", undefined, tzOpts);
   } else {
     await boss.unschedule("period.rollover").catch(() => undefined);
   }
@@ -108,7 +116,12 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   });
   const automation = initialAuto;
   if (cronEnabled && automation?.payrollRun.enabled) {
-    await boss.schedule("payroll.run.tick", automation.payrollRun.cron);
+    await boss.schedule(
+      "payroll.run.tick",
+      automation.payrollRun.cron,
+      undefined,
+      tzOpts,
+    );
   } else {
     // Tear down any stale schedule from a prior boot when automation was on.
     await boss.unschedule("payroll.run.tick").catch(() => undefined);
@@ -168,6 +181,8 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     await boss.schedule(
       "ngteco.punch.poll",
       automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
+      undefined,
+      tzOpts,
     );
   } else {
     await boss.unschedule("ngteco.punch.poll").catch(() => undefined);

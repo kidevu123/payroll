@@ -247,7 +247,7 @@ export function CronPicker({
         }`}
       >
         <span className="block font-medium">
-          {valid ? description : "Schedule looks malformed — fix before saving."}
+          {valid ? `${description} (in your local time)` : "Schedule looks malformed — fix before saving."}
         </span>
         <span className="font-mono text-[11px] text-text-muted">
           (cron: {value || "—"})
