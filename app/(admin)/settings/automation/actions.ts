@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getSetting, setSetting } from "@/lib/settings/runtime";
+import { logger } from "@/lib/telemetry";
 
 // Cron expression: exactly 5 fields (minute hour day-of-month month
 // day-of-week), each a digit/range/list/star. Enforces structure;
@@ -79,5 +80,50 @@ export async function updateAutomationAction(
     },
     { actorId: session.user.id, actorRole: session.user.role },
   );
+
+  // pg-boss schedules are armed at process startup in registerJobs(), so
+  // a fresh save here would otherwise be invisible until the next deploy.
+  // Re-arm immediately against the running boss instance so the new cron
+  // takes effect on the next firing window. Same call shape as
+  // registerJobs — boss.schedule is upsert semantics, so calling it again
+  // with a new cron updates the row in pgboss.schedule. We unschedule
+  // when toggled off so a stale schedule doesn't keep firing.
+  try {
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    if (v.cronEnabled === true && v.enabled === true) {
+      await boss.schedule("payroll.run.tick", v.cron);
+    } else {
+      await boss.unschedule("payroll.run.tick").catch(() => undefined);
+    }
+    if (v.cronEnabled === true && v.punchPollEnabled === true) {
+      await boss.schedule("ngteco.punch.poll", v.punchPollCron);
+    } else {
+      await boss.unschedule("ngteco.punch.poll").catch(() => undefined);
+    }
+    if (v.cronEnabled === true) {
+      await boss.schedule("noop.heartbeat", "* * * * *");
+      await boss.schedule("period.rollover", "30 0 * * *");
+    } else {
+      await boss.unschedule("noop.heartbeat").catch(() => undefined);
+      await boss.unschedule("period.rollover").catch(() => undefined);
+    }
+    logger.info(
+      {
+        cronEnabled: v.cronEnabled,
+        payrollRunCron: v.cron,
+        punchPollCron: v.punchPollCron,
+      },
+      "automation: live schedule rearmed",
+    );
+  } catch (err) {
+    // Don't fail the save — settings are persisted, the next process
+    // start will pick them up. Log so the discrepancy is visible.
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "automation: live rearm failed; new cron applies after next restart",
+    );
+  }
+
   revalidatePath("/settings/automation");
 }
