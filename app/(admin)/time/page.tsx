@@ -16,7 +16,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
-import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
+import { BackfillAlert } from "@/components/admin/backfill-alert";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -400,6 +400,18 @@ export default async function TimePage({
       return e.payScheduleId === period.payScheduleId;
     });
 
+  // Count IN-only punches whose date is BEFORE today's calendar date in
+  // the company timezone. These are the punches that look like "open"
+  // cells from prior days — exactly what an operator notices when a
+  // sync was missed. The Backfill alert renders only when this is > 0,
+  // so when the system is healthy the /time page stays uncluttered.
+  const todayIso = todayInTimezone(company.timezone);
+  const staleOpenPunchCount = punchesInRange.reduce((n, p) => {
+    if (p.clockOut !== null) return n;
+    const d = dayOf(p.clockIn, company.timezone);
+    return d < todayIso ? n + 1 : n;
+  }, 0);
+
   // Group punches by employeeId + day, then dedup near-duplicates within
   // each cell so the grid doesn't show "1" / "2" cells for what's really
   // a single shift represented twice.
@@ -447,12 +459,6 @@ export default async function TimePage({
               <Plus className="h-4 w-4" /> Add manual punch
             </Link>
           </Button>
-          {/* Recovery affordance: when an operator is staring at the
-              grid and sees a column of "open" cells from a missed-sync
-              day, the fix needs to be one click away. Same component
-              the /payroll page surfaces; deduped by hash + open-punch
-              fallback so re-running is always safe. */}
-          <BackfillPunchesButton />
           <div className="flex items-center gap-3 text-xs">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />
@@ -460,6 +466,10 @@ export default async function TimePage({
           </div>
         </div>
       </div>
+
+      {staleOpenPunchCount > 0 && (
+        <BackfillAlert openCountFromPriorDays={staleOpenPunchCount} />
+      )}
 
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
         <table className="min-w-full text-xs">
