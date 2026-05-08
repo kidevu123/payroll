@@ -234,34 +234,60 @@ export async function createTimeOffRequest(
   actor: Actor,
 ): Promise<TimeOffRequest> {
   return db.transaction(async (tx) => {
-    // Reject overlap with any pending or approved request for the
-    // same employee. Rejected/cancelled rows are ignored. Range
-    // overlap test: existing.start <= new.end AND existing.end >= new.start.
-    const overlap = await tx
-      .select({ id: timeOffRequests.id })
-      .from(timeOffRequests)
-      .where(
-        and(
-          eq(timeOffRequests.employeeId, input.employeeId),
-          or(
-            eq(timeOffRequests.status, "PENDING"),
-            eq(timeOffRequests.status, "APPROVED"),
+    // SCHEDULE_NOTE is heads-up only — no approval needed, no payroll
+    // impact, doesn't reserve the day. Skip the overlap check (an
+    // hourly employee saying "leaving at 2pm" doesn't conflict with
+    // anything) and stamp APPROVED at insert so it lands on the
+    // calendar immediately. Other types still flow through
+    // PENDING → admin → APPROVED/REJECTED.
+    const isHeadsUp = input.type === "SCHEDULE_NOTE";
+
+    if (!isHeadsUp) {
+      // Reject overlap with any pending or approved request for the
+      // same employee. Rejected/cancelled rows are ignored. Range
+      // overlap test: existing.start <= new.end AND existing.end >= new.start.
+      const overlap = await tx
+        .select({ id: timeOffRequests.id })
+        .from(timeOffRequests)
+        .where(
+          and(
+            eq(timeOffRequests.employeeId, input.employeeId),
+            or(
+              eq(timeOffRequests.status, "PENDING"),
+              eq(timeOffRequests.status, "APPROVED"),
+            ),
+            // SCHEDULE_NOTE rows don't block real time-off requests —
+            // exclude them from the overlap probe.
+            sql`${timeOffRequests.type} <> 'SCHEDULE_NOTE'`,
+            sql`${timeOffRequests.startDate} <= ${input.endDate}`,
+            sql`${timeOffRequests.endDate} >= ${input.startDate}`,
           ),
-          sql`${timeOffRequests.startDate} <= ${input.endDate}`,
-          sql`${timeOffRequests.endDate} >= ${input.startDate}`,
-        ),
-      )
-      .limit(1);
-    if (overlap.length > 0) {
-      throw new Error("TIME_OFF_OVERLAP");
+        )
+        .limit(1);
+      if (overlap.length > 0) {
+        throw new Error("TIME_OFF_OVERLAP");
+      }
     }
-    const [row] = await tx.insert(timeOffRequests).values(input).returning();
+
+    const insertRow: NewTimeOffRequest = isHeadsUp
+      ? {
+          ...input,
+          status: "APPROVED",
+          resolvedById: actor.id,
+          resolvedAt: new Date(),
+          resolutionNote: "Auto-acknowledged (heads-up)",
+        }
+      : input;
+
+    const [row] = await tx.insert(timeOffRequests).values(insertRow).returning();
     if (!row) throw new Error("createTimeOffRequest: insert empty");
     await writeAudit(
       {
         actorId: actor.id,
         actorRole: actor.role,
-        action: "time_off.request.create",
+        action: isHeadsUp
+          ? "time_off.schedule_note.create"
+          : "time_off.request.create",
         targetType: "TimeOffRequest",
         targetId: row.id,
         after: row,

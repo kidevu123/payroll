@@ -186,7 +186,7 @@ export function Topbar({
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Link
-            href="/requests"
+            href="/calendar"
             aria-label={
               unreadCount > 0
                 ? tNav("notificationsUnreadAriaLabel", { count: unreadCount })

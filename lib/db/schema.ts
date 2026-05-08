@@ -116,6 +116,11 @@ export const timeOffTypeEnum = pgEnum("time_off_type", [
   "SICK",
   "PERSONAL",
   "OTHER",
+  // Heads-up only — no payroll impact. Used by hourly employees who
+  // don't accrue PTO but still want to tell admin "I'll be in late"
+  // or "leaving early at 2pm". Auto-approved on insert (nothing to
+  // grant), so it shows on the calendar immediately.
+  "SCHEDULE_NOTE",
 ]);
 
 export const payrollRunStateEnum = pgEnum("payroll_run_state", [
@@ -724,6 +729,14 @@ export const timeOffRequests = pgTable(
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
     type: timeOffTypeEnum("type").notNull(),
+    // Partial-day window. Both null = full day (default). When type is
+    // SCHEDULE_NOTE, at least one is expected ("leaving at 2pm" =
+    // partialEndTime, "in at 10am" = partialStartTime, "out 11–2 for
+    // an appointment" = both). Stored as TIME without timezone — the
+    // display layer renders against company.timezone like everything
+    // else.
+    partialStartTime: time("partial_start_time"),
+    partialEndTime: time("partial_end_time"),
     reason: text("reason"),
     status: requestStatusEnum("status").notNull().default("PENDING"),
     resolvedById: uuid("resolved_by_id").references(() => users.id),

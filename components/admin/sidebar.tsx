@@ -23,7 +23,6 @@ import {
   LayoutDashboard,
   CalendarDays,
   Wallet,
-  MessageSquareWarning,
   BarChart3,
   Settings2,
   Briefcase,
@@ -48,8 +47,12 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
       { href: "/salaried", labelKey: "salaried", icon: Briefcase },
+      // Calendar + Requests merged: pending requests now live in a
+      // rail on /calendar so admins see "who's out when" and "what's
+      // waiting on me" in one glance instead of bouncing between
+      // pages. /requests still resolves (server redirect) for any
+      // bookmarks or notification deeplinks.
       { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
-      { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
     ],
   },
   {

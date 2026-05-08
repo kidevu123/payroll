@@ -365,8 +365,12 @@ export default async function TimePage({
     listApprovedInRange(period.startDate, lastDay),
   ]);
   // Build employeeId+date → time-off-type map for O(1) cell lookup.
+  // SCHEDULE_NOTE is a heads-up, not actual time off — skip those so
+  // the grid still shows the underlying punches for that day instead
+  // of hiding the cell behind a "Sick"-style label.
   const timeOffByDay = new Map<string, "UNPAID" | "SICK" | "PERSONAL" | "OTHER">();
   for (const r of approvedTimeOff) {
+    if (r.type === "SCHEDULE_NOTE") continue;
     const start = new Date(`${r.startDate}T00:00:00Z`);
     const end = new Date(`${r.endDate}T00:00:00Z`);
     for (

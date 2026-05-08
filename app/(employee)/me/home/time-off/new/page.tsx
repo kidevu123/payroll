@@ -1,12 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireSession } from "@/lib/auth-guards";
+import { getEmployee } from "@/lib/db/queries/employees";
 import { TimeOffForm } from "./form";
 
 export default async function TimeOffNew() {
   const t = await getTranslations("employee.timeOff");
+  const session = await requireSession();
+  if (!session.user.employeeId) redirect("/me/home");
+  const employee = await getEmployee(session.user.employeeId);
+  // Hourly employees don't accrue PTO; the form filters their type
+  // dropdown accordingly. Salaried + anything else gets the full set.
+  const isHourly = employee?.payType === "HOURLY";
+
   return (
     <main className="px-4 py-6 space-y-4">
       <Button asChild variant="ghost" size="sm">
@@ -19,7 +29,7 @@ export default async function TimeOffNew() {
           <CardTitle className="text-base">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <TimeOffForm />
+          <TimeOffForm isHourly={isHourly} />
         </CardContent>
       </Card>
     </main>

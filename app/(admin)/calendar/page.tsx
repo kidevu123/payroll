@@ -1,6 +1,8 @@
 // Admin calendar — month grid showing approved (and pending) time-off
-// across all employees. Lets the owner see at a glance who's out next
-// week without scrolling through the requests inbox.
+// across all employees, plus a side rail with pending requests so
+// admins can approve/reject without leaving the page. /requests now
+// redirects here; this is the single canonical surface for "who's out
+// when" + "what's waiting on me". Birthdays render as pink chips.
 
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Cake } from "lucide-react";
@@ -16,7 +18,18 @@ import {
   listApprovedInRange,
   listPendingInRange,
 } from "@/lib/db/queries/time-off";
+import {
+  listPendingMissedPunchRequests,
+  listPendingTimeOffRequests,
+} from "@/lib/db/queries/requests";
 import { listEmployees } from "@/lib/db/queries/employees";
+import {
+  MissedPunchActions,
+  TimeOffActions,
+  CancelTimeOffActionButton,
+} from "@/app/(admin)/requests/request-actions";
+import { TimeOffOnBehalfForm } from "@/app/(admin)/requests/time-off-on-behalf-form";
+import { MessageSquareWarning, Plane } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +66,10 @@ const TYPE_COLORS: Record<string, string> = {
   SICK: "bg-amber-100 text-amber-800 border-amber-300",
   UNPAID: "bg-slate-100 text-slate-800 border-slate-300",
   OTHER: "bg-violet-100 text-violet-800 border-violet-300",
+  // Distinct from time-off bars — heads-up only, no payroll impact.
+  // Soft blue says "informational" without competing with the
+  // amber/emerald/violet bars that count toward time-off totals.
+  SCHEDULE_NOTE: "bg-sky-50 text-sky-800 border-sky-300",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -60,6 +77,7 @@ const TYPE_LABEL: Record<string, string> = {
   SICK: "Sick",
   UNPAID: "Unpaid",
   OTHER: "Other",
+  SCHEDULE_NOTE: "Note",
 };
 
 function nameFromMap(
@@ -94,23 +112,57 @@ export default async function CalendarPage({
   const gridStart = new Date(monthStart.getTime() - padBefore * MS_PER_DAY);
   const gridEnd = new Date(monthEnd.getTime() + padAfter * MS_PER_DAY);
 
-  const [approved, pending, employees] = await Promise.all([
+  const [
+    approved,
+    pending,
+    employees,
+    pendingMissedPunches,
+    pendingTimeOff,
+  ] = await Promise.all([
     listApprovedInRange(startIso, endIso),
     listPendingInRange(startIso, endIso),
     listEmployees(),
+    listPendingMissedPunchRequests(),
+    listPendingTimeOffRequests(),
   ]);
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
+  const empById = new Map(employees.map((e) => [e.id, e]));
 
   // Bucket requests by ISO day for fast cell lookup. Birthdays match
   // by month-day across any year.
+  type CellEntry = {
+    id: string;
+    type: string;
+    emp: string;
+    /** "11:00–14:00" when partial; null for full-day items. */
+    partial: string | null;
+  };
   const cellByDay = new Map<
     string,
     {
-      approved: { id: string; type: string; emp: string }[];
-      pending: { id: string; type: string; emp: string }[];
+      approved: CellEntry[];
+      pending: CellEntry[];
       birthdays: { name: string }[];
     }
   >();
+  const partialLabel = (
+    s: string | null | undefined,
+    e: string | null | undefined,
+  ): string | null => {
+    if (!s && !e) return null;
+    const fmt = (t: string | null | undefined): string => {
+      if (!t) return "?";
+      // "HH:MM:SS" or "HH:MM" → "h:mma" (no leading zero, lowercase am/pm).
+      const m = /^(\d{1,2}):(\d{2})/.exec(t);
+      if (!m) return t;
+      const h = Number(m[1]);
+      const mm = m[2];
+      const ampm = h >= 12 ? "p" : "a";
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return mm === "00" ? `${h12}${ampm}` : `${h12}:${mm}${ampm}`;
+    };
+    return `${fmt(s)}–${fmt(e)}`;
+  };
   for (const r of approved) {
     for (const day of eachDayBetween(r.startDate, r.endDate)) {
       if (day < startIso || day > endIso) continue;
@@ -119,6 +171,7 @@ export default async function CalendarPage({
         id: r.id,
         type: r.type,
         emp: nameFromMap(empMap, r.employeeId),
+        partial: partialLabel(r.partialStartTime, r.partialEndTime),
       });
       cellByDay.set(day, cell);
     }
@@ -131,6 +184,7 @@ export default async function CalendarPage({
         id: r.id,
         type: r.type,
         emp: nameFromMap(empMap, r.employeeId),
+        partial: partialLabel(r.partialStartTime, r.partialEndTime),
       });
       cellByDay.set(day, cell);
     }
@@ -162,14 +216,18 @@ export default async function CalendarPage({
   const prev = new Date(monthStart.getTime() - 1 * MS_PER_DAY);
   const next = new Date(monthEnd.getTime() + 1 * MS_PER_DAY);
 
+  const pendingTotal = pendingMissedPunches.length + pendingTimeOff.length;
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Calendar &amp; requests
+          </h1>
           <p className="text-sm text-text-muted">
             Approved time-off across all employees. Pending requests show as
-            faded bars.
+            faded bars on the grid and as actionable rows in the rail.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -194,7 +252,8 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      <Card>
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        <Card>
         <CardHeader className="pb-2">
           <CardTitle className="sr-only">{monthName}</CardTitle>
           <CardDescription className="flex flex-wrap items-center gap-3 text-xs">
@@ -202,6 +261,7 @@ export default async function CalendarPage({
             <Legend label="Sick" className={TYPE_COLORS.SICK!} />
             <Legend label="Unpaid" className={TYPE_COLORS.UNPAID!} />
             <Legend label="Other" className={TYPE_COLORS.OTHER!} />
+            <Legend label="Note" className={TYPE_COLORS.SCHEDULE_NOTE!} />
             <Legend label="Birthday" className="bg-pink-100 text-pink-800 border-pink-300" />
             <span className="text-text-muted">
               · Faded = pending approval
@@ -284,9 +344,9 @@ export default async function CalendarPage({
                           (TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER) +
                           (r.pending ? " border-dashed opacity-70" : "")
                         }
-                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type}${r.pending ? " (pending)" : ""}`}
+                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type}${r.partial ? ` ${r.partial}` : ""}${r.pending ? " (pending)" : ""}`}
                       >
-                        {r.emp}
+                        {r.partial ? `${r.emp} · ${r.partial}` : r.emp}
                       </div>
                     ))}
                     {overflow.length > 0 && (
@@ -307,7 +367,7 @@ export default async function CalendarPage({
                                 (r.pending ? " opacity-70" : "")
                               }
                             >
-                              {r.emp}
+                              {r.partial ? `${r.emp} · ${r.partial}` : r.emp}
                             </div>
                           ))}
                         </div>
@@ -320,6 +380,122 @@ export default async function CalendarPage({
           </div>
         </CardContent>
       </Card>
+
+        {/* Pending requests rail. Sticky on desktop so it stays in view
+            as the operator scrolls; collapses below the calendar on
+            mobile. Empty-state collapses entirely when nothing's
+            pending — calendar gets the full width. */}
+        <aside className="lg:sticky lg:top-4 lg:self-start space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold tracking-tight">
+              Pending {pendingTotal > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[11px] font-medium text-amber-900">
+                  {pendingTotal}
+                </span>
+              )}
+            </h2>
+            <TimeOffOnBehalfForm
+              employees={employees
+                .filter((e) => e.status !== "TERMINATED")
+                .map((e) => ({ id: e.id, displayName: e.displayName }))}
+            />
+          </div>
+
+          {pendingTotal === 0 ? (
+            <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
+              Nothing waiting on you. New requests show up here as
+              employees submit them.
+            </div>
+          ) : (
+            <>
+              {pendingMissedPunches.length > 0 && (
+                <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-amber-800">
+                    <MessageSquareWarning className="h-3.5 w-3.5" />
+                    Missed punches ({pendingMissedPunches.length})
+                  </div>
+                  {pendingMissedPunches.map((r) => {
+                    const emp = empById.get(r.employeeId);
+                    return (
+                      <div
+                        key={r.id}
+                        className="rounded-input border border-border bg-surface-2/40 p-2 space-y-1.5"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-xs font-medium truncate">
+                            {emp?.displayName ?? r.employeeId}
+                          </span>
+                          <span className="text-[11px] text-text-muted tabular-nums shrink-0">
+                            {r.date}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono text-text-muted">
+                          {r.claimedClockIn ? r.claimedClockIn.toISOString().slice(11, 16) : "—"} →{" "}
+                          {r.claimedClockOut ? r.claimedClockOut.toISOString().slice(11, 16) : "—"}
+                        </div>
+                        {r.reason && (
+                          <p className="text-[11px] text-text-muted line-clamp-2">
+                            {r.reason}
+                          </p>
+                        )}
+                        <MissedPunchActions requestId={r.id} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {pendingTimeOff.length > 0 && (
+                <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-sky-800">
+                    <Plane className="h-3.5 w-3.5" />
+                    Time off ({pendingTimeOff.length})
+                  </div>
+                  {pendingTimeOff.map((r) => {
+                    const emp = empById.get(r.employeeId);
+                    const partial = partialLabel(r.partialStartTime, r.partialEndTime);
+                    return (
+                      <div
+                        key={r.id}
+                        className="rounded-input border border-border bg-surface-2/40 p-2 space-y-1.5"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-xs font-medium truncate">
+                            {emp?.displayName ?? r.employeeId}
+                          </span>
+                          <span className="text-[11px] text-text-muted tabular-nums shrink-0">
+                            {r.startDate}
+                            {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-text-muted">
+                          {(TYPE_LABEL[r.type] ?? r.type).toLowerCase()}
+                          {partial ? ` · ${partial}` : ""}
+                        </div>
+                        {r.reason && (
+                          <p className="text-[11px] text-text-muted line-clamp-2">
+                            {r.reason}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <TimeOffActions
+                            requestId={r.id}
+                            employeeId={r.employeeId}
+                          />
+                          <CancelTimeOffActionButton
+                            requestId={r.id}
+                            status="PENDING"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }

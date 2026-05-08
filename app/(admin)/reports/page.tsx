@@ -46,7 +46,13 @@ export default async function ReportsPage({
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
           <p className="text-xs text-text-muted">
-            {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.
+            {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.{" "}
+            <Link
+              href="/reports/time-off"
+              className="text-brand-700 hover:underline"
+            >
+              Year-end time-off tally →
+            </Link>
           </p>
         </div>
         <ScheduleTabs

@@ -211,6 +211,13 @@
       "when": 1779300000000,
       "tag": "0029_cancellable_time_off",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1778212205219,
+      "tag": "0030_partial_day_and_schedule_note",
+      "breakpoints": true
     }
   ]
 }
