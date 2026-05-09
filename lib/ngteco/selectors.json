@@ -1,13 +1,13 @@
 {
-  "$comment": "Verified live against office.ngteco.com (probe agent, 2026-05-05). Portal is Material UI v5 — sidebar uses MuiAccordion, table is MuiDataGrid. Cells expose stable data-field attributes (employee_name, employee_code, att_date, attendance_status [punch time, not date], verify_type, timezone, punch_from). DO NOT switch back to Element Plus selectors — they all match zero.",
+  "$comment": "Verified live against office.ngteco.com. Portal is Material UI v5. Login selectors intentionally target current visible input types instead of old username-only attributes. Attendance punch grid cells expose stable data-field attributes (employee_name, employee_code, att_date, attendance_status, verify_type, timezone, punch_from). DO NOT switch back to Element Plus selectors.",
   "login": {
-    "url": "/login",
-    "username": "input[name='username']",
-    "password": "input[name='password']",
-    "agreementCheckbox": "label:has-text(\"have read\") input[type=\"checkbox\"]",
-    "agreementClickTarget": "label:has-text(\"have read\")",
+    "url": "/user/login",
+    "username": "input[type='email']",
+    "password": "input[type='password']",
+    "agreementCheckbox": "label:has-text(\"have read\") input[type=\"checkbox\"], label:has-text(\"USER AGREEMENT\") input[type=\"checkbox\"], label:has-text(\"PRIVACY POLICY\") input[type=\"checkbox\"]",
+    "agreementClickTarget": "label:has-text(\"have read\"), label:has-text(\"USER AGREEMENT\"), label:has-text(\"PRIVACY POLICY\")",
     "submit": "button:has-text(\"Login\")",
-    "loggedInLandmark": "text=\"Quickly Setting\""
+    "loggedInLandmark": "text=\"Quickly Setting\", text=\"Dashboard\", text=\"Attendance\""
   },
   "navigation": {
     "reportsLink": "text=/Reports?/i",
