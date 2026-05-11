@@ -31,7 +31,7 @@ import {
   upsertPayslip,
   markPublished,
 } from "@/lib/db/queries/payslips";
-import { adminUserIds, userIdsForEmployees } from "@/lib/db/queries/recipients";
+import { adminUserIds } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { dispatch } from "@/lib/notifications/router";
@@ -373,24 +373,9 @@ export async function handlePayrollRunPublish(data: {
     }
   }
 
-  // Notifications: payroll_run.published → all employees with payslips +
-  // admins (confirmation).
-  const employeesWithPayslips = sigRows.length > 0 ? employees.filter((e) =>
-    sigRows.some((r) => r.employeeName === e.displayName),
-  ) : [];
-  const empToUser = await userIdsForEmployees(employeesWithPayslips.map((e) => e.id));
-  const employeeNotices = employeesWithPayslips
-    .map((e) => {
-      const recipientId = empToUser.get(e.id);
-      if (!recipientId) return null;
-      return {
-        recipientId,
-        kind: "payroll_run.published" as const,
-        payload: { periodId: period.id, runId },
-      };
-    })
-    .filter((n): n is NonNullable<typeof n> => n !== null);
-  if (employeeNotices.length > 0) await dispatch(employeeNotices);
+  // Admin confirmation. Employee notifications are sent when the admin
+  // publishes to the employee portal (publishedToPortalAt), not merely
+  // when internal PDF generation finishes.
   const admins = await adminUserIds();
   if (admins.length > 0) {
     await dispatch(

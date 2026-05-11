@@ -31,7 +31,7 @@ import { and, eq, desc } from "drizzle-orm";
 import { LockButtons } from "./lock-buttons";
 import { AssignScheduleButton } from "./assign-schedule-button";
 import { RecomputeBanner } from "./recompute-banner";
-import { PublishPortalButton } from "./publish-portal-button";
+import { PublishPeriodButton } from "./publish-period-button";
 import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { PayrollDocsSection } from "./payroll-docs-section";
@@ -401,7 +401,11 @@ export default async function PeriodReviewPage({
                 </Link>
               </Button>
             )}
-            {run && <PublishPortalButton run={run} />}
+            <PublishPeriodButton
+              periodId={period.id}
+              periodState={period.state}
+              published={!!run?.publishedToPortalAt}
+            />
             <LockButtons
               period={period}
               incompletePunchCount={displayRows.reduce(

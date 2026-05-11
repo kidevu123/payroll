@@ -10,6 +10,7 @@ import {
   transitionRun,
 } from "@/lib/db/queries/payroll-runs";
 import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
+import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifications";
 import { pushReportToZoho, repushReportToZoho } from "@/lib/zoho/push";
 
 const idSchema = z.string().uuid();
@@ -65,6 +66,9 @@ export async function publishReportAction(
       };
     }
     await publishToPortal(id, actor);
+    if (!run.publishedToPortalAt) {
+      await notifyEmployeesPayslipsPublished(id);
+    }
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Publish failed.",

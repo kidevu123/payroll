@@ -6,9 +6,18 @@ import { requireAdmin } from "@/lib/auth-guards";
 import {
   lockPeriod,
   markPaid,
+  getPeriodById,
   unlockPeriod,
   unmarkPaid,
 } from "@/lib/db/queries/pay-periods";
+import {
+  createRun,
+  getRunForPeriod,
+  publishToPortal,
+  transitionRun,
+} from "@/lib/db/queries/payroll-runs";
+import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
+import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifications";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
 import {
@@ -31,6 +40,70 @@ export async function lockPeriodAction(
   await lockPeriod(id, { id: session.user.id, role: session.user.role });
   revalidatePath(`/payroll/${id}`);
   revalidatePath("/payroll");
+}
+
+export async function publishLockedPeriodAction(
+  periodId: string,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(periodId).success) return { error: "Invalid id." };
+  const actor = { id: session.user.id, role: session.user.role };
+  const period = await getPeriodById(periodId);
+  if (!period) return { error: "Period not found." };
+  if (period.state !== "LOCKED") {
+    return { error: "Lock the report before publishing." };
+  }
+
+  let run = await getRunForPeriod(periodId);
+  try {
+    if (!run) {
+      run = await createRun(periodId, new Date(), actor, {
+        payScheduleId: period.payScheduleId,
+      });
+    }
+
+    if (run.state === "SCHEDULED") {
+      run = await transitionRun(run.id, "INGESTING", actor, {
+        ingestStartedAt: new Date(),
+      });
+      run = await transitionRun(run.id, "AWAITING_ADMIN_REVIEW", actor, {
+        ingestCompletedAt: new Date(),
+        reviewedById: session.user.id,
+        reason: "Published directly from locked period",
+      });
+    }
+    if (run.state === "AWAITING_EMPLOYEE_FIXES") {
+      run = await transitionRun(run.id, "AWAITING_ADMIN_REVIEW", actor, {
+        reviewedById: session.user.id,
+        reason: "Published directly from locked period",
+      });
+    }
+    if (run.state === "AWAITING_ADMIN_REVIEW") {
+      run = await transitionRun(run.id, "APPROVED", actor, {
+        approvedById: session.user.id,
+      });
+    }
+    if (run.state === "APPROVED") {
+      await handlePayrollRunPublish({ runId: run.id });
+      run = await getRunForPeriod(periodId);
+      if (!run) return { error: "Publish finished but run could not be reloaded." };
+    }
+    if (run.state !== "PUBLISHED") {
+      return { error: `Run is in state ${run.state}; cannot publish from here.` };
+    }
+
+    const wasVisible = !!run.publishedToPortalAt;
+    await publishToPortal(run.id, actor);
+    if (!wasVisible) {
+      await notifyEmployeesPayslipsPublished(run.id);
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Publish failed." };
+  }
+
+  revalidatePath(`/payroll/${periodId}`);
+  revalidatePath("/payroll");
+  revalidatePath("/reports");
 }
 
 const unlockSchema = z.object({ reason: z.string().min(1).max(500) });

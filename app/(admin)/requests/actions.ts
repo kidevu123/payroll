@@ -39,7 +39,7 @@ export async function approveMissedPunchAction(
   if (!parsed.success) return { error: "Invalid input." };
   const before = await getMissedPunchRequest(requestId);
   if (!before) return { error: "Not found." };
-  await approveMissedPunchRequest(
+  const resolved = await approveMissedPunchRequest(
     requestId,
     parsed.data.resolutionNote ?? null,
     { id: session.user.id, role: session.user.role },
@@ -54,6 +54,12 @@ export async function approveMissedPunchAction(
         payload: { requestId, status: "APPROVED" },
       },
     ]);
+  }
+  revalidatePath(`/me/time/${before.date}`);
+  revalidatePath("/me/time");
+  revalidatePath(`/payroll/${before.periodId}`);
+  if (resolved.periodId !== before.periodId) {
+    revalidatePath(`/payroll/${resolved.periodId}`);
   }
   revalidatePath("/requests");
 }

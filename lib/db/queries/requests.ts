@@ -3,11 +3,13 @@
 // approveMissedPunchRequest is the moneyball: it creates the resulting
 // Punch, links the alert + request, all in one transaction with audit.
 
-import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   missedPunchAlerts,
   missedPunchRequests,
+  employees,
+  payPeriods,
   punches,
   timeOffRequests,
   type MissedPunchRequest,
@@ -86,6 +88,14 @@ export async function approveMissedPunchRequest(
   resolutionNote: string | null,
   actor: Actor,
 ): Promise<MissedPunchRequest> {
+  const { getSetting } = await import("@/lib/settings/runtime");
+  const company = await getSetting("company").catch(() => ({
+    timezone: "America/New_York",
+  }));
+  const dayFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: company.timezone,
+  });
+
   return db.transaction(async (tx) => {
     const [before] = await tx
       .select()
@@ -96,12 +106,55 @@ export async function approveMissedPunchRequest(
     if (!before.claimedClockIn) {
       throw new Error("approveMissedPunchRequest: request has no claimed clockIn");
     }
+    const claimedDay = dayFmt.format(before.claimedClockIn);
+    const [employee] = await tx
+      .select({ payScheduleId: employees.payScheduleId })
+      .from(employees)
+      .where(eq(employees.id, before.employeeId));
+    const [requestPeriod] = await tx
+      .select({
+        startDate: payPeriods.startDate,
+        endDate: payPeriods.endDate,
+      })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, before.periodId));
+    let periodId = before.periodId;
+    if (employee?.payScheduleId) {
+      const [matchingPeriod] = await tx
+        .select({ id: payPeriods.id })
+        .from(payPeriods)
+        .where(
+          and(
+            eq(payPeriods.payScheduleId, employee.payScheduleId),
+            lte(payPeriods.startDate, claimedDay),
+            gte(payPeriods.endDate, claimedDay),
+          ),
+        )
+        .limit(1);
+      periodId = matchingPeriod?.id ?? periodId;
+    } else if (
+      !requestPeriod ||
+      claimedDay < requestPeriod.startDate ||
+      claimedDay > requestPeriod.endDate
+    ) {
+      const [matchingPeriod] = await tx
+        .select({ id: payPeriods.id })
+        .from(payPeriods)
+        .where(
+          and(
+            lte(payPeriods.startDate, claimedDay),
+            gte(payPeriods.endDate, claimedDay),
+          ),
+        )
+        .limit(1);
+      periodId = matchingPeriod?.id ?? periodId;
+    }
     // Create the resulting punch.
     const [punch] = await tx
       .insert(punches)
       .values({
         employeeId: before.employeeId,
-        periodId: before.periodId,
+        periodId,
         clockIn: before.claimedClockIn,
         clockOut: before.claimedClockOut ?? null,
         source: "MISSED_PUNCH_APPROVED",
@@ -113,6 +166,7 @@ export async function approveMissedPunchRequest(
     const [row] = await tx
       .update(missedPunchRequests)
       .set({
+        periodId,
         status: "APPROVED",
         resolvedById: actor.id,
         resolvedAt: new Date(),
