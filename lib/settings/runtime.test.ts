@@ -16,14 +16,21 @@ const insertedRows: unknown[] = [];
 let storedRow: { value: unknown } | null = null;
 
 vi.mock("@/lib/db", () => {
+  const selectRows = () => (storedRow ? [storedRow] : []);
   // Drizzle's query builders are chainable; return self until terminal where().
   const selectBuilder = {
     from() {
       return this;
     },
     where() {
+      return this;
+    },
+    for() {
+      return Promise.resolve(selectRows());
+    },
+    then(resolve: (rows: typeof storedRow[]) => unknown) {
       // Drizzle returns an array-shaped result when awaited.
-      return Promise.resolve(storedRow ? [storedRow] : []);
+      return Promise.resolve(selectRows()).then(resolve);
     },
   };
   const insertBuilder = {
@@ -40,6 +47,11 @@ vi.mock("@/lib/db", () => {
     db: {
       select: () => selectBuilder,
       insert: () => insertBuilder,
+      transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          select: () => selectBuilder,
+          insert: () => insertBuilder,
+        }),
     },
     schema: {},
   };

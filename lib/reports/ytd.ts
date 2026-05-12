@@ -1,7 +1,7 @@
 // Year-to-date totals per employee. Reads from persisted Payslip rows
 // (only PUBLISHED runs land here) and groups by employeeId.
 
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lte, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payslips, payPeriods } from "@/lib/db/schema";
 
@@ -30,7 +30,13 @@ export async function getYtd(year: number): Promise<YtdRow[]> {
     })
     .from(payslips)
     .innerJoin(payPeriods, eq(payslips.periodId, payPeriods.id))
-    .where(and(gte(payPeriods.startDate, start), lte(payPeriods.startDate, end)));
+    .where(
+      and(
+        isNull(payslips.voidedAt),
+        gte(payPeriods.startDate, start),
+        lte(payPeriods.startDate, end),
+      ),
+    );
 
   const byEmp = new Map<string, YtdRow>();
   for (const r of rows) {

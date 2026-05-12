@@ -5,12 +5,13 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { tempWorkerEntries, taskPayLineItems } from "@/lib/db/schema";
+import { taskPayLineItems } from "@/lib/db/schema";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listShifts } from "@/lib/db/queries/shifts";
+import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
@@ -52,6 +53,18 @@ function tzTimeOfDay(d: Date, tz: string): string {
     else if (p.type === "second") s = p.value;
   }
   return `${h}:${m}:${s}`;
+}
+
+export function normalizePrintablePersonName(
+  value: string | null | undefined,
+): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/^temp[\s_-]*\d+[\s_-]*/i, "")
+    .replace(/^\d+[\s_-]*/, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 export type AdminReportArtifacts = {
@@ -98,22 +111,23 @@ export async function buildAdminReportArtifacts(
     periodSchedule?.periodKind ?? null,
   );
 
+  const employeeFilter = period.payScheduleId
+    ? { payScheduleId: period.payScheduleId }
+    : {};
   const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks] =
     await Promise.all([
-      // Match the publish handler — no status filter. Terminated/inactive
+      // Match the publish handler's exact schedule isolation, with no status
+      // filter. Terminated/inactive
       // employees who got a payslip on this period (mid-period termination)
       // should still appear on the printed admin report so the accountant
       // can sign for what was actually paid. The "no punches no tasks"
       // skip below naturally drops anyone irrelevant.
-      listEmployees(),
+      listEmployees(employeeFilter),
       listPunches({ periodId }),
       getSetting("payRules"),
       getSetting("company"),
       listShifts({ includeArchived: true }),
-      db
-        .select()
-        .from(tempWorkerEntries)
-        .where(eq(tempWorkerEntries.periodId, periodId)),
+      listTempWorkers({ periodId }),
       db
         .select()
         .from(taskPayLineItems)
@@ -177,6 +191,7 @@ export async function buildAdminReportArtifacts(
   };
   const reportEmployees: AdminReportInput["employees"] = [];
   const summaryRows: SummaryRow[] = [];
+  const printedEmployeeNames = new Set<string>();
 
   for (const e of allEmployees) {
     if (e.payType === "SALARIED") continue;
@@ -197,6 +212,14 @@ export async function buildAdminReportArtifacts(
       rules: {
         rounding: payRules.rounding,
         hoursDecimalPlaces: payRules.hoursDecimalPlaces,
+        ...(payRules.overtime.enabled
+          ? {
+              overtime: {
+                thresholdHours: payRules.overtime.thresholdHours,
+                multiplier: payRules.overtime.multiplier,
+              },
+            }
+          : {}),
       },
     });
     if (result.totalHours <= 0 && result.taskCents <= 0) continue;
@@ -255,6 +278,10 @@ export async function buildAdminReportArtifacts(
         amountCents: t.amountCents,
       })),
     });
+    for (const name of [e.displayName, e.legalName]) {
+      const normalized = normalizePrintablePersonName(name);
+      if (normalized) printedEmployeeNames.add(normalized);
+    }
     summaryRows.push({
       legacyId: reportLegacyId,
       displayName: e.displayName,
@@ -265,6 +292,10 @@ export async function buildAdminReportArtifacts(
   }
 
   for (const tw of tempWorkers) {
+    const normalizedTempName = normalizePrintablePersonName(tw.workerName);
+    if (normalizedTempName && printedEmployeeNames.has(normalizedTempName)) {
+      continue;
+    }
     const hours = tw.hours !== null ? Number(tw.hours) : 0;
     reportEmployees.push({
       displayName: tw.workerName,

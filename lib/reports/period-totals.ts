@@ -1,7 +1,7 @@
 // Per-period totals for the payroll-trends chart and the period-comparison
 // table. Reads payslips, groups by periodId, joins for date ordering.
 
-import { eq, gte, lte, and } from "drizzle-orm";
+import { eq, gte, lte, and, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payslips, payPeriods } from "@/lib/db/schema";
 
@@ -35,6 +35,7 @@ export async function getPeriodTotals(
     .innerJoin(payPeriods, eq(payslips.periodId, payPeriods.id))
     .where(
       and(
+        isNull(payslips.voidedAt),
         fromIso ? gte(payPeriods.startDate, fromIso) : undefined,
         toIso ? lte(payPeriods.startDate, toIso) : undefined,
       ),

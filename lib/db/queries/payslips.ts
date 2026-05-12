@@ -402,6 +402,7 @@ export async function recomputePayslip(
         grossPayCents: result.grossCents,
         roundedPayCents: result.roundedCents,
         taskPayCents: result.taskCents,
+        pdfPath: null,
         generatedAt: new Date(),
       })
       .where(eq(payslips.id, id))

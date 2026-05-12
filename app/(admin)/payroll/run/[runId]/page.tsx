@@ -20,11 +20,12 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
+import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
-import { taskPayLineItems, tempWorkerEntries } from "@/lib/db/schema";
-import { eq, isNull, and } from "drizzle-orm";
+import { taskPayLineItems } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { AlertTriangle } from "lucide-react";
 import { RunActions } from "./run-actions";
 
@@ -44,12 +45,11 @@ export default async function RunReviewPage({
   // listed every employee with punches in the period — including ones the
   // admin explicitly unchecked from the manual-CSV cohort, because their
   // pre-existing punches from a prior run still live in the period.
-  // Treat NULL-schedule employees as wildcards matching the run's schedule,
-  // mirroring the publish handler + period detail. Falls back to the
-  // period's schedule when the run itself has none.
+  // Strict schedule isolation mirrors the publish handler and period detail.
+  // Employees with no schedule need assignment before they appear on a run.
   const effectiveScheduleId = run.payScheduleId ?? period.payScheduleId ?? null;
   const employeeFilter = effectiveScheduleId
-    ? { payScheduleIdOrNull: effectiveScheduleId }
+    ? { payScheduleId: effectiveScheduleId }
     : {};
   const [allEmployees, punches, payRules, payPeriod, alerts, payslips, company, exceptions] = await Promise.all([
     listEmployees(employeeFilter),
@@ -74,15 +74,7 @@ export default async function RunReviewPage({
     .from(taskPayLineItems)
     .where(eq(taskPayLineItems.periodId, period.id));
 
-  const tempWorkers = await db
-    .select()
-    .from(tempWorkerEntries)
-    .where(eq(tempWorkerEntries.periodId, period.id))
-    .orderBy(tempWorkerEntries.workerName);
-  // Refs to keep the import surface honest; both eq + isNull stay imported
-  // in case future filtering needs them.
-  void isNull;
-  void and;
+  const tempWorkers = await listTempWorkers({ periodId: period.id });
 
   const punchesByE = new Map<string, typeof punches>();
   for (const p of punches) {
