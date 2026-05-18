@@ -133,7 +133,7 @@ export function LockButtons({
   // LOCKED — admin can mark paid (to record actual payment) or unlock to fix.
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <form
           action={async () => {
             setPending(true);
@@ -153,10 +153,10 @@ export function LockButtons({
             setPending(false);
             if (result?.error) setError(result.error);
           }}
-          className="flex flex-wrap items-end gap-2"
+          className="flex flex-wrap items-center gap-2"
         >
-          <label className="text-xs text-text-muted space-y-0.5">
-            <span className="block">Payment</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-muted whitespace-nowrap">Payment</span>
             <select
               value={paymentMethod}
               onChange={(e) =>
@@ -168,10 +168,10 @@ export function LockButtons({
               <option value="BANK">Paid through bank</option>
               <option value="CASH">Paid through cash</option>
             </select>
-          </label>
+          </div>
           {paymentMethod === "CASH" && (
-            <label className="text-xs text-text-muted space-y-0.5">
-              <span className="block">Cash withdrawn ($)</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-text-muted whitespace-nowrap">Cash ($)</span>
               <Input
                 type="number"
                 step="0.01"
@@ -179,9 +179,9 @@ export function LockButtons({
                 value={cashDollars}
                 onChange={(e) => setCashDollars(e.target.value)}
                 disabled={pending}
-                className="h-8 w-28 text-xs"
+                className="h-8 w-24 text-xs"
               />
-            </label>
+            </div>
           )}
           <Button
             type="submit"
@@ -204,7 +204,7 @@ export function LockButtons({
           </Button>
         )}
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-xs text-red-700">{error}</p>}
 
       {unlockOpen && (
         <form

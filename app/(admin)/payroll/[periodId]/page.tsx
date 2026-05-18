@@ -349,7 +349,7 @@ export default async function PeriodReviewPage({
       </div>
       <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-page/95 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0 shrink-0">
               <StatusPill status={period.state} />
               <SchedulePill name={headerSchedule?.name ?? null} />
               {!headerScheduleId && (
@@ -389,7 +389,7 @@ export default async function PeriodReviewPage({
                 )}
               </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {run?.pdfPath && (
               <Button asChild variant="secondary" size="sm">
                 <Link
