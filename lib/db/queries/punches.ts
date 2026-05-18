@@ -98,12 +98,14 @@ export async function createPunch(
 ): Promise<Punch> {
   return db.transaction(async (tx) => {
     await assertPeriodMutable(tx as unknown as typeof db, input.periodId);
-    // Period-boundary guard: reject NGTeco-imported punches whose times
-    // fall outside the assigned period (the importer can attach a punch
-    // to the wrong period if the device clock is off or a sync straddles
-    // a boundary). MANUAL_ADMIN punches are exempt — the admin navigated
-    // explicitly to this period via the time grid, so we trust the choice.
-    if (input.source !== "MANUAL_ADMIN") {
+    // Period-boundary guard: reject punches whose clock-in or clock-out
+    // falls outside the assigned period. This catches NGTeco-imported
+    // punches with a drifted device clock AND manual punches submitted
+    // via the wrong period URL (the punch editor bakes periodId into the
+    // URL; if the admin reached a date via a stale/wrong URL, the guard
+    // prevents the punch landing in the wrong period). Admin must
+    // navigate to the correct period using the time-grid week arrows.
+    {
       const { getSetting } = await import("@/lib/settings/runtime");
       const company = await getSetting("company");
       await assertPunchWithinPeriod(

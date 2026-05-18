@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { CalendarDays, Plus } from "lucide-react";
-import { and, desc, eq, lte, gte, sql } from "drizzle-orm";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -239,6 +239,45 @@ function nextWindowAfter(
   };
 }
 
+/**
+ * Given a period, return the IDs of the immediately preceding and following
+ * periods in the same pay schedule. Used to render prev/next nav arrows on
+ * the time grid. Returns nulls for synthetic (id="") periods or when no
+ * adjacent period exists.
+ */
+async function findAdjacentPeriods(
+  period: PeriodView,
+): Promise<{ prevId: string | null; nextId: string | null }> {
+  if (!period.id) return { prevId: null, nextId: null };
+  const schedFilter = period.payScheduleId
+    ? eq(payPeriods.payScheduleId, period.payScheduleId)
+    : undefined;
+
+  const [prevRow] = await db
+    .select({ id: payPeriods.id })
+    .from(payPeriods)
+    .where(
+      schedFilter
+        ? and(schedFilter, lt(payPeriods.startDate, period.startDate))
+        : lt(payPeriods.startDate, period.startDate),
+    )
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+
+  const [nextRow] = await db
+    .select({ id: payPeriods.id })
+    .from(payPeriods)
+    .where(
+      schedFilter
+        ? and(schedFilter, gt(payPeriods.startDate, period.endDate))
+        : gt(payPeriods.startDate, period.endDate),
+    )
+    .orderBy(asc(payPeriods.startDate))
+    .limit(1);
+
+  return { prevId: prevRow?.id ?? null, nextId: nextRow?.id ?? null };
+}
+
 type CellState =
   | "complete"
   | "incomplete"
@@ -307,18 +346,42 @@ function timeOffLabel(state: CellState): string {
 export default async function TimePage({
   searchParams,
 }: {
-  searchParams: Promise<{ schedule?: string }>;
+  searchParams: Promise<{ schedule?: string; period?: string }>;
 }) {
   const company = await getSetting("company");
   const today = todayInTimezone(company.timezone);
-  const tab = parseScheduleTab((await searchParams).schedule);
+  const sp = await searchParams;
+  const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
 
-  // Read-only — auto-create disabled. Period creation now belongs to
-  // the CSV upload + manual punch flows. Tab-aware: when filtering by
-  // weekly / semi-monthly, pick the most recent period whose schedule
-  // matches the tab. Defaults to the schedule-agnostic latest period.
-  const period = await pickPeriodForTab(kindFilter, today);
+  // If a specific period ID is in the URL (?period=UUID), load it directly
+  // so the admin can navigate to past/future weeks via the prev/next arrows.
+  // Otherwise fall back to auto-selecting the current period for the tab.
+  let period: PeriodView | null = null;
+  if (sp.period) {
+    const [row] = await db
+      .select({
+        id: payPeriods.id,
+        startDate: payPeriods.startDate,
+        endDate: payPeriods.endDate,
+        payScheduleId: payPeriods.payScheduleId,
+        state: payPeriods.state,
+      })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, sp.period));
+    if (row) {
+      period = {
+        id: row.id,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        payScheduleId: row.payScheduleId,
+        state: row.state as "OPEN" | "LOCKED" | "PAID",
+      };
+    }
+  }
+  if (!period) {
+    period = await pickPeriodForTab(kindFilter, today);
+  }
 
   if (!period) {
     return (
@@ -350,7 +413,7 @@ export default async function TimePage({
   const lastDay =
     period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
   const days = eachDay(period.startDate, lastDay);
-  const [allActive, punches, approvedTimeOff] = await Promise.all([
+  const [allActive, punches, approvedTimeOff, adjacent] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
     // "All" tab: query by clockIn date range so punches from every
     // schedule's period in this window appear. Without this, an
@@ -375,6 +438,7 @@ export default async function TimePage({
     // away she was off". So the cell shows the time-off type instead
     // of a missed-punch red.
     listApprovedInRange(period.startDate, lastDay),
+    findAdjacentPeriods(period),
   ]);
   // Build employeeId+date → time-off-type map for O(1) cell lookup.
   // SCHEDULE_NOTE is a heads-up, not actual time off — skip those so
@@ -476,16 +540,45 @@ export default async function TimePage({
               {stateBadge.label}
             </span>
           </div>
-          <p className="text-sm text-text-muted font-medium tabular-nums">
-            {period.startDate}
-            <span className="mx-1.5 text-text-subtle">&rarr;</span>
-            {lastDay}
-            {period.state === "UPCOMING" && (
-              <span className="ml-2.5 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
-                live · punches will land here
+          {/* Period date range with prev/next navigation */}
+          <div className="flex items-center gap-1">
+            {adjacent.prevId ? (
+              <Link
+                href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.prevId })}`}
+                className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                aria-label="Previous period"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Link>
+            ) : (
+              <span className="h-6 w-6 inline-flex items-center justify-center text-text-subtle/20">
+                <ChevronLeft className="h-3.5 w-3.5" />
               </span>
             )}
-          </p>
+            <span className="text-sm text-text-muted font-medium tabular-nums px-0.5">
+              {period.startDate}
+              <span className="mx-1.5 text-text-subtle">&rarr;</span>
+              {lastDay}
+              {period.state === "UPCOMING" && (
+                <span className="ml-2.5 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
+                  live · punches will land here
+                </span>
+              )}
+            </span>
+            {adjacent.nextId ? (
+              <Link
+                href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.nextId })}`}
+                className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                aria-label="Next period"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            ) : (
+              <span className="h-6 w-6 inline-flex items-center justify-center text-text-subtle/20">
+                <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </div>
           <ScheduleTabs current={tab} basePath="/time" />
         </div>
 
