@@ -165,6 +165,12 @@ function sumGroupTotal(g: GroupedReport): number {
   return total + g.tempLaborCents;
 }
 
+function sumGroupGross(g: GroupedReport): number {
+  let total = 0;
+  for (const r of g.runs) total += r.grossPayCents;
+  return total + g.tempLaborCents;
+}
+
 export function ReportsTable({
   reports,
   zohoOrgs,
@@ -352,6 +358,7 @@ function PeriodGroup({
 }) {
   const accent = scheduleAccent(group.scheduleName);
   const periodTotal = sumGroupTotal(group);
+  const periodGross = sumGroupGross(group);
   const canonicalEnd = canonicalEndForScheduleName(
     group.periodStart,
     group.periodEnd,
@@ -435,14 +442,21 @@ function PeriodGroup({
               <Banknote className="h-3.5 w-3.5" /> Pay from drawer
             </Button>
           )}
-          <span className="font-mono tabular-nums font-semibold text-text">
-            <MoneyDisplay cents={periodTotal} />
-          </span>
-          {group.tempLaborCents > 0 && (
-            <span className="text-[10px] text-text-muted">
-              incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
+          <div className="flex flex-col items-end gap-0">
+            <span className="font-mono tabular-nums font-semibold text-text">
+              <MoneyDisplay cents={periodTotal} />
             </span>
-          )}
+            {periodGross > 0 && periodGross !== periodTotal && (
+              <span className="text-[10px] text-text-muted tabular-nums font-mono">
+                gross <MoneyDisplay cents={periodGross} monospace={false} />
+              </span>
+            )}
+            {group.tempLaborCents > 0 && (
+              <span className="text-[10px] text-text-muted">
+                incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

@@ -76,6 +76,8 @@ export type ReportRow = {
   scheduleName: string | null;
   /** Run amount (payslips or stamped totalAmountCents). Excludes temp labor. */
   amountCents: number;
+  /** Sum of gross_pay_cents for this run's payslips. Zero for runs without payslips. */
+  grossPayCents: number;
   /** Sum of (non-deleted) temp_worker_entries for the period. Same value for
    *  every run sharing a period; UI is responsible for displaying once. */
   tempLaborCents: number;
@@ -114,6 +116,12 @@ export async function listReports(
       totalAmount: payrollRuns.totalAmountCents,
       payslipSum: sql<number>`COALESCE((
         SELECT SUM(${payslips.roundedPayCents})::int
+        FROM ${payslips}
+        WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
+          AND ${payslips.voidedAt} IS NULL
+      ), 0)`,
+      grossPaySum: sql<number>`COALESCE((
+        SELECT SUM(${payslips.grossPayCents})::int
         FROM ${payslips}
         WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
           AND ${payslips.voidedAt} IS NULL
@@ -204,6 +212,7 @@ export async function listReports(
     // there are no payslips on the run (e.g. cohort-empty shells).
     amountCents:
       r.payslipSum > 0 ? r.payslipSum : r.totalAmount ?? 0,
+    grossPayCents: r.grossPaySum ?? 0,
     tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,
     createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
     postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
