@@ -351,13 +351,24 @@ export default async function TimePage({
   const days = eachDay(period.startDate, lastDay);
   const [allActive, punches, approvedTimeOff] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
-    // Synthetic forward-rolled period (period.id === "") has no real
-    // payPeriods row yet — fetch every active punch and filter by date
-    // range below. The period row gets created lazily by the punch
-    // importer when the first real punch lands.
-    period.id
-      ? listPunches({ periodId: period.id })
-      : listPunches({}),
+    // "All" tab: query by clockIn date range so punches from every
+    // schedule's period in this window appear. Without this, an
+    // unscheduled period could be picked by pickPeriodForTab(null)
+    // while actual punches live under a different (scheduled) period,
+    // making the whole grid show dashes.
+    //
+    // Specific tab (Weekly / Semi-monthly): filter by the picked
+    // period's ID so only that schedule's punches appear. Synthetic
+    // forward-rolled period (period.id === "") has no real row yet —
+    // load all punches and filter by date below.
+    kindFilter
+      ? (period.id
+          ? listPunches({ periodId: period.id })
+          : listPunches({}))
+      : listPunches({
+          clockAfter: new Date(`${period.startDate}T00:00:00Z`),
+          clockBefore: new Date(`${lastDay}T23:59:59Z`),
+        }),
     // Approved time-off intersecting the displayed grid window. Owner
     // ask: "if I'm looking at Elvia's time it would help to know right
     // away she was off". So the cell shows the time-off type instead
@@ -382,9 +393,12 @@ export default async function TimePage({
       timeOffByDay.set(`${r.employeeId}|${dayIso}`, r.type);
     }
   }
+  // "All" tab punches are already filtered by date range in the query.
+  // Specific tabs: if the period is real (has an ID), all its punches
+  // are valid; synthetic periods need a client-side date filter.
   const startEpoch = new Date(`${period.startDate}T00:00:00Z`).getTime();
   const endEpoch = new Date(`${period.endDate}T23:59:59Z`).getTime();
-  const punchesInRange = period.id
+  const punchesInRange = (!kindFilter || period.id)
     ? punches
     : punches.filter((p) => {
         const t = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);

@@ -86,7 +86,7 @@ export function PunchEditor({
       )}
       {periodLocked && (
         <p className="text-sm text-text-muted">
-          Period is locked. Unlock from Payroll to make changes.
+          Period is paid. Unmark paid from Payroll to make changes.
         </p>
       )}
     </div>

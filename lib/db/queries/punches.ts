@@ -1,7 +1,7 @@
 // Punch queries. Edit preserves originalClockIn/Out and demands a reason.
 // voidPunch is the soft-delete (sets voidedAt; never DELETEs).
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payPeriods, punches, type Punch, type NewPunch } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
@@ -62,6 +62,11 @@ export type ListPunchesFilters = {
   periodId?: string;
   employeeId?: string;
   includeVoided?: boolean;
+  /** Inclusive lower bound on clockIn (UTC). Used by the "All" tab to
+   *  collect punches across all periods in a date range. */
+  clockAfter?: Date;
+  /** Inclusive upper bound on clockIn (UTC). */
+  clockBefore?: Date;
 };
 
 export async function listPunches(
@@ -72,6 +77,8 @@ export async function listPunches(
   if (filters.employeeId)
     conds.push(eq(punches.employeeId, filters.employeeId));
   if (!filters.includeVoided) conds.push(isNull(punches.voidedAt));
+  if (filters.clockAfter) conds.push(gte(punches.clockIn, filters.clockAfter));
+  if (filters.clockBefore) conds.push(lte(punches.clockIn, filters.clockBefore));
   const q = db.select().from(punches);
   const rows =
     conds.length > 0 ? await q.where(and(...conds)) : await q;

@@ -622,7 +622,7 @@ export default async function PeriodReviewPage({
                           )}
                         </span>
                       </summary>
-                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} />
+                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={period.state !== "PAID"} />
                     </details>
                   );
                 })}
@@ -753,11 +753,17 @@ function PunchSubTable({
   tz,
   formatHm,
   formatDayLabel,
+  periodId,
+  employeeId,
+  canEdit,
 }: {
   punches: { id: string; clockIn: Date | string; clockOut: Date | string | null }[];
   tz: string;
   formatHm: (d: Date | null, tz: string) => string;
   formatDayLabel: (dateIso: string, tz: string) => string;
+  periodId: string;
+  employeeId: string;
+  canEdit: boolean;
 }) {
   if (punches.length === 0) {
     return <div className="px-9 pb-3 text-xs text-text-muted">No punches.</div>;
@@ -800,13 +806,25 @@ function PunchSubTable({
                 const hours = outT
                   ? (outT.getTime() - inT.getTime()) / 3_600_000
                   : null;
+                const isMissingClockOut = !outT;
                 return (
                   <tr key={p.id} className="hover:bg-surface-2/30">
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0 ? formatDayLabel(day, tz) : ""}
                     </td>
                     <td className="py-0.5 px-3 font-mono">{formatHm(inT, tz)}</td>
-                    <td className="py-0.5 px-3 font-mono">{formatHm(outT, tz)}</td>
+                    <td className="py-0.5 px-3 font-mono">
+                      {isMissingClockOut && canEdit ? (
+                        <Link
+                          href={`/time/${periodId}/${day}/${employeeId}`}
+                          className="text-amber-700 underline underline-offset-2 hover:text-amber-900"
+                        >
+                          missing — fix
+                        </Link>
+                      ) : (
+                        formatHm(outT, tz)
+                      )}
+                    </td>
                     <td className="py-0.5 px-3 text-right font-mono tabular-nums">
                       {hours !== null ? hours.toFixed(2) : "—"}
                     </td>

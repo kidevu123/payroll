@@ -66,7 +66,7 @@ export default async function PunchEditorPage({
         punches={punches}
         suggestedClockIn={suggestedClockIn}
         suggestedClockOut={suggestedClockOut}
-        periodLocked={period.state !== "OPEN"}
+        periodLocked={period.state === "PAID"}
       />
     </div>
   );
