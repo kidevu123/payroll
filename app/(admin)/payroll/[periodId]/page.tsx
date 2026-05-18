@@ -622,7 +622,7 @@ export default async function PeriodReviewPage({
                           )}
                         </span>
                       </summary>
-                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={period.state !== "PAID"} />
+                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={period.state !== "PAID"} today={new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date())} />
                     </details>
                   );
                 })}
@@ -756,6 +756,7 @@ function PunchSubTable({
   periodId,
   employeeId,
   canEdit,
+  today,
 }: {
   punches: { id: string; clockIn: Date | string; clockOut: Date | string | null }[];
   tz: string;
@@ -764,6 +765,7 @@ function PunchSubTable({
   periodId: string;
   employeeId: string;
   canEdit: boolean;
+  today: string;
 }) {
   if (punches.length === 0) {
     return <div className="px-9 pb-3 text-xs text-text-muted">No punches.</div>;
@@ -807,6 +809,12 @@ function PunchSubTable({
                   ? (outT.getTime() - inT.getTime()) / 3_600_000
                   : null;
                 const isMissingClockOut = !outT;
+                // Distinguish "still working today" from "forgot to clock out
+                // on a prior day" — only show the fix link for stale open
+                // punches. A punch from today with no clock-out is in-progress
+                // (the device hasn't synced the clock-out yet).
+                const isInProgress = isMissingClockOut && day >= today;
+                const isStaleOpen = isMissingClockOut && day < today;
                 return (
                   <tr key={p.id} className="hover:bg-surface-2/30">
                     <td className="py-0.5 pr-3 text-text-muted">
@@ -814,7 +822,9 @@ function PunchSubTable({
                     </td>
                     <td className="py-0.5 px-3 font-mono">{formatHm(inT, tz)}</td>
                     <td className="py-0.5 px-3 font-mono">
-                      {isMissingClockOut && canEdit ? (
+                      {isInProgress ? (
+                        <span className="text-brand-700 font-medium">open</span>
+                      ) : isStaleOpen && canEdit ? (
                         <Link
                           href={`/time/${periodId}/${day}/${employeeId}`}
                           className="text-amber-700 underline underline-offset-2 hover:text-amber-900"
