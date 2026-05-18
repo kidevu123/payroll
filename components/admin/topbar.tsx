@@ -134,11 +134,12 @@ export function Topbar({
           // dropdown was the visible symptom. Lifting the whole
           // topbar to z-50 keeps every popover anchored from it
           // above page content regardless of route.
-          "relative z-50 h-14 border-b border-border/60 bg-surface/95 backdrop-blur",
+          "relative z-50 h-14 border-b border-border/50 bg-surface/95 backdrop-blur-md",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
-          "shadow-[0_1px_0_0_rgb(15_23_42_/_0.02)]",
-          "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-[2px]",
-          "before:bg-gradient-to-r before:from-brand-500/0 before:via-brand-500/70 before:to-purple-500/0",
+          "shadow-[0_1px_0_0_rgb(15_23_42_/_0.03),0_2px_6px_-2px_rgb(15_23_42_/_0.04)]",
+          // 3px brand bar — more saturated than before, brand-600 center peak
+          "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-[3px]",
+          "before:bg-gradient-to-r before:from-brand-400/0 before:via-brand-600/90 before:to-brand-400/0",
         )}
       >
         <MobileNav company={company} />
@@ -165,10 +166,11 @@ export function Topbar({
             className={cn(
               // Refined search trigger: hairline border that brightens on
               // hover, subtle inner highlight, brand-tinted focus ring.
-              "inline-flex items-center gap-2.5 h-9 w-full max-w-md px-3 rounded-lg",
-              "border border-border/70 bg-surface shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.4),0_1px_2px_0_rgb(15_23_42_/_0.03)]",
-              "text-[13px] text-text-muted",
-              "hover:bg-surface-2/50 hover:border-border-strong/70 hover:text-text transition-colors",
+              "inline-flex items-center gap-2.5 h-8 w-full max-w-sm px-3 rounded-full",
+              "border border-border/80 bg-surface-2/50",
+              "shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.8),0_1px_3px_0_rgb(15_23_42_/_0.05)]",
+              "text-[12.5px] text-text-muted font-medium tracking-tight",
+              "hover:bg-surface hover:border-border-strong/60 hover:text-text transition-all duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
             )}
             aria-label={tNav("openCommandPalette")}
@@ -226,7 +228,7 @@ export function Topbar({
             >
               <span
                 aria-hidden
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-700 text-brand-fg text-[11px] font-semibold tracking-tight"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-[11px] font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3px_rgb(15_118_110_/_0.3)]"
               >
                 {initials}
               </span>
@@ -249,7 +251,7 @@ export function Topbar({
                 <div className="px-4 py-3 border-b border-border/70 flex items-center gap-3">
                   <span
                     aria-hidden
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-700 text-brand-fg text-xs font-semibold tracking-tight"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-xs font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3.5px_rgb(15_118_110_/_0.3)]"
                   >
                     {initials}
                   </span>

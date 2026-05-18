@@ -107,23 +107,24 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        // Soft right divider via a tinted border (color-mix style) instead
-        // of a hard solid line — premium SaaS sidebars rarely use a
-        // visible 1px border. Slight inset shadow keeps separation.
-        "hidden lg:flex w-64 shrink-0 flex-col bg-surface/95 backdrop-blur",
-        "border-r border-border/60 sticky top-0 h-dvh",
-        "shadow-[1px_0_0_0_rgb(15_23_42_/_0.02),inset_-1px_0_0_0_rgb(15_23_42_/_0.01)]",
+        "hidden lg:flex w-64 shrink-0 flex-col sticky top-0 h-dvh",
+        "bg-surface backdrop-blur-sm",
+        // Layered right-edge treatment: subtle shadow + hairline border
+        "border-r border-border/50",
+        "shadow-[2px_0_8px_-2px_rgb(15_23_42_/_0.06),1px_0_0_0_rgb(15_23_42_/_0.03)]",
       )}
     >
-      {/* Wordmark slot. The uploaded logo IS the "milo" wordmark, so no
-          text label — showName={false} suppresses the duplicate.
-          Subtle brand-tinted gradient at the top of the rail provides
-          color without competing with content (Vercel / Linear pattern).
-          min-h guard against the invisible-logo bug. */}
-      <div className="relative px-5 pt-5 pb-5 shrink-0 min-h-[56px] flex items-center">
+      {/* Wordmark area — deep brand gradient creates a strong visual anchor
+          at the top of the rail. Taller than before so the logo has room to breathe. */}
+      <div className="relative px-5 pt-6 pb-5 shrink-0 min-h-[68px] flex items-center overflow-hidden">
+        {/* Layered brand gradients: saturated wash + soft radial bloom */}
         <span
           aria-hidden
-          className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand-50/60 via-brand-50/20 to-transparent pointer-events-none"
+          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-100/70 via-brand-50/30 to-transparent pointer-events-none"
+        />
+        <span
+          aria-hidden
+          className="absolute -left-4 -top-4 h-24 w-32 rounded-full bg-brand-400/10 blur-2xl pointer-events-none"
         />
         <Wordmark
           name="Milo"
@@ -134,11 +135,16 @@ export function Sidebar({
         />
       </div>
 
-      <nav className="flex-1 px-3 space-y-5 overflow-y-auto pb-4">
+      <nav className="flex-1 px-3 space-y-6 overflow-y-auto pb-4">
         {sections.map((sec) => (
           <div key={sec.headingKey}>
-            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-subtle/80">
-              {tNav(sec.headingKey)}
+            {/* Section heading: uppercase label flanked by hairline rules */}
+            <div className="flex items-center gap-2 px-2 mb-2">
+              <span className="flex-1 h-px bg-border/60" />
+              <span className="text-[9.5px] font-bold uppercase tracking-[0.11em] text-text-subtle/70 shrink-0">
+                {tNav(sec.headingKey)}
+              </span>
+              <span className="flex-1 h-px bg-border/60" />
             </div>
             <ul className="space-y-0.5">
               {sec.items.map(({ href, labelKey, icon: Icon }) => (
@@ -155,13 +161,11 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="relative px-3 pb-3 pt-3 border-t border-border/50 shrink-0 space-y-1">
-        {/* Soft brand gradient pinned at the bottom edge — mirrors the
-            top-bar's colored accent line so the chrome feels consistent
-            and a little less monochrome. */}
+      <div className="relative px-3 pb-4 pt-3 shrink-0 space-y-1">
+        {/* Top hairline separator with brand-tinted center peak */}
         <span
           aria-hidden
-          className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-brand-500/0 via-brand-500/60 to-purple-500/0 pointer-events-none"
+          className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border to-transparent pointer-events-none"
         />
         {settingsAllowed && (
           <SidebarItem
@@ -172,6 +176,11 @@ export function Sidebar({
           />
         )}
         <SystemStatus healthy={systemHealthy} />
+        {/* Bottom brand accent bar */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r from-brand-400/0 via-brand-500/80 to-brand-400/0 pointer-events-none"
+        />
       </div>
     </aside>
   );
@@ -194,20 +203,22 @@ function SidebarItem({
         href={href}
         aria-current={active ? "page" : undefined}
         className={cn(
-          // Premium item base: tighter type, refined radius + spacing.
-          "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium tracking-tight transition-colors",
+          "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-semibold tracking-tight transition-all duration-150",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
           active
-            ? // Active: desaturated brand tint + crisp left bar + brand icon.
-              // Inner highlight gives the surface a "pressed in" feel.
-              "bg-brand-50/70 text-brand-900 shadow-[inset_0_0_0_1px_rgb(15_118_110_/_0.08)]"
-            : "text-text-muted hover:bg-surface-2/70 hover:text-text",
+            ? // Active: richer brand fill with layered inner highlight + stronger left bar
+              [
+                "bg-gradient-to-r from-brand-50 to-brand-50/60 text-brand-900",
+                "shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.7),inset_0_0_0_1px_rgb(15_118_110_/_0.12),0_1px_2px_0_rgb(15_118_110_/_0.06)]",
+              ]
+            : "text-text-muted hover:bg-surface-2/80 hover:text-text hover:shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]",
         )}
       >
+        {/* Active left bar — 3px, taller than before, sharp brand-700 */}
         {active ? (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-brand-700"
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-brand-700 shadow-[0_0_6px_0_rgb(15_118_110_/_0.4)]"
           />
         ) : null}
         <Icon
@@ -215,10 +226,10 @@ function SidebarItem({
             "h-[18px] w-[18px] shrink-0 transition-colors",
             active
               ? "text-brand-700"
-              : "text-text-subtle group-hover:text-text",
+              : "text-text-subtle/80 group-hover:text-text-muted",
           )}
           aria-hidden
-          strokeWidth={1.75}
+          strokeWidth={active ? 2 : 1.75}
         />
         <span className="truncate">{label}</span>
       </Link>

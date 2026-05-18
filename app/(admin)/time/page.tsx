@@ -252,24 +252,24 @@ type CellState =
 function cellClasses(state: CellState): string {
   switch (state) {
     case "complete":
-      return "bg-emerald-50 text-emerald-800 border-emerald-200";
+      // Rich green with subtle inner highlight — conveys "all good"
+      return "bg-emerald-50 text-emerald-800 border-emerald-200/80 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.7)]";
     case "incomplete":
-      return "bg-amber-50 text-amber-800 border-amber-200";
+      // Warm amber — draws attention without alarming
+      return "bg-amber-50 text-amber-800 border-amber-200/80 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.6)]";
     case "missed":
-      return "bg-red-50 text-red-700 border-red-200";
+      // Soft red — readable, not garish
+      return "bg-red-50/80 text-red-600 border-red-200/70 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]";
     case "inactive":
-      return "bg-surface-2 text-text-muted border-border";
-    // Time-off cells reuse the calendar's color language so admin can
-    // recognize "Elvia is off today" instantly. Approved-only — pending
-    // requests still render as the default state until admin resolves.
+      return "bg-surface-2/60 text-text-subtle border-border/60";
     case "pto":
-      return "bg-emerald-100 text-emerald-900 border-emerald-300";
+      return "bg-emerald-100/80 text-emerald-900 border-emerald-300/80 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]";
     case "sick":
-      return "bg-amber-100 text-amber-900 border-amber-300";
+      return "bg-amber-100/80 text-amber-900 border-amber-300/80 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]";
     case "unpaid":
-      return "bg-surface-2 text-text-muted border-border-strong";
+      return "bg-surface-2 text-text-muted border-border-strong/70";
     case "other":
-      return "bg-purple-100 text-purple-900 border-purple-300";
+      return "bg-purple-100/80 text-purple-900 border-purple-300/80 shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]";
   }
 }
 
@@ -449,38 +449,56 @@ export default async function TimePage({
     }
   }
 
+  const stateBadge = (() => {
+    switch (period.state) {
+      case "UPCOMING":
+        return { label: "Upcoming", cls: "bg-brand-50 text-brand-700 border-brand-200/80" };
+      case "LOCKED":
+        return { label: "Locked", cls: "bg-warn-50 text-warn-700 border-warn-200/80" };
+      case "PAID":
+        return { label: "Paid", cls: "bg-success-50 text-success-700 border-success-200/80" };
+      default:
+        return { label: "Open", cls: "bg-emerald-50 text-emerald-700 border-emerald-200/80" };
+    }
+  })();
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold">Time</h1>
-          <p className="text-sm text-text-muted">
-            {period.state === "UPCOMING"
-              ? "Upcoming week"
-              : period.state === "LOCKED"
-                ? "Locked period"
-                : period.state === "PAID"
-                  ? "Paid period"
-                  : "Current period"}
-            : {period.startDate} to {lastDay}
+    <div className="space-y-5">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-heading font-bold tracking-tight">Time</h1>
+            <span
+              className={`inline-flex items-center rounded-chip border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${stateBadge.cls}`}
+            >
+              {stateBadge.label}
+            </span>
+          </div>
+          <p className="text-sm text-text-muted font-medium tabular-nums">
+            {period.startDate}
+            <span className="mx-1.5 text-text-subtle">&rarr;</span>
+            {lastDay}
             {period.state === "UPCOMING" && (
-              <span className="ml-2 text-[11px] uppercase tracking-wider text-brand-700">
+              <span className="ml-2.5 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
                 live · punches will land here
               </span>
             )}
           </p>
           <ScheduleTabs current={tab} basePath="/time" />
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-col items-end gap-2.5 shrink-0">
           <Button asChild size="sm" variant="secondary">
             <Link href="/punches/new">
-              <Plus className="h-4 w-4" /> Add manual punch
+              <Plus className="h-3.5 w-3.5" /> Add manual punch
             </Link>
           </Button>
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2 text-xs">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />
             <Legend label="Missed" state="missed" />
+            <Legend label="Time off" state="pto" />
           </div>
         </div>
       </div>
@@ -490,26 +508,48 @@ export default async function TimePage({
       )}
 
       <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
-        <table className="min-w-full text-xs">
-          <thead className="sticky top-0 bg-surface-2/80 backdrop-blur text-text-subtle uppercase text-[10px] tracking-wider">
-            <tr>
-              <th className="text-left px-3 py-2.5 font-medium">Employee</th>
-              {days.map((d) => (
-                <th key={d} className="px-2 py-2.5 font-medium font-mono tabular-nums">
-                  {new Intl.DateTimeFormat("en-US", {
-                    weekday: "short",
-                    month: "numeric",
-                    day: "numeric",
-                  }).format(new Date(`${d}T00:00:00Z`))}
-                </th>
-              ))}
+        <table className="min-w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-border bg-surface-2/70">
+              <th className="sticky left-0 z-10 bg-surface-2/90 text-left px-4 py-3 text-[11px] font-semibold text-text-subtle uppercase tracking-wider whitespace-nowrap">
+                Employee
+              </th>
+              {days.map((d) => {
+                const isToday = d === today;
+                return (
+                  <th
+                    key={d}
+                    className={`px-1.5 py-3 text-center text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap ${isToday ? "text-brand-700" : "text-text-subtle"}`}
+                  >
+                    <span className="flex flex-col items-center gap-0.5">
+                      <span>
+                        {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
+                          new Date(`${d}T00:00:00Z`),
+                        )}
+                      </span>
+                      <span className={`font-mono tabular-nums text-[10px] ${isToday ? "font-bold" : "font-medium opacity-70"}`}>
+                        {new Intl.DateTimeFormat("en-US", {
+                          month: "numeric",
+                          day: "numeric",
+                        }).format(new Date(`${d}T00:00:00Z`))}
+                      </span>
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {employees.map((e) => (
-              <tr key={e.id} className="border-t border-border hover:bg-surface-2/40 transition-colors">
-                <td className="px-3 py-2 font-medium">{e.displayName}</td>
+            {employees.map((e, rowIdx) => (
+              <tr
+                key={e.id}
+                className={`border-t border-border/60 transition-colors hover:bg-brand-50/30 ${rowIdx % 2 === 0 ? "" : "bg-surface-2/20"}`}
+              >
+                <td className="sticky left-0 z-10 bg-surface px-4 py-2 font-semibold text-[12px] text-text whitespace-nowrap border-r border-border/40">
+                  {e.displayName}
+                </td>
                 {days.map((d) => {
+                  const isToday = d === today;
                   const list = grid.get(e.id)?.get(d) ?? [];
                   const offType = timeOffByDay.get(`${e.id}|${d}`);
                   let state: CellState;
@@ -545,7 +585,9 @@ export default async function TimePage({
                   // Render a non-interactive cell instead. The first
                   // punch that lands creates the real period row.
                   const cellInner = (
-                    <span className={`flex flex-col items-stretch justify-center rounded-chip border px-2 py-1 min-h-9 w-full text-[10px] leading-tight ${cellClasses(state)}${period.id ? " hover:brightness-95" : ""}`}>
+                    <span
+                      className={`flex flex-col items-stretch justify-center rounded-input border px-2 py-1.5 min-h-10 w-full leading-tight transition-all ${cellClasses(state)}${period.id && state !== "inactive" ? " hover:brightness-95 hover:shadow-[inset_0_1px_2px_0_rgb(0_0_0_/_0.04)]" : ""}${isToday ? " ring-1 ring-brand-400/40 ring-offset-0" : ""}`}
+                    >
                       <PunchCellContent
                         state={state}
                         first={first}
@@ -557,7 +599,7 @@ export default async function TimePage({
                     </span>
                   );
                   return (
-                    <td key={d} className="p-1 align-middle">
+                    <td key={d} className={`p-1 align-middle ${isToday ? "bg-brand-50/20" : ""}`}>
                       {period.id ? (
                         <Link
                           href={`/time/${period.id}/${d}/${e.id}`}
@@ -585,8 +627,11 @@ export default async function TimePage({
 
 function Legend({ label, state }: { label: string; state: CellState }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 ${cellClasses(state)}`}>
-      <span className="h-2 w-2 rounded-full bg-current opacity-60" /> {label}
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-chip border px-2.5 py-0.5 text-[10px] font-semibold ${cellClasses(state)}`}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70 shrink-0" />
+      {label}
     </span>
   );
 }
@@ -619,26 +664,32 @@ function PunchCellContent({
     state === "other"
   ) {
     return (
-      <span className="text-center font-medium tracking-wide text-[10px] uppercase">
+      <span className="text-center font-semibold tracking-wide text-[10px] uppercase">
         {timeOffLabel(state)}
       </span>
     );
   }
   if (state === "inactive" || !first) {
     return (
-      <span className="font-mono tabular-nums text-center opacity-70">—</span>
+      <span className="font-mono tabular-nums text-center text-[11px] opacity-50">
+        &mdash;
+      </span>
     );
   }
   const inLabel = formatTimeShort(first.clockIn, tz);
-  const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "?";
+  const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "open";
   return (
     <>
-      <span className="font-mono tabular-nums text-center">
-        {inLabel}–{outLabel}
-        {count > 1 ? <span className="ml-1 opacity-70">+{count - 1}</span> : null}
+      <span className="font-mono tabular-nums text-center text-[10px] font-medium">
+        {inLabel}
+        <span className="opacity-50 mx-0.5">&ndash;</span>
+        {outLabel}
+        {count > 1 ? (
+          <span className="ml-1 text-[9px] opacity-60">+{count - 1}</span>
+        ) : null}
       </span>
-      <span className="text-center opacity-75">
-        {state === "incomplete" ? "open" : formatHoursMinutes(hours)}
+      <span className="text-center text-[9.5px] font-semibold opacity-70 mt-0.5">
+        {state === "incomplete" ? "in progress" : formatHoursMinutes(hours)}
       </span>
     </>
   );
