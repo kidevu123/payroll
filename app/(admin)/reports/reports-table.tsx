@@ -130,6 +130,7 @@ type GroupedReport = {
   periodEnd: string;
   scheduleName: string | null;
   tempLaborCents: number;
+  docNetPayCents: number;
   runs: ReportRow[];
 };
 
@@ -150,6 +151,7 @@ function groupByPeriod(reports: ReportRow[]): GroupedReport[] {
         periodEnd: r.endDate,
         scheduleName: r.scheduleName,
         tempLaborCents: r.tempLaborCents,
+        docNetPayCents: r.docNetPayCents,
         runs: [],
       });
     }
@@ -449,6 +451,11 @@ function PeriodGroup({
             {periodGross > 0 && periodGross !== periodTotal && (
               <span className="text-[10px] text-text-muted tabular-nums font-mono">
                 gross <MoneyDisplay cents={periodGross} monospace={false} />
+              </span>
+            )}
+            {group.docNetPayCents > 0 && (
+              <span className="text-[10px] text-emerald-700 tabular-nums font-mono">
+                +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
               </span>
             )}
             {group.tempLaborCents > 0 && (

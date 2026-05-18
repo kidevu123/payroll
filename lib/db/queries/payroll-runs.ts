@@ -6,13 +6,14 @@
 // AWAITING_ADMIN_REVIEW) → APPROVED → PUBLISHED, plus terminal failure
 // states. transitionRun gates on the legal-edge table.
 
-import { desc, eq, and, inArray, sql } from "drizzle-orm";
+import { desc, eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   payrollRuns,
   payPeriods,
   payslips,
   paySchedules,
+  payrollPeriodDocuments,
   users,
   ingestExceptions,
   zohoOrganizations,
@@ -23,6 +24,28 @@ import {
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import { sumByPeriod as sumTempByPeriod } from "@/lib/db/queries/temp-workers";
+
+/** Sum amountCents on non-deleted PAYSTUB documents per period. */
+async function sumDocNetByPeriod(
+  periodIds: string[],
+): Promise<Map<string, number>> {
+  if (periodIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      periodId: payrollPeriodDocuments.periodId,
+      total: sql<number>`COALESCE(SUM(${payrollPeriodDocuments.amountCents}), 0)::int`,
+    })
+    .from(payrollPeriodDocuments)
+    .where(
+      and(
+        inArray(payrollPeriodDocuments.periodId, periodIds),
+        isNull(payrollPeriodDocuments.deletedAt),
+        sql`${payrollPeriodDocuments.amountCents} IS NOT NULL`,
+      ),
+    )
+    .groupBy(payrollPeriodDocuments.periodId);
+  return new Map(rows.map((r) => [r.periodId!, r.total]));
+}
 
 export type Actor = {
   id: string;
@@ -78,6 +101,10 @@ export type ReportRow = {
   amountCents: number;
   /** Sum of gross_pay_cents for this run's payslips. Zero for runs without payslips. */
   grossPayCents: number;
+  /** Sum of amountCents on non-deleted PAYSTUB documents for the period.
+   *  Represents the after-tax net from accountant-prepared paystubs (W2/
+   *  salaried employees). Same value on every run sharing a period. */
+  docNetPayCents: number;
   /** Sum of (non-deleted) temp_worker_entries for the period. Same value for
    *  every run sharing a period; UI is responsible for displaying once. */
   tempLaborCents: number;
@@ -191,9 +218,12 @@ export async function listReports(
     pushesByRun.set(p.payrollRunId, list);
   }
 
-  // Bulk-load temp-labor totals per period.
+  // Bulk-load temp-labor and document-net totals per period.
   const periodIds = [...new Set(rows.map((r) => r.periodId))];
-  const tempByPeriod = await sumTempByPeriod(periodIds);
+  const [tempByPeriod, docNetByPeriod] = await Promise.all([
+    sumTempByPeriod(periodIds),
+    sumDocNetByPeriod(periodIds),
+  ]);
 
   return rows.map((r) => ({
     id: r.id,
@@ -213,6 +243,7 @@ export async function listReports(
     amountCents:
       r.payslipSum > 0 ? r.payslipSum : r.totalAmount ?? 0,
     grossPayCents: r.grossPaySum ?? 0,
+    docNetPayCents: docNetByPeriod.get(r.periodId ?? "") ?? 0,
     tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,
     createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
     postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
