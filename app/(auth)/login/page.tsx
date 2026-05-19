@@ -26,7 +26,7 @@ export default async function LoginPage() {
         </>
       }
     >
-      <LoginForm />
+      <LoginForm oidcEnabled={Boolean(process.env.AUTHENTIK_CLIENT_ID)} />
     </AuthLayout>
   );
 }

@@ -1,5 +1,6 @@
 // Auth.js v5 setup.
 //   • Email + password (Credentials provider)
+//   • Authentik OIDC (SSO)
 //   • Argon2id for hashes (64MB, 3 iters, 4 parallelism)
 //   • Postgres-backed login attempts → §13 rate limit
 //   • Sessions in Postgres via the Drizzle adapter (see /lib/auth-adapter.ts)
@@ -10,6 +11,7 @@
 
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Authentik from "@auth/core/providers/authentik";
 import { z } from "zod";
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 import { findUserByEmail, findUserById, recordSuccessfulLogin } from "@/lib/db/queries/users";
@@ -54,6 +56,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 }, // 30-day rolling
   pages: { signIn: "/login" },
   providers: [
+    ...(process.env.AUTHENTIK_CLIENT_ID
+      ? [
+          Authentik({
+            clientId: process.env.AUTHENTIK_CLIENT_ID,
+            clientSecret: process.env.AUTHENTIK_CLIENT_SECRET!,
+            issuer: process.env.AUTHENTIK_ISSUER!,
+          }),
+        ]
+      : []),
     Credentials({
       credentials: {
         email: { type: "email" },
@@ -109,12 +120,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async signIn({ user, account }) {
+      if (account?.provider === "authentik") {
+        if (!user.email) return false;
+        const dbUser = await findUserByEmail(user.email);
+        return !!(dbUser && !dbUser.disabledAt);
+      }
+      return true;
+    },
+    async jwt({ token, user, account, trigger }) {
       if (user) {
-        if (user.id !== undefined) token.id = user.id;
-        token.role = (user as { role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE" }).role;
-        token.employeeId = (user as { employeeId?: string }).employeeId;
-        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+        if (account?.provider === "authentik") {
+          const dbUser = await findUserByEmail(user.email!);
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role;
+            token.employeeId = dbUser.employeeId ?? undefined;
+            token.mustChangePassword = dbUser.mustChangePassword;
+          }
+        } else {
+          if (user.id !== undefined) token.id = user.id;
+          token.role = (user as { role: Role }).role;
+          token.employeeId = (user as { employeeId?: string }).employeeId;
+          token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+        }
       }
       // Refresh stable bits from the DB on every JWT call. Cheap (one
       // indexed lookup) and ensures employeeId / role / mustChangePassword
@@ -136,7 +165,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
-        session.user.role = token.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
+        session.user.role = token.role as Role;
         session.user.employeeId = token.employeeId as string | undefined;
         session.user.mustChangePassword = token.mustChangePassword as boolean | undefined;
       }
