@@ -47,6 +47,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set in .env}
       NGTECO_VAULT_KEY: ${NGTECO_VAULT_KEY:?NGTECO_VAULT_KEY must be set in .env}
       APP_URL: ${APP_URL:-http://localhost:3000}
+      AUTH_URL: ${APP_URL:-http://localhost:3000}
       TRUST_PROXY: ${TRUST_PROXY:-false}
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
