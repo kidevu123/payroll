@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { signIn } from "next-auth/react";
 import { signInAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,22 +22,6 @@ export function LoginForm({ oidcEnabled }: { oidcEnabled?: boolean }) {
 
   return (
     <div className="space-y-5">
-      {oidcEnabled && (
-        <>
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={async () => { await signIn("authentik", { callbackUrl: from || "/" }); }}
-          >
-            Sign in with SSO
-          </Button>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <hr className="flex-1" />
-            <span>or sign in with email</span>
-            <hr className="flex-1" />
-          </div>
-        </>
-      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
