@@ -132,6 +132,12 @@ export const notificationsSent = meter.createCounter(
 // before the first real event. The OTel SDK only emits Counter
 // series after the first `.add()`, so without this Grafana panels
 // would read "no data" on a fresh deploy until someone signs in.
+ngtecoPollRuns.add(0, { outcome: "_init" });
+punchesImported.add(0, { source: "_init" });
+payrollRunsPublished.add(0, { kind: "_init" });
+payslipsGenerated.add(0, { kind: "_init" });
+periodsMarkedPaid.add(0, { kind: "_init" });
+cronJobFires.add(0, { job: "_init" });
 authSignins.add(0, { role: "_init" });
 sessionPing.add(0, { role: "_init", surface: "_init" });
 serverActionInvocations.add(0, { action: "_init" });
