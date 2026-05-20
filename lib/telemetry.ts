@@ -132,18 +132,30 @@ export const notificationsSent = meter.createCounter(
 // before the first real event. The OTel SDK only emits Counter
 // series after the first `.add()`, so without this Grafana panels
 // would read "no data" on a fresh deploy until someone signs in.
-ngtecoPollRuns.add(0, { outcome: "_init" });
-punchesImported.add(0, { source: "_init" });
-payrollRunsPublished.add(0, { kind: "_init" });
-payslipsGenerated.add(0, { kind: "_init" });
-periodsMarkedPaid.add(0, { kind: "_init" });
-cronJobFires.add(0, { job: "_init" });
-authSignins.add(0, { role: "_init" });
-sessionPing.add(0, { role: "_init", surface: "_init" });
+// Counters: one .add(0) per expected label set so series appear at boot.
+ngtecoPollRuns.add(0, { outcome: "ok" });
+ngtecoPollRuns.add(0, { outcome: "fail" });
+punchesImported.add(0, { source: "ngteco" });
+payrollRunsPublished.add(0, { kind: "weekly" });
+payrollRunsPublished.add(0, { kind: "semi_monthly" });
+payslipsGenerated.add(0, { kind: "weekly" });
+payslipsGenerated.add(0, { kind: "semi_monthly" });
+periodsMarkedPaid.add(0, { kind: "weekly" });
+periodsMarkedPaid.add(0, { kind: "semi_monthly" });
+cronJobFires.add(0, { job: "noop.heartbeat" });
+for (const role of ["OWNER", "ADMIN", "PAYROLL_STAFF", "ACCOUNTANT", "EMPLOYEE"] as const) {
+  authSignins.add(0, { role });
+  sessionPing.add(0, { role, surface: "admin" });
+}
 serverActionInvocations.add(0, { action: "_init" });
-pageRenders.add(0, { surface: "_init" });
-notificationsSent.add(0, { channel: "_init", kind: "_init" });
-errorEvents.add(0, { source: "_init" });
+pageRenders.add(0, { surface: "admin" });
+pageRenders.add(0, { surface: "employee" });
+notificationsSent.add(0, { channel: "push", kind: "payslip" });
+errorEvents.add(0, { source: "app" });
+
+// Histograms: one .record(0) so _bucket/_count/_sum appear at boot.
+payrollPublishDuration.record(0, { kind: "weekly" });
+ngtecoScrapeDuration.record(0, { outcome: "ok" });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Live-state gauges. Read the DB at every Prometheus scrape (~15s) and
@@ -206,7 +218,11 @@ periodsByState.addCallback(async (result) => {
       .select({ state: payPeriods.state, n: sql<number>`count(*)::int` })
       .from(payPeriods)
       .groupBy(payPeriods.state);
-    for (const r of rows) result.observe(Number(r.n), { state: r.state });
+    const counts = Object.fromEntries(rows.map((r) => [r.state, Number(r.n)]));
+    // Always emit all known states so Grafana panels never show "no data"
+    for (const state of ["OPEN", "LOCKED", "PAID"] as const) {
+      result.observe(counts[state] ?? 0, { state });
+    }
   } catch {
     /* skip */
   }
