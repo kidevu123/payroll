@@ -28,7 +28,7 @@ export function LoginForm({ oidcEnabled }: { oidcEnabled?: boolean }) {
           <Button
             size="lg"
             className="w-full"
-            onClick={() => signIn("authentik", { callbackUrl: from || "/" })}
+            onClick={async () => { await signIn("authentik", { callbackUrl: from || "/" }); }}
           >
             Sign in with SSO
           </Button>
