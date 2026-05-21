@@ -111,6 +111,12 @@ export async function canAccessSurface(
   return list.includes(surface);
 }
 
+/** Accountants can follow a cash-drawer/report row into one period review
+ * without getting the whole payroll workspace surface. */
+export function isAccountantPeriodReviewPath(pathname: string): boolean {
+  return /^\/payroll\/[^/]+\/?$/.test(pathname);
+}
+
 type Override = { [R in EditableRole]?: ReadonlyArray<string> };
 
 /** Read the rolePermissions setting. Falls back to {} if unset. */

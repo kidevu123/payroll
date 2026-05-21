@@ -1,7 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth-guards";
-import { effectiveSurfacesFor, type Surface } from "@/lib/auth/role-matrix";
+import {
+  effectiveSurfacesFor,
+  isAccountantPeriodReviewPath,
+  type Surface,
+} from "@/lib/auth/role-matrix";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
@@ -55,7 +59,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       const matchesAllowed = [...allowedRoots].some(
         (s) => pathname === s || pathname.startsWith(s + "/"),
       );
-      if (!matchesAllowed && pathname !== "/") {
+      const isAccountantPeriodReview =
+        session.user.role === "ACCOUNTANT" &&
+        isAccountantPeriodReviewPath(pathname);
+      if (!matchesAllowed && !isAccountantPeriodReview && pathname !== "/") {
         // Fall through to the first allowed surface, or "/" if the user
         // has no admin surfaces (employee role landing here by mistake).
         const fallback = allowedSurfaces[0] ?? "/";

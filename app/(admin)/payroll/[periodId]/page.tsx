@@ -42,6 +42,7 @@ import { DedupPunchesButton } from "./dedup-button";
 import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
+import { requireSession } from "@/lib/auth-guards";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -79,6 +80,8 @@ export default async function PeriodReviewPage({
 }: {
   params: Promise<{ periodId: string }>;
 }) {
+  const session = await requireSession();
+  const isAccountant = session.user.role === "ACCOUNTANT";
   const { periodId } = await params;
   const period = await getPeriodById(periodId);
   if (!period) notFound();
@@ -335,7 +338,9 @@ export default async function PeriodReviewPage({
           wraps to a second row at common laptop widths (1100-1300px),
           which was the original "buttons all over the place" complaint. */}
       <div>
-        <PeriodDetailBackButton />
+        <PeriodDetailBackButton
+          fallbackHref={isAccountant ? "/cash-drawer" : "/payroll"}
+        />
         <h1 className="text-xl font-semibold tracking-tight">
           {formatRange(
             period.startDate,
@@ -352,7 +357,7 @@ export default async function PeriodReviewPage({
           <div className="flex items-center gap-2 flex-wrap min-w-0 shrink-0">
               <StatusPill status={period.state} />
               <SchedulePill name={headerSchedule?.name ?? null} />
-              {!headerScheduleId && (
+              {!isAccountant && !headerScheduleId && (
                 <AssignScheduleButton
                   periodId={period.id}
                   schedules={schedules
@@ -390,7 +395,7 @@ export default async function PeriodReviewPage({
               </span>
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {run?.pdfPath && (
+            {!isAccountant && run?.pdfPath && (
               <Button asChild variant="secondary" size="sm">
                 <Link
                   href={`/api/reports/${run.id}/pdf`}
@@ -401,21 +406,25 @@ export default async function PeriodReviewPage({
                 </Link>
               </Button>
             )}
-            <PublishPeriodButton
-              periodId={period.id}
-              periodState={period.state}
-              published={!!run?.publishedToPortalAt}
-            />
-            <LockButtons
-              period={period}
-              incompletePunchCount={displayRows.reduce(
-                (s, r) => s + (r.incomplete ?? 0),
-                0,
-              )}
-              periodGrossRoundedCents={allPayslips
-                .filter((p) => !p.voidedAt)
-                .reduce((s, p) => s + (p.roundedPayCents ?? 0), 0)}
-            />
+            {!isAccountant && (
+              <>
+                <PublishPeriodButton
+                  periodId={period.id}
+                  periodState={period.state}
+                  published={!!run?.publishedToPortalAt}
+                />
+                <LockButtons
+                  period={period}
+                  incompletePunchCount={displayRows.reduce(
+                    (s, r) => s + (r.incomplete ?? 0),
+                    0,
+                  )}
+                  periodGrossRoundedCents={allPayslips
+                    .filter((p) => !p.voidedAt)
+                    .reduce((s, p) => s + (p.roundedPayCents ?? 0), 0)}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -510,42 +519,46 @@ export default async function PeriodReviewPage({
           single period. */}
       {/* Employee-raised disputes — surfaces "Report a problem" reports
           from /me/pay so admin can see them and one-tap resolve. */}
-      <DisputesPanel
-        disputes={allPayslips
-          .filter((p) => p.disputedAt && !p.disputeResolvedAt && !p.voidedAt)
-          .map((p) => {
-            const emp = allEmployees.find((e) => e.id === p.employeeId);
-            return {
-              payslipId: p.id,
-              employeeName: emp?.displayName ?? "Unknown",
-              reason: p.disputeReason ?? "",
-              disputedAt: (p.disputedAt as Date).toISOString(),
-            };
-          })}
-      />
+      {!isAccountant && (
+        <>
+          <DisputesPanel
+            disputes={allPayslips
+              .filter((p) => p.disputedAt && !p.disputeResolvedAt && !p.voidedAt)
+              .map((p) => {
+                const emp = allEmployees.find((e) => e.id === p.employeeId);
+                return {
+                  payslipId: p.id,
+                  employeeName: emp?.displayName ?? "Unknown",
+                  reason: p.disputeReason ?? "",
+                  disputedAt: (p.disputedAt as Date).toISOString(),
+                };
+              })}
+          />
 
-      <RecomputeBanner
-        periodId={periodId}
-        drifts={
-          (displayRows
-            .filter((r) => "hoursDrift" in r && r.hoursDrift)
-            .map((r) => {
-              const row = r as typeof r & {
-                storedHours?: number;
-                liveHours?: number;
-              };
-              return {
-                employeeName: row.employee.displayName,
-                storedHours: row.storedHours ?? 0,
-                liveHours: row.liveHours ?? 0,
-              };
-            })) as Array<{
-              employeeName: string;
-              storedHours: number;
-              liveHours: number;
-            }>
-        }
-      />
+          <RecomputeBanner
+            periodId={periodId}
+            drifts={
+              (displayRows
+                .filter((r) => "hoursDrift" in r && r.hoursDrift)
+                .map((r) => {
+                  const row = r as typeof r & {
+                    storedHours?: number;
+                    liveHours?: number;
+                  };
+                  return {
+                    employeeName: row.employee.displayName,
+                    storedHours: row.storedHours ?? 0,
+                    liveHours: row.liveHours ?? 0,
+                  };
+                })) as Array<{
+                employeeName: string;
+                storedHours: number;
+                liveHours: number;
+              }>
+            }
+          />
+        </>
+      )}
 
       {/* Per-employee summary — each row expands inline to show that
           employee's punches. Drops the separate Punches card so the
@@ -579,12 +592,18 @@ export default async function PeriodReviewPage({
                       <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
                         <ChevronRight className="h-3.5 w-3.5 text-text-subtle group-open:rotate-90 transition-transform" />
                         <div className="min-w-0">
-                          <Link
-                            href={`/employees/${employee.id}`}
-                            className="font-semibold hover:text-brand-700 hover:underline underline-offset-2 truncate block"
-                          >
-                            {employee.displayName}
-                          </Link>
+                          {isAccountant ? (
+                            <span className="block truncate font-semibold">
+                              {employee.displayName}
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/employees/${employee.id}`}
+                              className="font-semibold hover:text-brand-700 hover:underline underline-offset-2 truncate block"
+                            >
+                              {employee.displayName}
+                            </Link>
+                          )}
                           <div className="text-xs text-text-muted">
                             {employee.payType === "FLAT_TASK"
                               ? `Per task · ${employee.hourlyRateCents !== null ? `$${(employee.hourlyRateCents / 100).toFixed(2)}` : "—"}`
@@ -622,7 +641,7 @@ export default async function PeriodReviewPage({
                           )}
                         </span>
                       </summary>
-                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={period.state !== "PAID"} today={new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date())} />
+                      <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={!isAccountant && period.state !== "PAID"} today={new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date())} />
                     </details>
                   );
                 })}
@@ -676,36 +695,40 @@ export default async function PeriodReviewPage({
       <TempWorkersSection
         periodId={periodId}
         initialEntries={tempWorkers}
-        locked={period.state === "PAID"}
+        locked={isAccountant || period.state === "PAID"}
       />
 
-      <DedupPunchesButton
-        periodId={periodId}
-        initialClusterCount={duplicateClusters.length}
-      />
+      {!isAccountant && (
+        <DedupPunchesButton
+          periodId={periodId}
+          initialClusterCount={duplicateClusters.length}
+        />
+      )}
 
-      <PayslipManageSection
-        rows={allPayslips
-          .map((p) => {
-            const e = allEmployees.find((x) => x.id === p.employeeId);
-            if (!e) return null;
-            return {
-              payslip: {
-                id: p.id,
-                employeeId: p.employeeId,
-                hoursWorked: p.hoursWorked,
-                roundedPayCents: p.roundedPayCents,
-                voidedAt: p.voidedAt,
-                voidReason: p.voidReason,
-              },
-              employee: { id: e.id, displayName: e.displayName },
-            };
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null)
-          .sort((a, b) =>
-            a.employee.displayName.localeCompare(b.employee.displayName),
-          )}
-      />
+      {!isAccountant && (
+        <PayslipManageSection
+          rows={allPayslips
+            .map((p) => {
+              const e = allEmployees.find((x) => x.id === p.employeeId);
+              if (!e) return null;
+              return {
+                payslip: {
+                  id: p.id,
+                  employeeId: p.employeeId,
+                  hoursWorked: p.hoursWorked,
+                  roundedPayCents: p.roundedPayCents,
+                  voidedAt: p.voidedAt,
+                  voidReason: p.voidReason,
+                },
+                employee: { id: e.id, displayName: e.displayName },
+              };
+            })
+            .filter((r): r is NonNullable<typeof r> => r !== null)
+            .sort((a, b) =>
+              a.employee.displayName.localeCompare(b.employee.displayName),
+            )}
+        />
+      )}
 
       <PayrollDocsSection
         periodId={periodId}
@@ -725,7 +748,7 @@ export default async function PeriodReviewPage({
             payScheduleId: e.payScheduleId,
           }))}
         initialDocs={payrollDocs}
-        locked={period.state === "PAID"}
+        locked={isAccountant || period.state === "PAID"}
       />
 
       <p className="text-xs text-text-muted">
