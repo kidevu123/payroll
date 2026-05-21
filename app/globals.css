@@ -19,11 +19,9 @@
 
 @theme {
   /* ── Type scale (§9 spec) ──────────────────────────────────────────── */
-  /* Manrope: geometric sans with distinctive character, excellent at
-     small sizes — better suited to a precision data tool than Inter. */
-  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system,
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono",
     Menlo, Consolas, monospace;
 
   --text-display: 2rem;
@@ -41,23 +39,19 @@
   --text-caption--line-height: 1.05rem;
 
   /* ── Radii ─────────────────────────────────────────────────────────── */
-  --radius-card: 0.875rem;
-  --radius-input: 0.5rem;
-  --radius-chip: 0.375rem;
+  --radius-card: 0.5rem;
+  --radius-input: 0.375rem;
+  --radius-chip: 0.25rem;
 
   /* ── Shadow scale ──────────────────────────────────────────────────── */
-  --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.05),
-    0 4px 12px -3px rgb(15 23 42 / 0.07),
-    0 0 0 1px rgb(15 23 42 / 0.03);
-  --shadow-card-strong: 0 1px 3px 0 rgb(15 23 42 / 0.07),
-    0 8px 24px -6px rgb(15 23 42 / 0.12),
-    0 0 0 1px rgb(15 23 42 / 0.04);
-  --shadow-card-hover: 0 2px 6px 0 rgb(15 23 42 / 0.07),
-    0 12px 32px -6px rgb(15 23 42 / 0.12),
-    0 0 0 1px rgb(15 23 42 / 0.04);
-  --shadow-pop: 0 16px 40px -8px rgb(15 23 42 / 0.18),
-    0 4px 10px -2px rgb(15 23 42 / 0.09),
-    0 0 0 1px rgb(15 23 42 / 0.04);
+  --shadow-card: 0 1px 2px 0 rgb(9 9 11 / 0.06),
+    0 0 0 1px rgb(9 9 11 / 0.04);
+  --shadow-card-strong: 0 2px 6px -1px rgb(9 9 11 / 0.10),
+    0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-card-hover: 0 4px 12px -2px rgb(9 9 11 / 0.12),
+    0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-pop: 0 8px 24px -4px rgb(9 9 11 / 0.18),
+    0 0 0 1px rgb(9 9 11 / 0.06);
 
   /* ── Brand accent ──────────────────────────────────────────────────── */
   --color-brand-50: #f0fdfa;
@@ -73,17 +67,17 @@
   --color-brand-fg: #ffffff;
 
   /* ── Page surfaces ─────────────────────────────────────────────────── */
-  --color-page: #f7f7f5;
+  --color-page: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-2: #f1f0ed;
-  --color-surface-3: #e8e6e1;
-  --color-border: #e2e0db;
-  --color-border-strong: #c8c5be;
+  --color-surface-2: #f4f4f5;
+  --color-surface-3: #e4e4e7;
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
 
   /* ── Text ──────────────────────────────────────────────────────────── */
-  --color-text: #18181b;
-  --color-text-muted: #525057;
-  --color-text-subtle: #76747c;
+  --color-text: #09090b;
+  --color-text-muted: #52525b;
+  --color-text-subtle: #71717a;
 
   /* ── Semantic tints (light surface) ────────────────────────────────── */
   --color-success-50: #ecfdf5;
@@ -159,60 +153,6 @@ body {
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }
 
-/*
-  Premium ambient page background. Layered brand-tinted radial washes give
-  the negative space warmth and depth. A subtle cross-hatch mesh adds
-  tactile texture without competing with content cards.
-*/
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    radial-gradient(ellipse 60% 50% at 8% 6%, color-mix(in oklab, var(--color-brand-500) 100%, transparent 82%) 0%, transparent 100%),
-    radial-gradient(ellipse 55% 45% at 92% 96%, color-mix(in oklab, var(--color-brand-900) 100%, transparent 82%) 0%, transparent 100%),
-    radial-gradient(ellipse 40% 60% at 60% 20%, color-mix(in oklab, var(--color-brand-100) 100%, transparent 78%) 0%, transparent 100%),
-    linear-gradient(155deg, transparent 40%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 95%) 100%);
-}
-
-/* Precision dot-grid mesh — gives the page a refined "graph paper" quality. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.28;
-  background-image:
-    radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--color-text) 100%, transparent 90%) 1px, transparent 0);
-  background-size: 24px 24px;
-}
-
-@media (prefers-color-scheme: dark) {
-  body::before {
-    background-image:
-      radial-gradient(ellipse 60% 50% at 8% 6%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 75%) 0%, transparent 100%),
-      radial-gradient(ellipse 55% 45% at 92% 96%, color-mix(in oklab, var(--color-brand-900) 100%, transparent 70%) 0%, transparent 100%),
-      radial-gradient(ellipse 40% 60% at 60% 20%, color-mix(in oklab, var(--color-brand-800) 100%, transparent 80%) 0%, transparent 100%),
-      linear-gradient(155deg, transparent 40%, color-mix(in oklab, var(--color-brand-700) 100%, transparent 90%) 100%);
-  }
-  body::after {
-    opacity: 0.45;
-    background-image:
-      radial-gradient(circle at 1px 1px, color-mix(in oklab, white 100%, transparent 93%) 1px, transparent 0);
-    background-size: 24px 24px;
-  }
-}
-
-/* Print: kill ambient background completely. */
-@media print {
-  body::before,
-  body::after {
-    display: none !important;
-  }
-}
 
 /* Tabular numerics in the same JetBrains Mono used by tables and stats. */
 .tabnum,

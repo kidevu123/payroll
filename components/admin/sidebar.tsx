@@ -114,24 +114,12 @@ export function Sidebar({
         "shadow-[2px_0_8px_-2px_rgb(15_23_42_/_0.06),1px_0_0_0_rgb(15_23_42_/_0.03)]",
       )}
     >
-      {/* Wordmark area — deep brand gradient creates a strong visual anchor
-          at the top of the rail. Taller than before so the logo has room to breathe. */}
-      <div className="relative px-5 pt-6 pb-5 shrink-0 min-h-[68px] flex items-center overflow-hidden">
-        {/* Layered brand gradients: saturated wash + soft radial bloom */}
-        <span
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-brand-100/70 via-brand-50/30 to-transparent pointer-events-none"
-        />
-        <span
-          aria-hidden
-          className="absolute -left-4 -top-4 h-24 w-32 rounded-full bg-brand-400/10 blur-2xl pointer-events-none"
-        />
+      <div className="px-5 pt-5 pb-4 shrink-0">
         <Wordmark
           name="Milo"
           logoPath={company.logoPath}
           size="md"
           showName={false}
-          className="relative min-w-0"
         />
       </div>
 
@@ -176,11 +164,6 @@ export function Sidebar({
           />
         )}
         <SystemStatus healthy={systemHealthy} />
-        {/* Bottom brand accent bar */}
-        <span
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-[2.5px] bg-gradient-to-r from-brand-400/0 via-brand-500/80 to-brand-400/0 pointer-events-none"
-        />
       </div>
     </aside>
   );

@@ -8,7 +8,6 @@
 // NEXT_PUBLIC_BUILD_AT (Dockerfile build stage).
 
 import * as React from "react";
-import { Heart } from "lucide-react";
 import pkg from "../package.json" with { type: "json" };
 
 const VERSION = pkg.version;
@@ -55,11 +54,7 @@ export function AppFooter({ className }: { className?: string }) {
         </>
       )}
       <span aria-hidden="true">·</span>
-      <span className="inline-flex items-center gap-1">
-        Made with{" "}
-        <Heart className="h-3 w-3 fill-current text-rose-500" aria-label="love" />{" "}
-        by your haute tech team
-      </span>
+      <span>Made by your haute tech team</span>
     </footer>
   );
 }

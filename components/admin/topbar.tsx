@@ -139,12 +139,9 @@ export function Topbar({
           // dropdown was the visible symptom. Lifting the whole
           // topbar to z-50 keeps every popover anchored from it
           // above page content regardless of route.
-          "sticky top-0 z-50 h-14 border-b border-border/50 bg-surface/95 backdrop-blur-md",
+          "sticky top-0 z-50 h-14 border-b border-border bg-surface/95 backdrop-blur-md",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
-          "shadow-[0_1px_0_0_rgb(15_23_42_/_0.03),0_2px_6px_-2px_rgb(15_23_42_/_0.04)]",
-          // 3px brand bar — more saturated than before, brand-600 center peak
-          "before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-[3px]",
-          "before:bg-gradient-to-r before:from-brand-400/0 before:via-brand-600/90 before:to-brand-400/0",
+          "shadow-[0_1px_0_0_rgb(9_9_11_/_0.04)]",
         )}
       >
         <MobileNav
