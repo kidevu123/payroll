@@ -149,7 +149,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-card bg-surface p-8 lg:p-10 min-h-[24rem] flex flex-col shadow-card",
+        "relative flex min-h-[20rem] flex-col overflow-hidden rounded-card bg-surface p-4 shadow-card sm:min-h-[24rem] sm:p-6 lg:p-10",
         attention ? "border-2 border-brand-700" : "border border-border",
       )}
     >
@@ -164,7 +164,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         />
       ) : null}
 
-      <div className="relative flex items-start gap-4 mb-6">
+      <div className="relative mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
         <span
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-card",
@@ -174,7 +174,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
           <Icon className="h-6 w-6" aria-hidden="true" />
         </span>
         <div className="flex-1 min-w-0">
-          <h2 className="text-display font-semibold tracking-tight leading-tight">
+          <h2 className="text-xl font-semibold tracking-tight leading-tight sm:text-display">
             {c.headline}
           </h2>
           <p className="text-sm text-text-muted mt-1.5 max-w-2xl leading-relaxed">
@@ -203,7 +203,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
       <RunProgress state={props.state} className="relative mb-6" />
 
       {props.stats && (props.stats.employeeCount > 0 || props.stats.gross > 0) ? (
-        <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="relative mb-5 grid grid-cols-2 gap-2.5 sm:mb-6 sm:gap-3 lg:grid-cols-4">
           <Stat label="Employees" value={String(props.stats.employeeCount)} />
           <Stat
             label="Hours"
@@ -225,7 +225,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         </div>
       ) : null}
 
-      <div className="relative mt-auto flex flex-wrap items-center gap-3">
+      <div className="relative mt-auto flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&_a]:justify-center">
         {primaryAction(props)}
         {secondaryAction(props)}
       </div>
@@ -235,11 +235,11 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-card bg-surface-2/60 border border-border/60 p-4">
+    <div className="rounded-card border border-border/60 bg-surface-2/60 p-3 sm:p-4">
       <div className="text-[10px] uppercase tracking-wider text-text-subtle font-medium">
         {label}
       </div>
-      <div className="text-2xl font-semibold mt-1 font-mono tabular-nums tracking-tight">
+      <div className="mt-1 font-mono text-xl font-semibold tabular-nums tracking-tight sm:text-2xl">
         {value}
       </div>
     </div>

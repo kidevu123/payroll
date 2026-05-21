@@ -46,40 +46,42 @@ export function ScheduleTabs({
 }) {
   const tabs: ScheduleTab[] = ["all", "weekly", "semi", "salaried"];
   return (
-    <div
-      role="tablist"
-      className={cn(
-        // Premium segmented control: hairline border, surface-2 trough,
-        // single rounded-lg silhouette, every tab gets the same chip
-        // shape (active and inactive both rounded-md, just different
-        // fills) so the strip reads as ONE control instead of four
-        // floating buttons.
-        "inline-flex items-center gap-0.5 rounded-lg border border-border/70 bg-surface-2/60 p-0.5 text-[12px] font-medium tracking-tight",
-        "shadow-[inset_0_1px_2px_0_rgb(15_23_42_/_0.04)]",
-      )}
-    >
-      {tabs.map((t) => {
-        const isActive = current === t;
-        const href =
-          hrefs?.[t] ?? (t === "all" ? basePath : `${basePath}?schedule=${t}`);
-        return (
-          <Link
-            key={t}
-            href={href}
-            role="tab"
-            aria-selected={isActive}
-            className={cn(
-              "inline-flex items-center justify-center rounded-md px-3 h-7 transition-colors antialiased",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
-              isActive
-                ? ACTIVE_TONE[t]
-                : "text-text-muted hover:text-text hover:bg-surface-2",
-            )}
-          >
-            {LABELS[t]}
-          </Link>
-        );
-      })}
+    <div className="max-w-full overflow-x-auto pb-1">
+      <div
+        role="tablist"
+        className={cn(
+          // Premium segmented control: hairline border, surface-2 trough,
+          // single rounded-lg silhouette, every tab gets the same chip
+          // shape (active and inactive both rounded-md, just different
+          // fills) so the strip reads as ONE control instead of four
+          // floating buttons.
+          "inline-flex min-w-max items-center gap-0.5 rounded-lg border border-border/70 bg-surface-2/60 p-0.5 text-[12px] font-medium tracking-tight",
+          "shadow-[inset_0_1px_2px_0_rgb(15_23_42_/_0.04)]",
+        )}
+      >
+        {tabs.map((t) => {
+          const isActive = current === t;
+          const href =
+            hrefs?.[t] ?? (t === "all" ? basePath : `${basePath}?schedule=${t}`);
+          return (
+            <Link
+              key={t}
+              href={href}
+              role="tab"
+              aria-selected={isActive}
+              className={cn(
+                "inline-flex h-7 items-center justify-center rounded-md px-3 transition-colors antialiased",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+                isActive
+                  ? ACTIVE_TONE[t]
+                  : "text-text-muted hover:text-text hover:bg-surface-2",
+              )}
+            >
+              {LABELS[t]}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

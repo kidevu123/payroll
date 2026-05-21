@@ -136,8 +136,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
           company={companyForBrand}
           currentLocale={locale}
+          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
         />
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 max-w-screen-2xl w-full mx-auto page-enter">
+        <main className="flex-1 p-3 pb-24 sm:p-4 sm:pb-24 lg:p-8 max-w-screen-2xl w-full mx-auto page-enter">
           {children}
         </main>
         <AppFooter />

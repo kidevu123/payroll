@@ -10,6 +10,7 @@ import { CommandPalette, type CommandTarget } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
+import type { Surface } from "@/lib/auth/role-matrix";
 
 const TITLE_KEY_MAP: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -19,6 +20,8 @@ const TITLE_KEY_MAP: Record<string, string> = {
   "/requests": "requests",
   "/ngteco": "ngteco",
   "/reports": "reports",
+  "/cash-drawer": "cashDrawer",
+  "/notifications": "notifications",
   "/audit": "audit",
   "/settings": "settings",
 };
@@ -64,6 +67,7 @@ export function Topbar({
   commandTargets,
   company,
   currentLocale,
+  allowedSurfaces,
 }: {
   email: string;
   role: string;
@@ -71,6 +75,7 @@ export function Topbar({
   commandTargets: CommandTarget[];
   company: { name: string; logoPath: string | null };
   currentLocale: "en" | "es";
+  allowedSurfaces?: ReadonlyArray<Surface>;
 }) {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -134,7 +139,7 @@ export function Topbar({
           // dropdown was the visible symptom. Lifting the whole
           // topbar to z-50 keeps every popover anchored from it
           // above page content regardless of route.
-          "relative z-50 h-14 border-b border-border/50 bg-surface/95 backdrop-blur-md",
+          "sticky top-0 z-50 h-14 border-b border-border/50 bg-surface/95 backdrop-blur-md",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6",
           "shadow-[0_1px_0_0_rgb(15_23_42_/_0.03),0_2px_6px_-2px_rgb(15_23_42_/_0.04)]",
           // 3px brand bar — more saturated than before, brand-600 center peak
@@ -142,7 +147,11 @@ export function Topbar({
           "before:bg-gradient-to-r before:from-brand-400/0 before:via-brand-600/90 before:to-brand-400/0",
         )}
       >
-        <MobileNav company={company} />
+        <MobileNav
+          company={company}
+          allowedSurfaces={allowedSurfaces}
+          currentLocale={currentLocale}
+        />
         <div className="min-w-0 flex items-center gap-2 shrink-0">
           <h1 className="text-sm font-semibold tracking-tight antialiased truncate">
             {title}
@@ -187,6 +196,19 @@ export function Topbar({
         <div className="md:hidden flex-1" />
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            aria-label={tNav("openCommandPalette")}
+            className={cn(
+              "md:hidden h-9 w-9 inline-flex items-center justify-center rounded-lg text-text-muted",
+              "hover:bg-surface-2/70 hover:text-text transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
+            )}
+          >
+            <Search className="h-[18px] w-[18px]" aria-hidden strokeWidth={1.75} />
+          </button>
+
           <Link
             href="/calendar"
             aria-label={
@@ -211,7 +233,9 @@ export function Topbar({
             ) : null}
           </Link>
 
-          <LanguageSwitcher current={currentLocale} />
+          <div className="hidden sm:block">
+            <LanguageSwitcher current={currentLocale} />
+          </div>
 
           {/* User menu */}
           <div className="relative" ref={userMenuRef}>

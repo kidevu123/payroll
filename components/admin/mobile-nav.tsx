@@ -7,11 +7,12 @@ import {
   LayoutDashboard,
   CalendarDays,
   Wallet,
-  MessageSquareWarning,
   BarChart3,
   Settings2,
   Briefcase,
   CalendarRange,
+  Banknote,
+  Megaphone,
   Menu,
   X,
   type LucideIcon,
@@ -19,6 +20,8 @@ import {
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/brand/wordmark";
+import { LanguageSwitcher } from "./language-switcher";
+import type { Surface } from "@/lib/auth/role-matrix";
 
 type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
@@ -34,18 +37,30 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
       { href: "/salaried", labelKey: "salaried", icon: Briefcase },
       { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
-      { href: "/requests", labelKey: "requests", icon: MessageSquareWarning },
     ],
   },
   {
     headingKey: "operate",
-    items: [{ href: "/reports", labelKey: "reports", icon: BarChart3 }],
+    items: [
+      { href: "/reports", labelKey: "reports", icon: BarChart3 },
+      { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
+      { href: "/notifications", labelKey: "notifications", icon: Megaphone },
+    ],
   },
   {
     headingKey: "system",
     items: [{ href: "/settings", labelKey: "settings", icon: Settings2 }],
   },
 ];
+
+const QUICK_NAV_HREFS = [
+  "/dashboard",
+  "/time",
+  "/payroll",
+  "/calendar",
+  "/reports",
+  "/cash-drawer",
+] as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
@@ -59,12 +74,29 @@ function isActive(pathname: string, href: string): boolean {
  */
 export function MobileNav({
   company,
+  allowedSurfaces,
+  currentLocale,
 }: {
   company: { name: string; logoPath: string | null };
+  allowedSurfaces?: ReadonlyArray<Surface> | undefined;
+  currentLocale: "en" | "es";
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
   const [open, setOpen] = React.useState(false);
+  const allowSet = allowedSurfaces ? new Set(allowedSurfaces) : null;
+  const sections = SECTIONS.map((section) => ({
+    ...section,
+    items: allowSet
+      ? section.items.filter((item) => allowSet.has(item.href as Surface))
+      : section.items,
+  })).filter((section) => section.items.length > 0);
+  const allItems = SECTIONS.flatMap((section) => section.items);
+  const quickItems = QUICK_NAV_HREFS.flatMap((href) => {
+    const item = allItems.find((candidate) => candidate.href === href);
+    if (!item || (allowSet && !allowSet.has(item.href as Surface))) return [];
+    return [item];
+  }).slice(0, 4);
 
   // Close drawer on route change.
   React.useEffect(() => {
@@ -116,7 +148,7 @@ export function MobileNav({
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-              {SECTIONS.map((sec) => (
+              {sections.map((sec) => (
                 <div key={sec.headingKey}>
                   <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
                     {tNav(sec.headingKey)}
@@ -145,9 +177,48 @@ export function MobileNav({
                 </div>
               ))}
             </nav>
+            <div className="border-t border-border px-4 py-4 sm:hidden">
+              <LanguageSwitcher current={currentLocale} />
+            </div>
           </aside>
         </div>
       )}
+
+      <nav
+        aria-label={tNav("openNavigation")}
+        className="lg:hidden fixed inset-x-2 bottom-2 z-40 rounded-2xl border border-border/80 bg-surface/95 px-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] pt-1.5 shadow-pop backdrop-blur-md"
+      >
+        <div className="grid grid-flow-col auto-cols-fr items-stretch gap-1">
+          {quickItems.map(({ href, labelKey, icon: Icon }) => {
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight",
+                  active
+                    ? "bg-brand-50 text-brand-800"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="max-w-full truncate">{tNav(labelKey)}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label={tNav("openNavigation")}
+            className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight text-text-muted hover:bg-surface-2 hover:text-text"
+          >
+            <Menu className="h-4 w-4 shrink-0" aria-hidden />
+            <span>{tNav("menu")}</span>
+          </button>
+        </div>
+      </nav>
     </>
   );
 }
