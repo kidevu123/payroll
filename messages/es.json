@@ -176,6 +176,9 @@
       "unpaid": "Sin goce de sueldo",
       "other": "Otro",
       "cancelTimeOffConfirm": "¿Cancelar esta solicitud de tiempo libre? Puede enviar otra si cambia de opinión.",
+      "requestChange": "Cambiar",
+      "requestCancel": "Cancelar",
+      "requestCancelConfirm": "¿Pedir al administrador que cancele este tiempo libre aprobado? Sigue aprobado hasta que lo revise.",
       "salariedTitle": "Cuenta asalariada",
       "salariedBody1": "Está en un plan asalariado. Sus recibos y formularios W2 aparecen en <payLink>Pago</payLink>.",
       "salariedBody2": "Use el botón \"Solicitar tiempo libre\" de arriba para vacaciones o días por enfermedad.",
@@ -284,6 +287,8 @@
     "timeOff": {
       "back": "Atrás",
       "title": "Solicitar tiempo libre",
+      "changeTitle": "Cambiar tiempo libre aprobado",
+      "changeApprovalHint": "Su tiempo libre aprobado actual sigue vigente hasta que un administrador apruebe este cambio.",
       "requestKind": "Solicitud",
       "dayOffMode": "Día libre",
       "scheduleChangeMode": "Llegar tarde / salir temprano",
@@ -299,7 +304,8 @@
       "otherLabel": "Otro",
       "reasonOptional": "Motivo (opcional)",
       "submitting": "Enviando...",
-      "submitRequest": "Enviar solicitud"
+      "submitRequest": "Enviar solicitud",
+      "submitChange": "Enviar cambio para aprobación"
     },
     "profile": {
       "title": "Perfil",

@@ -4,7 +4,10 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-guards";
-import { createTimeOffRequest } from "@/lib/db/queries/requests";
+import {
+  createTimeOffChangeRequest,
+  createTimeOffRequest,
+} from "@/lib/db/queries/requests";
 import {
   cancelTimeOffRequest,
   getTimeOffRequest,
@@ -12,6 +15,7 @@ import {
 import { getEmployee } from "@/lib/db/queries/employees";
 import { adminUserIds } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
+import { isEmployeeEditableTimeOff } from "@/lib/time-off/change-request";
 
 const timeStrSchema = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/);
 const schema = z.object({
@@ -152,4 +156,122 @@ export async function cancelMyTimeOffAction(
   revalidatePath("/me/home");
   revalidatePath("/requests");
   return { ok: true };
+}
+
+export async function requestMyTimeOffCancellationAction(
+  requestId: string,
+): Promise<{ error?: string; ok?: true } | void> {
+  const session = await requireSession();
+  if (!session.user.employeeId) return { error: "Not linked." };
+  if (!idSchema.safeParse(requestId).success) return { error: "Invalid request id." };
+  const original = await getTimeOffRequest(requestId);
+  if (!original) return { error: "Request not found." };
+  if (original.employeeId !== session.user.employeeId) {
+    return { error: "You can only change your own time off." };
+  }
+  if (!isEmployeeEditableTimeOff(original, new Date().toISOString().slice(0, 10))) {
+    return { error: "Only approved current or upcoming time off can be changed." };
+  }
+  try {
+    await createTimeOffChangeRequest(
+      original.id,
+      {
+        startDate: original.startDate,
+        endDate: original.endDate,
+        type: original.type,
+        reason: "Employee requests cancellation.",
+      },
+      "CANCEL",
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_CHANGE_ALREADY_PENDING") {
+      return { error: "A change for this time off is already waiting for approval." };
+    }
+    throw err;
+  }
+  await notifyAdminsOfTimeOffChange(original.startDate, original.endDate, "CANCEL");
+  revalidatePath("/me/home");
+  revalidatePath("/calendar");
+  return { ok: true };
+}
+
+export async function submitMyTimeOffChangeAction(
+  requestId: string,
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireSession();
+  if (!session.user.employeeId) return { error: "Not linked." };
+  if (!idSchema.safeParse(requestId).success) return { error: "Invalid request id." };
+  const parsed = schema.safeParse({
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    type: formData.get("type") || "PERSONAL",
+    partialStartTime: null,
+    partialEndTime: null,
+    reason: formData.get("reason") || null,
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+  if (parsed.data.endDate < parsed.data.startDate) {
+    return { error: "End date can't be before start date." };
+  }
+  if (parsed.data.type === "SCHEDULE_NOTE") {
+    return { error: "Schedule notes are not edited through time-off changes." };
+  }
+  const employee = await getEmployee(session.user.employeeId);
+  if (
+    employee?.payType === "HOURLY" &&
+    (parsed.data.type === "PERSONAL" || parsed.data.type === "SICK")
+  ) {
+    return { error: "Hourly employees can only change day-off requests to Unpaid or Other." };
+  }
+  const original = await getTimeOffRequest(requestId);
+  if (!original) return { error: "Request not found." };
+  if (original.employeeId !== session.user.employeeId) {
+    return { error: "You can only change your own time off." };
+  }
+  if (!isEmployeeEditableTimeOff(original, new Date().toISOString().slice(0, 10))) {
+    return { error: "Only approved current or upcoming time off can be changed." };
+  }
+  try {
+    await createTimeOffChangeRequest(
+      original.id,
+      {
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        type: parsed.data.type,
+        reason: parsed.data.reason ?? null,
+      },
+      "EDIT",
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_OVERLAP") {
+      return { error: "Those dates overlap another pending or approved time-off request." };
+    }
+    if (err instanceof Error && err.message === "TIME_OFF_CHANGE_ALREADY_PENDING") {
+      return { error: "A change for this time off is already waiting for approval." };
+    }
+    throw err;
+  }
+  await notifyAdminsOfTimeOffChange(parsed.data.startDate, parsed.data.endDate, "EDIT");
+  revalidatePath("/me/home");
+  revalidatePath("/calendar");
+  redirect("/me/home");
+}
+
+async function notifyAdminsOfTimeOffChange(
+  startDate: string,
+  endDate: string,
+  changeAction: "EDIT" | "CANCEL",
+) {
+  const admins = await adminUserIds();
+  if (admins.length === 0) return;
+  await dispatch(
+    admins.map((id) => ({
+      recipientId: id,
+      kind: "time_off.request_submitted" as const,
+      payload: { startDate, endDate, changeAction },
+    })),
+  );
 }

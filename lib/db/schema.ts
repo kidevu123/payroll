@@ -123,6 +123,11 @@ export const timeOffTypeEnum = pgEnum("time_off_type", [
   "SCHEDULE_NOTE",
 ]);
 
+export const timeOffChangeActionEnum = pgEnum("time_off_change_action", [
+  "EDIT",
+  "CANCEL",
+]);
+
 export const payrollRunStateEnum = pgEnum("payroll_run_state", [
   "SCHEDULED",
   "INGESTING",
@@ -738,6 +743,11 @@ export const timeOffRequests = pgTable(
     partialStartTime: time("partial_start_time"),
     partialEndTime: time("partial_end_time"),
     reason: text("reason"),
+    // Employee-originated changes to an approved row stay pending until
+    // admin review. The approved row remains live while this change row
+    // points back to it.
+    changeRequestForId: uuid("change_request_for_id"),
+    changeRequestAction: timeOffChangeActionEnum("change_request_action"),
     status: requestStatusEnum("status").notNull().default("PENDING"),
     resolvedById: uuid("resolved_by_id").references(() => users.id),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),

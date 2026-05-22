@@ -28,6 +28,7 @@ import {
   MissedPunchActions,
   TimeOffActions,
   CancelTimeOffActionButton,
+  EditApprovedTimeOffAction,
 } from "@/app/(admin)/requests/request-actions";
 import { TimeOffOnBehalfForm } from "@/app/(admin)/requests/time-off-on-behalf-form";
 import { MessageSquareWarning, Plane } from "lucide-react";
@@ -486,6 +487,54 @@ export default async function CalendarPage({
             />
           </div>
 
+          {approved.filter((r) => r.type !== "SCHEDULE_NOTE").length > 0 ? (
+            <div className="space-y-3 rounded-card border border-border bg-surface p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-brand-800">
+                <Plane className="h-3.5 w-3.5" />
+                Approved this month
+              </div>
+              {approved
+                .filter((r) => r.type !== "SCHEDULE_NOTE")
+                .map((r) => {
+                  const emp = empById.get(r.employeeId);
+                  return (
+                    <div
+                      key={`approved-actions-${r.id}`}
+                      className="space-y-1.5 rounded-input border border-border bg-surface-2/40 p-2"
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-xs font-medium">
+                          {emp?.displayName ?? r.employeeId}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-text-muted tabular-nums">
+                          {r.startDate}
+                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-text-muted">
+                        {(TYPE_LABEL[r.type] ?? r.type).toLowerCase()}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <EditApprovedTimeOffAction
+                          request={{
+                            id: r.id,
+                            startDate: r.startDate,
+                            endDate: r.endDate,
+                            type: r.type as "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
+                            reason: r.reason,
+                          }}
+                        />
+                        <CancelTimeOffActionButton
+                          requestId={r.id}
+                          status="APPROVED"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : null}
+
           {pendingTotal === 0 ? (
             <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
               Nothing waiting on you. New requests show up here as
@@ -554,7 +603,11 @@ export default async function CalendarPage({
                           </span>
                         </div>
                         <div className="text-[11px] text-text-muted">
-                          {(TYPE_LABEL[r.type] ?? r.type).toLowerCase()}
+                          {r.changeRequestAction === "EDIT"
+                            ? "change approved time off"
+                            : r.changeRequestAction === "CANCEL"
+                              ? "cancel approved time off"
+                              : (TYPE_LABEL[r.type] ?? r.type).toLowerCase()}
                           {partial ? ` · ${partial}` : ""}
                         </div>
                         {r.reason && (

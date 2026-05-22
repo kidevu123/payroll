@@ -18,6 +18,10 @@ import {
   type TimeOffRequest,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import {
+  timeOffChangeApprovalPlan,
+  type TimeOffChangeAction,
+} from "@/lib/time-off/change-request";
 
 export type Actor = {
   id: string;
@@ -295,8 +299,9 @@ export async function createTimeOffRequest(
     // calendar immediately. Other types still flow through
     // PENDING → admin → APPROVED/REJECTED.
     const isHeadsUp = input.type === "SCHEDULE_NOTE";
+    const isCancellationChange = input.changeRequestAction === "CANCEL";
 
-    if (!isHeadsUp) {
+    if (!isHeadsUp && !isCancellationChange) {
       // Reject overlap with any pending or approved request for the
       // same employee. Rejected/cancelled rows are ignored. Range
       // overlap test: existing.start <= new.end AND existing.end >= new.start.
@@ -313,6 +318,9 @@ export async function createTimeOffRequest(
             // SCHEDULE_NOTE rows don't block real time-off requests —
             // exclude them from the overlap probe.
             sql`${timeOffRequests.type} <> 'SCHEDULE_NOTE'`,
+            input.changeRequestForId
+              ? ne(timeOffRequests.id, input.changeRequestForId)
+              : sql`true`,
             sql`${timeOffRequests.startDate} <= ${input.endDate}`,
             sql`${timeOffRequests.endDate} >= ${input.startDate}`,
           ),
@@ -352,6 +360,129 @@ export async function createTimeOffRequest(
   });
 }
 
+/** Create an employee-submitted edit or cancellation request for an
+ * approved time-off row. The approved row stays active while this new
+ * row waits for admin review. */
+export async function createTimeOffChangeRequest(
+  originalId: string,
+  input: Omit<
+    NewTimeOffRequest,
+    "employeeId" | "status" | "changeRequestForId" | "changeRequestAction"
+  >,
+  action: TimeOffChangeAction,
+  actor: Actor,
+): Promise<TimeOffRequest> {
+  const [original] = await db
+    .select()
+    .from(timeOffRequests)
+    .where(eq(timeOffRequests.id, originalId))
+    .limit(1);
+  if (!original) throw new Error("TIME_OFF_CHANGE_ORIGINAL_NOT_FOUND");
+  if (original.status !== "APPROVED") {
+    throw new Error("TIME_OFF_CHANGE_ORIGINAL_NOT_APPROVED");
+  }
+  if (original.type === "SCHEDULE_NOTE") {
+    throw new Error("TIME_OFF_CHANGE_SCHEDULE_NOTE");
+  }
+  const [pending] = await db
+    .select({ id: timeOffRequests.id })
+    .from(timeOffRequests)
+    .where(
+      and(
+        eq(timeOffRequests.changeRequestForId, original.id),
+        eq(timeOffRequests.status, "PENDING"),
+      ),
+    )
+    .limit(1);
+  if (pending) throw new Error("TIME_OFF_CHANGE_ALREADY_PENDING");
+
+  return createTimeOffRequest(
+    {
+      ...input,
+      employeeId: original.employeeId,
+      startDate: action === "CANCEL" ? original.startDate : input.startDate,
+      endDate: action === "CANCEL" ? original.endDate : input.endDate,
+      type: action === "CANCEL" ? original.type : input.type,
+      reason: input.reason ?? original.reason,
+      changeRequestForId: original.id,
+      changeRequestAction: action,
+    },
+    actor,
+  );
+}
+
+/** Direct admin correction for an approved time-off entry. Employee
+ * self-service changes use change rows instead; this path is for the
+ * owner/admin being asked in person to correct the live approved row. */
+export async function updateApprovedTimeOffRequest(
+  requestId: string,
+  input: Pick<NewTimeOffRequest, "startDate" | "endDate" | "type" | "reason">,
+  actor: Actor,
+): Promise<TimeOffRequest> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(timeOffRequests)
+      .where(eq(timeOffRequests.id, requestId))
+      .limit(1);
+    if (!before) throw new Error("TIME_OFF_NOT_FOUND");
+    if (before.status !== "APPROVED") {
+      throw new Error("TIME_OFF_ADMIN_EDIT_NOT_APPROVED");
+    }
+    if (before.type === "SCHEDULE_NOTE") {
+      throw new Error("TIME_OFF_ADMIN_EDIT_SCHEDULE_NOTE");
+    }
+    const [overlap] = await tx
+      .select({ id: timeOffRequests.id })
+      .from(timeOffRequests)
+      .where(
+        and(
+          eq(timeOffRequests.employeeId, before.employeeId),
+          ne(timeOffRequests.id, before.id),
+          or(
+            eq(timeOffRequests.status, "PENDING"),
+            eq(timeOffRequests.status, "APPROVED"),
+          ),
+          sql`${timeOffRequests.type} <> 'SCHEDULE_NOTE'`,
+          sql`${timeOffRequests.startDate} <= ${input.endDate}`,
+          sql`${timeOffRequests.endDate} >= ${input.startDate}`,
+        ),
+      )
+      .limit(1);
+    if (overlap) throw new Error("TIME_OFF_OVERLAP");
+
+    const [row] = await tx
+      .update(timeOffRequests)
+      .set({
+        startDate: input.startDate,
+        endDate: input.endDate,
+        type: input.type,
+        reason: input.reason ?? null,
+        partialStartTime: null,
+        partialEndTime: null,
+        resolvedById: actor.id,
+        resolvedAt: new Date(),
+        resolutionNote: "Updated directly by admin.",
+      })
+      .where(eq(timeOffRequests.id, requestId))
+      .returning();
+    if (!row) throw new Error("TIME_OFF_ADMIN_EDIT_EMPTY");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "time_off.request.admin_update",
+        targetType: "TimeOffRequest",
+        targetId: row.id,
+        before,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
 export async function resolveTimeOffRequest(
   requestId: string,
   status: "APPROVED" | "REJECTED",
@@ -368,10 +499,14 @@ export async function resolveTimeOffRequest(
       .where(eq(timeOffRequests.id, requestId));
     if (!before) throw new Error(`resolveTimeOffRequest: ${requestId} not found`);
     if (before.status !== "PENDING") return before;
+    const changePlan =
+      before.changeRequestForId && before.changeRequestAction
+        ? timeOffChangeApprovalPlan(before.changeRequestAction, status)
+        : null;
     const [row] = await tx
       .update(timeOffRequests)
       .set({
-        status,
+        status: changePlan?.resolveChangeAs ?? status,
         resolvedById: actor.id,
         resolvedAt: new Date(),
         resolutionNote: resolutionNote ?? null,
@@ -391,6 +526,42 @@ export async function resolveTimeOffRequest(
       },
       tx,
     );
+    if (changePlan?.cancelOriginal && before.changeRequestForId) {
+      const [originalBefore] = await tx
+        .select()
+        .from(timeOffRequests)
+        .where(eq(timeOffRequests.id, before.changeRequestForId))
+        .limit(1);
+      if (originalBefore?.status === "APPROVED") {
+        const [originalAfter] = await tx
+          .update(timeOffRequests)
+          .set({
+            status: "CANCELLED",
+            resolvedById: actor.id,
+            resolvedAt: new Date(),
+            resolutionNote:
+              before.changeRequestAction === "CANCEL"
+                ? "Employee cancellation approved."
+                : "Replaced by approved employee change.",
+          })
+          .where(eq(timeOffRequests.id, before.changeRequestForId))
+          .returning();
+        if (originalAfter) {
+          await writeAudit(
+            {
+              actorId: actor.id,
+              actorRole: actor.role,
+              action: "time_off.request.change_original_cancelled",
+              targetType: "TimeOffRequest",
+              targetId: originalAfter.id,
+              before: originalBefore,
+              after: originalAfter,
+            },
+            tx,
+          );
+        }
+      }
+    }
     return row;
   });
 }

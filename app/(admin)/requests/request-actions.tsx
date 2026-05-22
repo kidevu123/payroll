@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,6 +9,7 @@ import {
   rejectMissedPunchAction,
   resolveTimeOffAction,
   adminCancelTimeOffAction,
+  adminUpdateTimeOffAction,
 } from "./actions";
 
 export function MissedPunchActions({ requestId }: { requestId: string }) {
@@ -198,5 +199,78 @@ export function CancelTimeOffActionButton({
       </Button>
       {error && <span className="text-xs text-red-700">{error}</span>}
     </div>
+  );
+}
+
+export function EditApprovedTimeOffAction({
+  request,
+}: {
+  request: {
+    id: string;
+    startDate: string;
+    endDate: string;
+    type: "UNPAID" | "SICK" | "PERSONAL" | "OTHER";
+    reason: string | null;
+  };
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(true)}>
+        <Pencil className="h-3.5 w-3.5" /> Edit
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      action={async (form) => {
+        setPending(true);
+        setError(null);
+        const result = await adminUpdateTimeOffAction(request.id, form);
+        setPending(false);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+        setOpen(false);
+      }}
+      className="space-y-2 rounded-input border border-border bg-surface p-2"
+    >
+      <div className="grid grid-cols-2 gap-2">
+        <Input name="startDate" type="date" defaultValue={request.startDate} required />
+        <Input name="endDate" type="date" defaultValue={request.endDate} required />
+      </div>
+      <select
+        name="type"
+        defaultValue={request.type}
+        className="h-9 w-full rounded-input border border-border bg-surface px-2 text-xs"
+      >
+        <option value="UNPAID">Unpaid</option>
+        <option value="SICK">Sick</option>
+        <option value="PERSONAL">PTO</option>
+        <option value="OTHER">Other</option>
+      </select>
+      <textarea
+        name="reason"
+        rows={2}
+        maxLength={500}
+        defaultValue={request.reason ?? ""}
+        placeholder="Reason (optional)"
+        className="w-full rounded-input border border-border bg-surface px-2 py-1.5 text-xs"
+      />
+      {error ? <p className="text-xs text-danger-700">{error}</p> : null}
+      <div className="flex flex-wrap justify-end gap-1.5">
+        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+          Close
+        </Button>
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Saving..." : "Save"}
+        </Button>
+      </div>
+    </form>
   );
 }

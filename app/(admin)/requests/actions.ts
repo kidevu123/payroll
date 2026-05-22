@@ -11,6 +11,7 @@ import {
   rejectMissedPunchRequest,
   resolveTimeOffRequest,
   getMissedPunchRequest,
+  updateApprovedTimeOffRequest,
 } from "@/lib/db/queries/requests";
 import {
   cancelTimeOffRequest,
@@ -62,6 +63,8 @@ export async function approveMissedPunchAction(
     revalidatePath(`/payroll/${resolved.periodId}`);
   }
   revalidatePath("/requests");
+  revalidatePath("/calendar");
+  revalidatePath("/me/home");
 }
 
 const rejectSchema = z.object({
@@ -114,7 +117,9 @@ export async function resolveTimeOffAction(
     resolutionNote: formData.get("resolutionNote") || null,
   });
   if (!parsed.success) return { error: "Invalid input." };
-  await resolveTimeOffRequest(
+  const before = await getTimeOffRequest(requestId);
+  if (!before) return { error: "Not found." };
+  const resolved = await resolveTimeOffRequest(
     requestId,
     parsed.data.status,
     parsed.data.resolutionNote ?? null,
@@ -126,7 +131,7 @@ export async function resolveTimeOffAction(
       {
         recipientId,
         kind: "time_off.request_resolved",
-        payload: { requestId, status: parsed.data.status },
+        payload: { requestId, status: resolved.status },
       },
     ]);
   }
@@ -154,7 +159,7 @@ export async function resolveTimeOffAction(
         const { pushTimeOffEvent, deleteTimeOffEvent } = await import(
           "@/lib/google/calendar"
         );
-        if (parsed.data.status === "APPROVED") {
+        if (resolved.status === "APPROVED") {
           // Google's all-day "end" is exclusive; bump endDate by 1 day.
           const end = new Date(`${details.endDate}T00:00:00Z`);
           end.setUTCDate(end.getUTCDate() + 1);
@@ -168,6 +173,13 @@ export async function resolveTimeOffAction(
         } else {
           await deleteTimeOffEvent(requestId);
         }
+        if (
+          parsed.data.status === "APPROVED" &&
+          before.changeRequestForId &&
+          before.changeRequestAction
+        ) {
+          await deleteTimeOffEvent(before.changeRequestForId);
+        }
       }
     }
   } catch (err) {
@@ -178,6 +190,8 @@ export async function resolveTimeOffAction(
   }
 
   revalidatePath("/requests");
+  revalidatePath("/calendar");
+  revalidatePath("/me/home");
 }
 
 const cancelSchema = z.object({
@@ -235,6 +249,91 @@ export async function adminCancelTimeOffAction(
   }
 
   revalidatePath("/requests");
+  revalidatePath("/calendar");
+  revalidatePath("/me/home");
+}
+
+const adminUpdateSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  type: z.enum(["UNPAID", "SICK", "PERSONAL", "OTHER"]),
+  reason: z.string().max(500).optional().nullable(),
+});
+
+export async function adminUpdateTimeOffAction(
+  requestId: string,
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(requestId).success) return { error: "Invalid id." };
+  const parsed = adminUpdateSchema.safeParse({
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate"),
+    type: formData.get("type"),
+    reason: formData.get("reason") || null,
+  });
+  if (!parsed.success) return { error: "Invalid input." };
+  if (parsed.data.startDate > parsed.data.endDate) {
+    return { error: "Start date must be on or before end date." };
+  }
+  let updated;
+  try {
+    updated = await updateApprovedTimeOffRequest(
+      requestId,
+      {
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        type: parsed.data.type,
+        reason: parsed.data.reason ?? null,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_OVERLAP") {
+      return { error: "This change overlaps another pending or approved request." };
+    }
+    if (err instanceof Error && err.message === "TIME_OFF_ADMIN_EDIT_NOT_APPROVED") {
+      return { error: "Only approved time off can be edited directly." };
+    }
+    throw err;
+  }
+
+  const recipientId = await userIdForEmployee(updated.employeeId);
+  if (recipientId) {
+    await dispatch([
+      {
+        recipientId,
+        kind: "time_off.request_resolved",
+        payload: { requestId, status: "APPROVED", adminUpdated: true },
+      },
+    ]);
+  }
+  try {
+    const cfg = await getSetting("googleCalendar");
+    if (cfg.refreshTokenSealed && cfg.calendarId) {
+      const { db } = await import("@/lib/db");
+      const { employees } = await import("@/lib/db/schema");
+      const [employee] = await db
+        .select({ displayName: employees.displayName })
+        .from(employees)
+        .where(eq(employees.id, updated.employeeId));
+      if (employee) {
+        const { pushTimeOffEvent } = await import("@/lib/google/calendar");
+        const end = new Date(`${updated.endDate}T00:00:00Z`);
+        end.setUTCDate(end.getUTCDate() + 1);
+        await pushTimeOffEvent({
+          externalId: updated.id,
+          summary: `${employee.displayName} — ${updated.type.toLowerCase()}`,
+          description: updated.reason ?? "",
+          startDate: updated.startDate,
+          endDateExclusive: end.toISOString().slice(0, 10),
+        });
+      }
+    }
+  } catch (err) {
+    const { logger } = await import("@/lib/telemetry");
+    logger.warn({ err, requestId }, "google.calendar.admin_update_failed");
+  }
   revalidatePath("/calendar");
   revalidatePath("/me/home");
 }

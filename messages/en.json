@@ -176,6 +176,9 @@
       "unpaid": "Unpaid",
       "other": "Other",
       "cancelTimeOffConfirm": "Cancel this time-off request? You can submit a new one if you change your mind.",
+      "requestChange": "Change",
+      "requestCancel": "Cancel",
+      "requestCancelConfirm": "Ask admin to cancel this approved time off? It stays approved until they review it.",
       "salariedTitle": "Salaried account",
       "salariedBody1": "You're on a salaried plan. Your paystubs and W2 documents appear under <payLink>Pay</payLink>.",
       "salariedBody2": "Use the \"Request time off\" button above for vacation or sick days.",
@@ -284,6 +287,8 @@
     "timeOff": {
       "back": "Back",
       "title": "Request time off",
+      "changeTitle": "Change approved time off",
+      "changeApprovalHint": "Your current approved time off stays in place until an admin approves this change.",
       "requestKind": "Request",
       "dayOffMode": "Day off",
       "scheduleChangeMode": "Late / leave early",
@@ -299,7 +304,8 @@
       "otherLabel": "Other",
       "reasonOptional": "Reason (optional)",
       "submitting": "Submitting...",
-      "submitRequest": "Submit request"
+      "submitRequest": "Submit request",
+      "submitChange": "Submit change for approval"
     },
     "profile": {
       "title": "Profile",

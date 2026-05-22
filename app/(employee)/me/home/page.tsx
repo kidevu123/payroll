@@ -34,6 +34,8 @@ import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
 import { listRecentForEmployee } from "@/lib/db/queries/time-off";
 import { CancelTimeOffButton } from "./cancel-time-off-button";
+import { RequestTimeOffCancellationButton } from "./request-time-off-cancellation-button";
+import { isEmployeeEditableTimeOff } from "@/lib/time-off/change-request";
 import {
   getCurrentPeriod,
   getCurrentPeriodForSchedule,
@@ -324,6 +326,9 @@ export default async function EmployeeHome() {
                           ? t("unpaid")
                           : t("other");
                   const isCancelled = status === "CANCELLED";
+                  const canChange =
+                    r.type !== "SCHEDULE_NOTE" &&
+                    isEmployeeEditableTimeOff(r, today);
                   return (
                     <li
                       key={r.id}
@@ -359,6 +364,20 @@ export default async function EmployeeHome() {
                           />
                         )}
                       </div>
+                      {canChange ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/me/home/time-off/${r.id}/change`}>
+                              {t("requestChange")}
+                            </Link>
+                          </Button>
+                          <RequestTimeOffCancellationButton
+                            requestId={r.id}
+                            label={t("requestCancel")}
+                            confirmText={t("requestCancelConfirm")}
+                          />
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}
