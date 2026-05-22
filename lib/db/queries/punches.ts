@@ -87,6 +87,20 @@ export async function listPunches(
   );
 }
 
+/**
+ * All non-voided punches whose clockIn is on or after midnight of `todayIso`
+ * in the given IANA timezone. Returns only the fields the dashboard needs.
+ */
+export async function listTodayPunches(
+  todayIso: string,
+  tz: string,
+): Promise<{ employeeId: string; clockIn: Date }[]> {
+  const { localMidnightUtc } = await import("@/lib/utils");
+  const since = localMidnightUtc(todayIso, tz);
+  const rows = await listPunches({ clockAfter: since });
+  return rows.map((p) => ({ employeeId: p.employeeId, clockIn: p.clockIn }));
+}
+
 export type CreatePunchInput = Omit<
   NewPunch,
   "id" | "createdAt" | "originalClockIn" | "originalClockOut" | "editedAt" | "editedById" | "editReason" | "voidedAt"
