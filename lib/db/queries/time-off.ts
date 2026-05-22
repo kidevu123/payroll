@@ -237,6 +237,16 @@ function parseTime(t: string): number | null {
   return h * 60 + mm;
 }
 
+/**
+ * All APPROVED time-off rows that cover `dateIso` (i.e. startDate <= date <= endDate).
+ * Used by the dashboard attendance panel.
+ */
+export function listApprovedTimeOffForDate(
+  dateIso: string,
+): Promise<TimeOffRequest[]> {
+  return listApprovedInRange(dateIso, dateIso);
+}
+
 export async function listApprovedTimeOffInRange(
   startDate: string,
   endDate: string,
