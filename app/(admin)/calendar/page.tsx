@@ -32,6 +32,7 @@ import {
 } from "@/app/(admin)/requests/request-actions";
 import { TimeOffOnBehalfForm } from "@/app/(admin)/requests/time-off-on-behalf-form";
 import { MessageSquareWarning, Plane } from "lucide-react";
+import { isAdminManageableTimeOff } from "@/lib/time-off/change-request";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +131,7 @@ export default async function CalendarPage({
   ]);
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
   const empById = new Map(employees.map((e) => [e.id, e]));
+  const todayIso = isoDay(today);
 
   // Bucket requests by ISO day for fast cell lookup. Birthdays match
   // by month-day across any year.
@@ -137,8 +139,12 @@ export default async function CalendarPage({
     id: string;
     type: string;
     emp: string;
+    startDate: string;
+    endDate: string;
+    reason: string | null;
     /** "11:00–14:00" when partial; null for full-day items. */
     partial: string | null;
+    manageable: boolean;
   };
   const cellByDay = new Map<
     string,
@@ -174,7 +180,11 @@ export default async function CalendarPage({
         id: r.id,
         type: r.type,
         emp: nameFromMap(empMap, r.employeeId),
+        startDate: r.startDate,
+        endDate: r.endDate,
+        reason: r.reason,
         partial: partialLabel(r.partialStartTime, r.partialEndTime),
+        manageable: isAdminManageableTimeOff(r, todayIso),
       });
       cellByDay.set(day, cell);
     }
@@ -187,7 +197,11 @@ export default async function CalendarPage({
         id: r.id,
         type: r.type,
         emp: nameFromMap(empMap, r.employeeId),
+        startDate: r.startDate,
+        endDate: r.endDate,
+        reason: r.reason,
         partial: partialLabel(r.partialStartTime, r.partialEndTime),
+        manageable: false,
       });
       cellByDay.set(day, cell);
     }
@@ -208,7 +222,6 @@ export default async function CalendarPage({
   }
 
   const days: string[] = eachDayBetween(isoDay(gridStart), isoDay(gridEnd));
-  const todayIso = isoDay(today);
 
   const monthName = new Intl.DateTimeFormat("en-US", {
     month: "long",
@@ -423,17 +436,10 @@ export default async function CalendarPage({
                   )}
                   <div className="mt-1 space-y-1">
                     {visible.map((r) => (
-                      <div
-                        key={r.id}
-                        className={
-                          "truncate rounded border px-1.5 py-0.5 text-[11px] leading-tight " +
-                          (TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER) +
-                          (r.pending ? " border-dashed opacity-70" : "")
-                        }
-                        title={`${r.emp} — ${TYPE_LABEL[r.type] ?? r.type}${r.partial ? ` ${r.partial}` : ""}${r.pending ? " (pending)" : ""}`}
-                      >
-                        {r.partial ? `${r.emp} · ${r.partial}` : r.emp}
-                      </div>
+                      <CalendarEntry
+                        key={`${day}-${r.id}`}
+                        entry={r}
+                      />
                     ))}
                     {overflow.length > 0 && (
                       <details className="group">
@@ -445,16 +451,11 @@ export default async function CalendarPage({
                         </summary>
                         <div className="mt-1 space-y-0.5 rounded-card border border-border bg-surface-2 p-1">
                           {overflow.map((r) => (
-                            <div
-                              key={r.id}
-                              className={
-                                "truncate rounded px-1.5 py-0.5 text-[10px] leading-tight " +
-                                (TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER) +
-                                (r.pending ? " opacity-70" : "")
-                              }
-                            >
-                              {r.partial ? `${r.emp} · ${r.partial}` : r.emp}
-                            </div>
+                            <CalendarEntry
+                              key={`${day}-overflow-${r.id}`}
+                              entry={r}
+                              compact
+                            />
                           ))}
                         </div>
                       </details>
@@ -486,54 +487,6 @@ export default async function CalendarPage({
                 .map((e) => ({ id: e.id, displayName: e.displayName }))}
             />
           </div>
-
-          {approved.filter((r) => r.type !== "SCHEDULE_NOTE").length > 0 ? (
-            <div className="space-y-3 rounded-card border border-border bg-surface p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-brand-800">
-                <Plane className="h-3.5 w-3.5" />
-                Approved this month
-              </div>
-              {approved
-                .filter((r) => r.type !== "SCHEDULE_NOTE")
-                .map((r) => {
-                  const emp = empById.get(r.employeeId);
-                  return (
-                    <div
-                      key={`approved-actions-${r.id}`}
-                      className="space-y-1.5 rounded-input border border-border bg-surface-2/40 p-2"
-                    >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-xs font-medium">
-                          {emp?.displayName ?? r.employeeId}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-text-muted tabular-nums">
-                          {r.startDate}
-                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-text-muted">
-                        {(TYPE_LABEL[r.type] ?? r.type).toLowerCase()}
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-1">
-                        <EditApprovedTimeOffAction
-                          request={{
-                            id: r.id,
-                            startDate: r.startDate,
-                            endDate: r.endDate,
-                            type: r.type as "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
-                            reason: r.reason,
-                          }}
-                        />
-                        <CancelTimeOffActionButton
-                          requestId={r.id}
-                          status="APPROVED"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          ) : null}
 
           {pendingTotal === 0 ? (
             <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
@@ -636,6 +589,67 @@ export default async function CalendarPage({
       </div>
       )}
     </div>
+  );
+}
+
+function CalendarEntry({
+  entry,
+  compact = false,
+}: {
+  entry: {
+    id: string;
+    type: string;
+    emp: string;
+    startDate: string;
+    endDate: string;
+    reason: string | null;
+    partial: string | null;
+    pending: boolean;
+    manageable: boolean;
+  };
+  compact?: boolean;
+}) {
+  const chipClassName =
+    (compact ? "text-[10px]" : "text-[11px]") +
+    " block w-full truncate rounded border px-1.5 py-0.5 text-left leading-tight " +
+    (TYPE_COLORS[entry.type] ?? TYPE_COLORS.OTHER) +
+    (entry.pending ? " border-dashed opacity-70" : "");
+  const label = entry.partial ? `${entry.emp} · ${entry.partial}` : entry.emp;
+  const title = `${entry.emp} — ${TYPE_LABEL[entry.type] ?? entry.type}${entry.partial ? ` ${entry.partial}` : ""}${entry.pending ? " (pending)" : ""}`;
+
+  if (!entry.manageable) {
+    return (
+      <div className={chipClassName} title={title}>
+        {label}
+      </div>
+    );
+  }
+
+  return (
+    <details className="group relative">
+      <summary className="list-none cursor-pointer" title={`${title} — click to edit or cancel`}>
+        <span className={chipClassName}>{label}</span>
+      </summary>
+      <div className="absolute left-0 top-full z-20 mt-1 w-64 space-y-2 rounded-card border border-border bg-surface p-2 shadow-pop">
+        <div className="text-[11px] font-medium text-text">{entry.emp}</div>
+        <div className="text-[10px] text-text-muted tabular-nums">
+          {entry.startDate}
+          {entry.startDate !== entry.endDate ? ` – ${entry.endDate}` : ""}
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <EditApprovedTimeOffAction
+            request={{
+              id: entry.id,
+              startDate: entry.startDate,
+              endDate: entry.endDate,
+              type: entry.type as "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
+              reason: entry.reason,
+            }}
+          />
+          <CancelTimeOffActionButton requestId={entry.id} status="APPROVED" />
+        </div>
+      </div>
+    </details>
   );
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isAdminManageableTimeOff,
   isEmployeeEditableTimeOff,
   timeOffChangeApprovalPlan,
 } from "./change-request";
@@ -27,6 +28,27 @@ describe("time-off change requests", () => {
     expect(
       isEmployeeEditableTimeOff(
         { status: "APPROVED", endDate: "2026-05-21" },
+        "2026-05-22",
+      ),
+    ).toBe(false);
+  });
+
+  it("only gives admin calendar controls for approved current or upcoming leave", () => {
+    expect(
+      isAdminManageableTimeOff(
+        { status: "APPROVED", type: "UNPAID", endDate: "2026-05-22" },
+        "2026-05-22",
+      ),
+    ).toBe(true);
+    expect(
+      isAdminManageableTimeOff(
+        { status: "APPROVED", type: "SCHEDULE_NOTE", endDate: "2026-05-23" },
+        "2026-05-22",
+      ),
+    ).toBe(false);
+    expect(
+      isAdminManageableTimeOff(
+        { status: "APPROVED", type: "SICK", endDate: "2026-05-21" },
         "2026-05-22",
       ),
     ).toBe(false);

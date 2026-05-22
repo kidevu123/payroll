@@ -8,6 +8,13 @@ export function isEmployeeEditableTimeOff(
   return request.status === "APPROVED" && request.endDate >= today;
 }
 
+export function isAdminManageableTimeOff(
+  request: { status: string; type: string; endDate: string },
+  today: string,
+): boolean {
+  return request.type !== "SCHEDULE_NOTE" && isEmployeeEditableTimeOff(request, today);
+}
+
 export function timeOffChangeApprovalPlan(
   action: TimeOffChangeAction,
   status: TimeOffResolution,
