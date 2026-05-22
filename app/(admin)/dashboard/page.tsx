@@ -1,59 +1,88 @@
-// Admin dashboard — Phase 3. PayrollRunCard fills the visual center and
-// drives the Sunday-night close. Secondary cards: pending requests + last
-// NGTeco import.
-
 import Link from "next/link";
+import { CalendarDays, MessageSquareWarning } from "lucide-react";
 import {
-  CalendarDays,
-  MessageSquareWarning,
-  Workflow,
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
 import { PayrollRunCard } from "@/components/domain/payroll-run-card";
+import { StatStrip } from "@/components/domain/stat-strip";
+import { AttendancePanel } from "@/components/domain/attendance-panel";
 import { listEmployees } from "@/lib/db/queries/employees";
-import { listPunches } from "@/lib/db/queries/punches";
+import { listPunches, listTodayPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import {
   getCurrentPeriod,
   getMostRecentPeriod,
 } from "@/lib/db/queries/pay-periods";
-import {
-  getCurrentRun,
-  listRuns,
-} from "@/lib/db/queries/payroll-runs";
+import { getCurrentRun, listRuns } from "@/lib/db/queries/payroll-runs";
 import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
 import {
   listPendingMissedPunchRequests,
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
+import { listApprovedTimeOffForDate } from "@/lib/db/queries/time-off";
+import { getLastSuccessfulPoll } from "@/lib/db/queries/poll-history";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
+import { formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { taskPayLineItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+
+export const dynamic = "force-dynamic";
 
 function todayInTz(tz: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 }
 
+/** "May 22" style label for the attendance panel header. */
+function shortDateLabel(isoDate: string): string {
+  const [, m, d] = isoDate.split("-").map(Number) as [number, number, number];
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(2000, m - 1, d)));
+}
+
 export default async function DashboardPage() {
   const company = await getSetting("company");
   const today = todayInTz(company.timezone);
-  // Read-only — never auto-creates a period. Owner directive: only the
-  // CSV upload should kick off period creation.
-  const period = (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
+
+  const period =
+    (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
   const run = await getCurrentRun();
-  const [pendingMissed, pendingTimeOff] = await Promise.all([
+
+  const [
+    employees,
+    pendingMissed,
+    pendingTimeOff,
+    todayPunches,
+    approvedOffToday,
+    lastPoll,
+  ] = await Promise.all([
+    listEmployees({ status: "ACTIVE" }),
     listPendingMissedPunchRequests(),
     listPendingTimeOffRequests(),
+    listTodayPunches(today, company.timezone),
+    listApprovedTimeOffForDate(today),
+    getLastSuccessfulPoll(),
   ]);
+
   const pendingTotal = pendingMissed.length + pendingTimeOff.length;
 
+  // ── Period stats ─────────────────────────────────────────────────────────
+  // Computed whenever a period exists, regardless of run state. This ensures
+  // the PayrollRunCard and StatStrip always show live data on non-Sunday days.
   let stats:
     | {
         hours: number;
@@ -63,41 +92,28 @@ export default async function DashboardPage() {
         unresolvedAlerts: number;
       }
     | undefined;
-  let cardState:
-    | "NO_RUN"
-    | "SCHEDULED"
-    | "INGESTING"
-    | "INGEST_FAILED"
-    | "AWAITING_EMPLOYEE_FIXES"
-    | "AWAITING_ADMIN_REVIEW"
-    | "APPROVED"
-    | "PUBLISHED"
-    | "FAILED"
-    | "CANCELLED" = "NO_RUN";
+  let weeklyGrossCents: number | null = null;
+  let semiMonthlyGrossCents: number | null = null;
 
-  if (run) cardState = run.state;
-
-  if (period && run) {
-    const [employees, punches, payRules, alerts] = await Promise.all([
-      listEmployees({ status: "ACTIVE" }),
+  if (period) {
+    const [periodPunches, payRules, alerts, schedules] = await Promise.all([
       listPunches({ periodId: period.id }),
       getSetting("payRules"),
       listAlertsForPeriod(period.id, { unresolvedOnly: true }),
+      listSchedules(),
     ]);
     const tasks = await db
       .select()
       .from(taskPayLineItems)
       .where(eq(taskPayLineItems.periodId, period.id));
-    // Temp workers are part of the work week — owner directive: their
-    // amounts must roll into the dashboard's gross/net headlines and
-    // their headcount into the employee total.
     const { tempWorkerEntries } = await import("@/lib/db/schema");
     const tempWorkers = await db
       .select()
       .from(tempWorkerEntries)
       .where(eq(tempWorkerEntries.periodId, period.id));
-    const punchesByE = new Map<string, typeof punches>();
-    for (const p of punches) {
+
+    const punchesByE = new Map<string, typeof periodPunches>();
+    for (const p of periodPunches) {
       const list = punchesByE.get(p.employeeId) ?? [];
       list.push(p);
       punchesByE.set(p.employeeId, list);
@@ -109,8 +125,18 @@ export default async function DashboardPage() {
       tasksByE.set(t.employeeId, list);
     }
 
+    const weeklyIds = new Set(
+      schedules.filter((s) => s.periodKind === "WEEKLY").map((s) => s.id),
+    );
+    const semiMonthlyIds = new Set(
+      schedules.filter((s) => s.periodKind === "SEMI_MONTHLY").map((s) => s.id),
+    );
+
     let totals = { hours: 0, gross: 0, rounded: 0 };
+    let weeklyGross = 0;
+    let semiMonthlyGross = 0;
     let activeWithWork = 0;
+
     for (const e of employees) {
       const ePunches = punchesByE.get(e.id) ?? [];
       const eTasks = tasksByE.get(e.id) ?? [];
@@ -119,10 +145,13 @@ export default async function DashboardPage() {
       const result = computePay({
         punches: ePunches,
         rateAt: (p) => {
-          const day = (p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn))
+          const day = (
+            p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn)
+          )
             .toISOString()
             .slice(0, 10);
-          for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
+          for (const r of rates)
+            if (r.effectiveFrom <= day) return r.hourlyRateCents;
           return e.hourlyRateCents ?? 0;
         },
         taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
@@ -143,41 +172,84 @@ export default async function DashboardPage() {
       totals.gross += result.grossCents;
       totals.rounded += result.roundedCents;
       activeWithWork++;
+      if (e.payScheduleId && weeklyIds.has(e.payScheduleId)) {
+        weeklyGross += result.grossCents;
+      } else if (e.payScheduleId && semiMonthlyIds.has(e.payScheduleId)) {
+        semiMonthlyGross += result.grossCents;
+      }
     }
-    // Roll in temp workers — they're part of the period's work even
-    // though they don't have an Employee row.
+
     for (const tw of tempWorkers) {
       totals.gross += tw.amountCents;
       totals.rounded += tw.amountCents;
-      if (tw.hours !== null) {
-        totals.hours += Number(tw.hours);
-      }
+      if (tw.hours !== null) totals.hours += Number(tw.hours);
       activeWithWork += 1;
     }
+
     stats = {
       ...totals,
       employeeCount: activeWithWork,
       unresolvedAlerts: alerts.length,
     };
+    weeklyGrossCents = weeklyGross > 0 ? weeklyGross : null;
+    semiMonthlyGrossCents = semiMonthlyGross > 0 ? semiMonthlyGross : null;
   }
 
-  // Enrich the recent-runs strip with period dates + schedule name +
-  // amount so the dashboard speaks human, not UUID. Owner: "what does
-  // 2c5f63cf mean????"
+  // ── Attendance panel buckets ──────────────────────────────────────────────
+  const punchedEmpIds = new Set(todayPunches.map((p) => p.employeeId));
+  const firstPunchByEmp = new Map<string, Date>();
+  for (const p of todayPunches) {
+    const existing = firstPunchByEmp.get(p.employeeId);
+    if (!existing || p.clockIn < existing) {
+      firstPunchByEmp.set(p.employeeId, p.clockIn);
+    }
+  }
+  const approvedOffEmpIds = new Set(approvedOffToday.map((r) => r.employeeId));
+
+  const punchedList = employees
+    .filter((e) => punchedEmpIds.has(e.id))
+    .map((e) => ({
+      id: e.id,
+      name: e.displayName,
+      firstPunchAt: formatTimeShort(
+        firstPunchByEmp.get(e.id)!,
+        company.timezone,
+      ),
+    }));
+
+  const approvedOutList = employees
+    .filter((e) => !punchedEmpIds.has(e.id) && approvedOffEmpIds.has(e.id))
+    .map((e) => {
+      const req = approvedOffToday.find((r) => r.employeeId === e.id);
+      return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID" };
+    });
+
+  const noPunchList = employees
+    .filter((e) => !punchedEmpIds.has(e.id) && !approvedOffEmpIds.has(e.id))
+    .map((e) => ({ id: e.id, name: e.displayName }));
+
+  // ── Recent runs ───────────────────────────────────────────────────────────
   const rawRecent = await listRuns(5);
-  const recentRunIds = rawRecent.map((r) => r.id);
   const periodIds = Array.from(new Set(rawRecent.map((r) => r.periodId)));
   const scheduleIds = Array.from(
-    new Set(rawRecent.map((r) => r.payScheduleId).filter((s): s is string => Boolean(s))),
+    new Set(
+      rawRecent
+        .map((r) => r.payScheduleId)
+        .filter((s): s is string => Boolean(s)),
+    ),
   );
-  const { payPeriods: periodsTable, paySchedules: schedulesTable } = await import("@/lib/db/schema");
+  const { payPeriods: periodsTable, paySchedules: schedulesTable } =
+    await import("@/lib/db/schema");
   const { inArray } = await import("drizzle-orm");
   const [periodRows, scheduleRows] = await Promise.all([
     periodIds.length
       ? db.select().from(periodsTable).where(inArray(periodsTable.id, periodIds))
       : [],
     scheduleIds.length
-      ? db.select().from(schedulesTable).where(inArray(schedulesTable.id, scheduleIds))
+      ? db
+          .select()
+          .from(schedulesTable)
+          .where(inArray(schedulesTable.id, scheduleIds))
       : [],
   ]);
   const periodById = new Map(periodRows.map((p) => [p.id, p]));
@@ -185,34 +257,60 @@ export default async function DashboardPage() {
   const recentRuns = rawRecent.map((r) => ({
     ...r,
     period: periodById.get(r.periodId) ?? null,
-    schedule: r.payScheduleId ? scheduleById.get(r.payScheduleId) ?? null : null,
+    schedule: r.payScheduleId
+      ? (scheduleById.get(r.payScheduleId) ?? null)
+      : null,
   }));
-  void recentRunIds;
+
+  const cardState: Parameters<typeof PayrollRunCard>[0]["state"] = run
+    ? run.state
+    : "NO_RUN";
 
   return (
-    <div className="space-y-8">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-text-muted">
-            One place, one source of truth for the current payroll run.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-sm text-text-muted">
+          {period
+            ? `Period ${period.startDate} – ${period.endDate}`
+            : "No active period"}
+        </p>
       </header>
 
-      <PayrollRunCard
-        state={cardState}
-        {...(period
-          ? { period: { startDate: period.startDate, endDate: period.endDate } }
-          : {})}
-        {...(run?.id ? { runId: run.id } : {})}
-        {...(stats ? { stats } : {})}
-        {...(run?.employeeFixDeadline
-          ? {
-              fixDeadline: run.employeeFixDeadline.toISOString().slice(0, 16).replace("T", " "),
-            }
-          : {})}
+      <StatStrip
+        inToday={punchedList.length}
+        totalActive={employees.length}
+        periodHours={stats?.hours ?? 0}
+        weeklyGrossCents={weeklyGrossCents}
+        semiMonthlyGrossCents={semiMonthlyGrossCents}
+        exceptions={stats?.unresolvedAlerts ?? 0}
+        lastPollAt={lastPoll?.finishedAt ?? null}
       />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+        <PayrollRunCard
+          state={cardState}
+          {...(period
+            ? { period: { startDate: period.startDate, endDate: period.endDate } }
+            : {})}
+          {...(run?.id ? { runId: run.id } : {})}
+          {...(stats ? { stats } : {})}
+          {...(run?.employeeFixDeadline
+            ? {
+                fixDeadline: run.employeeFixDeadline
+                  .toISOString()
+                  .slice(0, 16)
+                  .replace("T", " "),
+              }
+            : {})}
+        />
+        <AttendancePanel
+          punched={punchedList}
+          approvedOut={approvedOutList}
+          noPunch={noPunchList}
+          todayLabel={shortDateLabel(today)}
+        />
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -241,24 +339,31 @@ export default async function DashboardPage() {
                 {pendingMissed.slice(0, 3).map((r) => (
                   <Link
                     key={r.id}
-                    href={`/requests`}
+                    href="/requests"
                     className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
                   >
-                    <div className="text-sm font-medium">Missed punch · {r.date}</div>
-                    <div className="text-xs text-text-muted truncate">{r.reason}</div>
+                    <div className="text-sm font-medium">
+                      Missed punch · {r.date}
+                    </div>
+                    <div className="text-xs text-text-muted truncate">
+                      {r.reason}
+                    </div>
                   </Link>
                 ))}
                 {pendingTimeOff.slice(0, 3).map((r) => (
                   <Link
                     key={r.id}
-                    href={`/requests`}
+                    href="/requests"
                     className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
                   >
                     <div className="text-sm font-medium">
-                      Time off · {r.startDate} – {r.endDate} ({r.type.toLowerCase()})
+                      Time off · {r.startDate} – {r.endDate} (
+                      {r.type.toLowerCase()})
                     </div>
                     {r.reason && (
-                      <div className="text-xs text-text-muted truncate">{r.reason}</div>
+                      <div className="text-xs text-text-muted truncate">
+                        {r.reason}
+                      </div>
                     )}
                   </Link>
                 ))}
@@ -271,6 +376,7 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Recent runs</CardTitle>
@@ -287,7 +393,11 @@ export default async function DashboardPage() {
                 {recentRuns.map((r) => (
                   <li key={r.id}>
                     <Link
-                      href={r.period ? `/payroll/${r.period.id}` : `/payroll/run/${r.id}`}
+                      href={
+                        r.period
+                          ? `/payroll/${r.period.id}`
+                          : `/payroll/run/${r.id}`
+                      }
                       className="flex items-center justify-between gap-3 rounded-input border border-border px-3 py-2 hover:bg-surface-2"
                     >
                       <div className="min-w-0">
@@ -317,37 +427,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Last NGTeco import</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentRuns[0] ? (
-            <div className="text-sm flex items-center justify-between">
-              <span>
-                {recentRuns[0].ingestStartedAt
-                  ? recentRuns[0].ingestStartedAt.toISOString().slice(0, 16).replace("T", " ")
-                  : "not yet started"}
-              </span>
-              <Button asChild size="sm" variant="secondary">
-                <Link href={`/ngteco/${recentRuns[0].id}`}>Detail</Link>
-              </Button>
-            </div>
-          ) : (
-            <EmptyState
-              icon={Workflow}
-              title="No imports yet"
-              description="Configure the connection in Settings → NGTeco, then run a test import."
-              action={
-                <Button asChild variant="secondary">
-                  <Link href="/settings/ngteco">Configure NGTeco</Link>
-                </Button>
-              }
-            />
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
