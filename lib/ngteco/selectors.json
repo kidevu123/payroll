@@ -12,7 +12,7 @@
   "navigation": {
     "reportsLink": "text=/Reports?/i",
     "punchReportLink": "text=/Punch.*Report/i",
-    "attendanceMenu": ".MuiAccordionSummary-root:has(p:text-is(\"Attendance\"))",
+    "attendanceMenu": ".MuiAccordionSummary-root:has(p:text-is(\"Report\"))",
     "viewAttendancePunchLink": "p:text-is(\"View Attendance Punch\")"
   },
   "report": {

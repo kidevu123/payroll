@@ -941,7 +941,7 @@ export async function scrapeViewAttendance(
         });
       } catch {
         try {
-          await page.getByText("Attendance", { exact: true }).first().click({
+          await page.getByText("Report", { exact: true }).first().click({
             timeout: 5_000,
           });
         } catch {
