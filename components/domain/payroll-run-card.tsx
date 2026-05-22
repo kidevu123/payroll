@@ -67,8 +67,8 @@ const COPY: Record<
   }
 > = {
   NO_RUN: {
-    headline: "No payroll run yet",
-    sub: "The next run starts on the configured cron, or you can trigger one manually.",
+    headline: "Not started",
+    sub: "Run starts Sunday at 7pm, or trigger one manually.",
     Icon: Workflow,
     tone: "neutral",
   },
@@ -149,7 +149,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
   return (
     <div
       className={cn(
-        "relative flex min-h-[20rem] flex-col overflow-hidden rounded-card bg-surface p-4 shadow-card sm:min-h-[24rem] sm:p-6 lg:p-10",
+        "relative flex flex-col overflow-hidden rounded-card bg-surface p-4 shadow-card sm:p-6 lg:p-8",
         "border-2 border-brand-700",
       )}
     >
@@ -175,7 +175,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
           <Icon className="h-6 w-6" aria-hidden="true" />
         </span>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight leading-tight sm:text-display">
+          <h2 className="text-lg font-semibold tracking-tight leading-tight">
             {c.headline}
           </h2>
           <p className="text-sm text-text-muted mt-1.5 max-w-2xl leading-relaxed">
@@ -226,7 +226,7 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         </div>
       ) : null}
 
-      <div className="relative mt-auto flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&_a]:justify-center">
+      <div className="relative mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&_a]:justify-center">
         {primaryAction(props)}
         {secondaryAction(props)}
       </div>
