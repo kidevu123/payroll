@@ -150,19 +150,20 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
     <div
       className={cn(
         "relative flex min-h-[20rem] flex-col overflow-hidden rounded-card bg-surface p-4 shadow-card sm:min-h-[24rem] sm:p-6 lg:p-10",
-        attention ? "border-2 border-brand-700" : "border border-border",
+        "border-2 border-brand-700",
       )}
     >
-      {attention ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "radial-gradient(120% 80% at 100% 0%, var(--color-brand-50), transparent 60%)",
-          }}
-        />
-      ) : null}
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-0",
+          attention ? "opacity-40" : "opacity-20",
+        )}
+        style={{
+          backgroundImage:
+            "radial-gradient(120% 80% at 100% 0%, var(--color-brand-50), transparent 60%)",
+        }}
+      />
 
       <div className="relative mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
         <span
@@ -281,7 +282,7 @@ function progressFor(state: State): {
 }
 
 function RunProgress({ state, className }: { state: State; className?: string }) {
-  if (state === "NO_RUN" || state === "CANCELLED") return null;
+  if (state === "CANCELLED") return null;
   const { step, failed } = progressFor(state);
   const isPublished = state === "PUBLISHED";
   return (
@@ -369,8 +370,8 @@ function primaryAction(props: PayrollRunCardProps): React.ReactNode {
       );
     case "NO_RUN":
       return (
-        <Button asChild size="lg" variant="secondary">
-          <Link href="/settings/ngteco">Configure NGTeco</Link>
+        <Button asChild size="lg">
+          <Link href="/payroll">Start payroll run</Link>
         </Button>
       );
     default:
