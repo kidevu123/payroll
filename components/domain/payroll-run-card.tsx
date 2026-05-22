@@ -165,41 +165,54 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         }}
       />
 
-      <div className="relative mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
-        <span
-          className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-card",
-            TONE_ICON[c.tone],
-          )}
-        >
-          <Icon className="h-6 w-6" aria-hidden="true" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight leading-tight">
-            {c.headline}
-          </h2>
-          <p className="text-sm text-text-muted mt-1.5 max-w-2xl leading-relaxed">
-            {c.sub}
-          </p>
+      {props.state === "NO_RUN" ? (
+        <div className="relative mb-5 flex items-center justify-between gap-3">
           {props.period ? (
-            <p className="text-xs text-text-muted mt-3">
-              Period:{" "}
-              <span className="font-mono tabular-nums">
-                {props.period.startDate}
-              </span>{" "}
-              –{" "}
-              <span className="font-mono tabular-nums">
-                {props.period.endDate}
-              </span>
+            <p className="text-sm font-medium text-text">
+              <span className="font-mono tabular-nums">{props.period.startDate}</span>
+              {" – "}
+              <span className="font-mono tabular-nums">{props.period.endDate}</span>
             </p>
-          ) : null}
-          {props.fixDeadline ? (
-            <p className="text-xs text-warn-700 mt-1">
-              Employee fix window closes {props.fixDeadline}
-            </p>
-          ) : null}
+          ) : (
+            <p className="text-sm font-medium text-text-muted">Current period</p>
+          )}
+          <span className="shrink-0 inline-flex items-center rounded-chip border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            Not started
+          </span>
         </div>
-      </div>
+      ) : (
+        <div className="relative mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
+          <span
+            className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-card",
+              TONE_ICON[c.tone],
+            )}
+          >
+            <Icon className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight leading-tight">
+              {c.headline}
+            </h2>
+            <p className="text-sm text-text-muted mt-1.5 max-w-2xl leading-relaxed">
+              {c.sub}
+            </p>
+            {props.period ? (
+              <p className="text-xs text-text-muted mt-3">
+                Period:{" "}
+                <span className="font-mono tabular-nums">{props.period.startDate}</span>
+                {" – "}
+                <span className="font-mono tabular-nums">{props.period.endDate}</span>
+              </p>
+            ) : null}
+            {props.fixDeadline ? (
+              <p className="text-xs text-warn-700 mt-1">
+                Employee fix window closes {props.fixDeadline}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <RunProgress state={props.state} className="relative mb-6" />
 
@@ -282,7 +295,7 @@ function progressFor(state: State): {
 }
 
 function RunProgress({ state, className }: { state: State; className?: string }) {
-  if (state === "CANCELLED") return null;
+  if (state === "NO_RUN" || state === "CANCELLED") return null;
   const { step, failed } = progressFor(state);
   const isPublished = state === "PUBLISHED";
   return (

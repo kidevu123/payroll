@@ -249,15 +249,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-text-muted">
-          {period
-            ? `Period ${period.startDate} – ${period.endDate}`
-            : "No active period"}
-        </p>
-      </header>
-
       <StatStrip
         inToday={punchedList.length}
         totalActive={employees.length}
