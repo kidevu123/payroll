@@ -40,6 +40,30 @@ export function formatTimeShort(date: Date, timeZone: string): string {
   return `${h}:${m}${p}`;
 }
 
+/**
+ * Returns the UTC Date corresponding to midnight (00:00:00) of `dateIso`
+ * in `tz`. Uses noon-UTC as a DST-safe probe — DST transitions happen
+ * at 2am local, so noon is always unambiguous.
+ *
+ * Example: localMidnightUtc("2026-05-22", "America/New_York")
+ *          → 2026-05-22T04:00:00.000Z  (EDT = UTC-4)
+ */
+export function localMidnightUtc(dateIso: string, tz: string): Date {
+  const [y, m, d] = dateIso.split("-").map(Number) as [number, number, number];
+  const noonUtcMs = Date.UTC(y, m - 1, d, 12, 0, 0, 0);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(noonUtcMs));
+  const localH = Number(parts.find((p) => p.type === "hour")!.value);
+  const localMin = Number(parts.find((p) => p.type === "minute")!.value);
+  // UTC offset in ms = (12:00 UTC - local noon). For UTC-4: +4h. For UTC+5: -5h.
+  const offsetMs = (12 * 60 - (localH * 60 + localMin)) * 60 * 1000;
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) + offsetMs);
+}
+
 /** "8h 36m" style — ignores values < 1 minute. */
 export function formatHoursMinutes(hours: number): string {
   if (!isFinite(hours) || hours <= 0) return "0h";

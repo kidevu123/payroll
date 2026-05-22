@@ -7,6 +7,7 @@ import {
   formatHours,
   formatTimeShort,
   formatHoursMinutes,
+  localMidnightUtc,
 } from "./utils";
 
 describe("formatMoney", () => {
@@ -47,6 +48,28 @@ describe("formatTimeShort", () => {
   it("respects the requested timezone, not the JS host", () => {
     // 7:32a Eastern is 12:32p UTC.
     expect(formatTimeShort(date, "UTC")).toBe("11:32a");
+  });
+});
+
+describe("localMidnightUtc", () => {
+  it("returns 04:00 UTC for America/New_York in summer (EDT = UTC-4)", () => {
+    const result = localMidnightUtc("2026-05-22", "America/New_York");
+    expect(result.toISOString()).toBe("2026-05-22T04:00:00.000Z");
+  });
+
+  it("returns 05:00 UTC for America/New_York in winter (EST = UTC-5)", () => {
+    const result = localMidnightUtc("2026-01-15", "America/New_York");
+    expect(result.toISOString()).toBe("2026-01-15T05:00:00.000Z");
+  });
+
+  it("returns 00:00 UTC for UTC timezone", () => {
+    const result = localMidnightUtc("2026-05-22", "UTC");
+    expect(result.toISOString()).toBe("2026-05-22T00:00:00.000Z");
+  });
+
+  it("returns 05:00 UTC for America/Chicago in summer (CDT = UTC-5)", () => {
+    const result = localMidnightUtc("2026-05-22", "America/Chicago");
+    expect(result.toISOString()).toBe("2026-05-22T05:00:00.000Z");
   });
 });
 
