@@ -16,7 +16,7 @@ import { PayrollRunCard } from "@/components/domain/payroll-run-card";
 import { StatStrip } from "@/components/domain/stat-strip";
 import { AttendancePanel } from "@/components/domain/attendance-panel";
 import { listEmployees } from "@/lib/db/queries/employees";
-import { listPunches, listTodayPunches } from "@/lib/db/queries/punches";
+import { listTodayPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import {
   getCurrentPeriod,
@@ -30,7 +30,6 @@ import {
 } from "@/lib/db/queries/requests";
 import { listApprovedTimeOffForDate } from "@/lib/db/queries/time-off";
 import { getLastSuccessfulPoll } from "@/lib/db/queries/poll-history";
-import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { formatTimeShort } from "@/lib/utils";
@@ -92,15 +91,13 @@ export default async function DashboardPage() {
         unresolvedAlerts: number;
       }
     | undefined;
-  let weeklyGrossCents: number | null = null;
-  let semiMonthlyGrossCents: number | null = null;
-
   if (period) {
-    const [periodPunches, payRules, alerts, schedules] = await Promise.all([
-      listPunches({ periodId: period.id }),
+    const [periodPunches, payRules, alerts] = await Promise.all([
+      import("@/lib/db/queries/punches").then((m) =>
+        m.listPunches({ periodId: period.id }),
+      ),
       getSetting("payRules"),
       listAlertsForPeriod(period.id, { unresolvedOnly: true }),
-      listSchedules(),
     ]);
     const tasks = await db
       .select()
@@ -125,16 +122,7 @@ export default async function DashboardPage() {
       tasksByE.set(t.employeeId, list);
     }
 
-    const weeklyIds = new Set(
-      schedules.filter((s) => s.periodKind === "WEEKLY").map((s) => s.id),
-    );
-    const semiMonthlyIds = new Set(
-      schedules.filter((s) => s.periodKind === "SEMI_MONTHLY").map((s) => s.id),
-    );
-
     let totals = { hours: 0, gross: 0, rounded: 0 };
-    let weeklyGross = 0;
-    let semiMonthlyGross = 0;
     let activeWithWork = 0;
 
     for (const e of employees) {
@@ -172,11 +160,6 @@ export default async function DashboardPage() {
       totals.gross += result.grossCents;
       totals.rounded += result.roundedCents;
       activeWithWork++;
-      if (e.payScheduleId && weeklyIds.has(e.payScheduleId)) {
-        weeklyGross += result.grossCents;
-      } else if (e.payScheduleId && semiMonthlyIds.has(e.payScheduleId)) {
-        semiMonthlyGross += result.grossCents;
-      }
     }
 
     for (const tw of tempWorkers) {
@@ -191,8 +174,6 @@ export default async function DashboardPage() {
       employeeCount: activeWithWork,
       unresolvedAlerts: alerts.length,
     };
-    weeklyGrossCents = weeklyGross > 0 ? weeklyGross : null;
-    semiMonthlyGrossCents = semiMonthlyGross > 0 ? semiMonthlyGross : null;
   }
 
   // ── Attendance panel buckets ──────────────────────────────────────────────
@@ -280,9 +261,6 @@ export default async function DashboardPage() {
       <StatStrip
         inToday={punchedList.length}
         totalActive={employees.length}
-        periodHours={stats?.hours ?? 0}
-        weeklyGrossCents={weeklyGrossCents}
-        semiMonthlyGrossCents={semiMonthlyGrossCents}
         exceptions={stats?.unresolvedAlerts ?? 0}
         lastPollAt={lastPoll?.finishedAt ?? null}
       />

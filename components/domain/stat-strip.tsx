@@ -1,12 +1,7 @@
-import { MoneyDisplay } from "./money-display";
-import { HoursDisplay } from "./hours-display";
 
 export type StatStripProps = {
   inToday: number;
   totalActive: number;
-  periodHours: number;
-  weeklyGrossCents: number | null;
-  semiMonthlyGrossCents: number | null;
   exceptions: number;
   /** Timestamp of the last successful NGTeco poll. Null if never polled. */
   lastPollAt: Date | null;
@@ -70,9 +65,6 @@ function StatTile({
 export function StatStrip({
   inToday,
   totalActive,
-  periodHours,
-  weeklyGrossCents,
-  semiMonthlyGrossCents,
   exceptions,
   lastPollAt,
 }: StatStripProps) {
@@ -80,7 +72,7 @@ export function StatStrip({
   const absent = totalActive - inToday;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-3 gap-3">
       <StatTile
         label="In today"
         value={
@@ -94,25 +86,6 @@ export function StatStrip({
         }
         sub={absent === 0 ? "everyone in" : `${absent} not yet in`}
       />
-      <StatTile
-        label="Hours this period"
-        value={<HoursDisplay hours={periodHours} decimals={1} />}
-        sub="accrued so far"
-      />
-      {weeklyGrossCents !== null && (
-        <StatTile
-          label="Weekly gross"
-          value={<MoneyDisplay cents={weeklyGrossCents} monospace />}
-          sub="est."
-        />
-      )}
-      {semiMonthlyGrossCents !== null && (
-        <StatTile
-          label="Semi-mo. gross"
-          value={<MoneyDisplay cents={semiMonthlyGrossCents} monospace />}
-          sub="est."
-        />
-      )}
       <StatTile
         label="Exceptions"
         value={String(exceptions)}
