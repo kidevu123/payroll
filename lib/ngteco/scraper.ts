@@ -1506,20 +1506,38 @@ export async function addManualAttendancePunch(
       .waitFor({ timeout: 15_000 });
 
     const alreadyVisible = await page
-      .locator("body")
-      .innerText({ timeout: 5_000 })
-      .then((text) => {
-        const compact = text.replace(/\s+/g, " ");
-        return (
-          compact.includes(input.personId) &&
-          compact.includes(input.punchDate) &&
-          compact.includes(input.punchTime)
-        );
-      })
+      .locator("tr, [role='row']")
+      .filter({ hasText: input.personId })
+      .filter({ hasText: input.punchDate })
+      .filter({ hasText: input.punchTime })
+      .filter({ hasText: input.timeZoneOffset })
+      .count()
+      .then((count) => count > 0)
       .catch(() => false);
     if (alreadyVisible) {
       await ctx.close();
       return;
+    }
+
+    const wrongTimezoneRows = page
+      .locator("tr, [role='row']")
+      .filter({ hasText: input.personId })
+      .filter({ hasText: input.punchDate })
+      .filter({ hasText: input.punchTime });
+    const wrongTimezoneCount = await wrongTimezoneRows.count().catch(() => 0);
+    for (let i = 0; i < wrongTimezoneCount; i++) {
+      const row = wrongTimezoneRows.nth(i);
+      const text = await row.innerText().catch(() => "");
+      if (text.includes(input.timeZoneOffset)) continue;
+      const deleteButton = row.getByText(/^delete$/i).last();
+      if ((await deleteButton.count().catch(() => 0)) === 0) continue;
+      await deleteButton.click({ timeout: 8_000 });
+      const confirm = page
+        .getByRole("button", { name: /^(ok|confirm|delete|yes)$/i })
+        .last();
+      await confirm.click({ timeout: 8_000 }).catch(() => undefined);
+      await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+      await page.waitForTimeout(500);
     }
 
     await page.getByText(/^add$/i).last().click({ timeout: 10_000 });
@@ -1554,6 +1572,9 @@ export async function addManualAttendancePunch(
       await page.waitForTimeout(500);
       await humanFill(visibleInputs.nth(1), input.punchDate);
       await humanFill(visibleInputs.nth(2), input.punchTime.slice(0, 5));
+      if ((await visibleInputs.count().catch(() => 0)) >= 4) {
+        await humanFill(visibleInputs.nth(3), input.timeZoneOffset, true);
+      }
     } else {
       await fillByHints(
         dialog,

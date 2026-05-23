@@ -7,6 +7,10 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch, editPunch, voidPunch } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { wallClockToUtc, isBareWallClock } from "@/lib/time/wall-clock";
+import {
+  NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
+  type ManualPunchSyncJobData,
+} from "@/lib/ngteco/manual-punch-sync";
 
 /**
  * Parse a punch-editor datetime-local string as company-timezone
@@ -42,6 +46,24 @@ function validatePunchSpan(
     return `Punch span over 16 hours — that's almost certainly wrong. Adjust the times.`;
   }
   return null;
+}
+
+async function queueNgtecoPunchSync(
+  punchId: string,
+  actor: { id: string; role: ManualPunchSyncJobData["actorRole"] },
+): Promise<void> {
+  try {
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    await boss.send(NGTECO_MANUAL_PUNCH_SYNC_QUEUE, {
+      punchId,
+      actorId: actor.id,
+      actorRole: actor.role,
+    } satisfies ManualPunchSyncJobData);
+  } catch {
+    // Milo is the payroll source of truth. A queue outage should not roll
+    // back the payroll correction the admin just made.
+  }
 }
 
 // ISO datetime regex — input must be e.g. "2026-04-15T07:30" or
@@ -87,7 +109,7 @@ export async function createPunchAction(
   const spanErr = validatePunchSpan(clockInD, clockOutD);
   if (spanErr) return { error: spanErr };
   try {
-    await createPunch(
+    const punch = await createPunch(
       {
         employeeId: parsed.data.employeeId,
         periodId: parsed.data.periodId,
@@ -98,6 +120,10 @@ export async function createPunchAction(
       },
       { id: session.user.id, role: session.user.role },
     );
+    await queueNgtecoPunchSync(punch.id, {
+      id: session.user.id,
+      role: session.user.role,
+    });
   } catch (err) {
     if (err instanceof Error && err.message === "PERIOD_PAID") {
       return { error: "Period is paid. Unmark paid before editing punches." };
@@ -150,12 +176,16 @@ export async function editPunchAction(
   const spanErr = validatePunchSpan(clockInD, clockOutD);
   if (spanErr) return { error: spanErr };
   try {
-    await editPunch(
+    const punch = await editPunch(
       punchId,
       { clockIn: clockInD, clockOut: clockOutD, notes: parsed.data.notes ?? null },
       parsed.data.reason,
       { id: session.user.id, role: session.user.role },
     );
+    await queueNgtecoPunchSync(punch.id, {
+      id: session.user.id,
+      role: session.user.role,
+    });
   } catch (err) {
     if (err instanceof Error && err.message === "PERIOD_PAID") {
       return { error: "Period is paid. Unmark paid before editing punches." };
