@@ -1594,6 +1594,14 @@ export async function addManualAttendancePunch(
       .catch(() => []);
     const visibleErrors = errors.map((e) => e.trim()).filter(Boolean);
     if (visibleErrors.length > 0) {
+      if (
+        visibleErrors.some((e) =>
+          /already exists|duplicate cards|do not add duplicate/i.test(e),
+        )
+      ) {
+        await ctx.close();
+        return;
+      }
       throw new Error(
         `NGTeco rejected the manual punch: ${visibleErrors.join(" | ")}`,
       );
