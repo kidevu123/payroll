@@ -3,7 +3,13 @@
 
 import { and, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { payPeriods, punches, type Punch, type NewPunch } from "@/lib/db/schema";
+import {
+  employees,
+  payPeriods,
+  punches,
+  type Punch,
+  type NewPunch,
+} from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import type { Actor } from "./employees";
 
@@ -78,13 +84,11 @@ export async function listPunches(
     conds.push(eq(punches.employeeId, filters.employeeId));
   if (!filters.includeVoided) conds.push(isNull(punches.voidedAt));
   if (filters.clockAfter) conds.push(gte(punches.clockIn, filters.clockAfter));
-  if (filters.clockBefore) conds.push(lte(punches.clockIn, filters.clockBefore));
+  if (filters.clockBefore)
+    conds.push(lte(punches.clockIn, filters.clockBefore));
   const q = db.select().from(punches);
-  const rows =
-    conds.length > 0 ? await q.where(and(...conds)) : await q;
-  return rows.sort((a, b) =>
-    a.clockIn.getTime() - b.clockIn.getTime(),
-  );
+  const rows = conds.length > 0 ? await q.where(and(...conds)) : await q;
+  return rows.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
 }
 
 /**
@@ -101,9 +105,43 @@ export async function listTodayPunches(
   return rows.map((p) => ({ employeeId: p.employeeId, clockIn: p.clockIn }));
 }
 
+export async function getPunchForNgtecoSync(id: string): Promise<{
+  id: string;
+  clockIn: Date;
+  clockOut: Date | null;
+  source: Punch["source"];
+  voidedAt: Date | null;
+  employeeId: string;
+  employeeName: string;
+  ngtecoEmployeeRef: string | null;
+} | null> {
+  const [row] = await db
+    .select({
+      id: punches.id,
+      clockIn: punches.clockIn,
+      clockOut: punches.clockOut,
+      source: punches.source,
+      voidedAt: punches.voidedAt,
+      employeeId: employees.id,
+      employeeName: employees.displayName,
+      ngtecoEmployeeRef: employees.ngtecoEmployeeRef,
+    })
+    .from(punches)
+    .innerJoin(employees, eq(punches.employeeId, employees.id))
+    .where(eq(punches.id, id));
+  return row ?? null;
+}
+
 export type CreatePunchInput = Omit<
   NewPunch,
-  "id" | "createdAt" | "originalClockIn" | "originalClockOut" | "editedAt" | "editedById" | "editReason" | "voidedAt"
+  | "id"
+  | "createdAt"
+  | "originalClockIn"
+  | "originalClockOut"
+  | "editedAt"
+  | "editedById"
+  | "editReason"
+  | "voidedAt"
 >;
 
 export async function createPunch(
@@ -244,9 +282,7 @@ export async function findDuplicatePunchClusters(
   const groups = new Map<string, Punch[]>();
   for (const r of rows) {
     const inMin = Math.floor(r.clockIn.getTime() / 60_000);
-    const outMin = r.clockOut
-      ? Math.floor(r.clockOut.getTime() / 60_000)
-      : -1;
+    const outMin = r.clockOut ? Math.floor(r.clockOut.getTime() / 60_000) : -1;
     const key = `${r.employeeId}|${inMin}|${outMin}`;
     const list = groups.get(key) ?? [];
     list.push(r);
@@ -297,12 +333,8 @@ export async function mergeDuplicatePunches(
       const aClosed = a.clockOut ? 1 : 0;
       const bClosed = b.clockOut ? 1 : 0;
       if (aClosed !== bClosed) return bClosed - aClosed;
-      const aDur = a.clockOut
-        ? a.clockOut.getTime() - a.clockIn.getTime()
-        : 0;
-      const bDur = b.clockOut
-        ? b.clockOut.getTime() - b.clockIn.getTime()
-        : 0;
+      const aDur = a.clockOut ? a.clockOut.getTime() - a.clockIn.getTime() : 0;
+      const bDur = b.clockOut ? b.clockOut.getTime() - b.clockIn.getTime() : 0;
       if (aDur !== bDur) return bDur - aDur;
       return a.id.localeCompare(b.id);
     });
@@ -364,9 +396,8 @@ async function recomputePayslipForPunch(
   punch: Punch,
   actor: Actor,
 ): Promise<void> {
-  const { recomputePayslipForEmployeePeriod } = await import(
-    "./payslip-recompute"
-  );
+  const { recomputePayslipForEmployeePeriod } =
+    await import("./payslip-recompute");
   try {
     await recomputePayslipForEmployeePeriod(
       punch.employeeId,

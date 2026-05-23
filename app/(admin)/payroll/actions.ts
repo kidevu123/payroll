@@ -19,7 +19,10 @@ import {
 import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
 import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifications";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
-import type { PollSummary } from "@/lib/jobs/handlers/punch-poll";
+import {
+  makeManualPollJobData,
+  NGTECO_PUNCH_POLL_QUEUE,
+} from "@/lib/jobs/punch-poll-queue";
 import {
   recomputePayslip,
   unvoidPayslip,
@@ -86,10 +89,13 @@ export async function publishLockedPeriodAction(
     if (run.state === "APPROVED") {
       await handlePayrollRunPublish({ runId: run.id });
       run = await getRunForPeriod(periodId);
-      if (!run) return { error: "Publish finished but run could not be reloaded." };
+      if (!run)
+        return { error: "Publish finished but run could not be reloaded." };
     }
     if (run.state !== "PUBLISHED") {
-      return { error: `Run is in state ${run.state}; cannot publish from here.` };
+      return {
+        error: `Run is in state ${run.state}; cannot publish from here.`,
+      };
     }
 
     const wasVisible = !!run.publishedToPortalAt;
@@ -154,14 +160,18 @@ export async function markPaidAction(
       id,
       { id: session.user.id, role: session.user.role },
       {
-        ...(parsed.paymentMethod ? { paymentMethod: parsed.paymentMethod } : {}),
+        ...(parsed.paymentMethod
+          ? { paymentMethod: parsed.paymentMethod }
+          : {}),
         ...(parsed.cashAmountCents !== undefined
           ? { cashAmountCents: parsed.cashAmountCents }
           : {}),
       },
     );
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not mark paid." };
+    return {
+      error: err instanceof Error ? err.message : "Could not mark paid.",
+    };
   }
   revalidatePath(`/payroll/${id}`);
   revalidatePath("/payroll");
@@ -185,7 +195,9 @@ export async function unmarkPaidAction(
       role: session.user.role,
     });
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Could not unmark paid." };
+    return {
+      error: err instanceof Error ? err.message : "Could not unmark paid.",
+    };
   }
   revalidatePath(`/payroll/${id}`);
   revalidatePath("/payroll");
@@ -194,33 +206,26 @@ export async function unmarkPaidAction(
 
 export type PollNowResult =
   | { error: string }
-  | { ok: true; summary: PollSummary };
+  | { ok: true; queued: true; jobId: string };
 
 /**
- * Manually trigger a punch.poll run. Blocks until the scrape + import
- * completes (typical ~30-60s) and returns a summary the UI can show.
- * Both cron + manual triggers funnel through runPollAndLog so the
- * ngteco_poll_log entry is consistent.
+ * Manually trigger a punch.poll run as a background job. The pg-boss
+ * worker owns the scrape/import so leaving the page cannot cancel it.
  */
 export async function pollNowAction(): Promise<PollNowResult> {
   const session = await requireAdmin();
-  // Dynamic import: the runner pulls Playwright + node:fs through the
-  // poll handler chain. Top-level import would re-trigger the edge bundle
-  // analyzer issue described in punch-poll.ts.
-  const { runPollAndLog } = await import(
-    "@/lib/jobs/handlers/punch-poll-runner"
-  );
   try {
-    const summary = await runPollAndLog({
-      triggeredBy: "MANUAL",
-      triggeredById: session.user.id,
-    });
-    revalidatePath("/payroll");
-    revalidatePath("/time");
-    return { ok: true, summary };
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    const jobId = await boss.send(
+      NGTECO_PUNCH_POLL_QUEUE,
+      makeManualPollJobData(session.user.id),
+    );
+    if (!jobId) return { error: "Poll could not be queued." };
+    return { ok: true, queued: true, jobId };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Poll failed.",
+      error: err instanceof Error ? err.message : "Poll could not be queued.",
     };
   }
 }
@@ -251,21 +256,21 @@ export async function backfillPollAction(
   if (!parsed.success) {
     return { error: "Invalid daysBack — pick a value between 1 and 14." };
   }
-  const { runPollAndLog } = await import(
-    "@/lib/jobs/handlers/punch-poll-runner"
-  );
   try {
-    const summary = await runPollAndLog({
-      triggeredBy: "MANUAL",
-      triggeredById: session.user.id,
-      pollOptions: { daysBack: parsed.data.daysBack },
-    });
-    revalidatePath("/payroll");
-    revalidatePath("/time");
-    return { ok: true, summary };
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    const jobId = await boss.send(
+      NGTECO_PUNCH_POLL_QUEUE,
+      makeManualPollJobData(session.user.id, {
+        daysBack: parsed.data.daysBack,
+      }),
+    );
+    if (!jobId) return { error: "Backfill could not be queued." };
+    return { ok: true, queued: true, jobId };
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : "Backfill failed.",
+      error:
+        err instanceof Error ? err.message : "Backfill could not be queued.",
     };
   }
 }
@@ -388,7 +393,8 @@ export async function recomputeAllPayslipsOnPeriodAction(
     }
 > {
   const session = await requireAdmin();
-  if (!idSchema.safeParse(periodId).success) return { error: "Invalid period id." };
+  if (!idSchema.safeParse(periodId).success)
+    return { error: "Invalid period id." };
   const { db } = await import("@/lib/db");
   const { payslips, payrollRuns, payPeriods } = await import("@/lib/db/schema");
   const { and, eq, isNull, sql } = await import("drizzle-orm");
@@ -407,9 +413,7 @@ export async function recomputeAllPayslipsOnPeriodAction(
   const snapshots = await db
     .select()
     .from(payslips)
-    .where(
-      and(eq(payslips.periodId, periodId), isNull(payslips.voidedAt)),
-    );
+    .where(and(eq(payslips.periodId, periodId), isNull(payslips.voidedAt)));
   const results: Array<{
     payslipId: string;
     employeeId: string;
@@ -465,7 +469,9 @@ export async function recomputeAllPayslipsOnPeriodAction(
  */
 export async function mergeDuplicatePunchesAction(
   periodId: string | null,
-): Promise<{ error?: string } | { ok: true; voided: number; clusters: number }> {
+): Promise<
+  { error?: string } | { ok: true; voided: number; clusters: number }
+> {
   const session = await requireAdmin();
   if (periodId !== null && !idSchema.safeParse(periodId).success) {
     return { error: "Invalid period." };

@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  History,
-  Loader2,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, History, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   backfillPollAction,
@@ -57,7 +52,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
         >
           {busy ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Backfilling…
+              <Loader2 className="h-4 w-4 animate-spin" /> Queueing…
             </>
           ) : (
             <>
@@ -97,43 +92,12 @@ export function BackfillPunchesButton(): React.JSX.Element {
         </div>
       )}
       {result && "ok" in result && (
-        <div
-          className={`flex items-start gap-2 rounded-card border p-2 text-xs ${
-            result.summary.ok
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-amber-200 bg-amber-50 text-amber-900"
-          }`}
-        >
+        <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
           <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
-          <div className="space-y-1">
-            <p>
-              {result.summary.ok
-                ? `Backfilled ${result.summary.daysCovered ?? "?"} day${
-                    (result.summary.daysCovered ?? 0) === 1 ? "" : "s"
-                  } · scraped ${result.summary.eventsScraped ?? 0} event${
-                    (result.summary.eventsScraped ?? 0) === 1 ? "" : "s"
-                  } · imported ${result.summary.pairsInserted ?? 0} new pair${
-                    (result.summary.pairsInserted ?? 0) === 1 ? "" : "s"
-                  }${
-                    result.summary.pairsUpdated && result.summary.pairsUpdated > 0
-                      ? `, updated ${result.summary.pairsUpdated}`
-                      : ""
-                  }${
-                    result.summary.unmatchedRefs && result.summary.unmatchedRefs > 0
-                      ? `, ${result.summary.unmatchedRefs} unmatched`
-                      : ""
-                  }.`
-                : `Skipped: ${result.summary.reason ?? "unknown"}`}
-            </p>
-            {result.summary.screenshotPath && (
-              <p className="font-mono text-[10px] break-all">
-                Failure screenshot saved to{" "}
-                <code className="bg-amber-100 px-1 rounded">
-                  {result.summary.screenshotPath}
-                </code>
-              </p>
-            )}
-          </div>
+          <span>
+            Backfill queued. You can leave this page; it will keep running in
+            the background.
+          </span>
         </div>
       )}
     </div>

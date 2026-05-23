@@ -45,16 +45,14 @@ export function PollPunchesNowButton({
     setBusy(false);
     setResult(r);
     if ("ok" in r) {
-      // Refresh the displayed last-poll badge from what we just produced
-      // — saves a roundtrip back to the server.
       setLast({
         startedAt: new Date().toISOString(),
-        finishedAt: new Date().toISOString(),
-        ok: r.summary.ok,
+        finishedAt: null,
+        ok: true,
         triggeredBy: "MANUAL",
-        pairsInserted: r.summary.pairsInserted ?? null,
-        pairsUpdated: r.summary.pairsUpdated ?? null,
-        errorMessage: r.summary.reason ?? null,
+        pairsInserted: null,
+        pairsUpdated: null,
+        errorMessage: null,
       });
     }
   }
@@ -105,46 +103,12 @@ export function PollPunchesNowButton({
         </div>
       )}
       {result && "ok" in result && (
-        <div
-          className={`flex items-start gap-2 rounded-card border p-2 text-xs ${
-            result.summary.ok
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-amber-200 bg-amber-50 text-amber-900"
-          }`}
-        >
+        <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
           <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
-          <div className="space-y-1">
-            <p>
-              {result.summary.ok
-                ? `Scraped ${result.summary.eventsScraped ?? 0} event${
-                    (result.summary.eventsScraped ?? 0) === 1 ? "" : "s"
-                  } · imported ${result.summary.pairsInserted ?? 0} new pair${
-                    (result.summary.pairsInserted ?? 0) === 1 ? "" : "s"
-                  }${
-                    result.summary.pairsUpdated && result.summary.pairsUpdated > 0
-                      ? `, updated ${result.summary.pairsUpdated}`
-                      : ""
-                  }${
-                    result.summary.unmatchedRefs && result.summary.unmatchedRefs > 0
-                      ? `, ${result.summary.unmatchedRefs} unmatched`
-                      : ""
-                  }.`
-                : `Skipped: ${result.summary.reason ?? "unknown"}`}
-            </p>
-            {result.summary.screenshotPath && (
-              <p className="font-mono text-[10px] break-all">
-                Failure screenshot saved to{" "}
-                <code className="bg-amber-100 px-1 rounded">
-                  {result.summary.screenshotPath}
-                </code>{" "}
-                on the LXC. Pull with{" "}
-                <code className="bg-amber-100 px-1 rounded">
-                  pct exec 120 -- cat {result.summary.screenshotPath} {">"}{" "}
-                  /tmp/page.png
-                </code>
-              </p>
-            )}
-          </div>
+          <span>
+            Poll queued. You can leave this page; the import will keep running
+            in the background.
+          </span>
         </div>
       )}
     </div>

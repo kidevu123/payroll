@@ -8,6 +8,10 @@ import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch } from "@/lib/db/queries/punches";
+import {
+  NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
+  type ManualPunchSyncJobData,
+} from "@/lib/ngteco/manual-punch-sync";
 
 // ISO datetime regex — input must be e.g. "2026-04-30T06:30" or
 // "2026-04-30T06:30:00Z". Without this, garbage like "2026-13-99"
@@ -66,8 +70,11 @@ export async function addManualPunchAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const clockInD = new Date(parsed.data.clockIn);
-  const clockOutD = parsed.data.clockOut ? new Date(parsed.data.clockOut) : null;
-  if (Number.isNaN(clockInD.getTime())) return { error: "Invalid clock-in time." };
+  const clockOutD = parsed.data.clockOut
+    ? new Date(parsed.data.clockOut)
+    : null;
+  if (Number.isNaN(clockInD.getTime()))
+    return { error: "Invalid clock-in time." };
   if (clockOutD && Number.isNaN(clockOutD.getTime())) {
     return { error: "Invalid clock-out time." };
   }
@@ -107,7 +114,7 @@ export async function addManualPunchAction(
   const open = editable.find((p) => p.state === "OPEN");
   const period = open ?? editable[0]!;
 
-  await createPunch(
+  const punch = await createPunch(
     {
       employeeId: parsed.data.employeeId,
       periodId: period.id,
@@ -118,6 +125,19 @@ export async function addManualPunchAction(
     },
     { id: session.user.id, role: session.user.role },
   );
+  try {
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    await boss.send(NGTECO_MANUAL_PUNCH_SYNC_QUEUE, {
+      punchId: punch.id,
+      actorId: session.user.id,
+      actorRole: session.user.role,
+    } satisfies ManualPunchSyncJobData);
+  } catch {
+    // The Milo punch is the source of truth for payroll. If NGTeco is
+    // temporarily unavailable, the queued sync failure is diagnosable from
+    // job logs; do not throw after the payroll edit has already succeeded.
+  }
 
   revalidatePath("/time");
   revalidatePath(`/payroll/${period.id}`);

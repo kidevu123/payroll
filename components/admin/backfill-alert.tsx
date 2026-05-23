@@ -50,11 +50,8 @@ export function BackfillAlert({
       <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          Backfilled {result.summary.daysCovered ?? "?"} day
-          {(result.summary.daysCovered ?? 0) === 1 ? "" : "s"} —{" "}
-          {result.summary.pairsInserted ?? 0} new,{" "}
-          {result.summary.pairsUpdated ?? 0} updated. Refresh the page
-          to see the grid update.
+          Backfill queued. You can leave this page; it will keep running in the
+          background.
         </span>
       </div>
     );
@@ -65,9 +62,9 @@ export function BackfillAlert({
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="flex-1 min-w-[200px]">
         {openCountFromPriorDays} open shift
-        {openCountFromPriorDays === 1 ? "" : "s"} from prior days look
-        like a sync gap. Auto-recovery should close them on the next
-        cron tick — or run a backfill now.
+        {openCountFromPriorDays === 1 ? "" : "s"} from prior days look like a
+        sync gap. Auto-recovery should close them on the next cron tick — or run
+        a backfill now.
       </span>
       <Button size="sm" variant="secondary" disabled={busy} onClick={run}>
         {busy ? (

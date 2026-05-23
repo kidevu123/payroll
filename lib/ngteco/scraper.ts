@@ -122,7 +122,10 @@ export class ScrapeFailure extends Error {
 /** True if any path segment is exactly "login". Catches /user/login,
  *  /login, /admin/login/, etc., but not /login-help or /relogin. */
 function isLoginPath(pathname: string): boolean {
-  return pathname.split("/").filter(Boolean).some((seg) => seg.toLowerCase() === "login");
+  return pathname
+    .split("/")
+    .filter(Boolean)
+    .some((seg) => seg.toLowerCase() === "login");
 }
 
 /** Are we on the login page? URL is checked first (most reliable);
@@ -146,7 +149,10 @@ async function detectLoginPage(
   } catch {
     /* page.url() is invalid? proceed with DOM checks */
   }
-  if (sel.login.username && (await page.locator(sel.login.username).count()) > 0) {
+  if (
+    sel.login.username &&
+    (await page.locator(sel.login.username).count()) > 0
+  ) {
     return true;
   }
   // MUI labels — the live portal uses these.
@@ -272,37 +278,38 @@ async function fillLoginField(
   /** Pick the visible input locator. We try several strategies but
    *  ALWAYS act on the same single resolved locator across the
    *  click/clear/type sequence to avoid racing locator resolution. */
-  const resolveVisibleLocator =
-    async (): Promise<import("playwright-core").Locator | null> => {
-      const candidates: Array<() => import("playwright-core").Locator> = [
-        () =>
-          page.locator(
-            kind === "username"
-              ? 'input[name="username"]:visible'
-              : 'input[name="password"]:visible',
-          ),
-        () =>
-          page.getByRole("textbox", {
-            name: kind === "username" ? /email|account|user/i : /password/i,
-          }),
-        () =>
-          page.getByPlaceholder(kind === "username" ? "Email" : "Password", {
-            exact: true,
-          }),
-        () =>
-          page.locator(
-            kind === "username"
-              ? 'input[type="email"]:visible, input[name*="email" i]:visible, input[name*="user" i]:visible'
-              : 'input[type="password"]:visible',
-          ),
-      ];
-      for (const make of candidates) {
-        const loc = make().first();
-        const count = await loc.count().catch(() => 0);
-        if (count > 0) return loc;
-      }
-      return null;
-    };
+  const resolveVisibleLocator = async (): Promise<
+    import("playwright-core").Locator | null
+  > => {
+    const candidates: Array<() => import("playwright-core").Locator> = [
+      () =>
+        page.locator(
+          kind === "username"
+            ? 'input[name="username"]:visible'
+            : 'input[name="password"]:visible',
+        ),
+      () =>
+        page.getByRole("textbox", {
+          name: kind === "username" ? /email|account|user/i : /password/i,
+        }),
+      () =>
+        page.getByPlaceholder(kind === "username" ? "Email" : "Password", {
+          exact: true,
+        }),
+      () =>
+        page.locator(
+          kind === "username"
+            ? 'input[type="email"]:visible, input[name*="email" i]:visible, input[name*="user" i]:visible'
+            : 'input[type="password"]:visible',
+        ),
+    ];
+    for (const make of candidates) {
+      const loc = make().first();
+      const count = await loc.count().catch(() => 0);
+      if (count > 0) return loc;
+    }
+    return null;
+  };
 
   const loc = await resolveVisibleLocator();
   if (!loc) {
@@ -363,7 +370,9 @@ async function fillLoginField(
   let inventory = "(unable to read)";
   try {
     inventory = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input"));
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>("input"),
+      );
       return inputs
         .slice(0, 20)
         .map((i) => {
@@ -445,10 +454,8 @@ async function primeIfCleared(
           const proto = Object.getPrototypeOf(inp);
           const setter =
             Object.getOwnPropertyDescriptor(proto, "value")?.set ??
-            Object.getOwnPropertyDescriptor(
-              HTMLInputElement.prototype,
-              "value",
-            )?.set;
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
+              ?.set;
           if (setter) setter.call(inp, v);
           else inp.value = v;
           inp.dispatchEvent(new Event("input", { bubbles: true }));
@@ -483,7 +490,7 @@ async function ensureAgreementChecked(
     // Fallback: the FormControlLabel root contains the text — find it
     // and then the checkbox inside.
     page
-      .locator('label')
+      .locator("label")
       .filter({ hasText: /i have read and agree/i })
       .locator('input[type="checkbox"]'),
     // Last-ditch: of the two checkboxes in the login form, the
@@ -493,10 +500,16 @@ async function ensureAgreementChecked(
   for (const cb of candidates) {
     try {
       if (!(await cb.count())) continue;
-      const checked = await cb.first().isChecked().catch(() => false);
+      const checked = await cb
+        .first()
+        .isChecked()
+        .catch(() => false);
       if (checked) return;
       await cb.first().check({ timeout: 4_000, force: true });
-      const nowChecked = await cb.first().isChecked().catch(() => false);
+      const nowChecked = await cb
+        .first()
+        .isChecked()
+        .catch(() => false);
       if (nowChecked) return;
     } catch {
       /* try the next candidate */
@@ -545,7 +558,9 @@ async function loadSelectors(): Promise<Selectors> {
  * the import job's worker actually loads this module.
  */
 export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
-  const { mkdirSync, existsSync } = await import(/* webpackIgnore: true */ "node:fs");
+  const { mkdirSync, existsSync } = await import(
+    /* webpackIgnore: true */ "node:fs"
+  );
   const { join } = await import(/* webpackIgnore: true */ "node:path");
   const PROFILE_DIR = join(STORAGE_ROOT, "profile");
   const FAILURES_DIR = join(STORAGE_ROOT, "failures");
@@ -554,7 +569,8 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
   if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
   const failureDir = join(FAILURES_DIR, input.runId);
 
-  const { chromium } = (await import("playwright")) as typeof import("playwright");
+  const { chromium } =
+    (await import("playwright")) as typeof import("playwright");
   // Force headless on server-side Playwright. The settings toggle was a
   // dev convenience that has no equivalent on the LXC (no X server, no
   // $DISPLAY) — surfaces as "Missing X server or $DISPLAY" otherwise.
@@ -574,7 +590,9 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
     try {
       await page.screenshot({ path: screenshotPath, fullPage: true });
       const html = await page.content();
-      const { writeFileSync } = await import(/* webpackIgnore: true */ "node:fs");
+      const { writeFileSync } = await import(
+        /* webpackIgnore: true */ "node:fs"
+      );
       writeFileSync(htmlPath, html);
     } catch {
       /* best-effort */
@@ -624,20 +642,21 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
             ? await cb.isChecked().catch(() => false)
             : false;
           if (!alreadyChecked) {
-            await page
-              .locator(clickTarget)
-              .first()
-              .click({ timeout: 5_000 });
+            await page.locator(clickTarget).first().click({ timeout: 5_000 });
           }
         } catch {
           /* no checkbox visible / already accepted */
         }
       }
       await Promise.all([
-        page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+        page
+          .waitForNavigation({ waitUntil: "domcontentloaded" })
+          .catch(() => {}),
         page.click(sel.login.submit),
       ]);
-      await page.waitForSelector(sel.login.loggedInLandmark, { timeout: 15_000 });
+      await page.waitForSelector(sel.login.loggedInLandmark, {
+        timeout: 15_000,
+      });
     }
 
     // Navigate to punch report.
@@ -682,7 +701,9 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
 export async function scrapeViewAttendance(
   input: PollScrapeInput,
 ): Promise<PollScrapeOutput> {
-  const { mkdirSync, existsSync } = await import(/* webpackIgnore: true */ "node:fs");
+  const { mkdirSync, existsSync } = await import(
+    /* webpackIgnore: true */ "node:fs"
+  );
   const { join } = await import(/* webpackIgnore: true */ "node:path");
   const PROFILE_DIR = join(STORAGE_ROOT, "profile");
   const FAILURES_DIR = join(STORAGE_ROOT, "failures");
@@ -697,7 +718,8 @@ export async function scrapeViewAttendance(
   const failureDir = join(FAILURES_DIR, input.runId);
   const maxRows = input.maxRows ?? 1000;
 
-  const { chromium } = (await import("playwright")) as typeof import("playwright");
+  const { chromium } =
+    (await import("playwright")) as typeof import("playwright");
   // Force headless on server-side Playwright. The settings toggle was a
   // dev convenience that has no equivalent on the LXC (no X server, no
   // $DISPLAY) — surfaces as "Missing X server or $DISPLAY" otherwise.
@@ -717,7 +739,9 @@ export async function scrapeViewAttendance(
     try {
       await page.screenshot({ path: screenshotPath, fullPage: true });
       const html = await page.content();
-      const { writeFileSync } = await import(/* webpackIgnore: true */ "node:fs");
+      const { writeFileSync } = await import(
+        /* webpackIgnore: true */ "node:fs"
+      );
       writeFileSync(htmlPath, html);
     } catch {
       /* best-effort */
@@ -770,8 +794,18 @@ export async function scrapeViewAttendance(
     // links that will never appear.
     const onLoginPage = await detectLoginPage(page, sel);
     if (onLoginPage) {
-      await fillLoginField(page, "username", sel.login.username, input.username);
-      await fillLoginField(page, "password", sel.login.password, input.password);
+      await fillLoginField(
+        page,
+        "username",
+        sel.login.username,
+        input.username,
+      );
+      await fillLoginField(
+        page,
+        "password",
+        sel.login.password,
+        input.password,
+      );
       // Tick the User Agreement / Privacy Policy checkbox — NGTeco's
       // MUI login disables the submit button until it's checked, so
       // skipping this step silently kept the form on /login.
@@ -787,7 +821,9 @@ export async function scrapeViewAttendance(
       await primeIfCleared(page, "username", input.username);
       await primeIfCleared(page, "password", input.password);
       await Promise.all([
-        page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+        page
+          .waitForNavigation({ waitUntil: "domcontentloaded" })
+          .catch(() => {}),
         clickLoginSubmit(page, sel.login.submit),
       ]);
       // Hard verification: did we actually get off /login? MUI's
@@ -886,9 +922,7 @@ export async function scrapeViewAttendance(
               const navs = Array.from(
                 document.querySelectorAll("nav, aside, [role=navigation]"),
               );
-              return navs.some(
-                (n) => (n.textContent ?? "").trim().length > 40,
-              );
+              return navs.some((n) => (n.textContent ?? "").trim().length > 40);
             },
             null,
             { timeout: 6_000 },
@@ -973,9 +1007,12 @@ export async function scrapeViewAttendance(
     let clicked = false;
     if (sel.navigation.viewAttendancePunchLink) {
       try {
-        await page.locator(sel.navigation.viewAttendancePunchLink).first().click({
-          timeout: 6_000,
-        });
+        await page
+          .locator(sel.navigation.viewAttendancePunchLink)
+          .first()
+          .click({
+            timeout: 6_000,
+          });
         clicked = true;
       } catch {
         /* fall through to text/role-based fallbacks */
@@ -983,9 +1020,12 @@ export async function scrapeViewAttendance(
     }
     if (!clicked) {
       try {
-        await page.getByRole("link", { name: /view attendance punch/i }).first().click({
-          timeout: 6_000,
-        });
+        await page
+          .getByRole("link", { name: /view attendance punch/i })
+          .first()
+          .click({
+            timeout: 6_000,
+          });
         clicked = true;
       } catch {
         /* not a link — try plain text */
@@ -993,9 +1033,12 @@ export async function scrapeViewAttendance(
     }
     if (!clicked) {
       try {
-        await page.getByText(/view attendance punch/i).first().click({
-          timeout: 6_000,
-        });
+        await page
+          .getByText(/view attendance punch/i)
+          .first()
+          .click({
+            timeout: 6_000,
+          });
         clicked = true;
       } catch {
         /* fall through to broader variants — NGTeco has shipped
@@ -1029,9 +1072,13 @@ export async function scrapeViewAttendance(
       let sidebarLabels: string = "(unable to read)";
       try {
         sidebarLabels = await page.evaluate(() => {
-          const root = document.querySelector("nav, aside, [role=navigation]") ?? document.body;
+          const root =
+            document.querySelector("nav, aside, [role=navigation]") ??
+            document.body;
           const items = Array.from(
-            root.querySelectorAll("a, [role=button], [role=menuitem], li, p, span"),
+            root.querySelectorAll(
+              "a, [role=button], [role=menuitem], li, p, span",
+            ),
           );
           const seen = new Set<string>();
           const labels: string[] = [];
@@ -1126,28 +1173,26 @@ export async function scrapeViewAttendance(
         source: string;
       };
       const collectVisible = async (): Promise<RowRaw[]> => {
-        const out = await page.evaluate(
-          (a: typeof evalArgs) => {
-            const result: Array<Record<string, string>> = [];
-            const rows = document.querySelectorAll(a.rowSel);
-            for (const row of Array.from(rows)) {
-              const get = (s: string) =>
-                (row.querySelector(s) as HTMLElement | null)?.textContent?.trim() ??
-                "";
-              result.push({
-                personName: get(a.nameSel),
-                personId: get(a.idSel),
-                dateRaw: get(a.dateSel),
-                timeRaw: get(a.timeSel),
-                verifyType: get(a.verifySel),
-                tzRaw: get(a.tzSel),
-                source: get(a.sourceSel),
-              });
-            }
-            return result;
-          },
-          evalArgs,
-        );
+        const out = await page.evaluate((a: typeof evalArgs) => {
+          const result: Array<Record<string, string>> = [];
+          const rows = document.querySelectorAll(a.rowSel);
+          for (const row of Array.from(rows)) {
+            const get = (s: string) =>
+              (
+                row.querySelector(s) as HTMLElement | null
+              )?.textContent?.trim() ?? "";
+            result.push({
+              personName: get(a.nameSel),
+              personId: get(a.idSel),
+              dateRaw: get(a.dateSel),
+              timeRaw: get(a.timeSel),
+              verifyType: get(a.verifySel),
+              tzRaw: get(a.tzSel),
+              source: get(a.sourceSel),
+            });
+          }
+          return result;
+        }, evalArgs);
         return out as RowRaw[];
       };
       const pageKeys = new Set<string>();
@@ -1219,7 +1264,8 @@ export async function scrapeViewAttendance(
       }
       // Try to advance to the next pagination page.
       const next = page.locator(sel.viewPunch.nextPageButton).first();
-      const visible = (await next.count()) > 0 && (await next.isEnabled().catch(() => false));
+      const visible =
+        (await next.count()) > 0 && (await next.isEnabled().catch(() => false));
       if (!visible) break;
       await Promise.all([
         page.waitForTimeout(400), // small debounce for the pagination redraw
@@ -1283,6 +1329,245 @@ export async function scrapeViewAttendance(
   }
 }
 
+export type ManualAttendancePunchInput = {
+  portalUrl: string;
+  username: string;
+  password: string;
+  headless: boolean;
+  runId: string;
+  personId: string;
+  personName: string;
+  /** NGTeco manual log display date, MM/DD/YYYY. */
+  punchDate: string;
+  /** NGTeco manual log display time, HH:mm:ss. */
+  punchTime: string;
+  /** NGTeco manual log offset, e.g. -04:00. */
+  timeZoneOffset: string;
+  remarks: string;
+};
+
+export async function addManualAttendancePunch(
+  input: ManualAttendancePunchInput,
+): Promise<void> {
+  const { mkdirSync, existsSync, writeFileSync } = await import(
+    /* webpackIgnore: true */ "node:fs"
+  );
+  const { join } = await import(/* webpackIgnore: true */ "node:path");
+  const PROFILE_DIR = join(STORAGE_ROOT, "profile");
+  const FAILURES_DIR = join(STORAGE_ROOT, "failures");
+  const sel = await loadSelectors();
+  if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
+  const failureDir = join(FAILURES_DIR, input.runId);
+
+  const { chromium } =
+    (await import("playwright")) as typeof import("playwright");
+  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+    headless: true,
+    viewport: { width: 1600, height: 950 },
+    locale: "en-US",
+  });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20_000);
+
+  const captureFailure = async (reason: string): Promise<never> => {
+    if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
+    const screenshotPath = join(failureDir, "page.png");
+    const htmlPath = join(failureDir, "page.html");
+    try {
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      writeFileSync(htmlPath, await page.content());
+    } catch {
+      /* best-effort */
+    }
+    await ctx.close();
+    throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
+  };
+
+  const humanFill = async (
+    locator: import("playwright-core").Locator,
+    value: string,
+    pressEnter = false,
+  ) => {
+    const target = locator.first();
+    await target.click({ timeout: 5_000 });
+    await page.keyboard.press("Control+A");
+    await page.keyboard.press("Meta+A");
+    await page.keyboard.press("Delete");
+    await target.pressSequentially(value, { delay: 10, timeout: 8_000 });
+    if (pressEnter) await page.keyboard.press("Enter");
+  };
+
+  const fillByHints = async (
+    root: import("playwright-core").Locator,
+    hints: RegExp[],
+    value: string,
+    opts: { enter?: boolean; textarea?: boolean } = {},
+  ) => {
+    const candidates: import("playwright-core").Locator[] = [];
+    for (const hint of hints) {
+      candidates.push(root.getByLabel(hint));
+      candidates.push(root.getByPlaceholder(hint));
+    }
+    const words = Array.from(
+      new Set(
+        hints
+          .flatMap((h) => h.source.split(/[^a-zA-Z]+/))
+          .filter((w) => w.length >= 4),
+      ),
+    );
+    for (const word of words) {
+      candidates.push(
+        root.locator(
+          opts.textarea
+            ? `textarea[placeholder*="${word}" i]:visible, textarea[name*="${word}" i]:visible`
+            : `input[placeholder*="${word}" i]:visible, input[name*="${word}" i]:visible, input[aria-label*="${word}" i]:visible`,
+        ),
+      );
+    }
+    for (const candidate of candidates) {
+      if ((await candidate.count().catch(() => 0)) === 0) continue;
+      try {
+        await humanFill(candidate, value, opts.enter);
+        return;
+      } catch {
+        /* try next candidate */
+      }
+    }
+    const hintList = hints.map((h) => h.source).join(", ");
+    throw new Error(
+      `Could not fill NGTeco manual punch field matching ${hintList}`,
+    );
+  };
+
+  try {
+    await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
+    try {
+      await page.waitForFunction(
+        () => (document.body?.textContent ?? "").trim().length > 50,
+        null,
+        { timeout: 8_000 },
+      );
+    } catch {
+      /* downstream checks will diagnose */
+    }
+    if ((await page.locator(sel.challenge.twoFactorLandmark).count()) > 0) {
+      await ctx.close();
+      throw new ChallengeDetectedError("TWO_FACTOR");
+    }
+    if ((await page.locator(sel.challenge.captchaLandmark).count()) > 0) {
+      await ctx.close();
+      throw new ChallengeDetectedError("CAPTCHA");
+    }
+
+    if (await detectLoginPage(page, sel)) {
+      await fillLoginField(
+        page,
+        "username",
+        sel.login.username,
+        input.username,
+      );
+      await fillLoginField(
+        page,
+        "password",
+        sel.login.password,
+        input.password,
+      );
+      await ensureAgreementChecked(page);
+      await primeIfCleared(page, "username", input.username);
+      await primeIfCleared(page, "password", input.password);
+      await Promise.all([
+        page
+          .waitForNavigation({ waitUntil: "domcontentloaded" })
+          .catch(() => {}),
+        clickLoginSubmit(page, sel.login.submit),
+      ]);
+      await page.waitForFunction(
+        () =>
+          !window.location.pathname
+            .split("/")
+            .filter(Boolean)
+            .map((s) => s.toLowerCase())
+            .includes("login"),
+        null,
+        { timeout: 10_000 },
+      );
+    }
+    assertNotOnLoginPage(page, "manual punch login");
+
+    const manualUrl = new URL(
+      "/att/timecard/manual-log",
+      input.portalUrl,
+    ).toString();
+    await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
+    assertNotOnLoginPage(page, "manual punch page");
+    await page
+      .getByText(/mend attendance punch|manual attendance|manual log/i)
+      .first()
+      .waitFor({ timeout: 15_000 });
+
+    await page.getByRole("button", { name: /^add$/i }).first().click({
+      timeout: 10_000,
+    });
+    const dialogCandidates = page.locator(
+      '[role="dialog"], .MuiDialog-root, .el-dialog, .ant-modal',
+    );
+    const dialog =
+      (await dialogCandidates.count().catch(() => 0)) > 0
+        ? dialogCandidates.last()
+        : page.locator("body");
+
+    await fillByHints(
+      dialog,
+      [/person\s*id/i, /person\s*name/i, /employee/i],
+      input.personId,
+      { enter: true },
+    );
+    await fillByHints(dialog, [/punch\s*date/i, /^date$/i], input.punchDate);
+    await fillByHints(
+      dialog,
+      [/attendance\s*record/i, /punch\s*time/i, /^time$/i],
+      input.punchTime,
+    );
+    await fillByHints(
+      dialog,
+      [/timezone/i, /time\s*zone/i],
+      input.timeZoneOffset,
+      { enter: true },
+    ).catch(() => undefined);
+    await fillByHints(dialog, [/remarks?/i, /notes?/i], input.remarks, {
+      textarea: true,
+    }).catch(() => undefined);
+
+    const submit = dialog
+      .getByRole("button", { name: /^(ok|save|submit|confirm|add)$/i })
+      .last();
+    await Promise.all([
+      page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => {}),
+      submit.click({ timeout: 10_000 }),
+    ]);
+    await page.waitForTimeout(1_000);
+    const errors = await page
+      .locator(
+        '[role="alert"], .Mui-error, .el-form-item__error, .ant-form-item-explain-error',
+      )
+      .allTextContents()
+      .catch(() => []);
+    const visibleErrors = errors.map((e) => e.trim()).filter(Boolean);
+    if (visibleErrors.length > 0) {
+      throw new Error(
+        `NGTeco rejected the manual punch: ${visibleErrors.join(" | ")}`,
+      );
+    }
+
+    await ctx.close();
+  } catch (err) {
+    if (err instanceof ChallengeDetectedError) throw err;
+    return await captureFailure(
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
 /**
  * Compose an ISO timestamp from NGTeco's display strings. Date is
  * MM/DD/YYYY or YYYY-MM-DD; time is HH:MM:SS; tz is `±HH:MM`.
@@ -1303,7 +1588,9 @@ function composeIso(
     let y = us[3]!;
     if (y.length === 2) {
       const candidate = 2000 + Number(y);
-      const candidateMs = new Date(`${candidate}-${m}-${d}T12:00:00Z`).getTime();
+      const candidateMs = new Date(
+        `${candidate}-${m}-${d}T12:00:00Z`,
+      ).getTime();
       const sixMonths = Date.now() + 6 * 30 * 24 * 60 * 60 * 1000;
       y = String(candidateMs > sixMonths ? candidate - 100 : candidate);
     }

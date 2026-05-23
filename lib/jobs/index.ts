@@ -19,6 +19,11 @@ import { handleDetectExceptions } from "./handlers/detect-exceptions";
 import { handleFixWindowExpire } from "./handlers/fix-window-expire";
 import { handlePayrollRunPublish } from "./handlers/payroll-run-publish";
 import { getSetting } from "@/lib/settings/runtime";
+import {
+  NGTECO_PUNCH_POLL_QUEUE,
+  type PunchPollJobData,
+} from "./punch-poll-queue";
+import { NGTECO_MANUAL_PUNCH_SYNC_QUEUE } from "@/lib/ngteco/manual-punch-sync";
 
 let bossPromise: Promise<PgBoss> | null = null;
 
@@ -163,33 +168,75 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // teamSize/teamConcurrency=1 enforces single-runner semantics: a long
   // scrape that overruns its 15-min cron tick won't get a sibling polling
   // the same NGTeco profile (Playwright would crash on the locked profile).
-  await boss.createQueue("ngteco.punch.poll");
+  await boss.createQueue(NGTECO_PUNCH_POLL_QUEUE);
   await boss.work(
-    "ngteco.punch.poll",
+    NGTECO_PUNCH_POLL_QUEUE,
     { teamSize: 1, teamConcurrency: 1 } as Parameters<typeof boss.work>[1],
-    async () => {
-      const auto = await getSetting("automation").catch(() => null);
-      if (!auto?.ngtecoPunchPoll?.enabled) {
-        logger.info("ngteco.punch.poll: disabled in settings; skipping");
-        return;
+    async (jobs) => {
+      for (const j of jobs) {
+        const data = (j.data ?? {}) as PunchPollJobData;
+        const triggeredBy = data.triggeredBy ?? "CRON";
+        const auto = await getSetting("automation").catch(() => null);
+        if (!data.force && !auto?.ngtecoPunchPoll?.enabled) {
+          logger.info("ngteco.punch.poll: disabled in settings; skipping");
+          continue;
+        }
+        const { runPollAndLog } = await import("./handlers/punch-poll-runner");
+        await runPollAndLog({
+          triggeredBy,
+          triggeredById: data.triggeredById ?? null,
+          ...(data.pollOptions ? { pollOptions: data.pollOptions } : {}),
+        });
       }
-      const { runPollAndLog } = await import("./handlers/punch-poll-runner");
-      await runPollAndLog({ triggeredBy: "CRON" });
     },
   );
   if (cronEnabled && automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(
-      "ngteco.punch.poll",
+      NGTECO_PUNCH_POLL_QUEUE,
       automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
-      undefined,
+      { triggeredBy: "CRON" } satisfies PunchPollJobData,
       tzOpts,
     );
   } else {
-    await boss.unschedule("ngteco.punch.poll").catch(() => undefined);
+    await boss.unschedule(NGTECO_PUNCH_POLL_QUEUE).catch(() => undefined);
   }
+
+  // ── ngteco.manual-punch.sync — Milo manual punch write-back ─────────────
+  await boss.createQueue(NGTECO_MANUAL_PUNCH_SYNC_QUEUE);
+  await boss.work(
+    NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
+    { teamSize: 1, teamConcurrency: 1 } as Parameters<typeof boss.work>[1],
+    async (jobs) => {
+      const { handleManualPunchNgtecoSync } =
+        await import("./handlers/manual-punch-ngteco-sync");
+      for (const j of jobs) {
+        const data = j.data as {
+          punchId?: string;
+          actorId?: string;
+          actorRole?:
+            | "OWNER"
+            | "ADMIN"
+            | "PAYROLL_STAFF"
+            | "ACCOUNTANT"
+            | "EMPLOYEE";
+        };
+        if (!data?.punchId || !data.actorId || !data.actorRole) {
+          logger.error(
+            { jobId: j.id },
+            "ngteco.manual-punch.sync: missing payload",
+          );
+          continue;
+        }
+        await handleManualPunchNgtecoSync({
+          punchId: data.punchId,
+          actorId: data.actorId,
+          actorRole: data.actorRole,
+        });
+      }
+    },
+  );
 
   if (!cronEnabled) {
     logger.info("registerJobs: cronEnabled=false — all schedules skipped");
   }
 }
-
