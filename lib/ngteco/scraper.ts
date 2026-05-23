@@ -1501,7 +1501,7 @@ export async function addManualAttendancePunch(
     await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
     assertNotOnLoginPage(page, "manual punch page");
     await page
-      .getByText(/mend attendance punch|manual attendance|manual log/i)
+      .getByRole("button", { name: /^add$/i })
       .first()
       .waitFor({ timeout: 15_000 });
 
