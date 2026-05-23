@@ -44,13 +44,20 @@ export async function handleManualPunchNgtecoSync(input: {
   const company = await getSetting("company");
   const ngteco = await getSetting("ngteco");
   const credentials = await openNgtecoCredentials();
-  const events = buildManualPunchSyncEvents({
+  let events = buildManualPunchSyncEvents({
     punchId: punch.id,
     personId: punch.ngtecoEmployeeRef,
     employeeName: punch.employeeName,
     clockIn: punch.clockIn,
     clockOut: punch.clockOut,
   });
+  if (
+    punch.source === "NGTECO_AUTO" &&
+    punch.originalClockOut === null &&
+    punch.clockOut !== null
+  ) {
+    events = events.filter((event) => event.kind === "clockOut");
+  }
   const { addManualAttendancePunch } = await import("@/lib/ngteco/scraper");
 
   for (const event of events) {

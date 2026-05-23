@@ -1614,9 +1614,12 @@ export async function addManualAttendancePunch(
       .allTextContents()
       .catch(() => []);
     const visibleErrors = errors.map((e) => e.trim()).filter(Boolean);
-    if (visibleErrors.length > 0) {
+    const actionableErrors = visibleErrors.filter(
+      (e) => !/^(success|successful|added successfully)$/i.test(e),
+    );
+    if (actionableErrors.length > 0) {
       if (
-        visibleErrors.some((e) =>
+        actionableErrors.some((e) =>
           /already exists|duplicate cards|do not add duplicate/i.test(e),
         )
       ) {
@@ -1624,7 +1627,7 @@ export async function addManualAttendancePunch(
         return;
       }
       throw new Error(
-        `NGTeco rejected the manual punch: ${visibleErrors.join(" | ")}`,
+        `NGTeco rejected the manual punch: ${actionableErrors.join(" | ")}`,
       );
     }
 

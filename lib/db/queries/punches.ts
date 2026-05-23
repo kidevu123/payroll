@@ -109,6 +109,8 @@ export async function getPunchForNgtecoSync(id: string): Promise<{
   id: string;
   clockIn: Date;
   clockOut: Date | null;
+  originalClockIn: Date | null;
+  originalClockOut: Date | null;
   source: Punch["source"];
   voidedAt: Date | null;
   employeeId: string;
@@ -120,6 +122,8 @@ export async function getPunchForNgtecoSync(id: string): Promise<{
       id: punches.id,
       clockIn: punches.clockIn,
       clockOut: punches.clockOut,
+      originalClockIn: punches.originalClockIn,
+      originalClockOut: punches.originalClockOut,
       source: punches.source,
       voidedAt: punches.voidedAt,
       employeeId: employees.id,
