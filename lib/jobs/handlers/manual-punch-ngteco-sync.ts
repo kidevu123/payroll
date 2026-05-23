@@ -28,10 +28,15 @@ export async function handleManualPunchNgtecoSync(input: {
     );
     return;
   }
-  if (punch.source !== "MANUAL_ADMIN") {
+  const syncableSources = new Set([
+    "MANUAL_ADMIN",
+    "MISSED_PUNCH_APPROVED",
+    "NGTECO_AUTO",
+  ]);
+  if (!syncableSources.has(punch.source)) {
     logger.info(
       { punchId: punch.id, source: punch.source },
-      "manual punch sync: only MANUAL_ADMIN punches are pushed to NGTeco",
+      "manual punch sync: punch source is not pushed to NGTeco",
     );
     return;
   }

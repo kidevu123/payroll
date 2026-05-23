@@ -21,6 +21,12 @@ import { getSetting } from "@/lib/settings/runtime";
 import { detectExceptions } from "@/lib/payroll/detect-exceptions";
 import { dispatch } from "@/lib/notifications/router";
 
+function issueLabel(issue: string): string {
+  return issue
+    .toLowerCase()
+    .replaceAll("_", " ");
+}
+
 export async function handleDetectExceptions(data: {
   runId: string;
 }): Promise<void> {
@@ -116,6 +122,45 @@ export async function handleDetectExceptions(data: {
     })
     .filter((n): n is NonNullable<typeof n> => n !== null);
   if (employeeNotices.length > 0) await dispatch(employeeNotices);
+
+  const adminAlertIssues = new Set(["MISSING_OUT", "MISSING_IN"]);
+  const adminAlerts = fresh.filter((a) => adminAlertIssues.has(a.issue));
+  if (adminAlerts.length > 0) {
+    const admins = await adminUserIds();
+    if (admins.length > 0) {
+      const nameByEmployee = new Map(
+        employees.map((e) => [e.id, e.displayName ?? "Employee"]),
+      );
+      const items = adminAlerts.map(
+        (a) =>
+          `${nameByEmployee.get(a.employeeId) ?? "Employee"}: ${issueLabel(a.issue)} on ${a.date}`,
+      );
+      const body =
+        items.length <= 3
+          ? items.join("; ")
+          : `${items.slice(0, 3).join("; ")} + ${items.length - 3} more`;
+      await dispatch(
+        admins.map((id) => ({
+          recipientId: id,
+          kind: "admin.announcement" as const,
+          payload: {
+            title: "Possible missed punch",
+            body,
+            link: "/requests",
+            periodId: period.id,
+            runId,
+            source: "cron_missed_punch_alerts",
+          },
+          push: {
+            title: "Possible missed punch",
+            body,
+            url: "/requests",
+            tag: `missed_punch_admin_${period.id}`,
+          },
+        })),
+      );
+    }
+  }
 
   // Transition.
   const fixWindowHours = automation.employeeFixWindowHours;

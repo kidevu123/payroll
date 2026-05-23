@@ -153,19 +153,62 @@ export async function approveMissedPunchRequest(
         .limit(1);
       periodId = matchingPeriod?.id ?? periodId;
     }
-    // Create the resulting punch.
-    const [punch] = await tx
-      .insert(punches)
-      .values({
-        employeeId: before.employeeId,
-        periodId,
-        clockIn: before.claimedClockIn,
-        clockOut: before.claimedClockOut ?? null,
-        source: "MISSED_PUNCH_APPROVED",
-        notes: `From request ${before.id}`,
-      })
-      .returning();
-    if (!punch) throw new Error("approveMissedPunchRequest: punch insert empty");
+    const [alert] = before.alertId
+      ? await tx
+          .select({ issue: missedPunchAlerts.issue })
+          .from(missedPunchAlerts)
+          .where(eq(missedPunchAlerts.id, before.alertId))
+      : [];
+
+    let punch;
+    if (alert?.issue === "MISSING_OUT" && before.claimedClockOut) {
+      const openPunches = await tx
+        .select()
+        .from(punches)
+        .where(
+          and(
+            eq(punches.employeeId, before.employeeId),
+            eq(punches.periodId, periodId),
+            isNull(punches.clockOut),
+            isNull(punches.voidedAt),
+          ),
+        );
+      const openPunchForRequestDate = openPunches.find(
+        (p) => dayFmt.format(p.clockIn) === before.date,
+      );
+      if (openPunchForRequestDate) {
+        const [updated] = await tx
+          .update(punches)
+          .set({
+            clockOut: before.claimedClockOut,
+            editedById: actor.id,
+            editedAt: new Date(),
+            editReason: `Approved missing punch request ${before.id}`,
+            notes: openPunchForRequestDate.notes
+              ? `${openPunchForRequestDate.notes}\nApproved missing punch request ${before.id}`
+              : `Approved missing punch request ${before.id}`,
+          })
+          .where(eq(punches.id, openPunchForRequestDate.id))
+          .returning();
+        punch = updated;
+      }
+    }
+
+    if (!punch) {
+      const [inserted] = await tx
+        .insert(punches)
+        .values({
+          employeeId: before.employeeId,
+          periodId,
+          clockIn: before.claimedClockIn,
+          clockOut: before.claimedClockOut ?? null,
+          source: "MISSED_PUNCH_APPROVED",
+          notes: `From request ${before.id}`,
+        })
+        .returning();
+      punch = inserted;
+    }
+    if (!punch) throw new Error("approveMissedPunchRequest: punch upsert empty");
 
     const [row] = await tx
       .update(missedPunchRequests)

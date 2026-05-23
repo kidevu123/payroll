@@ -17,6 +17,7 @@
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
+const SAME_DAY_CLOSE_MIN_AGE_MS = 6 * MS_PER_HOUR;
 
 export type DetectInput = {
   /** ACTIVE employees only — the caller filters. */
@@ -79,6 +80,16 @@ function dayInTimezone(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
+function hourInTimezone(d: Date, tz: string): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      hour12: false,
+    }).format(d),
+  );
+}
+
 function dayOfWeekInTimezone(iso: string): number {
   // Treat YYYY-MM-DD as a calendar day in UTC. The function name says
   // "in timezone" but the calendar date the caller passes is already
@@ -105,6 +116,8 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
   const days = eachDay(input.period.startDate, input.period.endDate);
   const holidaySet = new Set(input.holidays);
   const workingSet = new Set(input.workingDays);
+  const today = dayInTimezone(input.now, input.timezone);
+  const localHour = hourInTimezone(input.now, input.timezone);
 
   // Bucket non-voided punches by employee × day-in-company-tz.
   type Bucket = {
@@ -171,9 +184,16 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
       if (!bucket) continue;
 
       // MISSING_OUT — incomplete punch older than 18h relative to `now`.
+      // Also flag a same-day open punch when the local 7pm cron runs, as long
+      // as it looks like a real shift and not someone who just started late.
       for (const inc of bucket.incomplete) {
         const ageMs = input.now.getTime() - inc.clockIn.getTime();
-        if (ageMs > 18 * MS_PER_HOUR) {
+        const isSameDayAtClose =
+          day === today &&
+          localHour >= 19 &&
+          inc.clockIn <= input.now &&
+          ageMs >= SAME_DAY_CLOSE_MIN_AGE_MS;
+        if (ageMs > 18 * MS_PER_HOUR || isSameDayAtClose) {
           alerts.push({ employeeId: e.id, date: day, issue: "MISSING_OUT" });
           break; // one alert per day-employee — don't pile up
         }

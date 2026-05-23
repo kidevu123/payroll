@@ -79,6 +79,28 @@ describe("detectExceptions", () => {
     expect(alerts.some((a) => a.issue === "MISSING_OUT")).toBe(false);
   });
 
+  it("emits MISSING_OUT for a same-day open punch once local time reaches 7pm", () => {
+    const input = base();
+    input.period = { id: "P", startDate: "2026-05-23", endDate: "2026-05-23" };
+    input.workingDays = [6];
+    input.now = new Date("2026-05-23T23:00:00Z"); // 7pm America/New_York
+    input.punches = [
+      {
+        employeeId: "E1",
+        clockIn: new Date("2026-05-23T10:06:05Z"),
+        clockOut: null,
+      },
+    ];
+
+    const alerts = detectExceptions(input);
+
+    expect(alerts).toContainEqual({
+      employeeId: "E1",
+      date: "2026-05-23",
+      issue: "MISSING_OUT",
+    });
+  });
+
   it("emits MISSING_IN for outOnly sentinel punches (clockIn === clockOut)", () => {
     const input = base();
     const t = new Date("2026-04-15T20:00:00Z");

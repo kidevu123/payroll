@@ -21,6 +21,10 @@ import {
   userIdForEmployee,
 } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
+import {
+  NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
+  type ManualPunchSyncJobData,
+} from "@/lib/ngteco/manual-punch-sync";
 
 const idSchema = z.string().uuid();
 
@@ -55,6 +59,20 @@ export async function approveMissedPunchAction(
         payload: { requestId, status: "APPROVED" },
       },
     ]);
+  }
+  if (resolved.resultingPunchId) {
+    try {
+      const { getBoss } = await import("@/lib/jobs");
+      const boss = await getBoss();
+      await boss.send(NGTECO_MANUAL_PUNCH_SYNC_QUEUE, {
+        punchId: resolved.resultingPunchId,
+        actorId: session.user.id,
+        actorRole: session.user.role,
+      } satisfies ManualPunchSyncJobData);
+    } catch {
+      // Payroll is already corrected in Milo. Do not fail the approval path
+      // if the background queue is temporarily unavailable.
+    }
   }
   revalidatePath(`/me/time/${before.date}`);
   revalidatePath("/me/time");
