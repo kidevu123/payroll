@@ -1505,6 +1505,23 @@ export async function addManualAttendancePunch(
       .first()
       .waitFor({ timeout: 15_000 });
 
+    const alreadyVisible = await page
+      .locator("body")
+      .innerText({ timeout: 5_000 })
+      .then((text) => {
+        const compact = text.replace(/\s+/g, " ");
+        return (
+          compact.includes(input.personId) &&
+          compact.includes(input.punchDate) &&
+          compact.includes(input.punchTime)
+        );
+      })
+      .catch(() => false);
+    if (alreadyVisible) {
+      await ctx.close();
+      return;
+    }
+
     await page.getByRole("button", { name: /^add$/i }).first().click({
       timeout: 10_000,
     });
