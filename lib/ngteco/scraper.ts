@@ -1531,18 +1531,28 @@ export async function addManualAttendancePunch(
         ? dialogCandidates.last()
         : page.locator("body");
 
-    await fillByHints(
-      dialog,
-      [/person\s*id/i, /person\s*name/i, /employee/i],
-      input.personId,
-      { enter: true },
-    );
-    await fillByHints(dialog, [/punch\s*date/i, /^date$/i], input.punchDate);
-    await fillByHints(
-      dialog,
-      [/attendance\s*record/i, /punch\s*time/i, /^time$/i],
-      input.punchTime,
-    );
+    const visibleInputs = dialog.locator("input:visible");
+    if ((await visibleInputs.count().catch(() => 0)) >= 3) {
+      await humanFill(visibleInputs.nth(0), input.personName);
+      await page.waitForTimeout(500);
+      await page.keyboard.press("ArrowDown").catch(() => undefined);
+      await page.keyboard.press("Enter").catch(() => undefined);
+      await humanFill(visibleInputs.nth(1), input.punchDate);
+      await humanFill(visibleInputs.nth(2), input.punchTime.slice(0, 5));
+    } else {
+      await fillByHints(
+        dialog,
+        [/person\s*id/i, /person\s*name/i, /employee/i, /select\s*user/i],
+        input.personName,
+        { enter: true },
+      );
+      await fillByHints(dialog, [/punch\s*date/i, /^date$/i], input.punchDate);
+      await fillByHints(
+        dialog,
+        [/attendance\s*record/i, /punch\s*time/i, /^time$/i],
+        input.punchTime.slice(0, 5),
+      );
+    }
     await fillByHints(
       dialog,
       [/timezone/i, /time\s*zone/i],
