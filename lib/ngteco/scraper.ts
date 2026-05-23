@@ -1501,7 +1501,7 @@ export async function addManualAttendancePunch(
     await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
     assertNotOnLoginPage(page, "manual punch page");
     await page
-      .getByRole("button", { name: /^add$/i })
+      .getByText(/person\s*id/i)
       .first()
       .waitFor({ timeout: 15_000 });
 
@@ -1522,9 +1522,7 @@ export async function addManualAttendancePunch(
       return;
     }
 
-    await page.getByRole("button", { name: /^add$/i }).first().click({
-      timeout: 10_000,
-    });
+    await page.getByText(/^add$/i).last().click({ timeout: 10_000 });
     const dialogCandidates = page.locator(
       '[role="dialog"], .MuiDialog-root, .el-dialog, .ant-modal',
     );
