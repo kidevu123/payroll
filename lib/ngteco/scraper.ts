@@ -1533,10 +1533,25 @@ export async function addManualAttendancePunch(
 
     const visibleInputs = dialog.locator("input:visible");
     if ((await visibleInputs.count().catch(() => 0)) >= 3) {
-      await humanFill(visibleInputs.nth(0), input.personName);
+      await visibleInputs.nth(0).click({ timeout: 5_000 });
+      const personDrawer = page.locator(".MuiDrawer-root").last();
+      await personDrawer.waitFor({ timeout: 8_000 });
+      await humanFill(
+        personDrawer.locator("input:visible").first(),
+        input.personName,
+      );
+      await page.waitForTimeout(700);
+      await personDrawer
+        .getByText(input.personName, { exact: false })
+        .last()
+        .click({
+          timeout: 8_000,
+        });
+      await personDrawer
+        .getByText(/^confirm$/i)
+        .last()
+        .click({ timeout: 8_000 });
       await page.waitForTimeout(500);
-      await page.keyboard.press("ArrowDown").catch(() => undefined);
-      await page.keyboard.press("Enter").catch(() => undefined);
       await humanFill(visibleInputs.nth(1), input.punchDate);
       await humanFill(visibleInputs.nth(2), input.punchTime.slice(0, 5));
     } else {
