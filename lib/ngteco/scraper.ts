@@ -1343,6 +1343,8 @@ export type ManualAttendancePunchInput = {
   punchTime: string;
   /** NGTeco manual log offset, e.g. -04:00. */
   timeZoneOffset: string;
+  /** IANA timezone used by the browser session; NGTeco derives manual-log offset from it. */
+  browserTimeZone?: string;
   remarks: string;
 };
 
@@ -1365,6 +1367,7 @@ export async function addManualAttendancePunch(
     headless: true,
     viewport: { width: 1600, height: 950 },
     locale: "en-US",
+    timezoneId: input.browserTimeZone ?? "America/New_York",
   });
   const page = await ctx.newPage();
   page.setDefaultTimeout(20_000);
@@ -1498,9 +1501,10 @@ export async function addManualAttendancePunch(
     }
 
     if (count >= 4 && (await tryCandidate(visibleInputs.nth(3)))) return;
-    throw new Error(
-      `Could not set NGTeco timezone offset to ${input.timeZoneOffset}`,
-    );
+    // Current NGTeco manual-log form has no visible timezone field. In that
+    // build it derives the offset from the browser timezone, configured on the
+    // Playwright context above. The post-submit exact-row check still verifies
+    // the saved row has the requested offset.
   };
 
   const expectedManualRowVisible = async (): Promise<boolean> =>

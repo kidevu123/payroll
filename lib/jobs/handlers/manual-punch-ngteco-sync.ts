@@ -76,6 +76,7 @@ export async function handleManualPunchNgtecoSync(input: {
       punchDate: timestamp.date,
       punchTime: timestamp.time,
       timeZoneOffset: timestamp.timeZoneOffset,
+      browserTimeZone: company.timezone,
       remarks: `Synced from Milo punch ${punch.id} (${event.kind})`,
     });
   }
