@@ -1439,6 +1439,81 @@ export async function addManualAttendancePunch(
     );
   };
 
+  const fillTimezoneOffset = async (
+    root: import("playwright-core").Locator,
+    visibleInputs: import("playwright-core").Locator,
+  ) => {
+    const directCandidates: import("playwright-core").Locator[] = [
+      root.getByLabel(/timezone/i),
+      root.getByLabel(/time\s*zone/i),
+      root.getByPlaceholder(/timezone/i),
+      root.getByPlaceholder(/time\s*zone/i),
+      root.locator(
+        [
+          'input[name*="timezone" i]:visible',
+          'input[name*="time_zone" i]:visible',
+          'input[aria-label*="timezone" i]:visible',
+          'input[aria-label*="time zone" i]:visible',
+          'input[placeholder*="timezone" i]:visible',
+          'input[placeholder*="time zone" i]:visible',
+        ].join(", "),
+      ),
+    ];
+
+    const tryCandidate = async (
+      candidate: import("playwright-core").Locator,
+    ): Promise<boolean> => {
+      if ((await candidate.count().catch(() => 0)) === 0) return false;
+      const target = candidate.first();
+      try {
+        await humanFill(target, input.timeZoneOffset, true);
+        await page.waitForTimeout(250);
+        const value = await target.inputValue().catch(() => "");
+        if (value.includes(input.timeZoneOffset)) return true;
+        const text = await root.innerText().catch(() => "");
+        return text.includes(input.timeZoneOffset);
+      } catch {
+        return false;
+      }
+    };
+
+    for (const candidate of directCandidates) {
+      if (await tryCandidate(candidate)) return;
+    }
+
+    const count = await visibleInputs.count().catch(() => 0);
+    for (let i = 0; i < count; i++) {
+      const candidate = visibleInputs.nth(i);
+      const value = await candidate.inputValue().catch(() => "");
+      const label =
+        (await candidate.getAttribute("aria-label").catch(() => "")) ?? "";
+      const placeholder =
+        (await candidate.getAttribute("placeholder").catch(() => "")) ?? "";
+      const looksLikeTimezone =
+        /timezone|time\s*zone/i.test(`${label} ${placeholder}`) ||
+        /^[+-]\d{2}:\d{2}$/.test(value) ||
+        /^GMT[+-]\d{2}:?\d{2}$/i.test(value);
+      if (!looksLikeTimezone) continue;
+      if (await tryCandidate(candidate)) return;
+    }
+
+    if (count >= 4 && (await tryCandidate(visibleInputs.nth(3)))) return;
+    throw new Error(
+      `Could not set NGTeco timezone offset to ${input.timeZoneOffset}`,
+    );
+  };
+
+  const expectedManualRowVisible = async (): Promise<boolean> =>
+    page
+      .locator("tr, [role='row']")
+      .filter({ hasText: input.personId })
+      .filter({ hasText: input.punchDate })
+      .filter({ hasText: input.punchTime })
+      .filter({ hasText: input.timeZoneOffset })
+      .count()
+      .then((count) => count > 0)
+      .catch(() => false);
+
   try {
     await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
     try {
@@ -1505,16 +1580,7 @@ export async function addManualAttendancePunch(
       .first()
       .waitFor({ timeout: 15_000 });
 
-    const alreadyVisible = await page
-      .locator("tr, [role='row']")
-      .filter({ hasText: input.personId })
-      .filter({ hasText: input.punchDate })
-      .filter({ hasText: input.punchTime })
-      .filter({ hasText: input.timeZoneOffset })
-      .count()
-      .then((count) => count > 0)
-      .catch(() => false);
-    if (alreadyVisible) {
+    if (await expectedManualRowVisible()) {
       await ctx.close();
       return;
     }
@@ -1572,9 +1638,7 @@ export async function addManualAttendancePunch(
       await page.waitForTimeout(500);
       await humanFill(visibleInputs.nth(1), input.punchDate);
       await humanFill(visibleInputs.nth(2), input.punchTime.slice(0, 5));
-      if ((await visibleInputs.count().catch(() => 0)) >= 4) {
-        await humanFill(visibleInputs.nth(3), input.timeZoneOffset, true);
-      }
+      await fillTimezoneOffset(dialog, visibleInputs);
     } else {
       await fillByHints(
         dialog,
@@ -1588,13 +1652,8 @@ export async function addManualAttendancePunch(
         [/attendance\s*record/i, /punch\s*time/i, /^time$/i],
         input.punchTime.slice(0, 5),
       );
+      await fillTimezoneOffset(dialog, dialog.locator("input:visible"));
     }
-    await fillByHints(
-      dialog,
-      [/timezone/i, /time\s*zone/i],
-      input.timeZoneOffset,
-      { enter: true },
-    ).catch(() => undefined);
     await fillByHints(dialog, [/remarks?/i, /notes?/i], input.remarks, {
       textarea: true,
     }).catch(() => undefined);
@@ -1628,6 +1687,17 @@ export async function addManualAttendancePunch(
       }
       throw new Error(
         `NGTeco rejected the manual punch: ${actionableErrors.join(" | ")}`,
+      );
+    }
+
+    await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
+    await page
+      .getByText(/person\s*id/i)
+      .first()
+      .waitFor({ timeout: 15_000 });
+    if (!(await expectedManualRowVisible())) {
+      throw new Error(
+        `NGTeco manual punch saved without expected timezone ${input.timeZoneOffset}; refusing to mark sync successful.`,
       );
     }
 
