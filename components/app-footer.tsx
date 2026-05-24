@@ -12,7 +12,6 @@ import pkg from "../package.json" with { type: "json" };
 
 const VERSION = pkg.version;
 const SHA = process.env.NEXT_PUBLIC_GIT_SHA?.slice(0, 7) ?? "dev";
-const BUILD_AT_RAW = process.env.NEXT_PUBLIC_BUILD_AT ?? "";
 const DEFAULT_TIMEZONE = "America/New_York";
 
 function formatServerTime(date: Date, timezone: string): string {
@@ -61,10 +60,7 @@ export function AppFooter({
         {SHA}
       </a>
       <span aria-hidden="true">·</span>
-      <span
-        className="font-mono"
-        title={BUILD_AT_RAW ? `Build: ${BUILD_AT_RAW}` : undefined}
-      >
+      <span className="font-mono">
         Server time {serverTime}
       </span>
       <span aria-hidden="true">·</span>
