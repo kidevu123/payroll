@@ -1,8 +1,8 @@
-// Common footer line: short commit SHA + build timestamp + signature.
+// Common footer line: short commit SHA + server time + signature.
 // The package.json version was historically also shown, but the team
-// stopped bumping it consistently — so the SHA + UTC build timestamp
-// are now the authoritative "what's running" marker. VERSION stays
-// exported for any other consumer (PDFs etc.) but is not displayed.
+// stopped bumping it consistently, so the SHA is the authoritative
+// "what's running" marker. VERSION stays exported for any other consumer
+// (PDFs etc.) but is not displayed.
 //
 // SHA / BUILD_AT injected at build time via NEXT_PUBLIC_GIT_SHA /
 // NEXT_PUBLIC_BUILD_AT (Dockerfile build stage).
@@ -13,22 +13,37 @@ import pkg from "../package.json" with { type: "json" };
 const VERSION = pkg.version;
 const SHA = process.env.NEXT_PUBLIC_GIT_SHA?.slice(0, 7) ?? "dev";
 const BUILD_AT_RAW = process.env.NEXT_PUBLIC_BUILD_AT ?? "";
+const DEFAULT_TIMEZONE = "America/New_York";
 
-/**
- * Render the build-time ISO (e.g. "2026-05-02T14:23:45Z") as a compact
- * "2026-05-02 14:23 UTC" string. Falls back to the raw value if the
- * input doesn't match the expected shape.
- */
-function formatBuildAt(iso: string): string {
-  if (!iso) return "";
-  const m = iso.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  if (!m) return iso;
-  return `${m[1]} ${m[2]} UTC`;
+function formatServerTime(date: Date, timezone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    }).formatToParts(date);
+    const get = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? "";
+    return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")} ${get("timeZoneName")}`;
+  } catch {
+    return date.toISOString();
+  }
 }
 
-const BUILD_AT_DISPLAY = formatBuildAt(BUILD_AT_RAW);
-
-export function AppFooter({ className }: { className?: string }) {
+export function AppFooter({
+  className,
+  timezone = DEFAULT_TIMEZONE,
+}: {
+  className?: string;
+  timezone?: string | null;
+}) {
+  const tz = timezone || DEFAULT_TIMEZONE;
+  const serverTime = formatServerTime(new Date(), tz);
   return (
     <footer
       className={
@@ -45,14 +60,13 @@ export function AppFooter({ className }: { className?: string }) {
       >
         {SHA}
       </a>
-      {BUILD_AT_DISPLAY && (
-        <>
-          <span aria-hidden="true">·</span>
-          <span className="font-mono" title={BUILD_AT_RAW}>
-            {BUILD_AT_DISPLAY}
-          </span>
-        </>
-      )}
+      <span aria-hidden="true">·</span>
+      <span
+        className="font-mono"
+        title={BUILD_AT_RAW ? `Build: ${BUILD_AT_RAW}` : undefined}
+      >
+        Server time {serverTime}
+      </span>
       <span aria-hidden="true">·</span>
       <span>Made by your haute tech team</span>
     </footer>

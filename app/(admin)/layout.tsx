@@ -138,10 +138,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           currentLocale={locale}
           allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
         />
-        <main className="flex-1 p-3 pb-24 sm:p-4 sm:pb-24 lg:p-8 max-w-screen-2xl w-full mx-auto page-enter">
+        <main className="flex-1 p-3 pb-32 sm:p-4 sm:pb-32 lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
           {children}
         </main>
-        <AppFooter />
+        <AppFooter timezone={company?.timezone ?? "America/New_York"} />
       </div>
       <FeedbackLauncher />
     </div>

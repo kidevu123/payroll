@@ -57,17 +57,26 @@ export function EmployeeForm(props: Props) {
   const semiSchedule = props.schedules.find(
     (s) => s.periodKind === "SEMI_MONTHLY" && s.active,
   );
+  const monthlySchedule = props.schedules.find(
+    (s) => s.periodKind === "MONTHLY" && s.active,
+  );
 
   // Derive the existing employee's classification from their stored
   // payType / payScheduleId so edits open with the right radio selected.
-  const initialClassification: "WEEKLY_HOURLY" | "SEMI_HOURLY" | "SALARIED" = (() => {
+  type Classification =
+    | "WEEKLY_HOURLY"
+    | "SEMI_HOURLY"
+    | "MONTHLY_HOURLY"
+    | "SALARIED";
+
+  const initialClassification: Classification = (() => {
     if (e?.payType === "SALARIED") return "SALARIED";
+    if (e?.payScheduleId === monthlySchedule?.id) return "MONTHLY_HOURLY";
     if (e?.payScheduleId === semiSchedule?.id) return "SEMI_HOURLY";
     return "WEEKLY_HOURLY"; // safe default for HOURLY without a schedule
   })();
-  const [classification, setClassification] = React.useState<
-    "WEEKLY_HOURLY" | "SEMI_HOURLY" | "SALARIED"
-  >(initialClassification);
+  const [classification, setClassification] =
+    React.useState<Classification>(initialClassification);
 
   // Hidden values submitted to the server actions (which still take
   // payType + payScheduleId so we don't have to rev the schema).
@@ -78,6 +87,8 @@ export function EmployeeForm(props: Props) {
       ? weeklySchedule?.id ?? ""
       : classification === "SEMI_HOURLY"
         ? semiSchedule?.id ?? ""
+        : classification === "MONTHLY_HOURLY"
+          ? monthlySchedule?.id ?? ""
         : // Salaried — irrelevant to payroll runs, leave assigned to whatever
           // the employee already had so we don't unnecessarily null it out.
           e?.payScheduleId ?? "";
@@ -178,10 +189,7 @@ export function EmployeeForm(props: Props) {
             value={classification}
             onChange={(ev) =>
               setClassification(
-                ev.target.value as
-                  | "WEEKLY_HOURLY"
-                  | "SEMI_HOURLY"
-                  | "SALARIED",
+                ev.target.value as Classification,
               )
             }
             className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
@@ -193,6 +201,10 @@ export function EmployeeForm(props: Props) {
               Semi-monthly hourly (punches accumulate; only run on the
               semi-monthly cycle, excluded from weekly payroll)
             </option>
+            <option value="MONTHLY_HOURLY">
+              Monthly hourly (punches accumulate; only run on the monthly
+              cycle, excluded from weekly and semi-monthly payroll)
+            </option>
             <option value="SALARIED">
               Salaried (W2 only — no punches, paystub uploaded by admin)
             </option>
@@ -202,6 +214,8 @@ export function EmployeeForm(props: Props) {
               "Punches roll up into the weekly payroll run."}
             {classification === "SEMI_HOURLY" &&
               "Punches keep accumulating; processed on the semi-monthly cycle. Completely excluded from weekly payroll."}
+            {classification === "MONTHLY_HOURLY" &&
+              "Punches keep accumulating; processed on the monthly cycle. Completely excluded from weekly and semi-monthly payroll."}
             {classification === "SALARIED" &&
               "No punches. Upload W2 / paystub from the Salaried tab; appears on the employee's Pay tab."}
           </p>
@@ -267,7 +281,7 @@ export function EmployeeForm(props: Props) {
           </span>
           <input type="hidden" name="requiresW2Upload" value="1" />
         </div>
-      ) : classification === "SEMI_HOURLY" ? (
+      ) : classification === "SEMI_HOURLY" || classification === "MONTHLY_HOURLY" ? (
         <div className="rounded-card border border-border bg-surface-2/50 p-3">
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -282,9 +296,9 @@ export function EmployeeForm(props: Props) {
                 Also upload an external paystub each period
               </span>
               <span className="block text-xs text-text-muted">
-                Tick this when the accountant prepares Juan-style W2-formatted
-                paystubs alongside his hourly run. The period detail page will
-                show an upload slot for him.
+                Tick this when the accountant prepares W2-formatted paystubs
+                alongside this employee&apos;s hourly run. The period detail
+                page will show an upload slot for them.
               </span>
             </span>
           </label>
@@ -306,4 +320,3 @@ export function EmployeeForm(props: Props) {
     </form>
   );
 }
-

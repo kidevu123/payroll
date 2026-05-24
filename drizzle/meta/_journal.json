@@ -232,6 +232,13 @@
       "when": 1779580000000,
       "tag": "0032_time_off_change_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1779660000000,
+      "tag": "0033_monthly_pay_schedule",
+      "breakpoints": true
     }
   ]
 }

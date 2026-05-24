@@ -16,6 +16,7 @@ import { ServiceWorkerRegister } from "@/components/employee/sw-register";
 import { OnboardingBanner } from "@/components/employee/onboarding-banner";
 import { AppTour } from "@/components/employee/app-tour";
 import { AppFooter } from "@/components/app-footer";
+import { getSetting } from "@/lib/settings/runtime";
 import { db } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
 
@@ -40,7 +41,7 @@ export default async function EmployeeLayout({
   } catch {
     /* metrics not critical to render */
   }
-  const [employee, subs, t] = await Promise.all([
+  const [employee, subs, t, company] = await Promise.all([
     session.user.employeeId
       ? getEmployee(session.user.employeeId)
       : Promise.resolve(null),
@@ -52,6 +53,7 @@ export default async function EmployeeLayout({
       .where(eq(pushSubscriptions.userId, session.user.id))
       .limit(1),
     getTranslations("employee.tour"),
+    getSetting("company").catch(() => null),
   ]);
   const isSalaried = employee?.payType === "SALARIED";
   const tourStrings = {
@@ -86,7 +88,10 @@ export default async function EmployeeLayout({
         <OnboardingBanner alreadySubscribed={subs.length > 0} />
         {children}
       </div>
-      <AppFooter className="pb-2 max-w-md sm:max-w-2xl mx-auto" />
+      <AppFooter
+        className="pb-2 max-w-md sm:max-w-2xl mx-auto"
+        timezone={company?.timezone ?? "America/New_York"}
+      />
       <BottomNav hideTime={isSalaried} />
       <AppTour strings={tourStrings} />
     </div>

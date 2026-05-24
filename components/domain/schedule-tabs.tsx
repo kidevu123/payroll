@@ -8,12 +8,13 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export type ScheduleTab = "all" | "weekly" | "semi" | "salaried";
+export type ScheduleTab = "all" | "weekly" | "semi" | "monthly" | "salaried";
 
 const LABELS: Record<ScheduleTab, string> = {
   all: "All",
   weekly: "Weekly",
   semi: "Semi-monthly",
+  monthly: "Monthly",
   salaried: "Salaried",
 };
 
@@ -27,6 +28,8 @@ const ACTIVE_TONE: Record<ScheduleTab, string> = {
     "bg-blue-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   semi:
     "bg-purple-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
+  monthly:
+    "bg-amber-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   salaried:
     "bg-emerald-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
 };
@@ -44,7 +47,7 @@ export function ScheduleTabs({
   basePath: string;
   hrefs?: Partial<Record<ScheduleTab, string>>;
 }) {
-  const tabs: ScheduleTab[] = ["all", "weekly", "semi", "salaried"];
+  const tabs: ScheduleTab[] = ["all", "weekly", "semi", "monthly", "salaried"];
   return (
     <div className="max-w-full overflow-x-auto pb-1">
       <div
@@ -87,7 +90,12 @@ export function ScheduleTabs({
 }
 
 export function parseScheduleTab(value: string | undefined): ScheduleTab {
-  if (value === "weekly" || value === "semi" || value === "salaried") return value;
+  if (
+    value === "weekly" ||
+    value === "semi" ||
+    value === "monthly" ||
+    value === "salaried"
+  ) return value;
   return "all";
 }
 
@@ -97,8 +105,9 @@ export function parseScheduleTab(value: string | undefined): ScheduleTab {
  */
 export function scheduleTabToKind(
   tab: ScheduleTab,
-): "WEEKLY" | "SEMI_MONTHLY" | null {
+): "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null {
   if (tab === "weekly") return "WEEKLY";
   if (tab === "semi") return "SEMI_MONTHLY";
+  if (tab === "monthly") return "MONTHLY";
   return null;
 }

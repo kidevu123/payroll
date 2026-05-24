@@ -18,7 +18,7 @@ export type AudienceMode = "ALL" | "BY_ROLE" | "BY_SCHEDULE" | "SPECIFIC";
 export type AudienceFilter =
   | { mode: "ALL" }
   | { mode: "BY_ROLE"; payTypes: ReadonlyArray<"HOURLY" | "SALARIED" | "TASK" | "MIXED"> }
-  | { mode: "BY_SCHEDULE"; periodKinds: ReadonlyArray<"WEEKLY" | "SEMI_MONTHLY"> }
+  | { mode: "BY_SCHEDULE"; periodKinds: ReadonlyArray<"WEEKLY" | "SEMI_MONTHLY" | "MONTHLY"> }
   | { mode: "SPECIFIC"; employeeIds: ReadonlyArray<string> };
 
 export type ResolvedRecipient = {

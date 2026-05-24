@@ -125,11 +125,11 @@ export type ReportRow = {
 export async function listReports(
   limit = 100,
   /**
-   * Filter by pay-schedule kind. WEEKLY / SEMI_MONTHLY map to
+   * Filter by pay-schedule kind. WEEKLY / SEMI_MONTHLY / MONTHLY map to
    * paySchedules.periodKind. Pass `null` (default) to return everything
    * including legacy runs with no schedule attached.
    */
-  scheduleKind: "WEEKLY" | "SEMI_MONTHLY" | null = null,
+  scheduleKind: "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null = null,
 ): Promise<ReportRow[]> {
   const baseQuery = db
     .select({

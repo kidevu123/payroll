@@ -173,10 +173,16 @@ export function ComposeAnnouncementForm({
 
         {mode === "BY_SCHEDULE" && (
           <div className="flex flex-wrap gap-1.5">
-            {(["WEEKLY", "SEMI_MONTHLY"] as const).map((k) => (
+            {(["WEEKLY", "SEMI_MONTHLY", "MONTHLY"] as const).map((k) => (
               <ToggleChip
                 key={k}
-                label={k === "WEEKLY" ? "Weekly" : "Semi-monthly"}
+                label={
+                  k === "WEEKLY"
+                    ? "Weekly"
+                    : k === "SEMI_MONTHLY"
+                      ? "Semi-monthly"
+                      : "Monthly"
+                }
                 active={periodKinds.has(k)}
                 onClick={() =>
                   setPeriodKinds((prev) => toggleSet(prev, k))

@@ -23,6 +23,7 @@ export type ScheduleKind = "WEEKLY" | "BIWEEKLY" | "SEMI_MONTHLY" | "MONTHLY";
 
 export const DEFAULT_WEEKLY_NAME = "Weekly";
 export const DEFAULT_SEMI_MONTHLY_NAME = "Semi-Monthly";
+export const DEFAULT_MONTHLY_NAME = "Monthly";
 
 export async function listSchedules(
   options: { includeInactive?: boolean } = {},

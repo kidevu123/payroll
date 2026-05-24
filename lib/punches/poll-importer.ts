@@ -20,6 +20,7 @@ import { employees, punches, payPeriods } from "@/lib/db/schema";
 import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
+import { pairPunchEvents } from "./pair-events";
 
 export type PollImportSummary = {
   rawEvents: number;
@@ -113,23 +114,35 @@ export async function importPunchPoll(
       scheduleByEmp.get(g.empId) ?? null,
     );
     if (!periodId) continue;
-    const sorted = g.events
-      .slice()
-      .sort((a, b) => a.punchAt.localeCompare(b.punchAt));
-    for (let i = 0; i < sorted.length; i += 2) {
-      const inEv = sorted[i]!;
-      const outEv = sorted[i + 1] ?? null;
+    const pairedEvents = pairPunchEvents(g.events, options.timezone);
+    for (const paired of pairedEvents) {
+      const inEv = paired.inEv ?? paired.outEv;
+      const outEv = paired.outEv;
       const clockIn = new Date(inEv.punchAt);
-      const clockOut = outEv ? new Date(outEv.punchAt) : null;
-      if (!outEv) summary.openShifts++;
+      const clockOut =
+        paired.kind === "outOnly"
+          ? new Date(paired.outEv.punchAt)
+          : outEv
+            ? new Date(outEv.punchAt)
+            : null;
+      if (paired.kind === "open") summary.openShifts++;
+      const hashKey =
+        paired.kind === "outOnly"
+          ? `${g.empId}|outOnly|${inEv.punchAt}`
+          : `${g.empId}|${inEv.punchAt}`;
       const hash = createHash("sha256")
-        .update(`${g.empId}|${inEv.punchAt}`)
+        .update(hashKey)
         .digest("hex")
         .slice(0, 32);
       const noteParts = [
-        inEv.verifyType ? `in:${inEv.verifyType}` : null,
+        paired.kind === "outOnly"
+          ? null
+          : inEv.verifyType
+            ? `in:${inEv.verifyType}`
+            : null,
         outEv?.verifyType ? `out:${outEv.verifyType}` : null,
         inEv.source ? `dev:${inEv.source}` : null,
+        paired.kind === "outOnly" ? "missing:in" : null,
       ].filter(Boolean);
       const note = noteParts.length ? noteParts.join(" · ") : null;
 
@@ -153,7 +166,7 @@ export async function importPunchPoll(
       // new IN event. If found, treat them as the same shift and
       // update its clockOut. We also re-stamp the hash so the next
       // poll converges on the canonical key.
-      if (existing.length === 0) {
+      if (existing.length === 0 && paired.kind !== "outOnly") {
         const dayStart = new Date(`${g.day}T00:00:00Z`);
         const dayEnd = new Date(dayStart.getTime() + 86_400_000);
         const candidates = await db

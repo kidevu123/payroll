@@ -30,6 +30,7 @@ import {
 } from "@/lib/punches/parser";
 import { transitionRun } from "@/lib/db/queries/payroll-runs";
 import { getSemiMonthlyBounds } from "@/lib/payroll/period-boundaries";
+import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
 
 export type ManualImportInput = {
   csv: string;
@@ -119,7 +120,7 @@ export async function runManualCsvImport(
   const movedFromSourcePeriods = new Set<string>();
 
   // Cache of pay schedules so we know each employee's `period_kind` (so
-  // we can compute the right semi-monthly bounds for routed punches).
+  // we can compute the right bounds for routed punches).
   const allSchedules = await db.select().from(paySchedules);
   const scheduleById = new Map(allSchedules.map((s) => [s.id, s]));
 
@@ -139,17 +140,24 @@ export async function runManualCsvImport(
   >();
 
   /**
-   * Find or create the target pay_period for a routed punch. Currently
-   * supports SEMI_MONTHLY only — that's the production case (Juan on a
-   * weekly upload). Other kinds fall back to "no routing" (returns null,
-   * caller skips the routing branch and the punch follows normal rules).
+   * Find or create the target pay_period for a routed punch. Supports the
+   * non-weekly routed hourly cases: semi-monthly and monthly. Weekly uploads
+   * already land in the run's own period, so they follow normal rules.
    */
   async function findOrCreateTargetPeriod(
     schedule: { id: string; periodKind: string },
     clockInDate: string,
   ): Promise<{ id: string; startDate: string; endDate: string } | null> {
-    if (schedule.periodKind !== "SEMI_MONTHLY") return null;
-    const bounds = getSemiMonthlyBounds(clockInDate);
+    const bounds =
+      schedule.periodKind === "SEMI_MONTHLY"
+        ? getSemiMonthlyBounds(clockInDate)
+        : schedule.periodKind === "MONTHLY"
+          ? periodBoundsForSchedule(clockInDate, {
+              periodKind: "MONTHLY",
+              anchorDate: null,
+            })
+          : null;
+    if (!bounds) return null;
     const cacheKey = `${schedule.id}|${bounds.startDate}`;
     const cached = routedPeriodCache.get(cacheKey);
     if (cached) return { id: cached, ...bounds };

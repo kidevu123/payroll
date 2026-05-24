@@ -149,8 +149,8 @@ export function Topbar({
           allowedSurfaces={allowedSurfaces}
           currentLocale={currentLocale}
         />
-        <div className="min-w-0 flex items-center gap-2 shrink-0">
-          <h1 className="text-sm font-semibold tracking-tight antialiased truncate">
+        <div className="min-w-0 flex items-center gap-2 shrink">
+          <h1 className="hidden min-[380px]:block text-sm font-semibold tracking-tight antialiased truncate">
             {title}
           </h1>
           {crumbs.map((c, i) => (

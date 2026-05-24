@@ -90,6 +90,13 @@ const TAB_THEME: Record<
     badge: "bg-purple-50 text-purple-700 ring-purple-200",
     label: "Semi-monthly payroll",
   },
+  monthly: {
+    accentBar: "bg-amber-500",
+    heroTint:
+      "bg-gradient-to-br from-amber-50/60 via-surface to-surface",
+    badge: "bg-amber-50 text-amber-700 ring-amber-200",
+    label: "Monthly payroll",
+  },
   salaried: {
     // /payroll's salaried tab links out to /salaried, so this branch never
     // actually renders the hero — but keep a record for type-completeness.
@@ -359,6 +366,8 @@ export default async function PayrollPage({
                           ? s.periodKind === "WEEKLY"
                           : tab === "semi"
                             ? s.periodKind === "SEMI_MONTHLY"
+                            : tab === "monthly"
+                              ? s.periodKind === "MONTHLY"
                             : true,
                     )
                     .map((s) => s.name)
@@ -453,6 +462,8 @@ export default async function PayrollPage({
                   ? "before:bg-blue-500"
                   : p.scheduleKind === "SEMI_MONTHLY"
                     ? "before:bg-purple-500"
+                    : p.scheduleKind === "MONTHLY"
+                      ? "before:bg-amber-500"
                     : "before:bg-text/30";
               return (
                 <div

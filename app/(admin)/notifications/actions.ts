@@ -28,7 +28,7 @@ const baseSchema = z.object({
     ),
   mode: z.enum(["ALL", "BY_ROLE", "BY_SCHEDULE", "SPECIFIC"]),
   payTypes: z.array(z.enum(["HOURLY", "SALARIED", "TASK", "MIXED"])).optional(),
-  periodKinds: z.array(z.enum(["WEEKLY", "SEMI_MONTHLY"])).optional(),
+  periodKinds: z.array(z.enum(["WEEKLY", "SEMI_MONTHLY", "MONTHLY"])).optional(),
   employeeIds: z.array(z.string().uuid()).optional(),
 });
 
@@ -67,7 +67,7 @@ export async function previewAnnouncementAction(input: {
       payTypes: z
         .array(z.enum(["HOURLY", "SALARIED", "TASK", "MIXED"]))
         .optional(),
-      periodKinds: z.array(z.enum(["WEEKLY", "SEMI_MONTHLY"])).optional(),
+      periodKinds: z.array(z.enum(["WEEKLY", "SEMI_MONTHLY", "MONTHLY"])).optional(),
       employeeIds: z.array(z.string().uuid()).optional(),
     })
     .safeParse(input);

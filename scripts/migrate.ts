@@ -6,7 +6,7 @@
 // Behavior:
 //   1. Ensure required Postgres extensions are installed (idempotent).
 //   2. Run drizzle-kit's migrator against /drizzle.
-//   3. Idempotently seed default pay schedules (Weekly, Semi-Monthly) so
+//   3. Idempotently seed default pay schedules (Weekly, Semi-Monthly, Monthly) so
 //      the run-tick job has a target on first boot. Safe to re-run; insert
 //      is gated on a name-unique check.
 //   4. Exit non-zero on failure so docker-compose dependency ordering catches it.
@@ -67,6 +67,15 @@ async function seedDefaultPaySchedules(
     INSERT INTO pay_schedules (name, period_kind, cron, active)
     SELECT 'Semi-Monthly', 'SEMI_MONTHLY'::pay_schedule_kind, '0 19 1,16 * *', true
     WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Semi-Monthly')
+  `;
+  // Monthly hourly: one period per calendar month, generated on the 1st at 7pm ET.
+  await sql`
+    INSERT INTO pay_schedules (name, period_kind, cron, active)
+    SELECT 'Monthly', 'MONTHLY'::pay_schedule_kind, '0 19 1 * *', true
+    WHERE NOT EXISTS (
+      SELECT 1 FROM pay_schedules
+      WHERE name = 'Monthly' OR (period_kind = 'MONTHLY'::pay_schedule_kind AND active = true)
+    )
   `;
   console.log("Default pay schedules ensured.");
 }
