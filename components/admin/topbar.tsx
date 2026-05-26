@@ -139,7 +139,7 @@ export function Topbar({
           // dropdown was the visible symptom. Lifting the whole
           // topbar to z-50 keeps every popover anchored from it
           // above page content regardless of route.
-          "sticky top-0 z-50 min-h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-surface/95 backdrop-blur-md",
+          "fixed inset-x-0 top-0 z-50 h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-surface/95 backdrop-blur-md lg:sticky lg:inset-auto",
           "flex items-center gap-2 sm:gap-3 px-3 sm:px-4 lg:px-6 pt-[env(safe-area-inset-top)]",
           "shadow-[0_1px_0_0_rgb(9_9_11_/_0.04)]",
         )}
