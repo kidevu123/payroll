@@ -5,7 +5,14 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronRight, Download, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronRight,
+  Download,
+  AlertTriangle,
+  Printer,
+  Scissors,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -437,6 +444,50 @@ export default async function PeriodReviewPage({
           </div>
         </div>
       </div>
+
+      {!isAccountant && (
+        <Card>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base">Print payroll documents</CardTitle>
+              <p className="mt-1 text-xs text-text-muted">
+                Print these while reviewing this period. Reports keeps the same documents for lookbacks.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button asChild variant="secondary" className="justify-start">
+              <Link
+                href={`/api/payslips/period/${period.id}/signature`}
+                target="_blank"
+                rel="noopener"
+              >
+                <Printer className="h-4 w-4" /> Signature report
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" className="justify-start">
+              <Link
+                href={`/api/payroll/${period.id}/payslips-cut-sheet`}
+                target="_blank"
+                rel="noopener"
+              >
+                <Scissors className="h-4 w-4" /> Pay-slip cut sheet
+              </Link>
+            </Button>
+            {run?.pdfPath && (
+              <Button asChild variant="secondary" className="justify-start">
+                <Link
+                  href={`/api/reports/${run.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Download className="h-4 w-4" /> Generated report PDF
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Acknowledgement roll — owner ask: "where does that go right
           now there is needs to be a distinct place to see they have
