@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/role-matrix";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
+import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
 import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
@@ -138,7 +139,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           currentLocale={locale}
           allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
         />
-        <main className="flex-1 min-w-0 px-3 pb-32 pt-[calc(4.25rem+env(safe-area-inset-top))] sm:px-4 sm:pb-32 sm:pt-[calc(4.5rem+env(safe-area-inset-top))] lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
+        <MobileQuickNav
+          company={companyForBrand}
+          currentLocale={locale}
+          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+        />
+        <main className="flex-1 min-w-0 px-3 pb-10 pt-[calc(8.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-10 sm:pt-[calc(9rem+env(safe-area-inset-top))] lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
           {children}
         </main>
         <AppFooter timezone={company?.timezone ?? "America/New_York"} />
