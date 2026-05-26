@@ -4,20 +4,26 @@ import * as React from "react";
 import { Combine, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mergeDuplicatePunchesAction } from "../actions";
+import type { DuplicatePunchDetail } from "@/lib/punches/duplicate-details";
+
+function shortId(id: string): string {
+  return id.length > 8 ? id.slice(0, 8) : id;
+}
 
 export function DedupPunchesButton({
   periodId,
-  initialClusterCount,
+  initialDetails,
 }: {
   periodId: string;
-  initialClusterCount: number;
+  initialDetails: DuplicatePunchDetail[];
 }) {
-  const [clusters, setClusters] = React.useState(initialClusterCount);
+  const [details, setDetails] = React.useState(initialDetails);
   const [pending, setPending] = React.useState(false);
   const [result, setResult] = React.useState<
     { voided: number; clusters: number } | null
   >(null);
   const [error, setError] = React.useState<string | null>(null);
+  const clusters = details.length;
 
   if (clusters === 0 && !result) return null;
 
@@ -39,6 +45,50 @@ export function DedupPunchesButton({
           </p>
         </div>
       </div>
+      {details.length > 0 ? (
+        <div className="space-y-2">
+          {details.map((cluster) => (
+            <details
+              key={`${cluster.employeeId}-${cluster.keepPunchId}`}
+              className="rounded-input border border-amber-200 bg-white/65 px-3 py-2"
+            >
+              <summary className="cursor-pointer text-xs font-medium text-amber-950">
+                {cluster.employeeName} · {cluster.localDate} ·{" "}
+                {cluster.localTimeRange} · keep {shortId(cluster.keepPunchId)}, void{" "}
+                {cluster.voidPunchIds.map(shortId).join(", ")}
+              </summary>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[540px] text-left text-xs">
+                  <thead className="text-amber-900/80">
+                    <tr>
+                      <th className="py-1 pr-3 font-medium">Action</th>
+                      <th className="py-1 pr-3 font-medium">Punch ID</th>
+                      <th className="py-1 pr-3 font-medium">Source</th>
+                      <th className="py-1 pr-3 font-medium">Time</th>
+                      <th className="py-1 pr-3 text-right font-medium">Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cluster.rows.map((row) => (
+                      <tr key={row.id} className="border-t border-amber-100">
+                        <td className="py-1.5 pr-3 font-medium">
+                          {row.willKeep ? "Keep" : "Void"}
+                        </td>
+                        <td className="py-1.5 pr-3 font-mono">{shortId(row.id)}</td>
+                        <td className="py-1.5 pr-3">{row.source}</td>
+                        <td className="py-1.5 pr-3">{row.localTimeRange}</td>
+                        <td className="py-1.5 pr-3 text-right font-mono tabular-nums">
+                          {row.durationHours}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ))}
+        </div>
+      ) : null}
       {result && (
         <div className="flex items-start gap-2 text-xs text-emerald-800">
           <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
@@ -64,7 +114,7 @@ export function DedupPunchesButton({
           setPending(false);
           if ("ok" in r) {
             setResult({ voided: r.voided, clusters: r.clusters });
-            setClusters(0);
+            setDetails([]);
           } else {
             setError(r.error ?? "Unknown error");
           }

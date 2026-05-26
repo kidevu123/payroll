@@ -1518,6 +1518,30 @@ export async function addManualAttendancePunch(
       .then((count) => count > 0)
       .catch(() => false);
 
+  const waitForExpectedManualRow = async (
+    timeoutMs = 20_000,
+  ): Promise<boolean> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await expectedManualRowVisible()) return true;
+      await page.waitForTimeout(500);
+    }
+    return expectedManualRowVisible();
+  };
+
+  const waitForManualLogGridRefresh = async (): Promise<void> => {
+    await page
+      .waitForFunction(
+        () => {
+          const text = document.body?.textContent ?? "";
+          return !/0\s*[–-]\s*0\s+of\s+0/.test(text);
+        },
+        null,
+        { timeout: 12_000 },
+      )
+      .catch(() => undefined);
+  };
+
   try {
     await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
     try {
@@ -1583,6 +1607,7 @@ export async function addManualAttendancePunch(
       .getByText(/person\s*id/i)
       .first()
       .waitFor({ timeout: 15_000 });
+    await waitForManualLogGridRefresh();
 
     if (await expectedManualRowVisible()) {
       await ctx.close();
@@ -1699,7 +1724,8 @@ export async function addManualAttendancePunch(
       .getByText(/person\s*id/i)
       .first()
       .waitFor({ timeout: 15_000 });
-    if (!(await expectedManualRowVisible())) {
+    await waitForManualLogGridRefresh();
+    if (!(await waitForExpectedManualRow())) {
       throw new Error(
         `NGTeco manual punch saved without expected timezone ${input.timeZoneOffset}; refusing to mark sync successful.`,
       );

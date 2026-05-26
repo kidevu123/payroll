@@ -40,6 +40,7 @@ import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { DedupPunchesButton } from "./dedup-button";
 import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
+import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
 import { requireSession } from "@/lib/auth-guards";
@@ -99,6 +100,14 @@ export default async function PeriodReviewPage({
     findDuplicatePunchClusters({ periodId }),
   ]);
   const tz = company.timezone ?? "America/New_York";
+  const duplicateDetails = buildDuplicatePunchDetails({
+    timezone: tz,
+    employees: allEmployees.map((employee) => ({
+      id: employee.id,
+      displayName: employee.displayName,
+    })),
+    clusters: duplicateClusters,
+  });
 
   // Most recent run for this period (the one that drives the publish-pill).
   const [run] = await db
@@ -701,7 +710,7 @@ export default async function PeriodReviewPage({
       {!isAccountant && (
         <DedupPunchesButton
           periodId={periodId}
-          initialClusterCount={duplicateClusters.length}
+          initialDetails={duplicateDetails}
         />
       )}
 
