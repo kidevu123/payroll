@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, MessageSquareWarning } from "lucide-react";
+import { CalendarDays, CheckCircle2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -248,7 +247,7 @@ export default async function DashboardPage() {
     : "NO_RUN";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <StatStrip
         inToday={punchedList.length}
         totalActive={employees.length}
@@ -256,7 +255,7 @@ export default async function DashboardPage() {
         lastPollAt={lastPoll?.finishedAt ?? null}
       />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <PayrollRunCard
           state={cardState}
           {...(period
@@ -281,9 +280,9 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 py-3">
             <CardTitle>Pending requests</CardTitle>
             <CardDescription>
               {pendingTotal === 0
@@ -291,18 +290,19 @@ export default async function DashboardPage() {
                 : `${pendingMissed.length} missed-punch · ${pendingTimeOff.length} time-off`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 py-3">
             {pendingTotal === 0 ? (
-              <EmptyState
-                icon={MessageSquareWarning}
-                title="All clear"
-                description="No employee submissions waiting on a decision."
-                action={
-                  <Button asChild variant="secondary">
-                    <Link href="/requests">Open requests page</Link>
-                  </Button>
-                }
-              />
+              <div className="flex items-center justify-between gap-3 rounded-input border border-success-200 bg-success-50 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success-700" />
+                  <span className="text-sm font-medium text-success-900">
+                    All clear
+                  </span>
+                </div>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/requests">Open</Link>
+                </Button>
+              </div>
             ) : (
               <div className="space-y-2">
                 {pendingMissed.slice(0, 3).map((r) => (
@@ -347,19 +347,18 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="px-4 py-3">
             <CardTitle>Recent runs</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 py-3">
             {recentRuns.length === 0 ? (
-              <EmptyState
-                icon={CalendarDays}
-                title="No runs yet"
-                description="The first run kicks off on the configured cron."
-              />
+              <div className="flex items-center gap-2 rounded-input border border-border bg-surface-2 px-3 py-2 text-sm text-text-muted">
+                <CalendarDays className="h-4 w-4" />
+                No runs yet.
+              </div>
             ) : (
-              <ul className="space-y-2 text-sm">
-                {recentRuns.map((r) => (
+              <ul className="space-y-1.5 text-sm">
+                {recentRuns.slice(0, 4).map((r) => (
                   <li key={r.id}>
                     <Link
                       href={
@@ -391,6 +390,13 @@ export default async function DashboardPage() {
                     </Link>
                   </li>
                 ))}
+                {recentRuns.length > 4 && (
+                  <li>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link href="/payroll">View all runs</Link>
+                    </Button>
+                  </li>
+                )}
               </ul>
             )}
           </CardContent>

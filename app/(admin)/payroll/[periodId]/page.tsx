@@ -51,7 +51,9 @@ import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
 import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
+import { CashDenominationButton } from "./cash-denomination-button";
 import { requireSession } from "@/lib/auth-guards";
+import { buildCashDenominationSummary } from "@/lib/payroll/cash-denominations";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -388,6 +390,31 @@ export default async function PeriodReviewPage({
     (acc, e) => acc + e.amountCents,
     0,
   );
+  const activePayslips = allPayslips.filter((p) => !p.voidedAt);
+  const cashSource =
+    activePayslips.length > 0
+      ? activePayslips.flatMap((p) => {
+          const employee = allEmployees.find((e) => e.id === p.employeeId);
+          if (!employee) return [];
+          return [
+            {
+              employeeId: p.employeeId,
+              employeeName: employee.displayName,
+              roundedPayCents: p.roundedPayCents,
+            },
+          ];
+        })
+      : displayRows.map((row) => ({
+          employeeId: row.employee.id,
+          employeeName: row.employee.displayName,
+          roundedPayCents: row.result.roundedCents,
+        }));
+  const cashSummary = buildCashDenominationSummary(cashSource);
+  const periodLabel = `${period.startDate} – ${canonicalEndForScheduleName(
+    period.startDate,
+    period.endDate,
+    runSchedule?.name ?? null,
+  )}`;
 
   return (
     <div className="space-y-6">
@@ -519,6 +546,10 @@ export default async function PeriodReviewPage({
                 <Scissors className="h-4 w-4" /> Pay-slip cut sheet
               </Link>
             </Button>
+            <CashDenominationButton
+              summary={cashSummary}
+              periodLabel={periodLabel}
+            />
             {run?.pdfPath && (
               <Button asChild variant="secondary" className="justify-start">
                 <Link
