@@ -65,19 +65,19 @@ export function CashDenominationButton({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
               {summary.denominations.map((denomination) => (
                 <div
                   key={denomination.value}
-                  className="rounded-card border border-border bg-surface-2 px-3 py-2"
+                  className="min-w-0 rounded-card border border-border bg-surface-2 px-2.5 py-2"
                 >
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
                     ${denomination.value}s
                   </div>
-                  <div className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums">
                     {denomination.count}
                   </div>
-                  <div className="text-xs text-text-muted">
+                  <div className="truncate text-[11px] text-text-muted">
                     <MoneyDisplay cents={denomination.totalCents} />
                   </div>
                 </div>
