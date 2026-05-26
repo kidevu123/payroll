@@ -1,4 +1,4 @@
-export const CASH_DENOMINATIONS = [100, 50, 20, 10, 1] as const;
+export const CASH_DENOMINATIONS = [100, 50, 20, 10, 5, 1] as const;
 
 export type CashDenomination = (typeof CASH_DENOMINATIONS)[number];
 export type CashBillCounts = Record<CashDenomination, number>;
@@ -26,7 +26,7 @@ export type CashDenominationSummary = {
 };
 
 function emptyBillCounts(): CashBillCounts {
-  return { 100: 0, 50: 0, 20: 0, 10: 0, 1: 0 };
+  return { 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 1: 0 };
 }
 
 function billsForAmount(cents: number): {

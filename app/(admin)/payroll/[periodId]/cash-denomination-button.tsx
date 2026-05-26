@@ -41,7 +41,7 @@ export function CashDenominationButton({
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-text-muted">
                 {periodLabel} · per-employee envelope breakdown using $100,
-                $50, $20, $10, and $1 bills.
+                $50, $20, $10, $5, and $1 bills.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>

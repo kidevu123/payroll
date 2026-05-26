@@ -14,15 +14,16 @@ describe("buildCashDenominationSummary", () => {
       { value: 50, count: 2, totalCents: 10000 },
       { value: 20, count: 0, totalCents: 0 },
       { value: 10, count: 0, totalCents: 0 },
+      { value: 5, count: 0, totalCents: 0 },
       { value: 1, count: 0, totalCents: 0 },
     ]);
     expect(summary.rows.map((row) => row.bills)).toEqual([
-      { 100: 1, 50: 1, 20: 0, 10: 0, 1: 0 },
-      { 100: 0, 50: 1, 20: 0, 10: 0, 1: 0 },
+      { 100: 1, 50: 1, 20: 0, 10: 0, 5: 0, 1: 0 },
+      { 100: 0, 50: 1, 20: 0, 10: 0, 5: 0, 1: 0 },
     ]);
   });
 
-  it("uses ones instead of fives because the bank list excludes five dollar bills", () => {
+  it("uses fives before ones to keep the bank pickup list compact", () => {
     const summary = buildCashDenominationSummary([
       { employeeId: "a", employeeName: "Amy", roundedPayCents: 11500 },
     ]);
@@ -32,7 +33,8 @@ describe("buildCashDenominationSummary", () => {
       { value: 50, count: 0, totalCents: 0 },
       { value: 20, count: 0, totalCents: 0 },
       { value: 10, count: 1, totalCents: 1000 },
-      { value: 1, count: 5, totalCents: 500 },
+      { value: 5, count: 1, totalCents: 500 },
+      { value: 1, count: 0, totalCents: 0 },
     ]);
   });
 
