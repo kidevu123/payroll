@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type React from "react";
 import {
   ArrowLeft,
   ChevronRight,
@@ -81,6 +82,50 @@ function formatDayLabel(dateIso: string, tz: string): string {
     day: "numeric",
     timeZone: tz,
   }).format(d);
+}
+
+function rateLabel(employee: {
+  payType: string;
+  hourlyRateCents: number | null;
+}): string {
+  if (employee.payType === "FLAT_TASK") {
+    return `Per task · ${
+      employee.hourlyRateCents !== null
+        ? `$${(employee.hourlyRateCents / 100).toFixed(2)}`
+        : "—"
+    }`;
+  }
+  return employee.hourlyRateCents !== null
+    ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
+    : "—";
+}
+
+function issueLabel(row: {
+  incomplete: number;
+  hoursDrift?: boolean;
+  storedHours?: number;
+  liveHours?: number;
+}): React.ReactNode {
+  if (row.incomplete > 0) {
+    return (
+      <span className="text-warn-700">
+        {row.incomplete} incomplete
+      </span>
+    );
+  }
+  if (row.hoursDrift) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-amber-700"
+        title={`Stored hours (${row.storedHours?.toFixed(2)}h) don't match live punch hours (${row.liveHours?.toFixed(2)}h). Open employee row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
+      >
+        <AlertTriangle className="h-3 w-3" aria-hidden />
+        drift: stored {row.storedHours?.toFixed(2)}h vs live{" "}
+        {row.liveHours?.toFixed(2)}h
+      </span>
+    );
+  }
+  return <span className="text-text-subtle">—</span>;
 }
 
 export default async function PeriodReviewPage({
@@ -368,9 +413,9 @@ export default async function PeriodReviewPage({
           )}
         </h1>
       </div>
-      <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2.5 bg-page/95 backdrop-blur border-b border-border">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap min-w-0 shrink-0">
+      <div className="rounded-card border border-border bg-surface p-3 shadow-card lg:sticky lg:top-14 lg:z-20 lg:-mx-8 lg:rounded-none lg:border-x-0 lg:bg-page/95 lg:px-8 lg:py-2.5 lg:backdrop-blur lg:shadow-none">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
               <StatusPill status={period.state} />
               <SchedulePill name={headerSchedule?.name ?? null} />
               {!isAccountant && !headerScheduleId && (
@@ -389,7 +434,7 @@ export default async function PeriodReviewPage({
                     }))}
                 />
               )}
-              <span className="text-sm text-text-muted">
+              <span className="basis-full text-sm text-text-muted sm:basis-auto">
                 {displayRows.length} emp ·{" "}
                 <span className="font-medium text-text">
                   <MoneyDisplay
@@ -410,9 +455,9 @@ export default async function PeriodReviewPage({
                 )}
               </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0 lg:flex-wrap lg:items-center">
             {!isAccountant && run?.pdfPath && (
-              <Button asChild variant="secondary" size="sm">
+              <Button asChild variant="secondary" size="sm" className="w-full justify-center lg:w-auto">
                 <Link
                   href={`/api/reports/${run.id}/pdf`}
                   target="_blank"
@@ -634,7 +679,127 @@ export default async function PeriodReviewPage({
               No punches or task pay recorded for this period.
             </p>
           ) : (
-            <div className="space-y-0.5">
+            <>
+            <div className="space-y-3 md:hidden">
+              {displayRows.map((row) => {
+                const { employee, result, incomplete, punches } = row;
+                const ePunches = punches.filter((p) => !p.voidedAt);
+                return (
+                  <details
+                    key={employee.id}
+                    className="group rounded-card border border-border bg-surface-2/35"
+                  >
+                    <summary className="list-none p-3 [&::-webkit-details-marker]:hidden">
+                      <div className="flex items-start gap-3">
+                        <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-text-subtle transition-transform group-open:rotate-90" />
+                        <div className="min-w-0 flex-1">
+                          {isAccountant ? (
+                            <span className="block truncate text-sm font-semibold">
+                              {employee.displayName}
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/employees/${employee.id}`}
+                              className="block truncate text-sm font-semibold hover:text-brand-700 hover:underline underline-offset-2"
+                            >
+                              {employee.displayName}
+                            </Link>
+                          )}
+                          <div className="mt-0.5 text-xs text-text-muted">
+                            {rateLabel(employee)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono text-base font-semibold tabular-nums">
+                            <MoneyDisplay cents={result.roundedCents} />
+                          </div>
+                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                            rounded
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <div className="rounded-input border border-border/70 bg-surface p-2">
+                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                            Hours
+                          </div>
+                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                            <HoursDisplay
+                              hours={result.totalHours}
+                              decimals={payRules.hoursDecimalPlaces}
+                            />
+                          </div>
+                        </div>
+                        <div className="rounded-input border border-border/70 bg-surface p-2">
+                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                            Gross
+                          </div>
+                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                            <MoneyDisplay cents={result.grossCents} />
+                          </div>
+                        </div>
+                        <div className="rounded-input border border-border/70 bg-surface p-2">
+                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                            Issues
+                          </div>
+                          <div className="mt-1 truncate text-xs">
+                            {issueLabel({
+                              incomplete,
+                              ...("hoursDrift" in row
+                                ? {
+                                    hoursDrift: row.hoursDrift,
+                                    storedHours: (row as RowLike).storedHours,
+                                    liveHours: (row as RowLike).liveHours,
+                                  }
+                                : {}),
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </summary>
+                    <PunchSubTable
+                      punches={ePunches}
+                      tz={tz}
+                      formatHm={formatHm}
+                      formatDayLabel={formatDayLabel}
+                      periodId={periodId}
+                      employeeId={employee.id}
+                      canEdit={!isAccountant && period.state !== "PAID"}
+                      today={new Intl.DateTimeFormat("en-CA", {
+                        timeZone: tz,
+                      }).format(new Date())}
+                    />
+                  </details>
+                );
+              })}
+              <div className="rounded-card border border-border bg-surface-2 p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">Employee subtotal</span>
+                  <span className="font-mono font-semibold tabular-nums">
+                    <MoneyDisplay cents={totals.rounded} />
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-muted">
+                  <div>
+                    Hours:{" "}
+                    <span className="font-mono text-text">
+                      <HoursDisplay
+                        hours={totals.hours}
+                        decimals={payRules.hoursDecimalPlaces}
+                      />
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    Gross:{" "}
+                    <span className="font-mono text-text">
+                      <MoneyDisplay cents={totals.gross} />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden space-y-0.5 md:block">
               <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
@@ -665,11 +830,7 @@ export default async function PeriodReviewPage({
                             </Link>
                           )}
                           <div className="text-xs text-text-muted">
-                            {employee.payType === "FLAT_TASK"
-                              ? `Per task · ${employee.hourlyRateCents !== null ? `$${(employee.hourlyRateCents / 100).toFixed(2)}` : "—"}`
-                              : employee.hourlyRateCents !== null
-                                ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
-                                : "—"}
+                            {rateLabel(employee)}
                           </div>
                         </div>
                         <span className="text-right font-mono tabular-nums">
@@ -685,20 +846,16 @@ export default async function PeriodReviewPage({
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
                         <span className="text-right">
-                          {incomplete > 0 ? (
-                            <span className="text-warn-700 text-xs">{incomplete} incomplete</span>
-                          ) : "hoursDrift" in row && row.hoursDrift ? (
-                            <span
-                              className="inline-flex items-center gap-1 text-amber-700 text-xs"
-                              title={`Stored hours (${(row as RowLike).storedHours?.toFixed(2)}h) don't match live punch hours (${(row as RowLike).liveHours?.toFixed(2)}h). Open employees row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
-                            >
-                              <AlertTriangle className="h-3 w-3" aria-hidden />
-                              drift: stored {(row as RowLike).storedHours?.toFixed(2)}h vs
-                              live {(row as RowLike).liveHours?.toFixed(2)}h
-                            </span>
-                          ) : (
-                            <span className="text-text-subtle">—</span>
-                          )}
+                          {issueLabel({
+                            incomplete,
+                            ...("hoursDrift" in row
+                              ? {
+                                  hoursDrift: row.hoursDrift,
+                                  storedHours: (row as RowLike).storedHours,
+                                  liveHours: (row as RowLike).liveHours,
+                                }
+                              : {}),
+                          })}
                         </span>
                       </summary>
                       <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={!isAccountant && period.state !== "PAID"} today={new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date())} />
@@ -748,6 +905,7 @@ export default async function PeriodReviewPage({
                 </div>
               )}
             </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -863,8 +1021,8 @@ function PunchSubTable({
   }
   const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   return (
-    <div className="px-9 pb-3 pt-1">
-      <table className="min-w-full text-xs">
+    <div className="overflow-x-auto px-3 pb-3 pt-1 md:px-9">
+      <table className="min-w-[22rem] text-xs md:min-w-full">
         <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-medium">Day</th>
