@@ -256,7 +256,7 @@ export default async function DashboardPage() {
         lastPollAt={lastPoll?.finishedAt ?? null}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <PayrollRunCard
           state={cardState}
           {...(period

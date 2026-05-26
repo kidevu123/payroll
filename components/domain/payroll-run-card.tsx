@@ -1,12 +1,6 @@
-// Dashboard centerpiece — fills ~50% of viewport with a state-driven CTA.
-// State sets the tone, the headline, the supporting line, and the single
-// primary action. Secondary actions show as quieter links underneath.
-//
-// Visual contract (Phase 6.5):
-//   • Active states get a subtle brand-accent treatment (gradient backdrop +
-//     thicker brand border) so the eye lands here before reading copy.
-//   • Numeric stats use JetBrains Mono and tabular-nums so columns align.
-//   • A four-step state-machine bar shows where this run sits in its lifecycle.
+// Dashboard payroll module: compact, action-first, and sized to its content.
+// The attendance panel beside it can be tall; this card should never stretch
+// into an empty billboard just because the grid row is taller.
 
 import * as React from "react";
 import Link from "next/link";
@@ -136,6 +130,22 @@ const TONE_ICON: Record<Tone, string> = {
   success: "text-success-700 bg-success-50",
 };
 
+const TONE_BORDER: Record<Tone, string> = {
+  neutral: "border-border",
+  info: "border-info-200",
+  warn: "border-warn-300",
+  danger: "border-danger-300",
+  success: "border-success-300",
+};
+
+const TONE_ACCENT: Record<Tone, string> = {
+  neutral: "bg-text-subtle",
+  info: "bg-info-600",
+  warn: "bg-warn-600",
+  danger: "bg-danger-600",
+  success: "bg-success-600",
+};
+
 const ATTENTION_STATES = new Set<State>([
   "AWAITING_ADMIN_REVIEW",
   "INGEST_FAILED",
@@ -146,11 +156,14 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
   const c = COPY[props.state];
   const { Icon } = c;
   const attention = ATTENTION_STATES.has(props.state);
+  const hasStats = Boolean(
+    props.stats && (props.stats.employeeCount > 0 || props.stats.gross > 0),
+  );
   return (
     <div
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-card bg-surface p-4 shadow-card sm:p-6 lg:p-8",
-        "border-2 border-brand-700",
+        "relative self-start overflow-hidden rounded-card border bg-surface p-4 shadow-card sm:p-5",
+        TONE_BORDER[c.tone],
       )}
     >
       <div
@@ -164,41 +177,52 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
             "radial-gradient(120% 80% at 100% 0%, var(--color-brand-50), transparent 60%)",
         }}
       />
+      <div
+        aria-hidden="true"
+        className={cn("absolute inset-x-0 top-0 h-1", TONE_ACCENT[c.tone])}
+      />
 
       {props.state === "NO_RUN" ? (
-        <div className="relative mb-5 flex items-center justify-between gap-3">
-          {props.period ? (
-            <p className="text-sm font-medium text-text">
-              <span className="font-mono tabular-nums">{props.period.startDate}</span>
-              {" – "}
-              <span className="font-mono tabular-nums">{props.period.endDate}</span>
+        <div className="relative mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
+              Active period
             </p>
-          ) : (
-            <p className="text-sm font-medium text-text-muted">Current period</p>
-          )}
+            {props.period ? (
+              <p className="mt-1 text-sm font-semibold text-text">
+                <span className="font-mono tabular-nums">{props.period.startDate}</span>
+                {" – "}
+                <span className="font-mono tabular-nums">{props.period.endDate}</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-sm font-medium text-text-muted">
+                Current period
+              </p>
+            )}
+          </div>
           <span className="shrink-0 inline-flex items-center rounded-chip border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
             Not started
           </span>
         </div>
       ) : (
-        <div className="relative mb-5 flex items-start gap-3 sm:mb-6 sm:gap-4">
+        <div className="relative mb-4 flex items-start gap-3">
           <span
             className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-card",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-card",
               TONE_ICON[c.tone],
             )}
           >
-            <Icon className="h-6 w-6" aria-hidden="true" />
+            <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold tracking-tight leading-tight">
+            <h2 className="text-base font-semibold tracking-tight leading-tight">
               {c.headline}
             </h2>
-            <p className="text-sm text-text-muted mt-1.5 max-w-2xl leading-relaxed">
+            <p className="mt-1 text-xs text-text-muted leading-relaxed">
               {c.sub}
             </p>
             {props.period ? (
-              <p className="text-xs text-text-muted mt-3">
+              <p className="text-xs text-text-muted mt-2">
                 Period:{" "}
                 <span className="font-mono tabular-nums">{props.period.startDate}</span>
                 {" – "}
@@ -214,10 +238,10 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         </div>
       )}
 
-      <RunProgress state={props.state} className="relative mb-6" />
+      <RunProgress state={props.state} className="relative mb-4" />
 
-      {props.stats && (props.stats.employeeCount > 0 || props.stats.gross > 0) ? (
-        <div className="relative mb-5 grid grid-cols-2 gap-2.5 sm:mb-6 sm:gap-3 lg:grid-cols-4">
+      {hasStats && props.stats ? (
+        <div className="relative mb-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           <Stat label="Employees" value={String(props.stats.employeeCount)} />
           <Stat
             label="Hours"
@@ -239,9 +263,14 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
         </div>
       ) : null}
 
-      <div className="relative mt-4 flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&_a]:justify-center">
+      <div className="relative flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&_a]:justify-center">
         {primaryAction(props)}
         {secondaryAction(props)}
+        {props.state === "NO_RUN" ? null : (
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/payroll">Open payroll</Link>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -249,11 +278,11 @@ export function PayrollRunCard(props: PayrollRunCardProps) {
 
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-card border border-border/60 bg-surface-2/60 p-3 sm:p-4">
+    <div className="rounded-card border border-border/60 bg-surface-2/60 p-3">
       <div className="text-[10px] uppercase tracking-wider text-text-subtle font-medium">
         {label}
       </div>
-      <div className="mt-1 font-mono text-xl font-semibold tabular-nums tracking-tight sm:text-2xl">
+      <div className="mt-1 font-mono text-xl font-semibold tabular-nums tracking-tight">
         {value}
       </div>
     </div>
