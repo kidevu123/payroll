@@ -1098,7 +1098,7 @@ function PunchSubTable({
                         <span className="text-brand-700 font-medium">open</span>
                       ) : isStaleOpen && canEdit ? (
                         <Link
-                          href={`/time/${periodId}/${day}/${employeeId}`}
+                          href={`/time/${periodId}/${day}/${employeeId}?${new URLSearchParams({ returnTo: `/payroll/${periodId}` })}`}
                           className="text-amber-700 underline underline-offset-2 hover:text-amber-900"
                         >
                           missing — fix

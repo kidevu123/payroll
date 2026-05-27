@@ -58,7 +58,6 @@ export default async function ReportsPage({
         <ScheduleTabs
           current={tab}
           basePath="/reports"
-          hrefs={{ salaried: "/salaried" }}
         />
       </div>
 

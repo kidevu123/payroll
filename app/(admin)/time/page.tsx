@@ -13,6 +13,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { listApprovedInRange } from "@/lib/db/queries/time-off";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
+import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
@@ -353,6 +354,10 @@ export default async function TimePage({
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
+  const returnToParams = new URLSearchParams();
+  if (tab !== "all") returnToParams.set("schedule", tab);
+  if (sp.period) returnToParams.set("period", sp.period);
+  const returnTo = `/time${returnToParams.size ? `?${returnToParams.toString()}` : ""}`;
 
   // If a specific period ID is in the URL (?period=UUID), load it directly
   // so the admin can navigate to past/future weeks via the prev/next arrows.
@@ -669,6 +674,11 @@ export default async function TimePage({
                   );
                   const first = sorted[0];
                   const last = sorted[sorted.length - 1];
+                  const cellPeriodId = resolveTimeCellPeriodId({
+                    currentPeriodId: period.id,
+                    isAllTab: !kindFilter,
+                    punches: sorted,
+                  });
                   const closedMs = sorted.reduce((acc, p) => {
                     if (!p.clockOut) return acc;
                     return acc + (p.clockOut.getTime() - p.clockIn.getTime());
@@ -691,9 +701,9 @@ export default async function TimePage({
                       key={d}
                       className={`py-1.5 px-1.5 align-middle text-center ${isToday ? "bg-brand-50/25 group-hover:bg-brand-50/40" : ""}`}
                     >
-                      {period.id ? (
+                      {cellPeriodId ? (
                         <Link
-                          href={`/time/${period.id}/${d}/${e.id}`}
+                          href={`/time/${cellPeriodId}/${d}/${e.id}?${new URLSearchParams({ returnTo })}`}
                           className="block"
                           aria-label={cellAriaLabel(state, sorted, company.timezone)}
                         >

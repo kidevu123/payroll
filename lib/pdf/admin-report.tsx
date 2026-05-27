@@ -24,41 +24,103 @@ const PAGE_PADDING = 16;
 // payroll software does the same.
 const styles = StyleSheet.create({
   page: {
-    padding: PAGE_PADDING,
+    paddingTop: 18,
+    paddingHorizontal: PAGE_PADDING,
+    paddingBottom: 18,
     fontSize: 7,
     fontFamily: "Helvetica",
     color: "#0f172a",
   },
-  summaryTitle: {
-    fontSize: 11,
+  topRule: {
+    position: "absolute",
+    top: 12,
+    left: PAGE_PADDING,
+    right: PAGE_PADDING,
+    height: 1.5,
+    backgroundColor: "#ede9fe",
+  },
+  reportLabel: {
+    position: "absolute",
+    top: 34,
+    left: PAGE_PADDING,
+    fontSize: 7,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 1,
+    color: "#0f766e",
+  },
+  pagePill: {
+    position: "absolute",
+    top: 22,
+    right: PAGE_PADDING,
+    borderWidth: 0.75,
+    borderColor: "#c4b5fd",
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    fontSize: 7,
+    color: "#0f172a",
+    backgroundColor: "#f5f3ff",
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginTop: 0,
+    marginBottom: 2,
   },
   summaryMeta: {
-    fontSize: 6.5,
+    fontSize: 8,
     color: "#64748b",
-    marginBottom: 4,
+    textAlign: "center",
+    marginBottom: 16,
   },
   table: {
     borderWidth: 0.5,
     borderColor: "#cbd5e1",
-    borderRadius: 2,
-    marginBottom: 6,
+    borderRadius: 5,
+    marginBottom: 10,
+    padding: 5,
+  },
+  summaryBand: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#ede9fe",
+    borderRadius: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+  },
+  summaryBandTitle: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+  },
+  summaryBandTotal: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#0f766e",
+  },
+  summaryColumns: {
+    flexDirection: "row",
+  },
+  summaryColumn: {
+    width: "50%",
+    paddingHorizontal: 4,
   },
   th: {
     flexDirection: "row",
-    backgroundColor: "#f1f5f9",
-    paddingVertical: 2.5,
-    paddingHorizontal: 5,
+    backgroundColor: "#f8fafc",
+    paddingVertical: 2,
+    paddingHorizontal: 3,
     borderBottomWidth: 0.5,
-    borderColor: "#cbd5e1",
+    borderColor: "#e2e8f0",
     fontFamily: "Helvetica-Bold",
-    fontSize: 7,
+    fontSize: 6.25,
+    color: "#0f766e",
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 1.75,
-    paddingHorizontal: 5,
+    paddingVertical: 1.5,
+    paddingHorizontal: 3,
     borderBottomWidth: 0.25,
     borderColor: "#eef2f7",
   },
@@ -81,17 +143,17 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     fontSize: 8,
   },
-  cId: { width: 36 },
+  cId: { width: 28 },
   cName: { flex: 2.4, fontSize: 7 },
-  cShift: { width: 60 },
-  cHours: { width: 52, textAlign: "right", paddingRight: 6 },
-  cPay: { width: 64, textAlign: "right", paddingRight: 6, color: "#475569" },
+  cShift: { width: 50 },
+  cHours: { width: 38, textAlign: "right", paddingRight: 4 },
+  cPay: { width: 48, textAlign: "right", paddingRight: 4, color: "#475569" },
   // Rounded Pay = what the employee actually receives. Owner ask:
   // "why wouldnt you bold rounded pay since thats what theyd actually
   // receive". Bold weight + brand color + slightly larger for the
   // header AND every row of this column.
   cRounded: {
-    width: 72,
+    width: 42,
     textAlign: "right",
     fontFamily: "Helvetica-Bold",
   },
@@ -115,18 +177,19 @@ const styles = StyleSheet.create({
   },
   blockInner: {
     borderWidth: 0.75,
-    borderColor: "#cbd5e1",
-    borderRadius: 2,
-    padding: 3,
+    borderColor: "#dbe4f0",
+    borderRadius: 5,
+    padding: 5,
+    minHeight: 132,
   },
   blockHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    paddingBottom: 2,
-    marginBottom: 2,
-    borderBottomWidth: 0.5,
-    borderColor: "#e2e8f0",
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    marginBottom: 5,
+    borderRadius: 4,
   },
   blockName: {
     fontSize: 7,
@@ -239,6 +302,11 @@ function fmtTime(t: string | undefined): string {
   return `${h12}:${m[2]}${ampm}`;
 }
 
+function splitSummaryRows<T>(rows: T[]): [T[], T[]] {
+  const midpoint = Math.ceil(rows.length / 2);
+  return [rows.slice(0, midpoint), rows.slice(midpoint)];
+}
+
 export function AdminReport({ data }: { data: AdminReportInput }) {
   let grandHours = 0;
   let grandGrossCents = 0;
@@ -250,12 +318,25 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
   }
 
   const brand = data.company.brandColorHex;
+  const sortedEmployees = data.employees
+    .slice()
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  const [leftSummary, rightSummary] = splitSummaryRows(sortedEmployees);
 
   return (
     <Document
       title={`Admin Report ${data.period.startDate} to ${data.period.endDate}`}
     >
       <Page size="LETTER" orientation="landscape" style={styles.page} wrap>
+        <View style={styles.topRule} fixed />
+        <Text style={styles.reportLabel} fixed>Admin Report</Text>
+        <Text
+          style={styles.pagePill}
+          fixed
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+        />
         <Text style={[styles.summaryTitle, { color: brand }]}>
           {data.company.name} — Payroll {data.period.startDate} to {data.period.endDate}
         </Text>
@@ -270,45 +351,41 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
             single-page. Employees are now a flat alphabetical list
             with one grand-total row at the end. */}
         <View style={styles.table}>
-          <View style={styles.th}>
-            <Text style={styles.cId}>ID</Text>
-            <Text style={styles.cName}>Employee</Text>
-            <Text style={styles.cHours}>Hours</Text>
-            <Text style={styles.cPay}>Total</Text>
-            <Text style={styles.cRounded}>Rounded</Text>
-          </View>
-
-          {data.employees
-            .slice()
-            .sort((a, b) => a.displayName.localeCompare(b.displayName))
-            .map((r, i) => (
-              <View key={`row-${i}`} style={styles.tr}>
-                <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
-                <Text style={styles.cName}>{r.displayName}</Text>
-                <Text style={styles.cHours}>
-                  {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
-                </Text>
-                <Text style={styles.cPay}>
-                  {money(r.totals.grossCents, data.company.locale)}
-                </Text>
-                <Text style={styles.cRounded}>
-                  {moneyWhole(r.totals.roundedCents, data.company.locale)}
-                </Text>
-              </View>
-            ))}
-
-          <View style={styles.grandTotal}>
-            <Text style={styles.cId} />
-            <Text style={styles.cName}>GRAND TOTAL</Text>
-            <Text style={styles.cHours}>
-              {hrs(grandHours, data.rules.hoursDecimalPlaces)}
-            </Text>
-            <Text style={styles.cPay}>
-              {money(grandGrossCents, data.company.locale)}
-            </Text>
-            <Text style={styles.cRounded}>
+          <View style={styles.summaryBand}>
+            <Text style={styles.summaryBandTitle}>Payroll summary</Text>
+            <Text style={styles.summaryBandTotal}>
+              GRAND TOTAL: {hrs(grandHours, data.rules.hoursDecimalPlaces)} hrs ·{" "}
+              {money(grandGrossCents, data.company.locale)} · Rounded{" "}
               {moneyWhole(grandRoundedCents, data.company.locale)}
             </Text>
+          </View>
+          <View style={styles.summaryColumns}>
+            {[leftSummary, rightSummary].map((rows, columnIndex) => (
+              <View key={`summary-col-${columnIndex}`} style={styles.summaryColumn}>
+                <View style={styles.th}>
+                  <Text style={styles.cId}>ID</Text>
+                  <Text style={styles.cName}>Employee</Text>
+                  <Text style={styles.cHours}>Hrs</Text>
+                  <Text style={styles.cPay}>Total</Text>
+                  <Text style={styles.cRounded}>Pay</Text>
+                </View>
+                {rows.map((r, i) => (
+                  <View key={`row-${columnIndex}-${i}`} style={styles.tr}>
+                    <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
+                    <Text style={styles.cName}>{r.displayName}</Text>
+                    <Text style={styles.cHours}>
+                      {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
+                    </Text>
+                    <Text style={styles.cPay}>
+                      {money(r.totals.grossCents, data.company.locale)}
+                    </Text>
+                    <Text style={styles.cRounded}>
+                      {moneyWhole(r.totals.roundedCents, data.company.locale)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -323,7 +400,12 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
           {data.employees.map((e, idx) => (
             <View key={`emp-${idx}`} style={styles.block} wrap={false}>
               <View style={styles.blockInner}>
-                <View style={styles.blockHeader}>
+                <View
+                  style={[
+                    styles.blockHeader,
+                    { backgroundColor: idx % 2 === 0 ? "#e7f8f3" : "#f1e9ff" },
+                  ]}
+                >
                   <Text style={styles.blockName}>{e.displayName}</Text>
                   {e.legacyId && (
                     <Text style={styles.blockMeta}>#{e.legacyId}</Text>

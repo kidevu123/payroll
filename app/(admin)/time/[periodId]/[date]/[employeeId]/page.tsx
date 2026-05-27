@@ -6,14 +6,22 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
+import { safeLocalReturnTo } from "@/lib/time/grid-links";
 import { PunchEditor } from "./punch-editor";
 
 export default async function PunchEditorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ periodId: string; date: string; employeeId: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { periodId, date, employeeId } = await params;
+  const sp = await searchParams;
+  const backHref = safeLocalReturnTo(
+    sp.returnTo,
+    `/time?${new URLSearchParams({ period: periodId })}`,
+  );
   const [period, employee, allPunches, company] = await Promise.all([
     getPeriodById(periodId),
     getEmployee(employeeId),
@@ -48,7 +56,7 @@ export default async function PunchEditorPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Button asChild variant="ghost" size="sm">
-        <Link href="/time">
+        <Link href={backHref}>
           <ArrowLeft className="h-4 w-4" /> Back to grid
         </Link>
       </Button>

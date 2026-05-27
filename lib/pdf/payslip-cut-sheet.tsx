@@ -1,13 +1,6 @@
-// Cuttable payslip sheet — 2-col grid, dashed cut lines between rows
-// + columns. Each card has the daily In/Out/Hours/Pay table and the
-// total + rounded total at the bottom. No signature line, no shift
-// label — the owner's spec is "just hours of the person and total" so
-// they can scissor along the dashes and hand each employee their own
-// slip.
-//
-// Sizing target: ~22 employees in 1–2 pages on US Letter. Two columns
-// at ~50% width, ~7pt body text, dotted internal table borders to
-// keep the visual weight low while still showing the daily breakdown.
+// Cuttable payslip sheet — compact 4-column landscape cards. Matches the
+// owner's reference: title band, page pill, numbered employee cards, daily
+// rows, total hours/gross, and a large rounded Pay amount.
 
 import {
   Document,
@@ -18,14 +11,29 @@ import {
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
 
-const PAGE_PADDING = 18;
+const PAGE_PADDING = 14;
 
 const styles = StyleSheet.create({
   page: {
-    padding: PAGE_PADDING,
-    fontSize: 7.5,
+    paddingTop: 18,
+    paddingHorizontal: PAGE_PADDING,
+    paddingBottom: 16,
+    fontSize: 6.5,
     fontFamily: "Helvetica",
     color: "#0f172a",
+  },
+  pagePill: {
+    position: "absolute",
+    top: 16,
+    right: PAGE_PADDING,
+    borderWidth: 0.75,
+    borderColor: "#c4b5fd",
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    fontSize: 7,
+    color: "#0f172a",
+    backgroundColor: "#f5f3ff",
   },
   // Header band at the top of page 1.
   header: {
@@ -34,7 +42,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: "Helvetica-Bold",
   },
   headerMeta: {
@@ -42,21 +50,21 @@ const styles = StyleSheet.create({
     color: "#475569",
     marginTop: 1,
   },
-  // 2-col grid of payslip cards.
+  // 4-col grid of payslip cards.
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
   cell: {
-    width: "50%",
-    padding: 4,
+    width: "25%",
+    padding: 3,
   },
   card: {
-    borderWidth: 0.75,
-    borderColor: "#94a3b8",
-    borderStyle: "dashed",
-    borderRadius: 3,
+    borderWidth: 0.5,
+    borderColor: "#dbe4f0",
+    borderRadius: 4,
     padding: 6,
+    minHeight: 142,
   },
   // Header row: name (bold) + ID, second row: period + rate.
   row: {
@@ -68,36 +76,48 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: "Helvetica-Bold",
   },
+  badge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: 5,
+    paddingTop: 3,
+    fontSize: 7,
+    textAlign: "center",
+    fontFamily: "Helvetica-Bold",
+    color: "#5b21b6",
+    backgroundColor: "#ddd6fe",
+  },
   id: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: "#475569",
     marginLeft: 4,
   },
   metaLine: {
-    fontSize: 6.5,
+    fontSize: 6.25,
     color: "#64748b",
-    fontStyle: "italic",
     marginTop: 1,
     marginBottom: 4,
   },
   // Daily table.
   th: {
     flexDirection: "row",
-    backgroundColor: "#f1f5f9",
     paddingVertical: 2,
-    paddingHorizontal: 3,
+    paddingHorizontal: 2,
     fontFamily: "Helvetica-Bold",
-    fontSize: 6.5,
-    borderTopWidth: 0.5,
+    fontSize: 6,
     borderBottomWidth: 0.5,
-    borderColor: "#cbd5e1",
+    borderTopWidth: 0.5,
+    borderStyle: "dashed",
+    borderColor: "#c4b5fd",
+    color: "#0f766e",
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 1.5,
-    paddingHorizontal: 3,
+    paddingVertical: 1.2,
+    paddingHorizontal: 2,
     borderBottomWidth: 0.25,
-    borderColor: "#e2e8f0",
+    borderColor: "#edf2f7",
   },
   cDate: { width: "23%", fontFamily: "Courier" },
   cIn: { width: "22%", fontFamily: "Courier", textAlign: "center" },
@@ -106,10 +126,11 @@ const styles = StyleSheet.create({
   cPay: { width: "20%", fontFamily: "Courier", textAlign: "right" },
   // Totals.
   totalsBlock: {
-    marginTop: 3,
-    paddingTop: 3,
-    borderTopWidth: 0.75,
-    borderColor: "#cbd5e1",
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 0.5,
+    borderStyle: "dashed",
+    borderColor: "#c4b5fd",
   },
   totalLine: {
     flexDirection: "row",
@@ -179,7 +200,14 @@ function rateLine(
 export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
   return (
     <Document title={`Employee Payslips ${data.period.startDate}`}>
-      <Page size="LETTER" style={styles.page}>
+      <Page size="LETTER" orientation="landscape" style={styles.page}>
+        <Text
+          style={styles.pagePill}
+          fixed
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+        />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
             Employee Payslips - {data.period.startDate} to {data.period.endDate}
@@ -199,12 +227,11 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                 ]}
               >
                 <View style={styles.row}>
-                  <Text style={styles.name}>
-                    {e.displayName}
-                    {e.legacyId ? (
-                      <Text style={styles.id}> ID: {e.legacyId}</Text>
-                    ) : null}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                    <Text style={styles.badge}>{i + 1}</Text>
+                    <Text style={styles.name}>{e.displayName}</Text>
+                  </View>
+                  {e.legacyId ? <Text style={styles.id}>ID: {e.legacyId}</Text> : null}
                 </View>
                 <Text style={styles.metaLine}>{rateLine(data, e)}</Text>
 
