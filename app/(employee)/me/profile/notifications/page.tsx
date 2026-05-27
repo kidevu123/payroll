@@ -4,8 +4,8 @@
 // device-scoped opt-in.
 
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle, BellRing } from "lucide-react";
-import { desc, eq } from "drizzle-orm";
+import { ArrowLeft, AlertTriangle, BellRing, Trash2 } from "lucide-react";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { notifications, pushSubscriptions } from "@/lib/db/schema";
 import { vapidConfigured } from "@/lib/notifications/push";
+import { dismissNotificationAction } from "./actions";
 import { PushToggle } from "./push-toggle";
 
 export default async function NotificationsPage() {
@@ -30,7 +31,12 @@ export default async function NotificationsPage() {
     db
       .select()
       .from(notifications)
-      .where(eq(notifications.recipientId, session.user.id))
+      .where(
+        and(
+          eq(notifications.recipientId, session.user.id),
+          isNull(notifications.dismissedAt),
+        ),
+      )
       .orderBy(desc(notifications.sentAt))
       .limit(20),
     db
@@ -102,6 +108,19 @@ export default async function NotificationsPage() {
                   <span className="text-[10px] text-text-muted tabular-nums shrink-0">
                     {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
                   </span>
+                  <form action={dismissNotificationAction} className="shrink-0">
+                    <input type="hidden" name="id" value={n.id} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-text-muted hover:text-danger-700"
+                      title="Delete notification"
+                      aria-label={`Delete notification ${n.kind}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
                 </li>
               ))}
             </ul>

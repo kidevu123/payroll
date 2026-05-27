@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Megaphone, Users } from "lucide-react";
+import { Plus, Megaphone, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { listAnnouncements } from "@/lib/db/queries/announcements";
 import { listEmployees } from "@/lib/db/queries/employees";
+import { deleteAnnouncementAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -91,11 +92,26 @@ export default async function NotificationsPage() {
                   key={a.id}
                   className="rounded-card border border-border bg-surface p-3 space-y-2"
                 >
-                  <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                  <div className="flex items-start justify-between gap-3">
                     <h3 className="text-sm font-semibold">{a.title}</h3>
-                    <span className="text-[11px] text-text-muted tabular-nums">
-                      {shortDateTime(a.sentAt)}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] text-text-muted tabular-nums">
+                        {shortDateTime(a.sentAt)}
+                      </span>
+                      <form action={deleteAnnouncementAction}>
+                        <input type="hidden" name="id" value={a.id} />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-text-muted hover:text-danger-700"
+                          title="Delete announcement from history"
+                          aria-label={`Delete announcement ${a.title}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </form>
+                    </div>
                   </div>
                   <p className="text-sm whitespace-pre-wrap text-text-muted">
                     {a.body}

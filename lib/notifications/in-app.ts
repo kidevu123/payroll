@@ -54,6 +54,7 @@ export async function unreadCount(userId: string): Promise<number> {
       and(
         eq(notifications.recipientId, userId),
         isNull(notifications.readAt),
+        isNull(notifications.dismissedAt),
       ),
     );
   return Number(row?.n ?? 0);

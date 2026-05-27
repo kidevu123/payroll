@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-guards";
 import {
+  deleteAnnouncementForHistory,
   previewRecipientCount,
   recordAnnouncement,
   resolveAnnouncementRecipients,
@@ -176,4 +177,37 @@ export async function sendAnnouncementAction(
 
   revalidatePath("/notifications");
   redirect("/notifications");
+}
+
+export async function deleteAnnouncementAction(
+  formData: FormData,
+): Promise<void> {
+  const session = await requireAdmin();
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return;
+
+  const deleted = await deleteAnnouncementForHistory({
+    id: id.data,
+    actorId: session.user.id,
+  });
+
+  if (deleted) {
+    await writeAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "announcement.delete",
+      targetType: "Announcement",
+      targetId: deleted.id,
+      before: {
+        title: deleted.title,
+        sentAt: deleted.sentAt,
+        recipientCount: deleted.recipientCount,
+      },
+      after: {
+        deletedAt: deleted.deletedAt,
+      },
+    });
+  }
+
+  revalidatePath("/notifications");
 }

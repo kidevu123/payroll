@@ -239,6 +239,13 @@
       "when": 1779660000000,
       "tag": "0033_monthly_pay_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779740000000,
+      "tag": "0034_soft_delete_announcements",
+      "breakpoints": true
     }
   ]
 }

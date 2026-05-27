@@ -924,6 +924,10 @@ export const announcements = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => [index("announcements_sent_at_idx").on(t.sentAt)],
 );

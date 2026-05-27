@@ -107,13 +107,28 @@ export async function listAnnouncements(limit = 100): Promise<
       recipientCount: announcements.recipientCount,
       sentById: announcements.sentById,
       sentAt: announcements.sentAt,
+      deletedAt: announcements.deletedAt,
+      deletedById: announcements.deletedById,
       sentByEmail: users.email,
     })
     .from(announcements)
     .leftJoin(users, eq(users.id, announcements.sentById))
+    .where(isNull(announcements.deletedAt))
     .orderBy(desc(announcements.sentAt))
     .limit(limit);
   return rows;
+}
+
+export async function deleteAnnouncementForHistory(args: {
+  id: string;
+  actorId: string;
+}): Promise<Announcement | null> {
+  const [row] = await db
+    .update(announcements)
+    .set({ deletedAt: new Date(), deletedById: args.actorId })
+    .where(and(eq(announcements.id, args.id), isNull(announcements.deletedAt)))
+    .returning();
+  return row ?? null;
 }
 
 /** Quick recipient count probe for the compose form. Same filter shape
