@@ -40,6 +40,13 @@ export function formatTimeShort(date: Date, timeZone: string): string {
   return `${h}:${m}${p}`;
 }
 
+export function formatOptionalTimeShort(
+  date: Date | null | undefined,
+  timeZone: string,
+): string {
+  return date ? formatTimeShort(date, timeZone) : "—";
+}
+
 /**
  * Returns the UTC Date corresponding to midnight (00:00:00) of `dateIso`
  * in `tz`. Uses noon-UTC as a DST-safe probe — DST transitions happen

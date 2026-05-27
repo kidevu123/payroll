@@ -6,13 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth-guards";
 import { getEmployee } from "@/lib/db/queries/employees";
+import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 import { TimeOffForm } from "./form";
 
 export default async function TimeOffNew() {
   const t = await getTranslations("employee.timeOff");
   const session = await requireSession();
   if (!session.user.employeeId) redirect("/me/home");
-  const employee = await getEmployee(session.user.employeeId);
+  const [employee, company] = await Promise.all([
+    getEmployee(session.user.employeeId),
+    getSetting("company"),
+  ]);
   // Hourly employees don't accrue PTO; the form filters their type
   // dropdown accordingly. Salaried + anything else gets the full set.
   const isHourly = employee?.payType === "HOURLY";
@@ -29,7 +34,10 @@ export default async function TimeOffNew() {
           <CardTitle className="text-base">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <TimeOffForm isHourly={isHourly} />
+          <TimeOffForm
+            isHourly={isHourly}
+            defaultDate={companyTodayIso(new Date(), company.timezone)}
+          />
         </CardContent>
       </Card>
     </main>

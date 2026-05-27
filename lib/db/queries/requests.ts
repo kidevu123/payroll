@@ -107,10 +107,11 @@ export async function approveMissedPunchRequest(
       .where(eq(missedPunchRequests.id, requestId));
     if (!before) throw new Error(`approveMissedPunchRequest: ${requestId} not found`);
     if (before.status !== "PENDING") return before;
-    if (!before.claimedClockIn) {
-      throw new Error("approveMissedPunchRequest: request has no claimed clockIn");
+    const claimedAnchor = before.claimedClockIn ?? before.claimedClockOut;
+    if (!claimedAnchor) {
+      throw new Error("approveMissedPunchRequest: request has no claimed punch time");
     }
-    const claimedDay = dayFmt.format(before.claimedClockIn);
+    const claimedDay = dayFmt.format(claimedAnchor);
     const [employee] = await tx
       .select({ payScheduleId: employees.payScheduleId })
       .from(employees)
@@ -161,7 +162,10 @@ export async function approveMissedPunchRequest(
       : [];
 
     let punch;
-    if (alert?.issue === "MISSING_OUT" && before.claimedClockOut) {
+    if (
+      before.claimedClockOut &&
+      (alert?.issue === "MISSING_OUT" || !before.claimedClockIn)
+    ) {
       const openPunches = await tx
         .select()
         .from(punches)
@@ -194,13 +198,19 @@ export async function approveMissedPunchRequest(
       }
     }
 
+    if (!punch && !before.claimedClockIn) {
+      throw new Error(
+        "approveMissedPunchRequest: clock-in is required unless an open punch can be closed",
+      );
+    }
+
     if (!punch) {
       const [inserted] = await tx
         .insert(punches)
         .values({
           employeeId: before.employeeId,
           periodId,
-          clockIn: before.claimedClockIn,
+          clockIn: before.claimedClockIn!,
           clockOut: before.claimedClockOut ?? null,
           source: "MISSED_PUNCH_APPROVED",
           notes: `From request ${before.id}`,

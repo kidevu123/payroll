@@ -44,11 +44,25 @@ export async function approveMissedPunchAction(
   if (!parsed.success) return { error: "Invalid input." };
   const before = await getMissedPunchRequest(requestId);
   if (!before) return { error: "Not found." };
-  const resolved = await approveMissedPunchRequest(
-    requestId,
-    parsed.data.resolutionNote ?? null,
-    { id: session.user.id, role: session.user.role },
-  );
+  let resolved;
+  try {
+    resolved = await approveMissedPunchRequest(
+      requestId,
+      parsed.data.resolutionNote ?? null,
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message.includes("clock-in is required unless an open punch can be closed")
+    ) {
+      return {
+        error:
+          "This request only has a clock-out time, but Milo could not find an open punch to close. Ask the employee for the clock-in too, or add the punch manually.",
+      };
+    }
+    throw err;
+  }
   // Notify the employee.
   const recipientId = await userIdForEmployee(before.employeeId);
   if (recipientId) {

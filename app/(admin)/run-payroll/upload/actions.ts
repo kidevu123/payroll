@@ -13,6 +13,7 @@ import {
 } from "@/lib/punches/manual-import";
 import { parse as parseCsv } from "@/lib/punches/parser";
 import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 
 const schema = z.object({
   startDate: z.string().date(),
@@ -519,7 +520,8 @@ export async function createEmployeeFromCsvAction(
   if (existing.length > 0) {
     return { error: "An employee with this NGTeco ref already exists." };
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const company = await getSetting("company");
+  const today = companyTodayIso(new Date(), company.timezone);
   // Synth placeholder email since the schema requires one. The admin can
   // fix it later via /employees/[id] without breaking anything — login
   // doesn't use this email (employees authenticate via the legacy_id

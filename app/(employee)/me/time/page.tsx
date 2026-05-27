@@ -134,9 +134,17 @@ export default async function EmployeeTime() {
         </CardHeader>
         <CardContent className="space-y-2">
           {todayPunches.length === 0 ? (
-            <p className="text-sm text-text-muted">
-              {t("noPunchesToday")}
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-text-muted">
+                {t("noPunchesToday")}
+              </p>
+              <Link
+                href={`/me/time/${today}`}
+                className="text-xs font-medium text-brand-700 hover:underline"
+              >
+                {t("openDayDetail")}
+              </Link>
+            </div>
           ) : (
             <div className="space-y-1.5">
               {todayPunches.map((p) => (
@@ -231,4 +239,3 @@ export default async function EmployeeTime() {
     </main>
   );
 }
-

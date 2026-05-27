@@ -29,3 +29,15 @@ export function safeLocalReturnTo(
   if (!value.startsWith("/") || value.startsWith("//")) return fallback;
   return value;
 }
+
+export function buildTimeEditorHref(args: {
+  periodId: string;
+  date: string;
+  employeeId: string;
+  returnTo?: string | undefined;
+}): string {
+  const base = `/time/${args.periodId}/${args.date}/${args.employeeId}`;
+  const safeReturnTo = safeLocalReturnTo(args.returnTo, "");
+  if (!safeReturnTo) return base;
+  return `${base}?${new URLSearchParams({ returnTo: safeReturnTo })}`;
+}

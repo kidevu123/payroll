@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch, editPunch, voidPunch } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { wallClockToUtc, isBareWallClock } from "@/lib/time/wall-clock";
+import { buildTimeEditorHref } from "@/lib/time/grid-links";
 import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
   type ManualPunchSyncJobData,
@@ -137,7 +138,19 @@ export async function createPunchAction(
     throw err;
   }
   revalidatePath("/time");
-  redirect(`/time/${parsed.data.periodId}/${formData.get("date")}/${parsed.data.employeeId}`);
+  const date = String(formData.get("date") ?? "");
+  const returnTo =
+    typeof formData.get("returnTo") === "string"
+      ? String(formData.get("returnTo"))
+      : undefined;
+  redirect(
+    buildTimeEditorHref({
+      periodId: parsed.data.periodId,
+      date,
+      employeeId: parsed.data.employeeId,
+      returnTo,
+    }),
+  );
 }
 
 const editSchema = z.object({

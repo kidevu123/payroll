@@ -15,6 +15,8 @@ import {
 import { getEmployee } from "@/lib/db/queries/employees";
 import { adminUserIds } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
+import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 import { isEmployeeEditableTimeOff } from "@/lib/time-off/change-request";
 
 const timeStrSchema = z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/);
@@ -114,6 +116,11 @@ export async function submitTimeOffAction(
 
 const idSchema = z.string().uuid();
 
+async function editableTodayIso(): Promise<string> {
+  const company = await getSetting("company");
+  return companyTodayIso(new Date(), company.timezone);
+}
+
 /** Self-cancel a time-off request. The employee can only cancel
  *  their own and only while it's still PENDING — once an admin has
  *  approved or rejected, the request is out of their hands. */
@@ -169,7 +176,7 @@ export async function requestMyTimeOffCancellationAction(
   if (original.employeeId !== session.user.employeeId) {
     return { error: "You can only change your own time off." };
   }
-  if (!isEmployeeEditableTimeOff(original, new Date().toISOString().slice(0, 10))) {
+  if (!isEmployeeEditableTimeOff(original, await editableTodayIso())) {
     return { error: "Only approved current or upcoming time off can be changed." };
   }
   try {
@@ -230,7 +237,7 @@ export async function submitMyTimeOffChangeAction(
   if (original.employeeId !== session.user.employeeId) {
     return { error: "You can only change your own time off." };
   }
-  if (!isEmployeeEditableTimeOff(original, new Date().toISOString().slice(0, 10))) {
+  if (!isEmployeeEditableTimeOff(original, await editableTodayIso())) {
     return { error: "Only approved current or upcoming time off can be changed." };
   }
   try {

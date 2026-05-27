@@ -395,10 +395,9 @@ export default async function EmployeeHome() {
             asChild
             variant="secondary"
             className="justify-start"
-            disabled={alerts.length === 0}
           >
             <Link
-              href={alerts[0] ? `/me/home/missed-punch/${alerts[0].id}` : "#"}
+              href={alerts[0] ? `/me/home/missed-punch/${alerts[0].id}` : `/me/time/${today}`}
             >
               <Wrench className="h-4 w-4" /> {t("fixMissedPunch")}
             </Link>

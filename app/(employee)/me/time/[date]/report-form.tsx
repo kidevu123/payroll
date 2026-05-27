@@ -53,7 +53,6 @@ export function ReportFixForm({
             name="claimedClockIn"
             type="datetime-local"
             defaultValue={defaultIn ?? `${date}T08:00`}
-            required
           />
         </div>
         <div className="space-y-1">

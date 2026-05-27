@@ -75,6 +75,7 @@ export default async function PunchEditorPage({
         suggestedClockIn={suggestedClockIn}
         suggestedClockOut={suggestedClockOut}
         periodLocked={period.state === "PAID"}
+        returnTo={backHref}
       />
     </div>
   );

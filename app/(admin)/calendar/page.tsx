@@ -32,7 +32,10 @@ import {
 } from "@/app/(admin)/requests/request-actions";
 import { TimeOffOnBehalfForm } from "@/app/(admin)/requests/time-off-on-behalf-form";
 import { MessageSquareWarning, Plane } from "lucide-react";
+import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 import { isAdminManageableTimeOff } from "@/lib/time-off/change-request";
+import { formatOptionalTimeShort } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -96,12 +99,14 @@ export default async function CalendarPage({
   searchParams: Promise<{ year?: string; month?: string; tab?: string }>;
 }) {
   const params = await searchParams;
+  const company = await getSetting("company");
   const tab = params.tab === "totals" ? "totals" : "calendar";
   const today = new Date();
-  const year = Number(params.year) || today.getUTCFullYear();
+  const companyToday = companyTodayIso(today, company.timezone);
+  const year = Number(params.year) || Number(companyToday.slice(0, 4));
   const month0 = Math.max(
     0,
-    Math.min(11, (Number(params.month) || today.getUTCMonth() + 1) - 1),
+    Math.min(11, (Number(params.month) || Number(companyToday.slice(5, 7))) - 1),
   );
 
   const monthStart = startOfMonth(year, month0);
@@ -131,7 +136,7 @@ export default async function CalendarPage({
   ]);
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
   const empById = new Map(employees.map((e) => [e.id, e]));
-  const todayIso = isoDay(today);
+  const todayIso = companyTodayIso(today, company.timezone);
 
   // Bucket requests by ISO day for fast cell lookup. Birthdays match
   // by month-day across any year.
@@ -517,8 +522,8 @@ export default async function CalendarPage({
                           </span>
                         </div>
                         <div className="text-[11px] font-mono text-text-muted">
-                          {r.claimedClockIn ? r.claimedClockIn.toISOString().slice(11, 16) : "—"} →{" "}
-                          {r.claimedClockOut ? r.claimedClockOut.toISOString().slice(11, 16) : "—"}
+                          {formatOptionalTimeShort(r.claimedClockIn, company.timezone)} →{" "}
+                          {formatOptionalTimeShort(r.claimedClockOut, company.timezone)}
                         </div>
                         {r.reason && (
                           <p className="text-[11px] text-text-muted line-clamp-2">

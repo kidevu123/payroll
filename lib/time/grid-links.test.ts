@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveTimeCellPeriodId, safeLocalReturnTo } from "./grid-links";
+import {
+  buildTimeEditorHref,
+  resolveTimeCellPeriodId,
+  safeLocalReturnTo,
+} from "./grid-links";
 
 describe("resolveTimeCellPeriodId", () => {
   it("uses the actual punch period for All-tab cells", () => {
@@ -49,5 +53,31 @@ describe("safeLocalReturnTo", () => {
     expect(safeLocalReturnTo("https://evil.test/time", "/time")).toBe("/time");
     expect(safeLocalReturnTo("//evil.test/time", "/time")).toBe("/time");
     expect(safeLocalReturnTo(undefined, "/time")).toBe("/time");
+  });
+});
+
+describe("buildTimeEditorHref", () => {
+  it("keeps safe return context attached to the punch editor route", () => {
+    expect(
+      buildTimeEditorHref({
+        periodId: "period-1",
+        date: "2026-05-26",
+        employeeId: "employee-1",
+        returnTo: "/payroll/period-1",
+      }),
+    ).toBe(
+      "/time/period-1/2026-05-26/employee-1?returnTo=%2Fpayroll%2Fperiod-1",
+    );
+  });
+
+  it("drops unsafe return context instead of preserving external URLs", () => {
+    expect(
+      buildTimeEditorHref({
+        periodId: "period-1",
+        date: "2026-05-26",
+        employeeId: "employee-1",
+        returnTo: "https://evil.test/payroll",
+      }),
+    ).toBe("/time/period-1/2026-05-26/employee-1");
   });
 });

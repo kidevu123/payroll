@@ -8,12 +8,16 @@ import { requireSession } from "@/lib/auth-guards";
 import {
   createMissedPunchRequest,
 } from "@/lib/db/queries/requests";
+import { adminUserIds } from "@/lib/db/queries/recipients";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
+import { dispatch } from "@/lib/notifications/router";
+import { getSetting } from "@/lib/settings/runtime";
+import { parseMissedPunchClaim } from "@/lib/missed-punch/claim";
 
 const schema = z.object({
   date: z.string().date(),
-  claimedClockIn: z.string().min(1),
+  claimedClockIn: z.string().optional().nullable(),
   claimedClockOut: z.string().optional().nullable(),
   reason: z.string().min(1).max(500),
 });
@@ -38,13 +42,13 @@ export async function reportPunchFixAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const inDate = new Date(parsed.data.claimedClockIn);
-  if (Number.isNaN(inDate.getTime())) return { error: "Invalid in time." };
-  let outDate: Date | null = null;
-  if (parsed.data.claimedClockOut) {
-    outDate = new Date(parsed.data.claimedClockOut);
-    if (Number.isNaN(outDate.getTime())) return { error: "Invalid out time." };
-  }
+  const company = await getSetting("company");
+  const claim = parseMissedPunchClaim({
+    claimedClockIn: parsed.data.claimedClockIn,
+    claimedClockOut: parsed.data.claimedClockOut,
+    timezone: company.timezone,
+  });
+  if (!claim.ok) return { error: claim.error };
 
   // Find a period that CONTAINS the date (start <= date <= end). The
   // previous query keyed on startDate alone, which only matched when
@@ -72,13 +76,28 @@ export async function reportPunchFixAction(
       employeeId: session.user.employeeId,
       periodId,
       date: parsed.data.date,
-      claimedClockIn: inDate,
-      claimedClockOut: outDate,
+      claimedClockIn: claim.clockIn,
+      claimedClockOut: claim.clockOut,
       reason: parsed.data.reason,
     },
     { id: session.user.id, role: session.user.role },
   );
+  const admins = await adminUserIds();
+  if (admins.length > 0) {
+    await dispatch(
+      admins.map((id) => ({
+        recipientId: id,
+        kind: "missed_punch.request_submitted" as const,
+        payload: {
+          date: parsed.data.date,
+          employeeId: session.user.employeeId!,
+        },
+      })),
+    );
+  }
 
   revalidatePath(`/me/time/${parsed.data.date}`);
+  revalidatePath("/me/home");
+  revalidatePath("/calendar");
   redirect(`/me/time/${parsed.data.date}?reported=1`);
 }

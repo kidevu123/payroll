@@ -6,6 +6,7 @@ import {
   formatMoney,
   formatHours,
   formatTimeShort,
+  formatOptionalTimeShort,
   formatHoursMinutes,
   localMidnightUtc,
 } from "./utils";
@@ -48,6 +49,21 @@ describe("formatTimeShort", () => {
   it("respects the requested timezone, not the JS host", () => {
     // 7:32a Eastern is 12:32p UTC.
     expect(formatTimeShort(date, "UTC")).toBe("11:32a");
+  });
+});
+
+describe("formatOptionalTimeShort", () => {
+  it("formats pending punch times in the company timezone", () => {
+    expect(
+      formatOptionalTimeShort(
+        new Date("2026-05-23T10:05:00.000Z"),
+        "America/New_York",
+      ),
+    ).toBe("6:05a");
+  });
+
+  it("uses a dash for missing pending punch sides", () => {
+    expect(formatOptionalTimeShort(null, "America/New_York")).toBe("—");
   });
 });
 

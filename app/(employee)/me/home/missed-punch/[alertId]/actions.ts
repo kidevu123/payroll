@@ -7,9 +7,11 @@ import { requireSession } from "@/lib/auth-guards";
 import { getMissedPunchAlertById, createMissedPunchRequest } from "@/lib/db/queries/requests";
 import { adminUserIds } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
+import { getSetting } from "@/lib/settings/runtime";
+import { parseMissedPunchClaim } from "@/lib/missed-punch/claim";
 
 const schema = z.object({
-  claimedClockIn: z.string().min(1),
+  claimedClockIn: z.string().optional().nullable(),
   claimedClockOut: z.string().optional().nullable(),
   reason: z.string().min(1).max(500),
 });
@@ -31,21 +33,21 @@ export async function submitMissedPunchAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const inDate = new Date(parsed.data.claimedClockIn);
-  if (Number.isNaN(inDate.getTime())) return { error: "Invalid in time." };
-  let outDate: Date | null = null;
-  if (parsed.data.claimedClockOut) {
-    outDate = new Date(parsed.data.claimedClockOut);
-    if (Number.isNaN(outDate.getTime())) return { error: "Invalid out time." };
-  }
+  const company = await getSetting("company");
+  const claim = parseMissedPunchClaim({
+    claimedClockIn: parsed.data.claimedClockIn,
+    claimedClockOut: parsed.data.claimedClockOut,
+    timezone: company.timezone,
+  });
+  if (!claim.ok) return { error: claim.error };
   await createMissedPunchRequest(
     {
       employeeId: alert.employeeId,
       periodId: alert.periodId,
       alertId,
       date: alert.date,
-      claimedClockIn: inDate,
-      claimedClockOut: outDate,
+      claimedClockIn: claim.clockIn,
+      claimedClockOut: claim.clockOut,
       reason: parsed.data.reason,
     },
     { id: session.user.id, role: session.user.role },

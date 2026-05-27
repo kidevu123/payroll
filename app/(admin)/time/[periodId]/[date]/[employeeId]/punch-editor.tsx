@@ -38,6 +38,7 @@ export function PunchEditor({
   suggestedClockIn,
   suggestedClockOut,
   periodLocked,
+  returnTo,
 }: {
   periodId: string;
   employeeId: string;
@@ -47,6 +48,7 @@ export function PunchEditor({
   suggestedClockIn: string;
   suggestedClockOut: string;
   periodLocked: boolean;
+  returnTo: string;
 }) {
   return (
     <div className="space-y-4">
@@ -81,6 +83,7 @@ export function PunchEditor({
             timezone={timezone}
             suggestedClockIn={suggestedClockIn}
             suggestedClockOut={suggestedClockOut}
+            returnTo={returnTo}
           />
         </div>
       )}
@@ -100,6 +103,7 @@ function CreateForm({
   timezone,
   suggestedClockIn,
   suggestedClockOut,
+  returnTo,
 }: {
   periodId: string;
   employeeId: string;
@@ -107,6 +111,7 @@ function CreateForm({
   timezone: string;
   suggestedClockIn: string;
   suggestedClockOut: string;
+  returnTo: string;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
@@ -118,6 +123,7 @@ function CreateForm({
         form.set("periodId", periodId);
         form.set("employeeId", employeeId);
         form.set("date", date);
+        form.set("returnTo", returnTo);
         const result = await createPunchAction(form);
         setPending(false);
         if (result?.error) setError(result.error);

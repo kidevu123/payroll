@@ -11,11 +11,16 @@ import { submitTimeOffAction } from "./actions";
 type DayOffType = "PERSONAL" | "SICK" | "UNPAID" | "OTHER";
 type RequestMode = "DAY_OFF" | "SCHEDULE_NOTE";
 
-export function TimeOffForm({ isHourly }: { isHourly: boolean }) {
+export function TimeOffForm({
+  isHourly,
+  defaultDate,
+}: {
+  isHourly: boolean;
+  defaultDate: string;
+}) {
   const t = useTranslations("employee.timeOff");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
-  const today = new Date().toISOString().slice(0, 10);
 
   const [mode, setMode] = React.useState<RequestMode>("DAY_OFF");
   // Hourly employees submit unpaid full-day leave; salaried employees keep
@@ -58,7 +63,7 @@ export function TimeOffForm({ isHourly }: { isHourly: boolean }) {
 
       {isPartial ? (
         <div className="space-y-3">
-          <SingleDateField defaultValue={today} />
+          <SingleDateField defaultValue={defaultDate} />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="partialStartTime">{t("arriveAt")}</Label>
@@ -103,7 +108,7 @@ export function TimeOffForm({ isHourly }: { isHourly: boolean }) {
                 id="startDate"
                 name="startDate"
                 type="date"
-                defaultValue={today}
+                defaultValue={defaultDate}
                 required
               />
             </div>
@@ -113,7 +118,7 @@ export function TimeOffForm({ isHourly }: { isHourly: boolean }) {
                 id="endDate"
                 name="endDate"
                 type="date"
-                defaultValue={today}
+                defaultValue={defaultDate}
                 required
               />
             </div>

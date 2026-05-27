@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth-guards";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { getTimeOffRequest } from "@/lib/db/queries/time-off";
+import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 import { isEmployeeEditableTimeOff } from "@/lib/time-off/change-request";
 import { ChangeTimeOffForm } from "./form";
 
@@ -19,14 +21,15 @@ export default async function ChangeTimeOffPage({
   const session = await requireSession();
   if (!session.user.employeeId) redirect("/me/home");
   const { requestId } = await params;
-  const [request, employee] = await Promise.all([
+  const [request, employee, company] = await Promise.all([
     getTimeOffRequest(requestId),
     getEmployee(session.user.employeeId),
+    getSetting("company"),
   ]);
   if (!request || request.employeeId !== session.user.employeeId) notFound();
   if (
     request.type === "SCHEDULE_NOTE" ||
-    !isEmployeeEditableTimeOff(request, new Date().toISOString().slice(0, 10))
+    !isEmployeeEditableTimeOff(request, companyTodayIso(new Date(), company.timezone))
   ) {
     redirect("/me/home");
   }

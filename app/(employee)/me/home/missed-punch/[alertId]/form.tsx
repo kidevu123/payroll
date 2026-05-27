@@ -36,7 +36,6 @@ export function MissedPunchForm({
             name="claimedClockIn"
             type="datetime-local"
             defaultValue={`${date}T08:00`}
-            required
           />
         </div>
         <div className="space-y-1">
