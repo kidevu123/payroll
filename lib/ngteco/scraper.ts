@@ -675,8 +675,49 @@ async function isViewPunchPageReady(
 }
 
 async function isMendPunchPageReady(page: PlaywrightPage): Promise<boolean> {
-  if (pathnameMatches(page, "/att/timecard/manual-log")) return true;
-  return (await page.getByText(/mend attendance punch/i).count()) > 0;
+  if (!pathnameMatches(page, "/att/timecard/manual-log")) return false;
+  try {
+    const main = page.locator("main").last();
+    if (
+      await main
+        .getByRole("button", { name: /^add$/i })
+        .first()
+        .isVisible()
+    ) {
+      return true;
+    }
+    return await page.locator(".MuiDataGrid-root").first().isVisible();
+  } catch {
+    return false;
+  }
+}
+
+async function waitForMendPunchPageReady(page: PlaywrightPage): Promise<void> {
+  await page.waitForFunction(
+    () => window.location.pathname.includes("/att/timecard/manual-log"),
+    null,
+    { timeout: 15_000 },
+  );
+  const main = page.locator("main").last();
+  const readyLocators: import("playwright-core").Locator[] = [
+    main.getByRole("button", { name: /^add$/i }),
+    page.getByPlaceholder(/search by person id/i),
+    main.locator('[role="columnheader"]').filter({ hasText: /person id/i }),
+    page.locator(".MuiDataGrid-root"),
+  ];
+  for (const loc of readyLocators) {
+    try {
+      if ((await loc.count()) === 0) continue;
+      await loc.first().waitFor({ state: "visible", timeout: 6_000 });
+      return;
+    } catch {
+      /* try next landmark */
+    }
+  }
+  throw new ScrapeFailure(
+    `NGTeco Mend Attendance Punch page did not become ready. URL=${page.url()}.`,
+    {},
+  );
 }
 
 async function navigateToViewAttendancePunch(
@@ -749,7 +790,12 @@ async function navigateToMendAttendancePunch(
   if (sel.navigation.mendAttendancePunchUrl) {
     await gotoNgtecoPath(page, portalUrl, sel.navigation.mendAttendancePunchUrl);
     assertNotOnLoginPage(page, "mend-attendance-punch deep link");
-    if (await isMendPunchPageReady(page)) return;
+    try {
+      await waitForMendPunchPageReady(page);
+      return;
+    } catch {
+      /* fall through to sidebar navigation */
+    }
   }
 
   await expandSidebarSection(page, [
@@ -773,12 +819,7 @@ async function navigateToMendAttendancePunch(
   }
 
   assertNotOnLoginPage(page, "post-mend-sidebar navigation");
-  if (!(await isMendPunchPageReady(page))) {
-    await page
-      .getByText(/mend attendance punch|person\s*id/i)
-      .first()
-      .waitFor({ timeout: 15_000 });
-  }
+  await waitForMendPunchPageReady(page);
 }
 
 /** Include manually mended punches in the View Attendance Punch grid. */
@@ -1763,10 +1804,7 @@ export async function addManualAttendancePunch(
 
     await navigateToMendAttendancePunch(page, input.portalUrl, sel);
     assertNotOnLoginPage(page, "manual punch page");
-    await page
-      .getByText(/person\s*id|mend attendance punch/i)
-      .first()
-      .waitFor({ timeout: 15_000 });
+    await waitForMendPunchPageReady(page);
     await waitForManualLogGridRefresh();
 
     if (await expectedManualRowVisible()) {
@@ -1808,22 +1846,30 @@ export async function addManualAttendancePunch(
     if ((await visibleInputs.count().catch(() => 0)) >= 3) {
       await visibleInputs.nth(0).click({ timeout: 5_000 });
       const personDrawer = page.locator(".MuiDrawer-root").last();
-      await personDrawer.waitFor({ timeout: 8_000 });
-      await humanFill(
-        personDrawer.locator("input:visible").first(),
-        input.personName,
-      );
+      await personDrawer.waitFor({ state: "visible", timeout: 8_000 });
+      const drawerSearch = personDrawer.locator("input:visible").first();
+      await humanFill(drawerSearch, input.personId);
       await page.waitForTimeout(700);
-      await personDrawer
-        .getByText(input.personName, { exact: false })
-        .last()
-        .click({
-          timeout: 8_000,
-        });
+      const idMatch = personDrawer.getByText(input.personId, { exact: true });
+      if ((await idMatch.count().catch(() => 0)) > 0) {
+        await idMatch.last().click({ timeout: 8_000 });
+      } else {
+        await humanFill(drawerSearch, input.personName);
+        await page.waitForTimeout(700);
+        await personDrawer
+          .getByText(input.personName, { exact: false })
+          .last()
+          .click({
+            timeout: 8_000,
+          });
+      }
       await personDrawer
         .getByText(/^confirm$/i)
         .last()
         .click({ timeout: 8_000 });
+      await personDrawer
+        .waitFor({ state: "hidden", timeout: 10_000 })
+        .catch(() => undefined);
       await page.waitForTimeout(500);
       await humanFill(visibleInputs.nth(1), input.punchDate);
       await humanFill(visibleInputs.nth(2), input.punchTime.slice(0, 5));
@@ -1884,10 +1930,7 @@ export async function addManualAttendancePunch(
       sel.navigation.mendAttendancePunchUrl ?? "/att/timecard/manual-log",
     );
     await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
-    await page
-      .getByText(/person\s*id/i)
-      .first()
-      .waitFor({ timeout: 15_000 });
+    await waitForMendPunchPageReady(page);
     await waitForManualLogGridRefresh();
     if (!(await waitForExpectedManualRow())) {
       throw new Error(
