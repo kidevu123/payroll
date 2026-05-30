@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
-import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
+import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,11 +51,11 @@ type PeriodView = {
 };
 
 /**
- * When no pay_period row exists yet for monthly/semi-monthly, show the
- * current calendar month as a synthetic window (same forward-roll UX as
- * weekly after a closed period). Punches and CSV upload create the real row.
+ * When no pay_period exists yet for monthly/semi-monthly, open the current
+ * calendar month so clock polls and manual punches have a real period row
+ * (same id the NGTeco importer uses via ensurePeriodForSchedule).
  */
-async function bootstrapPeriodForCadence(
+async function ensureCadencePeriodForToday(
   kind: "SEMI_MONTHLY" | "MONTHLY",
   today: string,
 ): Promise<PeriodView | null> {
@@ -65,16 +65,13 @@ async function bootstrapPeriodForCadence(
     .where(and(eq(paySchedules.active, true), eq(paySchedules.periodKind, kind)))
     .limit(1);
   if (!schedule) return null;
-  const bounds = periodBoundsForSchedule(today, {
-    periodKind: kind,
-    anchorDate: null,
-  });
+  const row = await ensurePeriodForSchedule(schedule.id, today, null);
   return {
-    id: "",
-    startDate: bounds.startDate,
-    endDate: bounds.endDate,
-    payScheduleId: schedule.id,
-    state: "UPCOMING",
+    id: row.id,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    payScheduleId: row.payScheduleId,
+    state: row.state as "OPEN" | "LOCKED" | "PAID",
   };
 }
 
@@ -175,7 +172,7 @@ async function pickPeriodForTab(
     .limit(1);
   if (!mostRecent) {
     if (kind === "MONTHLY" || kind === "SEMI_MONTHLY") {
-      return bootstrapPeriodForCadence(kind, today);
+      return ensureCadencePeriodForToday(kind, today);
     }
     return null;
   }
@@ -401,17 +398,45 @@ export default async function TimePage({
   }
 
   if (!period) {
+    const payrollHref =
+      tab === "semi"
+        ? "/payroll?schedule=semi"
+        : tab === "monthly"
+          ? "/payroll?schedule=monthly"
+          : tab === "weekly"
+            ? "/payroll?schedule=weekly"
+            : "/payroll";
+    const clockFirst =
+      tab === "monthly" || tab === "semi" || tab === "weekly";
     return (
-      <EmptyState
-        icon={CalendarDays}
-        title="No pay periods yet"
-        description="Upload a CSV from /run-payroll/upload to create the first period, or add a manual punch."
-        action={
-          <Button asChild>
-            <Link href="/run-payroll/upload">Upload CSV</Link>
-          </Button>
-        }
-      />
+      <div className="space-y-5">
+        <ScheduleTabs current={tab} basePath="/time" />
+        <EmptyState
+          icon={CalendarDays}
+          title={
+            clockFirst
+              ? "Waiting for clock punches"
+              : "No pay periods yet"
+          }
+          description={
+            clockFirst
+              ? "Time fills from the NGTeco clock automatically — you do not need a CSV for day-to-day tracking. Make sure employees are on this pay schedule, then run Poll punches now on Payroll to sync, or add a manual punch below. CSV upload is only for one-off payroll runs."
+              : "Pick a schedule tab (Weekly, Semi-monthly, or Monthly), or add a manual punch to get started."
+          }
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {clockFirst ? (
+                <Button asChild>
+                  <Link href={payrollHref}>Go to Payroll · sync clock</Link>
+                </Button>
+              ) : null}
+              <Button asChild variant={clockFirst ? "secondary" : "default"}>
+                <Link href="/punches/new">Add manual punch</Link>
+              </Button>
+            </div>
+          }
+        />
+      </div>
     );
   }
 
