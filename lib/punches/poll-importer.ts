@@ -147,9 +147,17 @@ export async function importPunchPoll(
       const note = noteParts.length ? noteParts.join(" · ") : null;
 
       let existing = await db
-        .select({ id: punches.id, clockOut: punches.clockOut })
+        .select({
+          id: punches.id,
+          clockOut: punches.clockOut,
+          voidedAt: punches.voidedAt,
+        })
         .from(punches)
         .where(eq(punches.ngtecoRecordHash, hash));
+      const activeByHash = existing.filter((row) => row.voidedAt === null);
+      if (activeByHash.length > 0) {
+        existing = activeByHash;
+      }
 
       // Fallback match — backfill recovery scenario. The original
       // IN-only poll stored the punch with a hash from THAT scrape's
@@ -182,6 +190,7 @@ export async function importPunchPoll(
               sql`${punches.clockIn} >= ${dayStart.toISOString()}::timestamptz`,
               sql`${punches.clockIn} < ${dayEnd.toISOString()}::timestamptz`,
               sql`${punches.clockOut} IS NULL`,
+              sql`${punches.voidedAt} IS NULL`,
             ),
           );
         const targetMs = clockIn.getTime();
@@ -261,18 +270,20 @@ export async function importPunchPoll(
 
       if (existing.length > 0) {
         const row = existing[0]!;
-        if (
+        const recyclingVoided = row.voidedAt !== null;
+        const clockOutChanged =
           (row.clockOut === null && clockOut !== null) ||
           (row.clockOut !== null &&
             clockOut !== null &&
-            row.clockOut.getTime() !== clockOut.getTime())
-        ) {
+            row.clockOut.getTime() !== clockOut.getTime());
+        if (recyclingVoided || clockOutChanged) {
           await db
             .update(punches)
             .set({
               ...(paired.kind !== "outOnly" ? { clockIn } : {}),
               clockOut,
               notes: note,
+              ...(recyclingVoided ? { voidedAt: null } : {}),
             })
             .where(eq(punches.id, row.id));
           summary.pairsUpdated++;
