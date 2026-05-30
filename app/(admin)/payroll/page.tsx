@@ -353,6 +353,18 @@ export default async function PayrollPage({
               <span>
                 <span className="font-medium text-text">{employeeCount}</span>{" "}
                 active employee{employeeCount === 1 ? "" : "s"} on this schedule
+                {tab !== "all" && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <Link
+                      href={`/employees/new?schedule=${tab}`}
+                      className="text-brand-700 underline underline-offset-2"
+                    >
+                      Add employee
+                    </Link>
+                  </>
+                )}
               </span>
             )}
             <span>

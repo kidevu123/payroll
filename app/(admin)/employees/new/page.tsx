@@ -1,22 +1,57 @@
 import { listActiveShifts } from "@/lib/db/queries/shifts";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
-import { EmployeeForm } from "../employee-form";
+import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
+import {
+  EmployeeForm,
+  type ScheduleOption,
+  type ShiftOption,
+} from "../employee-form";
+
+type Classification =
+  | "WEEKLY_HOURLY"
+  | "SEMI_HOURLY"
+  | "MONTHLY_HOURLY"
+  | "SALARIED";
+
+function classificationFromScheduleParam(
+  schedule: string | undefined,
+): Classification | undefined {
+  if (schedule === "monthly") return "MONTHLY_HOURLY";
+  if (schedule === "semi") return "SEMI_HOURLY";
+  if (schedule === "weekly") return "WEEKLY_HOURLY";
+  return undefined;
+}
 
 export default async function NewEmployeePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ngtecoRef?: string; displayName?: string }>;
+  searchParams: Promise<{
+    ngtecoRef?: string;
+    displayName?: string;
+    schedule?: string;
+  }>;
 }) {
-  const [shifts, schedules, params] = await Promise.all([
+  const [shifts, schedules, params, company] = await Promise.all([
     listActiveShifts(),
     listSchedules(),
     searchParams,
+    getSetting("company"),
   ]);
-  // Optional prefill from the CSV upload preview's "Add as new" link.
-  // Admin goes from "No match (ref: 47)" → click → land here with the
-  // ref + name already filled in.
+  const tz = company?.timezone ?? "America/New_York";
   const prefillNgtecoRef = params.ngtecoRef?.slice(0, 64);
   const prefillDisplayName = params.displayName?.slice(0, 120);
+  const shiftOptions: ShiftOption[] = shifts.map((s) => ({
+    id: s.id,
+    name: s.name,
+  }));
+  const scheduleOptions: ScheduleOption[] = schedules.map((s) => ({
+    id: s.id,
+    name: s.name,
+    periodKind: s.periodKind,
+    active: s.active,
+  }));
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -31,12 +66,20 @@ export default async function NewEmployeePage({
         </p>
       </div>
       <EmployeeForm
-        shifts={shifts}
-        schedules={schedules}
+        shifts={shiftOptions}
+        schedules={scheduleOptions}
         mode="create"
         prefill={{
           ...(prefillDisplayName ? { displayName: prefillDisplayName } : {}),
           ...(prefillNgtecoRef ? { ngtecoEmployeeRef: prefillNgtecoRef } : {}),
+          hiredOn: companyTodayIso(new Date(), tz),
+          ...(classificationFromScheduleParam(params.schedule)
+            ? {
+                classification: classificationFromScheduleParam(
+                  params.schedule,
+                )!,
+              }
+            : {}),
         }}
       />
     </div>

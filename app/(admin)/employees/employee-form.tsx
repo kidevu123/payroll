@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { Employee, PaySchedule, Shift } from "@/lib/db/schema";
+import type { Employee, PaySchedule } from "@/lib/db/schema";
+
+/** Serializable schedule row for the client form (no Date fields). */
+export type ScheduleOption = Pick<
+  PaySchedule,
+  "id" | "name" | "periodKind" | "active"
+>;
+
+export type ShiftOption = { id: string; name: string };
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -12,21 +20,30 @@ type EmployeePrefill = {
   displayName?: string;
   legalName?: string;
   ngtecoEmployeeRef?: string;
+  /** Server-computed YYYY-MM-DD in company TZ — avoids hydration mismatch. */
+  hiredOn?: string;
+  classification?: Classification;
 };
+
+type Classification =
+  | "WEEKLY_HOURLY"
+  | "SEMI_HOURLY"
+  | "MONTHLY_HOURLY"
+  | "SALARIED";
 
 type Props =
   | {
       mode: "create";
-      shifts: Shift[];
-      schedules: PaySchedule[];
+      shifts: ShiftOption[];
+      schedules: ScheduleOption[];
       employee?: undefined;
       /** Optional prefill from query string (e.g. CSV upload "Add as new"). */
       prefill?: EmployeePrefill;
     }
   | {
       mode: "edit";
-      shifts: Shift[];
-      schedules: PaySchedule[];
+      shifts: ShiftOption[];
+      schedules: ScheduleOption[];
       employee: Employee;
       prefill?: undefined;
     };
@@ -63,13 +80,8 @@ export function EmployeeForm(props: Props) {
 
   // Derive the existing employee's classification from their stored
   // payType / payScheduleId so edits open with the right radio selected.
-  type Classification =
-    | "WEEKLY_HOURLY"
-    | "SEMI_HOURLY"
-    | "MONTHLY_HOURLY"
-    | "SALARIED";
-
   const initialClassification: Classification = (() => {
+    if (prefill.classification) return prefill.classification;
     if (e?.payType === "SALARIED") return "SALARIED";
     if (e?.payScheduleId === monthlySchedule?.id) return "MONTHLY_HOURLY";
     if (e?.payScheduleId === semiSchedule?.id) return "SEMI_HOURLY";
@@ -92,6 +104,15 @@ export function EmployeeForm(props: Props) {
         : // Salaried — irrelevant to payroll runs, leave assigned to whatever
           // the employee already had so we don't unnecessarily null it out.
           e?.payScheduleId ?? "";
+
+  const scheduleWarning =
+    classification === "MONTHLY_HOURLY" && !monthlySchedule
+      ? "Monthly pay schedule is missing in Settings → Pay schedules. Save will fail until it exists."
+      : classification === "SEMI_HOURLY" && !semiSchedule
+        ? "Semi-monthly pay schedule is missing in Settings → Pay schedules."
+        : classification === "WEEKLY_HOURLY" && !weeklySchedule
+          ? "Weekly pay schedule is missing in Settings → Pay schedules."
+          : null;
 
   return (
     <form
@@ -161,7 +182,9 @@ export function EmployeeForm(props: Props) {
               id="hiredOn"
               name="hiredOn"
               type="date"
-              defaultValue={new Date().toISOString().slice(0, 10)}
+              defaultValue={
+                prefill.hiredOn ?? new Date().toISOString().slice(0, 10)
+              }
               required
             />
           </div>
@@ -307,6 +330,11 @@ export function EmployeeForm(props: Props) {
         // Weekly hourly — payslip is computed from punches; no W2 needed.
         // Submit a hidden "0" so legacy data flips off if it was on.
         <input type="hidden" name="requiresW2Upload" value="0" />
+      )}
+      {scheduleWarning && (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-card px-3 py-2">
+          {scheduleWarning}
+        </p>
       )}
       {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">

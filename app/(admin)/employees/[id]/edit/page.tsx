@@ -5,7 +5,11 @@ import { Button } from "@/components/ui/button";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listShifts } from "@/lib/db/queries/shifts";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
-import { EmployeeForm } from "../../employee-form";
+import {
+  EmployeeForm,
+  type ScheduleOption,
+  type ShiftOption,
+} from "../../employee-form";
 
 export default async function EditEmployeePage({
   params,
@@ -35,8 +39,16 @@ export default async function EditEmployeePage({
         </p>
       </div>
       <EmployeeForm
-        shifts={shifts}
-        schedules={schedules}
+        shifts={shifts.map((s) => ({ id: s.id, name: s.name }) satisfies ShiftOption)}
+        schedules={schedules.map(
+          (s) =>
+            ({
+              id: s.id,
+              name: s.name,
+              periodKind: s.periodKind,
+              active: s.active,
+            }) satisfies ScheduleOption,
+        )}
         mode="edit"
         employee={employee}
       />

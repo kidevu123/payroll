@@ -25,7 +25,10 @@ const createSchema = z.object({
   hiredOn: z.string().date(),
   shiftId: z.string().uuid().optional().nullable(),
   payType: z.enum(["HOURLY", "FLAT_TASK", "SALARIED"]),
-  payScheduleId: z.string().uuid().optional().nullable(),
+  payScheduleId: z
+    .union([z.literal("").transform(() => null), z.string().uuid()])
+    .optional()
+    .nullable(),
   /** Dollar amount as the admin types it; converted to integer cents. */
   initialHourlyRateDollars: z
     .union([
@@ -109,7 +112,10 @@ const updateSchema = z.object({
   phone: z.string().max(40).optional().nullable(),
   shiftId: z.string().uuid().optional().nullable(),
   payType: z.enum(["HOURLY", "FLAT_TASK", "SALARIED"]),
-  payScheduleId: z.string().uuid().optional().nullable(),
+  payScheduleId: z
+    .union([z.literal("").transform(() => null), z.string().uuid()])
+    .optional()
+    .nullable(),
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),
   requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
