@@ -34,8 +34,14 @@ type Selectors = {
   navigation: {
     reportsLink: string;
     punchReportLink: string;
+    /** Deep link — preferred over sidebar clicks when present. */
+    viewAttendancePunchUrl?: string;
+    mendAttendancePunchUrl?: string;
+    attendanceReportUrl?: string;
+    reportMenu?: string;
     attendanceMenu?: string;
     viewAttendancePunchLink?: string;
+    mendAttendancePunchLink?: string;
   };
   report: {
     fromDate: string;
@@ -55,6 +61,7 @@ type Selectors = {
     sourceCell: string;
     nextPageButton: string;
     pageInfo: string;
+    showMendedRecordsToggle?: string;
   };
   challenge: { twoFactorLandmark: string; captchaLandmark: string };
 };
@@ -548,6 +555,316 @@ async function loadSelectors(): Promise<Selectors> {
   return JSON.parse(raw) as Selectors;
 }
 
+type PlaywrightPage = import("playwright-core").Page;
+
+function ngtecoUrl(portalUrl: string, path: string): string {
+  return new URL(path, portalUrl).toString();
+}
+
+function pathnameMatches(page: PlaywrightPage, fragment: string): boolean {
+  try {
+    return new URL(page.url()).pathname.includes(fragment);
+  } catch {
+    return false;
+  }
+}
+
+async function expandSidebarSection(
+  page: PlaywrightPage,
+  labels: Array<string | undefined>,
+): Promise<void> {
+  for (const label of labels) {
+    if (!label) continue;
+    try {
+      await page.locator(label).first().click({ timeout: 4_000 });
+      await page.waitForTimeout(300);
+      return;
+    } catch {
+      try {
+        await page.getByText(label, { exact: true }).first().click({
+          timeout: 4_000,
+        });
+        await page.waitForTimeout(300);
+        return;
+      } catch {
+        /* section may already be expanded or use a different wrapper */
+      }
+    }
+  }
+}
+
+async function clickSidebarEntry(
+  page: PlaywrightPage,
+  opts: {
+    configuredSelector?: string;
+    textPatterns: RegExp[];
+  },
+): Promise<boolean> {
+  if (opts.configuredSelector) {
+    try {
+      await page.locator(opts.configuredSelector).first().click({
+        timeout: 5_000,
+      });
+      return true;
+    } catch {
+      /* fall through */
+    }
+  }
+  for (const re of opts.textPatterns) {
+    try {
+      await page.getByRole("link", { name: re }).first().click({
+        timeout: 4_000,
+      });
+      return true;
+    } catch {
+      /* not a link */
+    }
+    try {
+      await page.getByText(re).first().click({ timeout: 4_000 });
+      return true;
+    } catch {
+      /* try next pattern */
+    }
+  }
+  return false;
+}
+
+async function readSidebarLabels(page: PlaywrightPage): Promise<string> {
+  try {
+    return await page.evaluate(() => {
+      const root =
+        document.querySelector("nav, aside, [role=navigation]") ??
+        document.body;
+      const items = Array.from(
+        root.querySelectorAll("a, [role=button], [role=menuitem], li, p, span"),
+      );
+      const seen = new Set<string>();
+      const labels: string[] = [];
+      for (const el of items) {
+        const t = (el.textContent ?? "").trim().replace(/\s+/g, " ");
+        if (t && t.length < 80 && !seen.has(t)) {
+          seen.add(t);
+          labels.push(t);
+        }
+        if (labels.length >= 60) break;
+      }
+      return labels.join(" | ");
+    });
+  } catch {
+    return "(unable to read)";
+  }
+}
+
+async function gotoNgtecoPath(
+  page: PlaywrightPage,
+  portalUrl: string,
+  path: string,
+): Promise<void> {
+  await page.goto(ngtecoUrl(portalUrl, path), {
+    waitUntil: "domcontentloaded",
+  });
+}
+
+async function isViewPunchPageReady(
+  page: PlaywrightPage,
+  sel: Selectors,
+): Promise<boolean> {
+  if (!sel.viewPunch) return false;
+  if (pathnameMatches(page, "/att/timecard/transaction")) return true;
+  return (await page.locator(sel.viewPunch.tableLandmark).count()) > 0;
+}
+
+async function isMendPunchPageReady(page: PlaywrightPage): Promise<boolean> {
+  if (pathnameMatches(page, "/att/timecard/manual-log")) return true;
+  return (await page.getByText(/mend attendance punch/i).count()) > 0;
+}
+
+async function navigateToViewAttendancePunch(
+  page: PlaywrightPage,
+  portalUrl: string,
+  sel: Selectors,
+): Promise<void> {
+  assertNotOnLoginPage(page, "pre-navigation");
+
+  if (sel.navigation.viewAttendancePunchUrl) {
+    await gotoNgtecoPath(page, portalUrl, sel.navigation.viewAttendancePunchUrl);
+    assertNotOnLoginPage(page, "view-attendance-punch deep link");
+    if (await isViewPunchPageReady(page, sel)) return;
+  }
+
+  try {
+    await page.waitForFunction(
+      () => {
+        const nav = document.querySelector("nav, aside, [role=navigation]");
+        return !!nav && (nav.textContent ?? "").trim().length > 20;
+      },
+      null,
+      { timeout: 8_000 },
+    );
+  } catch {
+    /* proceed — failure path captures what's on screen */
+  }
+
+  await expandSidebarSection(page, [
+    sel.navigation.reportMenu,
+    sel.navigation.attendanceMenu,
+    "Report",
+  ]);
+
+  const clicked = await clickSidebarEntry(page, {
+    ...(sel.navigation.viewAttendancePunchLink
+      ? { configuredSelector: sel.navigation.viewAttendancePunchLink }
+      : {}),
+    textPatterns: [
+      /view\s*attendance\s*punch/i,
+      /attendance\s*punch/i,
+      /punch\s*record/i,
+      /view\s*punch/i,
+    ],
+  });
+
+  if (!clicked) {
+    const sidebarLabels = await readSidebarLabels(page);
+    throw new ScrapeFailure(
+      `NGTeco navigation: could not reach View Attendance Punch. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. If the sidebar looks empty, the saved login session is stale — clear /data/ngteco/profile inside the LXC (rm -rf) and retry; the next poll will log in fresh. If the labels show new copy, update lib/ngteco/selectors.json#navigation.viewAttendancePunchUrl or viewAttendancePunchLink.`,
+      {},
+    );
+  }
+
+  assertNotOnLoginPage(page, "post-sidebar navigation");
+  if (!(await isViewPunchPageReady(page, sel))) {
+    await page.waitForSelector(sel.viewPunch!.tableLandmark, {
+      timeout: 15_000,
+    });
+  }
+}
+
+async function navigateToMendAttendancePunch(
+  page: PlaywrightPage,
+  portalUrl: string,
+  sel: Selectors,
+): Promise<void> {
+  assertNotOnLoginPage(page, "pre-mend-navigation");
+
+  if (sel.navigation.mendAttendancePunchUrl) {
+    await gotoNgtecoPath(page, portalUrl, sel.navigation.mendAttendancePunchUrl);
+    assertNotOnLoginPage(page, "mend-attendance-punch deep link");
+    if (await isMendPunchPageReady(page)) return;
+  }
+
+  await expandSidebarSection(page, [
+    sel.navigation.attendanceMenu,
+    "Attendance",
+  ]);
+
+  const clicked = await clickSidebarEntry(page, {
+    ...(sel.navigation.mendAttendancePunchLink
+      ? { configuredSelector: sel.navigation.mendAttendancePunchLink }
+      : {}),
+    textPatterns: [/mend attendance punch/i, /manual log/i, /mend punch/i],
+  });
+
+  if (!clicked) {
+    const sidebarLabels = await readSidebarLabels(page);
+    throw new ScrapeFailure(
+      `NGTeco navigation: could not reach Mend Attendance Punch. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. Update lib/ngteco/selectors.json#navigation.mendAttendancePunchUrl or mendAttendancePunchLink.`,
+      {},
+    );
+  }
+
+  assertNotOnLoginPage(page, "post-mend-sidebar navigation");
+  if (!(await isMendPunchPageReady(page))) {
+    await page
+      .getByText(/mend attendance punch|person\s*id/i)
+      .first()
+      .waitFor({ timeout: 15_000 });
+  }
+}
+
+/** Include manually mended punches in the View Attendance Punch grid. */
+async function ensureShowMendedRecords(
+  page: PlaywrightPage,
+  sel: Selectors,
+): Promise<void> {
+  const candidates: import("playwright-core").Locator[] = [
+    page.getByRole("switch", { name: /show mended records/i }),
+    page.getByLabel(/show mended records/i),
+  ];
+  if (sel.viewPunch?.showMendedRecordsToggle) {
+    candidates.unshift(page.locator(sel.viewPunch.showMendedRecordsToggle));
+  }
+  for (const candidate of candidates) {
+    try {
+      if ((await candidate.count()) === 0) continue;
+      const target = candidate.first();
+      const role = await target.getAttribute("role").catch(() => null);
+      const type = await target.getAttribute("type").catch(() => null);
+      if (role === "switch" || type === "checkbox") {
+        const checked = await target.isChecked().catch(() => false);
+        if (!checked) await target.click({ timeout: 4_000, force: true });
+        return;
+      }
+      const switchNearLabel = target
+        .locator("xpath=ancestor-or-self::*[1]")
+        .locator('.MuiSwitch-root input[type="checkbox"], input[type="checkbox"]')
+        .first();
+      if ((await switchNearLabel.count()) > 0) {
+        const checked = await switchNearLabel.isChecked().catch(() => false);
+        if (!checked) await switchNearLabel.click({ timeout: 4_000, force: true });
+        return;
+      }
+      await target.click({ timeout: 4_000 });
+      return;
+    } catch {
+      /* try next candidate */
+    }
+  }
+}
+
+async function navigateToAttendanceReport(
+  page: PlaywrightPage,
+  portalUrl: string,
+  sel: Selectors,
+): Promise<void> {
+  if (sel.navigation.attendanceReportUrl) {
+    await gotoNgtecoPath(page, portalUrl, sel.navigation.attendanceReportUrl);
+    assertNotOnLoginPage(page, "attendance-report deep link");
+    if (
+      (await page.locator(sel.report.fromDate).count()) > 0 ||
+      (await page.locator(sel.report.exportCsvButton).count()) > 0
+    ) {
+      return;
+    }
+  }
+
+  await expandSidebarSection(page, [
+    sel.navigation.reportMenu,
+    sel.navigation.reportsLink,
+    "Report",
+  ]);
+  const clicked = await clickSidebarEntry(page, {
+    configuredSelector: sel.navigation.punchReportLink,
+    textPatterns: [
+      /attendance report/i,
+      /punch.*report/i,
+      /timecard management/i,
+    ],
+  });
+  if (!clicked) {
+    try {
+      await page.click(sel.navigation.reportsLink, { timeout: 5_000 });
+      await page.click(sel.navigation.punchReportLink, { timeout: 5_000 });
+      return;
+    } catch {
+      const sidebarLabels = await readSidebarLabels(page);
+      throw new ScrapeFailure(
+        `NGTeco navigation: could not reach the attendance CSV export page. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. Update lib/ngteco/selectors.json#navigation.attendanceReportUrl or punchReportLink.`,
+        {},
+      );
+    }
+  }
+}
+
 /**
  * Run a real scrape end-to-end against the live NGTeco portal. Returns the
  * downloaded CSV blob as a string. On failure, captures screenshot + HTML
@@ -659,9 +976,8 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
       });
     }
 
-    // Navigate to punch report.
-    await page.click(sel.navigation.reportsLink);
-    await page.click(sel.navigation.punchReportLink);
+    // Navigate to the attendance CSV export report.
+    await navigateToAttendanceReport(page, input.portalUrl, sel);
 
     // Date range.
     await page.fill(sel.report.fromDate, input.fromDate);
@@ -946,160 +1262,8 @@ export async function scrapeViewAttendance(
       assertNotOnLoginPage(page, "initial page-load detection");
     }
 
-    // SPA navigation only — page.goto() to a deep URL was nuking the
-    // in-memory session token and bouncing back to /login, even right
-    // after a successful login (verified via failure screenshot).
-    // Click through the sidebar exactly like a human would: expand
-    // Attendance, click View Attendance Punch.
-    //
-    // After login, give the dashboard a moment to hydrate the menu —
-    // Element Plus renders the sidebar after the auth call returns.
-    // Resilient nav: try the configured selector first, then fall back
-    // through several text-based strategies. NGTeco rebuilt the sidebar
-    // when they swapped Element Plus → MUI; the configured selector is
-    // a CSS string that targets one DOM shape, but a getByText/role
-    // fallback works against either. Past failure mode: a configured
-    // `p:text-is("…")` selector timed out for 15s every poll because
-    // the new MUI sidebar renders text in `<span>` not `<p>`.
-    // Last gate before we start clicking sidebar links: confirm we
-    // aren't on /login. If we are, the post-login confirmation has
-    // already passed but the SPA bounced us back (rare, but happens
-    // when NGTeco's session cookie is set but instantly invalidated
-    // server-side — e.g., when an admin force-logged-out the account).
-    assertNotOnLoginPage(page, "pre-navigation");
-
-    if (sel.navigation.attendanceMenu) {
-      try {
-        await page.locator(sel.navigation.attendanceMenu).first().click({
-          timeout: 5_000,
-        });
-      } catch {
-        try {
-          await page.getByText("Report", { exact: true }).first().click({
-            timeout: 5_000,
-          });
-        } catch {
-          // Menu may already be expanded, or it has no expandable
-          // header at all. Continue — the link should still be
-          // reachable.
-        }
-      }
-    }
-
-    // Wait for the sidebar to actually have *some* link text we can
-    // reason about. Without this, we can race the SPA's lazy menu
-    // mount and get a "no element found" timeout that looks like
-    // NGTeco changed copy when really the SPA wasn't ready.
-    try {
-      await page.waitForFunction(
-        () => {
-          const nav = document.querySelector("nav, aside, [role=navigation]");
-          return !!nav && (nav.textContent ?? "").trim().length > 20;
-        },
-        null,
-        { timeout: 8_000 },
-      );
-    } catch {
-      /* proceed anyway — we'll fall through to the failure capture
-         which records the page so we can see what's there */
-    }
-
-    let clicked = false;
-    if (sel.navigation.viewAttendancePunchLink) {
-      try {
-        await page
-          .locator(sel.navigation.viewAttendancePunchLink)
-          .first()
-          .click({
-            timeout: 6_000,
-          });
-        clicked = true;
-      } catch {
-        /* fall through to text/role-based fallbacks */
-      }
-    }
-    if (!clicked) {
-      try {
-        await page
-          .getByRole("link", { name: /view attendance punch/i })
-          .first()
-          .click({
-            timeout: 6_000,
-          });
-        clicked = true;
-      } catch {
-        /* not a link — try plain text */
-      }
-    }
-    if (!clicked) {
-      try {
-        await page
-          .getByText(/view attendance punch/i)
-          .first()
-          .click({
-            timeout: 6_000,
-          });
-        clicked = true;
-      } catch {
-        /* fall through to broader variants — NGTeco has shipped
-           "View Attendance Punch", "Attendance Punch", and just
-           "Punch Records" at different points */
-      }
-    }
-    if (!clicked) {
-      // Wider net: any sidebar entry that looks punch-related. We
-      // collect candidates so the failure path can log them.
-      const variants: Array<RegExp> = [
-        /view\s*attendance\s*punch/i,
-        /attendance\s*punch/i,
-        /punch\s*record/i,
-        /view\s*punch/i,
-      ];
-      for (const re of variants) {
-        try {
-          await page.getByText(re).first().click({ timeout: 4_000 });
-          clicked = true;
-          break;
-        } catch {
-          /* try next variant */
-        }
-      }
-    }
-    if (!clicked) {
-      // Snapshot what the sidebar actually contains so the failure
-      // is diagnosable without an SSH-and-grep round trip. We dump
-      // every top-level link/button label we can see.
-      let sidebarLabels: string = "(unable to read)";
-      try {
-        sidebarLabels = await page.evaluate(() => {
-          const root =
-            document.querySelector("nav, aside, [role=navigation]") ??
-            document.body;
-          const items = Array.from(
-            root.querySelectorAll(
-              "a, [role=button], [role=menuitem], li, p, span",
-            ),
-          );
-          const seen = new Set<string>();
-          const labels: string[] = [];
-          for (const el of items) {
-            const t = (el.textContent ?? "").trim().replace(/\s+/g, " ");
-            if (t && t.length < 80 && !seen.has(t)) {
-              seen.add(t);
-              labels.push(t);
-            }
-            if (labels.length >= 60) break;
-          }
-          return labels.join(" | ");
-        });
-      } catch {
-        /* keep placeholder */
-      }
-      throw new ScrapeFailure(
-        `NGTeco navigation: could not find a "View Attendance Punch" link or any close variant. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. If the sidebar looks empty, the saved login session is stale — clear /data/ngteco/profile inside the LXC (rm -rf) and retry; the next poll will log in fresh. If the labels show new copy, update lib/ngteco/selectors.json#navigation.viewAttendancePunchLink to match.`,
-        {},
-      );
-    }
+    await navigateToViewAttendancePunch(page, input.portalUrl, sel);
+    await ensureShowMendedRecords(page, sel);
     await page.waitForSelector(sel.viewPunch.tableLandmark, {
       timeout: 15_000,
     });
@@ -1597,14 +1761,10 @@ export async function addManualAttendancePunch(
     }
     assertNotOnLoginPage(page, "manual punch login");
 
-    const manualUrl = new URL(
-      "/att/timecard/manual-log",
-      input.portalUrl,
-    ).toString();
-    await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
+    await navigateToMendAttendancePunch(page, input.portalUrl, sel);
     assertNotOnLoginPage(page, "manual punch page");
     await page
-      .getByText(/person\s*id/i)
+      .getByText(/person\s*id|mend attendance punch/i)
       .first()
       .waitFor({ timeout: 15_000 });
     await waitForManualLogGridRefresh();
@@ -1719,6 +1879,10 @@ export async function addManualAttendancePunch(
       );
     }
 
+    const manualUrl = ngtecoUrl(
+      input.portalUrl,
+      sel.navigation.mendAttendancePunchUrl ?? "/att/timecard/manual-log",
+    );
     await page.goto(manualUrl, { waitUntil: "domcontentloaded" });
     await page
       .getByText(/person\s*id/i)

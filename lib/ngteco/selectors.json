@@ -1,5 +1,5 @@
 {
-  "$comment": "Verified from production failure artifact 2026-05-09. NGTeco currently renders Email as input name=username type=text placeholder=Email, Password as input name=password type=password. Keep selectors broad and current. Attendance punch grid cells expose stable data-field attributes (employee_name, employee_code, att_date, attendance_status, verify_type, timezone, punch_from). DO NOT switch back to Element Plus selectors.",
+  "$comment": "Verified from UI screenshots 2026-05-30. View Attendance Punch lives under Report at /att/timecard/transaction; Mend Attendance Punch under Attendance at /att/timecard/manual-log. Prefer navigation.*Url deep links over sidebar label clicks — route paths survive copy changes. Punch grid cells still expose stable data-field attributes. DO NOT switch back to Element Plus selectors.",
   "login": {
     "url": "/user/login",
     "username": "input[name='username'], input[placeholder='Email'], input[type='email'], input[name*='email' i], input[name*='user' i]",
@@ -7,13 +7,18 @@
     "agreementCheckbox": "label:has-text(\"have read\") input[type=\"checkbox\"], label:has-text(\"USER AGREEMENT\") input[type=\"checkbox\"], label:has-text(\"PRIVACY POLICY\") input[type=\"checkbox\"]",
     "agreementClickTarget": "label:has-text(\"have read\"), label:has-text(\"USER AGREEMENT\"), label:has-text(\"PRIVACY POLICY\")",
     "submit": "button:has-text(\"Login\")",
-    "loggedInLandmark": "text=\"Quickly Setting\", text=\"Dashboard\", text=\"Attendance\""
+    "loggedInLandmark": "text=\"Quickly Setting\", text=\"Dashboard\", text=\"Attendance\", text=\"Report\""
   },
   "navigation": {
+    "viewAttendancePunchUrl": "/att/timecard/transaction",
+    "mendAttendancePunchUrl": "/att/timecard/manual-log",
+    "attendanceReportUrl": "/att/timecard/timecard",
     "reportsLink": "text=/Reports?/i",
-    "punchReportLink": "text=/Punch.*Report/i",
-    "attendanceMenu": ".MuiAccordionSummary-root:has(p:text-is(\"Report\"))",
-    "viewAttendancePunchLink": "p:text-is(\"View Attendance Punch\")"
+    "punchReportLink": "text=/Punch.*Report|Attendance Report|Timecard Management/i",
+    "reportMenu": "text=/^Report$/i",
+    "attendanceMenu": "text=/^Attendance$/i",
+    "viewAttendancePunchLink": ":text-is(\"View Attendance Punch\")",
+    "mendAttendancePunchLink": ":text-is(\"Mend Attendance Punch\")"
   },
   "report": {
     "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
@@ -32,7 +37,8 @@
     "timezoneCell": "[role=\"cell\"][data-field=\"timezone\"]",
     "sourceCell": "[role=\"cell\"][data-field=\"punch_from\"]",
     "nextPageButton": "button[aria-label=\"Go to next page\"]:not([disabled])",
-    "pageInfo": ".MuiTablePagination-displayedRows"
+    "pageInfo": ".MuiTablePagination-displayedRows",
+    "showMendedRecordsToggle": "label:has-text(\"Show mended records\"), :text-is(\"Show mended records\")"
   },
   "challenge": {
     "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",

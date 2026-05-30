@@ -17,6 +17,16 @@ Failures inside step 2–3 capture a screenshot + page HTML at `/data/ngteco/fai
 
 Symptom: import fails partway, screenshot shows the new layout. The error message names the step that broke (e.g. `Timeout exceeded waiting for selector ... applyButton`).
 
+**First check:** if the error mentions an empty sidebar (`Sidebar labels seen:` with nothing after it), the Playwright profile is stale — wipe it before editing selectors:
+
+```
+rm -rf /data/ngteco/profile
+```
+
+The next poll/import logs in fresh.
+
+**Navigation strategy (2026-05-30 onward):** the scraper prefers **deep-link URLs** in `selectors.json` (`navigation.viewAttendancePunchUrl`, `navigation.mendAttendancePunchUrl`, `navigation.attendanceReportUrl`) over sidebar label clicks. Route paths change less often than menu copy. Sidebar clicks remain as a fallback.
+
 1. Open `/ngteco/<runId>` in the admin UI. Screenshot is at the path shown.
 2. SSH to the LXC. Edit selectors:
    ```
