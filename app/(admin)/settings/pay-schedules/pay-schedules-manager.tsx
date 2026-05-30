@@ -16,7 +16,7 @@ import {
 const KIND_LABEL: Record<PaySchedule["periodKind"], string> = {
   WEEKLY: "Weekly",
   BIWEEKLY: "Bi-Weekly",
-  SEMI_MONTHLY: "Semi-Monthly (1-15 / 16-EOM)",
+  SEMI_MONTHLY: "Semi-Monthly (full month · payroll EOM)",
   MONTHLY: "Monthly",
 };
 
@@ -204,7 +204,7 @@ function ScheduleForm({
         >
           <option value="WEEKLY">Weekly</option>
           <option value="BIWEEKLY">Bi-Weekly</option>
-          <option value="SEMI_MONTHLY">Semi-Monthly (1-15 / 16-EOM)</option>
+          <option value="SEMI_MONTHLY">Semi-Monthly (full month · payroll EOM)</option>
           <option value="MONTHLY">Monthly</option>
         </select>
       </div>

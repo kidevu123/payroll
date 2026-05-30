@@ -62,11 +62,18 @@ async function seedDefaultPaySchedules(
     SELECT 'Weekly', 'WEEKLY'::pay_schedule_kind, 1, '0 19 * * 0', true
     WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Weekly')
   `;
-  // Semi-Monthly: 1-15 and 16-EOM. Cron fires on the 1st and 16th at 7pm ET.
+  // Semi-Monthly: full-month time grid (same as Monthly); payroll at EOM.
+  // Cron fires 7pm ET on the 28th–31st (month-end window).
   await sql`
     INSERT INTO pay_schedules (name, period_kind, cron, active)
-    SELECT 'Semi-Monthly', 'SEMI_MONTHLY'::pay_schedule_kind, '0 19 1,16 * *', true
+    SELECT 'Semi-Monthly', 'SEMI_MONTHLY'::pay_schedule_kind, '0 19 28-31 * *', true
     WHERE NOT EXISTS (SELECT 1 FROM pay_schedules WHERE name = 'Semi-Monthly')
+  `;
+  await sql`
+    UPDATE pay_schedules
+    SET cron = '0 19 28-31 * *'
+    WHERE period_kind = 'SEMI_MONTHLY'::pay_schedule_kind
+      AND cron = '0 19 1,16 * *'
   `;
   // Monthly hourly: one period per calendar month, generated on the 1st at 7pm ET.
   await sql`

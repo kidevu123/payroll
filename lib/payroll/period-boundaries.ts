@@ -146,28 +146,25 @@ export function canonicalEndForScheduleName(
 }
 
 /**
- * Bounds of the SEMI-MONTHLY period containing `date`. Periods are:
- *   first half:  YYYY-MM-01 → YYYY-MM-15
- *   second half: YYYY-MM-16 → YYYY-MM-{last day of month}
- *
- * Used by the CSV importer to route a semi-monthly employee's punches
- * (Juan) into the right period when they show up on a weekly upload.
+ * Full calendar month containing `date` (1st → last day).
+ * Used for MONTHLY schedules and for SEMI_MONTHLY time accumulation
+ * (owner: same Time-grid rules as monthly; payroll runs at month-end).
  */
-export function getSemiMonthlyBounds(date: string): PeriodBounds {
+export function getMonthlyCalendarBounds(date: string): PeriodBounds {
   const target = parseDay(date);
   const y = target.getUTCFullYear();
-  const m = target.getUTCMonth(); // 0-based
-  const day = target.getUTCDate();
-  if (day <= 15) {
-    return {
-      startDate: formatDay(new Date(Date.UTC(y, m, 1))),
-      endDate: formatDay(new Date(Date.UTC(y, m, 15))),
-    };
-  }
-  // Last day of month: day 0 of next month rolls back.
+  const m = target.getUTCMonth();
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   return {
-    startDate: formatDay(new Date(Date.UTC(y, m, 16))),
+    startDate: formatDay(new Date(Date.UTC(y, m, 1))),
     endDate: formatDay(new Date(Date.UTC(y, m, lastDay))),
   };
+}
+
+/**
+ * @deprecated Name kept for importers — now returns full-month bounds
+ * (same as monthly). Semi-monthly payroll is scheduled at month-end only.
+ */
+export function getSemiMonthlyBounds(date: string): PeriodBounds {
+  return getMonthlyCalendarBounds(date);
 }

@@ -403,7 +403,7 @@ export async function ensureNextPeriod(
  * WEEKLY  → Monday → Sunday containing `day`.
  * BIWEEKLY → Two-week window aligned to scheduleStartDate (or to the
  *             nearest Monday before `day` when the schedule has none).
- * SEMI_MONTHLY → 1st-15th OR 16th-EOM (whichever contains `day`).
+ * SEMI_MONTHLY → full calendar month (same as MONTHLY for punches/Time).
  * MONTHLY → 1st-EOM of the month containing `day`.
  */
 export function periodBoundsForSchedule(
@@ -458,17 +458,16 @@ export function periodBoundsForSchedule(
       endDate: iso(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
     };
   }
-  if (schedule.periodKind === "SEMI_MONTHLY") {
-    if (dom <= 15) {
-      const eom15 = 15;
-      return { startDate: iso(y, m, 1), endDate: iso(y, m, eom15) };
-    }
+  if (
+    schedule.periodKind === "SEMI_MONTHLY" ||
+    schedule.periodKind === "MONTHLY"
+  ) {
     const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-    return { startDate: iso(y, m, 16), endDate: iso(y, m, lastDay) };
+    return { startDate: iso(y, m, 1), endDate: iso(y, m, lastDay) };
   }
-  // MONTHLY
-  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return { startDate: iso(y, m, 1), endDate: iso(y, m, lastDay) };
+  throw new Error(
+    `periodBoundsForSchedule: unsupported periodKind ${schedule.periodKind}`,
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
+import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,34 @@ type PeriodView = {
   /** Display-only label about the period's underlying state. */
   state: "OPEN" | "LOCKED" | "PAID" | "UPCOMING";
 };
+
+/**
+ * When no pay_period row exists yet for monthly/semi-monthly, show the
+ * current calendar month as a synthetic window (same forward-roll UX as
+ * weekly after a closed period). Punches and CSV upload create the real row.
+ */
+async function bootstrapPeriodForCadence(
+  kind: "SEMI_MONTHLY" | "MONTHLY",
+  today: string,
+): Promise<PeriodView | null> {
+  const [schedule] = await db
+    .select({ id: paySchedules.id })
+    .from(paySchedules)
+    .where(and(eq(paySchedules.active, true), eq(paySchedules.periodKind, kind)))
+    .limit(1);
+  if (!schedule) return null;
+  const bounds = periodBoundsForSchedule(today, {
+    periodKind: kind,
+    anchorDate: null,
+  });
+  return {
+    id: "",
+    startDate: bounds.startDate,
+    endDate: bounds.endDate,
+    payScheduleId: schedule.id,
+    state: "UPCOMING",
+  };
+}
 
 /**
  * Pick the period to render for the current tab.
@@ -144,7 +173,12 @@ async function pickPeriodForTab(
     .where(kind ? eq(paySchedules.periodKind, kind) : undefined)
     .orderBy(desc(payPeriods.startDate))
     .limit(1);
-  if (!mostRecent) return null;
+  if (!mostRecent) {
+    if (kind === "MONTHLY" || kind === "SEMI_MONTHLY") {
+      return bootstrapPeriodForCadence(kind, today);
+    }
+    return null;
+  }
 
   // If the most recent period is still happening (covers today), or is
   // OPEN, just use it. Otherwise — when it's LOCKED or PAID and ended
@@ -178,8 +212,8 @@ async function pickPeriodForTab(
  * Compute the start/end of the period that immediately follows
  * `prevEnd` for a given cadence. For WEEKLY this is the Mon→Sun week
  * starting the day after prevEnd (or, if prevEnd already ends on a
- * Sunday, the next Monday). For SEMI_MONTHLY this is the next 1st-15th
- * or 16th-EOM bucket.
+ * Sunday, the next Monday). For SEMI_MONTHLY / MONTHLY this is the next
+ * full calendar month.
  */
 function nextWindowAfter(
   prevEnd: string,
@@ -205,32 +239,10 @@ function nextWindowAfter(
       end: end.toISOString().slice(0, 10),
     };
   }
-  if (kind === "SEMI_MONTHLY") {
-    const day = startDate.getUTCDate();
-    if (day <= 15) {
-      const start = new Date(startDate);
-      start.setUTCDate(1);
-      const end = new Date(start);
-      end.setUTCDate(15);
-      return {
-        start: start.toISOString().slice(0, 10),
-        end: end.toISOString().slice(0, 10),
-      };
-    } else {
-      const start = new Date(startDate);
-      start.setUTCDate(16);
-      const end = new Date(start);
-      end.setUTCMonth(end.getUTCMonth() + 1);
-      end.setUTCDate(0); // last day of original month
-      return {
-        start: start.toISOString().slice(0, 10),
-        end: end.toISOString().slice(0, 10),
-      };
-    }
-  }
-  // MONTHLY
+  // SEMI_MONTHLY and MONTHLY: next full calendar month
   const start = new Date(startDate);
   start.setUTCDate(1);
+  start.setUTCMonth(start.getUTCMonth() + 1);
   const end = new Date(start);
   end.setUTCMonth(end.getUTCMonth() + 1);
   end.setUTCDate(0);
