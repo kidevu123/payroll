@@ -199,7 +199,9 @@ export async function importPunchPoll(
             Math.abs(c.clockIn.getTime() - targetMs) <= DUPLICATE_PUNCH_WINDOW_MS,
         );
         if (matched) {
-          existing = [{ id: matched.id, clockOut: matched.clockOut }];
+          existing = [
+            { id: matched.id, clockOut: matched.clockOut, voidedAt: null },
+          ];
           await db
             .update(punches)
             .set({ ngtecoRecordHash: hash })
@@ -259,7 +261,11 @@ export async function importPunchPoll(
 
         if (repairTarget) {
           existing = [
-            { id: repairTarget.id, clockOut: repairTarget.clockOut },
+            {
+              id: repairTarget.id,
+              clockOut: repairTarget.clockOut,
+              voidedAt: null,
+            },
           ];
           await db
             .update(punches)
