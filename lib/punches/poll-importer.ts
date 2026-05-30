@@ -20,7 +20,7 @@ import { employees, punches, payPeriods } from "@/lib/db/schema";
 import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
-import { pairPunchEvents } from "./pair-events";
+import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 
 export type PollImportSummary = {
   rawEvents: number;
@@ -185,18 +185,77 @@ export async function importPunchPoll(
             ),
           );
         const targetMs = clockIn.getTime();
-        const TOLERANCE_MS = 5 * 60 * 1000;
         const matched = candidates.find(
-          (c) => Math.abs(c.clockIn.getTime() - targetMs) <= TOLERANCE_MS,
+          (c) =>
+            Math.abs(c.clockIn.getTime() - targetMs) <= DUPLICATE_PUNCH_WINDOW_MS,
         );
         if (matched) {
           existing = [{ id: matched.id, clockOut: matched.clockOut }];
-          // Re-stamp the hash so the next scrape's exact-hash lookup
-          // hits this row directly without going through the fallback.
           await db
             .update(punches)
             .set({ ngtecoRecordHash: hash })
             .where(eq(punches.id, matched.id));
+        }
+      }
+
+      // Repair mis-paired micro-shifts (duplicate punch-ins treated as in/out)
+      // and attach orphan clock-outs to the real open shift on the same day.
+      if (existing.length === 0) {
+        const dayStart = new Date(`${g.day}T00:00:00Z`);
+        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const dayRows = await db
+          .select({
+            id: punches.id,
+            clockIn: punches.clockIn,
+            clockOut: punches.clockOut,
+          })
+          .from(punches)
+          .where(
+            and(
+              eq(punches.employeeId, g.empId),
+              sql`${punches.clockIn} >= ${dayStart.toISOString()}::timestamptz`,
+              sql`${punches.clockIn} < ${dayEnd.toISOString()}::timestamptz`,
+              sql`${punches.voidedAt} IS NULL`,
+            ),
+          );
+        const targetInMs =
+          paired.kind === "outOnly"
+            ? null
+            : clockIn.getTime();
+        const targetOutMs =
+          paired.kind === "outOnly"
+            ? new Date(paired.outEv.punchAt).getTime()
+            : clockOut?.getTime() ?? null;
+
+        const repairTarget = dayRows.find((row) => {
+          if (targetOutMs === null) return false;
+          const outMs = row.clockOut?.getTime() ?? null;
+          if (outMs === null) {
+            return (
+              paired.kind === "outOnly" ||
+              (targetInMs !== null &&
+                Math.abs(row.clockIn.getTime() - targetInMs) <=
+                  DUPLICATE_PUNCH_WINDOW_MS)
+            );
+          }
+          const durationMs = outMs - row.clockIn.getTime();
+          if (durationMs > DUPLICATE_PUNCH_WINDOW_MS) return false;
+          if (targetInMs === null) return false;
+          return (
+            Math.abs(row.clockIn.getTime() - targetInMs) <=
+              DUPLICATE_PUNCH_WINDOW_MS ||
+            outMs <= targetOutMs + DUPLICATE_PUNCH_WINDOW_MS
+          );
+        });
+
+        if (repairTarget) {
+          existing = [
+            { id: repairTarget.id, clockOut: repairTarget.clockOut },
+          ];
+          await db
+            .update(punches)
+            .set({ ngtecoRecordHash: hash })
+            .where(eq(punches.id, repairTarget.id));
         }
       }
 
@@ -210,7 +269,11 @@ export async function importPunchPoll(
         ) {
           await db
             .update(punches)
-            .set({ clockOut, notes: note })
+            .set({
+              ...(paired.kind !== "outOnly" ? { clockIn } : {}),
+              clockOut,
+              notes: note,
+            })
             .where(eq(punches.id, row.id));
           summary.pairsUpdated++;
         }
