@@ -293,7 +293,7 @@ export async function handlePunchPoll(
           daySet.add(today);
         }
         await syncMissedPunchAlerts({
-          limitToDates: daySet.size > 0 ? daySet : undefined,
+          ...(daySet.size > 0 ? { limitToDates: daySet } : {}),
           filterAlerts: (alerts) =>
             filterAlertsForPollSync(alerts, company.timezone, new Date()),
         });
