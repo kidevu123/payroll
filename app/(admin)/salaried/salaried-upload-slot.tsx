@@ -11,6 +11,7 @@ import {
   inferSalariedPeriodAction,
   listZohoOrgsAction,
   pushDocToZohoAction,
+  setSalariedDocNetAmountAction,
   uploadSalariedDocAction,
   type ZohoOrgChoice,
 } from "./actions";
@@ -162,7 +163,7 @@ export function SalariedUploadSlot({
                 htmlFor={`amt-${employeeId}`}
                 className="text-xs text-text-muted"
               >
-                Net amount $ (optional)
+                Net pay $ (required for paystubs)
               </Label>
               <Input
                 id={`amt-${employeeId}`}
@@ -170,7 +171,9 @@ export function SalariedUploadSlot({
                 type="number"
                 step="0.01"
                 min="0"
+                required
                 placeholder="2143.20"
+                title="Post-tax net from the paystub — this is the amount pushed to Zoho."
               />
             </div>
           </div>
@@ -203,8 +206,12 @@ export function SalariedUploadSlot({
 function DocRow({ doc }: { doc: DocLite }) {
   const [removing, setRemoving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const needsNet =
+    doc.kind === "PAYSTUB" &&
+    (doc.amountCents === null || doc.amountCents <= 0);
   return (
-    <li className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+    <li className="flex flex-col gap-2 px-3 py-2 text-sm border-b border-border/40 last:border-0">
+      <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 min-w-0">
         <FileText className="h-4 w-4 text-text-muted shrink-0" />
         <div className="min-w-0">
@@ -217,7 +224,9 @@ function DocRow({ doc }: { doc: DocLite }) {
             })()}
             {doc.amountCents !== null && doc.amountCents > 0
               ? ` · ${formatMoney(doc.amountCents)}`
-              : ""}
+              : needsNet
+                ? " · net amount missing"
+                : ""}
             {" · uploaded "}
             {doc.uploadedAt.slice(0, 10)}
           </p>
@@ -255,10 +264,55 @@ function DocRow({ doc }: { doc: DocLite }) {
           </Button>
         </form>
       </div>
+      </div>
+      {needsNet && (
+        <SetNetAmountForm docId={doc.id} />
+      )}
       {error && (
-        <span className="text-xs text-red-700 ml-auto">{error}</span>
+        <span className="text-xs text-red-700">{error}</span>
       )}
     </li>
+  );
+}
+
+function SetNetAmountForm({ docId }: { docId: string }) {
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2 rounded-input border border-amber-200/80 bg-amber-50/50 px-2 py-2"
+      action={async (form) => {
+        setPending(true);
+        setError(null);
+        const raw = form.get("amountDollars");
+        const r = await setSalariedDocNetAmountAction(
+          docId,
+          typeof raw === "string" ? raw : "",
+        );
+        setPending(false);
+        if (r?.error) setError(r.error);
+      }}
+    >
+      <div className="space-y-0.5">
+        <Label htmlFor={`net-${docId}`} className="text-[10px] text-amber-900">
+          Net pay from paystub (post-tax) — required before Zoho push
+        </Label>
+        <Input
+          id={`net-${docId}`}
+          name="amountDollars"
+          type="number"
+          step="0.01"
+          min="0.01"
+          required
+          placeholder="1702.42"
+          className="h-8 w-36 text-sm"
+        />
+      </div>
+      <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+        {pending ? "Saving…" : "Save net"}
+      </Button>
+      {error && <span className="text-xs text-red-700">{error}</span>}
+    </form>
   );
 }
 
@@ -273,6 +327,20 @@ function ZohoPushButton({ doc }: { doc: DocLite }) {
 
   // Don't show the push button for W2 docs (legal record, not an expense).
   if (doc.kind === "W2") return null;
+
+  const needsNet =
+    doc.kind === "PAYSTUB" &&
+    (doc.amountCents === null || doc.amountCents <= 0);
+  if (needsNet) {
+    return (
+      <span
+        className="text-[10px] text-amber-800 max-w-[8rem] leading-tight"
+        title="Enter the net pay amount below before pushing to Zoho."
+      >
+        Add net $ first
+      </span>
+    );
+  }
 
   if (pushedExpenseId) {
     return (

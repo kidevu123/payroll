@@ -80,6 +80,43 @@ export async function createDoc(
   });
 }
 
+export async function updateDocAmount(
+  id: string,
+  amountCents: number,
+  actor: Actor,
+): Promise<PayrollPeriodDocument> {
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error("Net amount must be greater than zero.");
+  }
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(payrollPeriodDocuments)
+      .where(eq(payrollPeriodDocuments.id, id));
+    if (!before) throw new Error(`updateDocAmount: ${id} not found`);
+    if (before.deletedAt) throw new Error("Document is deleted.");
+    const [row] = await tx
+      .update(payrollPeriodDocuments)
+      .set({ amountCents })
+      .where(eq(payrollPeriodDocuments.id, id))
+      .returning();
+    if (!row) throw new Error("updateDocAmount: returning() empty");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payroll_period_document.update_amount",
+        targetType: "PayrollPeriodDocument",
+        targetId: id,
+        before: { amountCents: before.amountCents },
+        after: { amountCents: row.amountCents },
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
 export async function deleteDoc(
   id: string,
   actor: Actor,

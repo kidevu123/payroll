@@ -6,7 +6,12 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { employees, paySchedules } from "@/lib/db/schema";
-import { createDoc, deleteDoc, getDoc } from "@/lib/db/queries/payroll-documents";
+import {
+  createDoc,
+  deleteDoc,
+  getDoc,
+  updateDocAmount,
+} from "@/lib/db/queries/payroll-documents";
 import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
 import { pushPaystubToZoho } from "@/lib/zoho/push";
 import { listOrgs } from "@/lib/db/queries/zoho";
@@ -91,6 +96,12 @@ export async function uploadSalariedDocAction(
     meta.data.amountDollars && meta.data.amountDollars !== ""
       ? Math.round(Number(meta.data.amountDollars) * 100)
       : null;
+  if (kind.data === "PAYSTUB" && (amountCents === null || amountCents <= 0)) {
+    return {
+      error:
+        "Net pay is required for paystubs — enter the post-tax amount the employee actually receives (this is what Zoho gets, not the gross on the PDF).",
+    };
+  }
   // Verify the employee exists and is actually salaried.
   const [employee] = await db
     .select()
@@ -170,6 +181,46 @@ export async function deleteSalariedDocAction(
   if (doc.periodId) revalidatePath(`/payroll/${doc.periodId}`);
   revalidatePath(`/employees/${doc.employeeId}`);
   revalidatePath("/me/pay");
+  return { ok: true };
+}
+
+export async function setSalariedDocNetAmountAction(
+  docId: string,
+  amountDollars: string,
+): Promise<{ error?: string; ok?: true }> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(docId).success) return { error: "Invalid id." };
+  const trimmed = amountDollars.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { error: "Enter a valid dollar amount (e.g. 1702.42)." };
+  }
+  const amountCents = Math.round(Number(trimmed) * 100);
+  if (amountCents <= 0) {
+    return { error: "Net amount must be greater than zero." };
+  }
+  const doc = await getDoc(docId);
+  if (!doc) return { error: "Document not found." };
+  if (doc.kind !== "PAYSTUB") {
+    return { error: "Only paystubs need a net amount for Zoho." };
+  }
+  if (doc.zohoExpenseId) {
+    return {
+      error:
+        "This paystub was already pushed to Zoho. Delete the expense in Zoho first, or re-upload a corrected paystub.",
+    };
+  }
+  try {
+    await updateDocAmount(docId, amountCents, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not save amount.",
+    };
+  }
+  revalidatePath("/salaried");
+  revalidatePath(`/employees/${doc.employeeId}`);
   return { ok: true };
 }
 
