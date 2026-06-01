@@ -178,7 +178,9 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
       const bucket = empBuckets?.get(day);
 
       if (isWorking && !isHoliday && !onTimeOff && !bucket) {
-        alerts.push({ employeeId: e.id, date: day, issue: "NO_PUNCH" });
+      // Same-day absences are not flagged until the local 7pm close window.
+      if (day === today && localHour < 19) continue;
+      alerts.push({ employeeId: e.id, date: day, issue: "NO_PUNCH" });
         continue;
       }
       if (!bucket) continue;

@@ -6,6 +6,10 @@ import { Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Punch } from "@/lib/db/schema";
 import { HoursDisplay } from "./hours-display";
+import {
+  isMissingClockInPunch,
+  isOpenShiftPunch,
+} from "@/lib/punches/missing-punch";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -28,6 +32,7 @@ function formatDay(d: Date, timezone: string): string {
 }
 
 function durationHours(p: Punch): number {
+  if (isMissingClockInPunch(p)) return 0;
   if (!p.clockOut) return 0;
   return Math.max(0, (p.clockOut.getTime() - p.clockIn.getTime()) / MS_PER_HOUR);
 }
@@ -46,18 +51,41 @@ export function PunchRow({
   rightSlot?: React.ReactNode;
 }) {
   const edited = !!punch.editedAt;
+  const missingIn = isMissingClockInPunch(punch);
+  const openShift = isOpenShiftPunch(punch);
   return (
     <div
       className={cn(
         "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-card border border-border bg-surface px-3 py-2 text-sm",
         punch.voidedAt && "opacity-50 line-through",
+        missingIn && "border-amber-200/80 bg-amber-50/40",
         className,
       )}
     >
       <div className="text-text-muted">{formatDay(punch.clockIn, timezone)}</div>
-      <div className="font-mono tabular-nums">{formatClock(punch.clockIn, timezone)}</div>
-      <div className="font-mono tabular-nums">{formatClock(punch.clockOut, timezone)}</div>
-      <HoursDisplay hours={durationHours(punch)} decimals={decimals} />
+      <div className="font-mono tabular-nums">
+        {missingIn ? (
+          <span className="text-amber-800 text-xs font-semibold uppercase tracking-wide">
+            Missing in
+          </span>
+        ) : (
+          formatClock(punch.clockIn, timezone)
+        )}
+      </div>
+      <div className="font-mono tabular-nums">
+        {openShift ? (
+          <span className="text-amber-700 text-xs font-medium">open</span>
+        ) : (
+          formatClock(punch.clockOut, timezone)
+        )}
+      </div>
+      {missingIn ? (
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+          fix
+        </span>
+      ) : (
+        <HoursDisplay hours={durationHours(punch)} decimals={decimals} />
+      )}
       <div className="flex items-center gap-1 text-xs text-text-muted">
         {edited ? (
           <>

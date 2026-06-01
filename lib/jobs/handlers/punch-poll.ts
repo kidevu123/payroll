@@ -16,6 +16,10 @@
 import { logger } from "@/lib/telemetry";
 import { getSetting } from "@/lib/settings/runtime";
 import { open as openSealed } from "@/lib/crypto/vault";
+import {
+  filterAlertsForPollSync,
+  syncMissedPunchAlerts,
+} from "@/lib/payroll/sync-missed-punch-alerts";
 
 function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
   return (
@@ -265,6 +269,42 @@ export async function handlePunchPoll(
       timezone: company.timezone,
     });
     logger.info({ runId, ...summary }, "punch.poll: import done");
+
+    const localHour = Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: company.timezone,
+        hour: "2-digit",
+        hour12: false,
+      }).format(new Date()),
+    );
+    const shouldSyncMissedPunches =
+      localHour >= 19 ||
+      summary.missingClockIn > 0 ||
+      summary.openShifts > 0 ||
+      summary.pairsInserted > 0 ||
+      summary.pairsUpdated > 0;
+    if (shouldSyncMissedPunches) {
+      try {
+        const daySet = new Set(summary.daysTouched);
+        if (localHour >= 19) {
+          const today = new Intl.DateTimeFormat("en-CA", {
+            timeZone: company.timezone,
+          }).format(new Date());
+          daySet.add(today);
+        }
+        await syncMissedPunchAlerts({
+          limitToDates: daySet.size > 0 ? daySet : undefined,
+          filterAlerts: (alerts) =>
+            filterAlertsForPollSync(alerts, company.timezone, new Date()),
+        });
+      } catch (err) {
+        logger.warn(
+          { runId, err: err instanceof Error ? err.message : String(err) },
+          "punch.poll: missed-punch sync failed (non-fatal)",
+        );
+      }
+    }
+
     // Best-effort retention prune: keep poll log rows ≤90 days. Skipped
     // on failure (no point pruning when the poll itself blew up).
     try {

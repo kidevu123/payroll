@@ -28,6 +28,10 @@ export type PollImportSummary = {
   pairsInserted: number;
   pairsUpdated: number;
   openShifts: number;
+  /** Out-only NGTeco rows (missing clock-in sentinel). */
+  missingClockIn: number;
+  /** Calendar days (company tz) that had punch events in this import. */
+  daysTouched: string[];
 };
 
 function normalizeRef(s: string): string {
@@ -51,6 +55,8 @@ export async function importPunchPoll(
     pairsInserted: 0,
     pairsUpdated: 0,
     openShifts: 0,
+    missingClockIn: 0,
+    daysTouched: [],
   };
   if (events.length === 0) return summary;
   // Node built-in `crypto` is registered as a webpack server external in
@@ -101,8 +107,9 @@ export async function importPunchPoll(
     g.events.push(ev);
     groups.set(k, g);
   }
+  summary.daysTouched = [...new Set([...groups.values()].map((g) => g.day))].sort();
 
-  // For each group, pair and upsert. Pass the employee's payScheduleId
+  // For each group, pair and upsert.
   // through so a fresh auto-created period gets tagged with the right
   // schedule (Owner: "the period is clearly a weekly period" — fix is
   // to pass the schedule from the matched employee, not rely on a
@@ -126,6 +133,7 @@ export async function importPunchPoll(
             ? new Date(outEv.punchAt)
             : null;
       if (paired.kind === "open") summary.openShifts++;
+      if (paired.kind === "outOnly") summary.missingClockIn++;
       const hashKey =
         paired.kind === "outOnly"
           ? `${g.empId}|outOnly|${inEv.punchAt}`

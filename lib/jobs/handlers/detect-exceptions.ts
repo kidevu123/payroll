@@ -1,31 +1,16 @@
 // Phase 3 — payroll.run.detect-exceptions handler.
 //
-// Reads punches + employees + holidays + approved time-off for the period,
-// runs detectExceptions (pure), persists alerts, dispatches missed-punch
-// notifications, and transitions the run to AWAITING_EMPLOYEE_FIXES (if
-// alerts) or AWAITING_ADMIN_REVIEW.
+// Runs missed-punch detection for the run's period, then transitions the
+// run to AWAITING_EMPLOYEE_FIXES or AWAITING_ADMIN_REVIEW.
 
 import { logger } from "@/lib/telemetry";
 import { getRun, transitionRun } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
-import { listEmployees } from "@/lib/db/queries/employees";
-import { listPunches } from "@/lib/db/queries/punches";
-import { listHolidaysInRange } from "@/lib/db/queries/holidays";
-import { listApprovedTimeOffInRange } from "@/lib/db/queries/time-off";
-import { listAlertsForPeriod, createAlerts } from "@/lib/db/queries/alerts";
-import {
-  userIdsForEmployees,
-  adminUserIds,
-} from "@/lib/db/queries/recipients";
+import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
+import { adminUserIds } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
-import { detectExceptions } from "@/lib/payroll/detect-exceptions";
+import { syncMissedPunchAlerts } from "@/lib/payroll/sync-missed-punch-alerts";
 import { dispatch } from "@/lib/notifications/router";
-
-function issueLabel(issue: string): string {
-  return issue
-    .toLowerCase()
-    .replaceAll("_", " ");
-}
 
 export async function handleDetectExceptions(data: {
   runId: string;
@@ -41,128 +26,10 @@ export async function handleDetectExceptions(data: {
     logger.error({ runId, periodId: run.periodId }, "detect-exceptions: period not found");
     return;
   }
-  // Match the cohort that publish will use — otherwise we'd flag missing
-  // punches for employees who aren't actually part of this run.
-  const employeeFilter = run.payScheduleId
-    ? { payScheduleId: run.payScheduleId }
-    : {};
-  const [
-    employees,
-    punches,
-    holidays,
-    timeOff,
-    payPeriod,
-    automation,
-    company,
-  ] = await Promise.all([
-    listEmployees(employeeFilter),
-    listPunches({ periodId: period.id }),
-    listHolidaysInRange(period.startDate, period.endDate),
-    listApprovedTimeOffInRange(period.startDate, period.endDate),
-    getSetting("payPeriod"),
-    getSetting("automation"),
-    getSetting("company"),
-  ]);
 
-  const detected = detectExceptions({
-    employees: employees.map((e) => ({ id: e.id, status: e.status })),
-    punches: punches.map((p) => ({
-      employeeId: p.employeeId,
-      clockIn: p.clockIn,
-      clockOut: p.clockOut,
-      voidedAt: p.voidedAt ?? null,
-    })),
-    timeOff: timeOff.map((t) => ({
-      employeeId: t.employeeId,
-      startDate: t.startDate,
-      endDate: t.endDate,
-    })),
-    holidays: holidays.map((h) => h.date),
-    period: { id: period.id, startDate: period.startDate, endDate: period.endDate },
-    workingDays: payPeriod.workingDays,
-    now: new Date(),
-    timezone: company.timezone,
-    thresholds: {
-      shortMinutes: automation.suspiciousDurationMinutesShortThreshold,
-      longMinutes: automation.suspiciousDurationMinutesLongThreshold,
-    },
-  });
+  await syncMissedPunchAlerts({ periodId: period.id, runId });
 
-  // Diff against existing alerts for the period (don't duplicate).
-  const existing = await listAlertsForPeriod(period.id);
-  const existingKey = new Set(
-    existing.map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
-  );
-  const fresh = detected.filter(
-    (a) => !existingKey.has(`${a.employeeId}|${a.date}|${a.issue}`),
-  );
-  if (fresh.length > 0) {
-    await createAlerts(
-      fresh.map((a) => ({
-        employeeId: a.employeeId,
-        periodId: period.id,
-        date: a.date,
-        issue: a.issue,
-      })),
-    );
-  }
-
-  // Notifications: missed_punch.detected → affected employee.
-  const employeesNeedingNotice = [...new Set(fresh.map((a) => a.employeeId))];
-  const empToUser = await userIdsForEmployees(employeesNeedingNotice);
-  const employeeNotices = fresh
-    .map((a) => {
-      const recipientId = empToUser.get(a.employeeId);
-      if (!recipientId) return null;
-      return {
-        recipientId,
-        kind: "missed_punch.detected" as const,
-        payload: { date: a.date, issue: a.issue, periodId: period.id },
-      };
-    })
-    .filter((n): n is NonNullable<typeof n> => n !== null);
-  if (employeeNotices.length > 0) await dispatch(employeeNotices);
-
-  const adminAlertIssues = new Set(["MISSING_OUT", "MISSING_IN"]);
-  const adminAlerts = fresh.filter((a) => adminAlertIssues.has(a.issue));
-  if (adminAlerts.length > 0) {
-    const admins = await adminUserIds();
-    if (admins.length > 0) {
-      const nameByEmployee = new Map(
-        employees.map((e) => [e.id, e.displayName ?? "Employee"]),
-      );
-      const items = adminAlerts.map(
-        (a) =>
-          `${nameByEmployee.get(a.employeeId) ?? "Employee"}: ${issueLabel(a.issue)} on ${a.date}`,
-      );
-      const body =
-        items.length <= 3
-          ? items.join("; ")
-          : `${items.slice(0, 3).join("; ")} + ${items.length - 3} more`;
-      await dispatch(
-        admins.map((id) => ({
-          recipientId: id,
-          kind: "admin.announcement" as const,
-          payload: {
-            title: "Possible missed punch",
-            body,
-            link: "/requests",
-            periodId: period.id,
-            runId,
-            source: "cron_missed_punch_alerts",
-          },
-          push: {
-            title: "Possible missed punch",
-            body,
-            url: "/requests",
-            tag: `missed_punch_admin_${period.id}`,
-          },
-        })),
-      );
-    }
-  }
-
-  // Transition.
+  const automation = await getSetting("automation");
   const fixWindowHours = automation.employeeFixWindowHours;
   const hasUnresolved = await listAlertsForPeriod(period.id, { unresolvedOnly: true });
   if (hasUnresolved.length > 0) {
@@ -180,7 +47,6 @@ export async function handleDetectExceptions(data: {
   await transitionRun(runId, "AWAITING_ADMIN_REVIEW", null, {
     ingestCompletedAt: new Date(),
   });
-  // Notify admins that a run is awaiting review.
   const admins = await adminUserIds();
   if (admins.length > 0) {
     await dispatch(

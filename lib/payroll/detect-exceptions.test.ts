@@ -101,6 +101,17 @@ describe("detectExceptions", () => {
     });
   });
 
+  it("does not emit NO_PUNCH for today before the 7pm close window", () => {
+    const input = base();
+    input.period = { id: "P1", startDate: "2026-05-30", endDate: "2026-05-31" };
+    input.now = new Date("2026-05-30T18:00:00-04:00");
+    input.punches = [];
+    const alerts = detectExceptions(input);
+    expect(alerts.some((a) => a.issue === "NO_PUNCH" && a.date === "2026-05-30")).toBe(
+      false,
+    );
+  });
+
   it("emits MISSING_IN for outOnly sentinel punches (clockIn === clockOut)", () => {
     const input = base();
     const t = new Date("2026-04-15T20:00:00Z");

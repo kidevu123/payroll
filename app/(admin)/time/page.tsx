@@ -13,6 +13,10 @@ import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listApprovedInRange } from "@/lib/db/queries/time-off";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
+import {
+  isMissingClockInPunch,
+  isOpenShiftPunch,
+} from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
 import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
@@ -699,7 +703,9 @@ export default async function TimePage({
                     } else {
                       state = "missed";
                     }
-                  } else if (list.some((p) => !p.clockOut)) {
+                  } else if (
+                    list.some((p) => isMissingClockInPunch(p) || isOpenShiftPunch(p))
+                  ) {
                     state = "incomplete";
                   } else {
                     state = "complete";
@@ -811,6 +817,23 @@ function PunchCellContent({
 
   // Data states (complete / incomplete): pill with time range + duration.
   if (!first) return <span className="text-border-strong text-[11px]">—</span>;
+  if (state === "incomplete" && last && isMissingClockInPunch(last)) {
+    const outLabel = last.clockOut
+      ? formatTimeShort(last.clockOut, tz)
+      : "open";
+    return (
+      <span
+        className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
+      >
+        <span className="text-[9px] font-semibold uppercase tracking-wide">
+          Missing in
+        </span>
+        <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+          out {outLabel}
+        </span>
+      </span>
+    );
+  }
   const inLabel = formatTimeShort(first.clockIn, tz);
   const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "open";
   return (
