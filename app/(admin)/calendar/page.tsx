@@ -20,9 +20,10 @@ import {
   tallyTimeOffByEmployeeForYear,
 } from "@/lib/db/queries/time-off";
 import {
-  listPendingMissedPunchRequests,
+  listPendingMissedPunchRequestsForReview,
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
+import { MissedPunchReviewSummary } from "@/components/domain/missed-punch-review-summary";
 import { listEmployees } from "@/lib/db/queries/employees";
 import {
   MissedPunchActions,
@@ -35,7 +36,6 @@ import { MessageSquareWarning, Plane } from "lucide-react";
 import { getSetting } from "@/lib/settings/runtime";
 import { companyTodayIso } from "@/lib/time/company-day";
 import { isAdminManageableTimeOff } from "@/lib/time-off/change-request";
-import { formatOptionalTimeShort } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -125,15 +125,16 @@ export default async function CalendarPage({
     approved,
     pending,
     employees,
-    pendingMissedPunches,
+    pendingMissedPunchReviews,
     pendingTimeOff,
   ] = await Promise.all([
     listApprovedInRange(startIso, endIso),
     listPendingInRange(startIso, endIso),
     listEmployees(),
-    listPendingMissedPunchRequests(),
+    listPendingMissedPunchRequestsForReview(company.timezone),
     listPendingTimeOffRequests(),
   ]);
+  const pendingMissedPunches = pendingMissedPunchReviews;
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
   const empById = new Map(employees.map((e) => [e.id, e]));
   const todayIso = companyTodayIso(today, company.timezone);
@@ -506,7 +507,7 @@ export default async function CalendarPage({
                     <MessageSquareWarning className="h-3.5 w-3.5" />
                     Missed punches ({pendingMissedPunches.length})
                   </div>
-                  {pendingMissedPunches.map((r) => {
+                  {pendingMissedPunches.map(({ request: r, review }) => {
                     const emp = empById.get(r.employeeId);
                     return (
                       <div
@@ -521,10 +522,10 @@ export default async function CalendarPage({
                             {r.date}
                           </span>
                         </div>
-                        <div className="text-[11px] font-mono text-text-muted">
-                          {formatOptionalTimeShort(r.claimedClockIn, company.timezone)} →{" "}
-                          {formatOptionalTimeShort(r.claimedClockOut, company.timezone)}
-                        </div>
+                        <MissedPunchReviewSummary
+                          ctx={review}
+                          timezone={company.timezone}
+                        />
                         {r.reason && (
                           <p className="text-[11px] text-text-muted line-clamp-2">
                             {r.reason}

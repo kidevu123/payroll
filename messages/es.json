@@ -417,6 +417,17 @@
       "describeProblem": "Por favor describa el problema en 5 a 1000 caracteres."
     }
   },
+  "missedPunchReview": {
+    "onFile": "En archivo (reloj)",
+    "employeeProposes": "El empleado propone",
+    "clockIn": "Entrada",
+    "clockOut": "Salida",
+    "afterApprove": "Después de aprobar",
+    "approveHintMissingOut": "Aprobar cierra el turno abierto con esta salida — no crea una segunda marcación.",
+    "approveHintMissingIn": "Aprobar fija la entrada en la marcación que solo tenía salida en archivo.",
+    "approveHintFull": "Aprobar crea una marcación con las dos horas que ingresó el empleado.",
+    "approveHintProposed": "Aprobar registra la corrección del empleado."
+  },
   "exception": {
     "noPunch": "Sin marcación",
     "missingIn": "Falta entrada",

@@ -417,6 +417,17 @@
       "describeProblem": "Please describe the problem in 5–1000 characters."
     }
   },
+  "missedPunchReview": {
+    "onFile": "On file (time clock)",
+    "employeeProposes": "Employee proposes",
+    "clockIn": "Clock in",
+    "clockOut": "Clock out",
+    "afterApprove": "After approve",
+    "approveHintMissingOut": "Approve closes the open shift with this clock-out — it does not create a second punch.",
+    "approveHintMissingIn": "Approve sets clock-in on the punch that only had clock-out on file.",
+    "approveHintFull": "Approve creates a punch with both times the employee entered.",
+    "approveHintProposed": "Approve records the employee's correction."
+  },
   "exception": {
     "noPunch": "No punch",
     "missingIn": "Missing in",

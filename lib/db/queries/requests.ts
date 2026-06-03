@@ -3,7 +3,7 @@
 // approveMissedPunchRequest is the moneyball: it creates the resulting
 // Punch, links the alert + request, all in one transaction with audit.
 
-import { and, desc, eq, gte, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   missedPunchAlerts,
@@ -23,6 +23,12 @@ import {
   timeOffChangeApprovalPlan,
   type TimeOffChangeAction,
 } from "@/lib/time-off/change-request";
+import {
+  buildMissedPunchReviewContext,
+  type MissedPunchReviewContext,
+} from "@/lib/missed-punch/review-context";
+import { listPunches } from "@/lib/db/queries/punches";
+import { localMidnightUtc } from "@/lib/utils";
 
 export type Actor = {
   id: string;
@@ -37,6 +43,87 @@ export async function listPendingMissedPunchRequests(): Promise<MissedPunchReque
     .from(missedPunchRequests)
     .where(eq(missedPunchRequests.status, "PENDING"))
     .orderBy(desc(missedPunchRequests.createdAt));
+}
+
+export type PendingMissedPunchReview = {
+  request: MissedPunchRequest;
+  review: MissedPunchReviewContext;
+};
+
+/** Pending missed-punch requests with on-file punch context for admin review UI. */
+export async function listPendingMissedPunchRequestsForReview(
+  timezone: string,
+): Promise<PendingMissedPunchReview[]> {
+  const requests = await listPendingMissedPunchRequests();
+  if (requests.length === 0) return [];
+
+  const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: timezone });
+  const dayKey = (d: Date) => dayFmt.format(d);
+
+  const alertIds = [
+    ...new Set(
+      requests.map((r) => r.alertId).filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const alerts =
+    alertIds.length > 0
+      ? await db
+          .select({
+            id: missedPunchAlerts.id,
+            issue: missedPunchAlerts.issue,
+          })
+          .from(missedPunchAlerts)
+          .where(inArray(missedPunchAlerts.id, alertIds))
+      : [];
+  const issueByAlert = new Map(alerts.map((a) => [a.id, a.issue]));
+
+  const groupKeys = new Map<
+    string,
+    {
+      employeeId: string;
+      periodId: string;
+      date: string;
+      items: MissedPunchRequest[];
+    }
+  >();
+  for (const r of requests) {
+    const key = `${r.employeeId}:${r.periodId}:${r.date}`;
+    const g = groupKeys.get(key) ?? {
+      employeeId: r.employeeId,
+      periodId: r.periodId,
+      date: r.date,
+      items: [],
+    };
+    g.items.push(r);
+    groupKeys.set(key, g);
+  }
+
+  const punchesByGroup = new Map<string, Awaited<ReturnType<typeof listPunches>>>();
+  for (const [key, g] of groupKeys) {
+    const dayStart = localMidnightUtc(g.date, timezone);
+    const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+    const dayPunches = await listPunches({
+      employeeId: g.employeeId,
+      periodId: g.periodId,
+      clockAfter: dayStart,
+      clockBefore: dayEnd,
+    });
+    punchesByGroup.set(key, dayPunches);
+  }
+
+  return requests.map((request) => {
+    const key = `${request.employeeId}:${request.periodId}:${request.date}`;
+    const issue = request.alertId
+      ? (issueByAlert.get(request.alertId) ?? null)
+      : null;
+    const review = buildMissedPunchReviewContext(
+      request,
+      issue,
+      punchesByGroup.get(key) ?? [],
+      dayKey,
+    );
+    return { request, review };
+  });
 }
 
 export async function listMissedPunchRequestsForEmployee(
