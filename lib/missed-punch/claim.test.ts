@@ -33,6 +33,40 @@ describe("parseMissedPunchClaim", () => {
     ).toEqual({ ok: false, error: "Enter at least one corrected punch time." });
   });
 
+  it("MISSING_OUT accepts clock-out only", () => {
+    const result = parseMissedPunchClaim({
+      issue: "MISSING_OUT",
+      claimedClockOut: "2026-06-02T17:00",
+      timezone: "America/New_York",
+    });
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.clockIn).toBeNull();
+      expect(result.clockOut).not.toBeNull();
+    }
+    expect(
+      parseMissedPunchClaim({
+        issue: "MISSING_OUT",
+        claimedClockIn: "2026-06-02T08:00",
+        claimedClockOut: "2026-06-02T17:00",
+        timezone: "America/New_York",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("MISSING_IN accepts clock-in only", () => {
+    const result = parseMissedPunchClaim({
+      issue: "MISSING_IN",
+      claimedClockIn: "2026-06-02T08:00",
+      timezone: "America/New_York",
+    });
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.clockIn).not.toBeNull();
+      expect(result.clockOut).toBeNull();
+    }
+  });
+
   it("rejects backwards ranges", () => {
     expect(
       parseMissedPunchClaim({

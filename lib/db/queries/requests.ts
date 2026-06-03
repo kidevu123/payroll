@@ -18,6 +18,7 @@ import {
   type TimeOffRequest,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import { isMissingClockInPunch } from "@/lib/punches/missing-punch";
 import {
   timeOffChangeApprovalPlan,
   type TimeOffChangeAction,
@@ -162,6 +163,44 @@ export async function approveMissedPunchRequest(
       : [];
 
     let punch;
+    if (
+      alert?.issue === "MISSING_IN" &&
+      before.claimedClockIn &&
+      !before.claimedClockOut
+    ) {
+      const dayPunches = await tx
+        .select()
+        .from(punches)
+        .where(
+          and(
+            eq(punches.employeeId, before.employeeId),
+            eq(punches.periodId, periodId),
+            isNull(punches.voidedAt),
+          ),
+        );
+      const sentinel = dayPunches.find(
+        (p) =>
+          dayFmt.format(p.clockIn) === before.date &&
+          isMissingClockInPunch(p),
+      );
+      if (sentinel) {
+        const [updated] = await tx
+          .update(punches)
+          .set({
+            clockIn: before.claimedClockIn,
+            editedById: actor.id,
+            editedAt: new Date(),
+            editReason: `Approved missing clock-in request ${before.id}`,
+            notes: sentinel.notes
+              ? `${sentinel.notes}\nApproved missing clock-in request ${before.id}`
+              : `Approved missing clock-in request ${before.id}`,
+          })
+          .where(eq(punches.id, sentinel.id))
+          .returning();
+        punch = updated;
+      }
+    }
+
     if (
       before.claimedClockOut &&
       (alert?.issue === "MISSING_OUT" || !before.claimedClockIn)

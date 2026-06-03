@@ -38,6 +38,7 @@ export async function submitMissedPunchAction(
     claimedClockIn: parsed.data.claimedClockIn,
     claimedClockOut: parsed.data.claimedClockOut,
     timezone: company.timezone,
+    issue: alert.issue,
   });
   if (!claim.ok) return { error: claim.error };
   await createMissedPunchRequest(

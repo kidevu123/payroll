@@ -280,6 +280,10 @@
       "back": "Back",
       "clockIn": "Clock in",
       "clockOut": "Clock out",
+      "onFile": "Already on file",
+      "onFileHint": "From the time clock — only enter the missing punch below.",
+      "enterClockIn": "When did you clock in?",
+      "enterClockOut": "When did you clock out?",
       "whatHappened": "What happened?",
       "submitting": "Submitting...",
       "submitFix": "Submit fix request"

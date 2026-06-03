@@ -280,6 +280,10 @@
       "back": "Atrás",
       "clockIn": "Entrada",
       "clockOut": "Salida",
+      "onFile": "Ya registrado",
+      "onFileHint": "Del reloj — solo ingrese el fichaje que falta abajo.",
+      "enterClockIn": "¿A qué hora entró?",
+      "enterClockOut": "¿A qué hora salió?",
       "whatHappened": "¿Qué pasó?",
       "submitting": "Enviando...",
       "submitFix": "Enviar solicitud de corrección"
