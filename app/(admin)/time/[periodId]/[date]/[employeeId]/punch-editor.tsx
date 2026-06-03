@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PunchRow } from "@/components/domain/punch-row";
 import {
+  isMissingClockInPunch,
+  isOpenShiftPunch,
+} from "@/lib/punches/missing-punch";
+import {
   createPunchAction,
   editPunchAction,
   voidPunchAction,
@@ -15,7 +19,6 @@ import {
 
 function toLocalInputValue(d: Date | null, timezone: string): string {
   if (!d) return "";
-  // Render with company TZ for the input — convert to wall clock then to YYYY-MM-DDTHH:mm.
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
@@ -27,6 +30,29 @@ function toLocalInputValue(d: Date | null, timezone: string): string {
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function formatWallClock(d: Date, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(d);
+}
+
+function defaultClockOutGuess(clockIn: Date, timezone: string): string {
+  const guess = new Date(clockIn.getTime() + 8 * 60 * 60 * 1000);
+  return toLocalInputValue(guess, timezone);
+}
+
+/** Punch that needs admin attention first (open shift or missing clock-in). */
+function findFixTarget(punches: Punch[]): Punch | null {
+  const active = punches.filter((p) => !p.voidedAt);
+  return (
+    active.find((p) => isOpenShiftPunch(p)) ??
+    active.find((p) => isMissingClockInPunch(p)) ??
+    null
+  );
 }
 
 export function PunchEditor({
@@ -50,41 +76,91 @@ export function PunchEditor({
   periodLocked: boolean;
   returnTo: string;
 }) {
+  const fixTarget = findFixTarget(punches);
+  const otherPunches = punches.filter((p) => p.id !== fixTarget?.id);
+  const [showAddManual, setShowAddManual] = React.useState(
+    punches.length === 0,
+  );
+
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Existing punches</h2>
-        {punches.length === 0 ? (
-          <p className="text-sm text-text-muted">No punches recorded for this day.</p>
-        ) : (
-          punches.map((p) => (
-            <EditablePunch
-              key={p.id}
-              punch={p}
-              timezone={timezone}
-              periodLocked={periodLocked}
-            />
-          ))
-        )}
-      </div>
+      {fixTarget && !periodLocked ? (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">
+            {isOpenShiftPunch(fixTarget)
+              ? "Close open shift"
+              : "Add missing clock-in"}
+          </h2>
+          <p className="text-sm text-text-muted">
+            {isOpenShiftPunch(fixTarget)
+              ? "Clock-in is already on file from the time clock. Enter only the missing clock-out — do not add a new punch below."
+              : "Clock-out is on file. Enter only the missing clock-in."}
+          </p>
+          <FixPunchForm punch={fixTarget} timezone={timezone} />
+        </div>
+      ) : null}
+
+      {otherPunches.length > 0 || (punches.length > 0 && !fixTarget) ? (
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold">
+            {fixTarget ? "Other punches this day" : "Existing punches"}
+          </h2>
+          {otherPunches.length === 0 && !fixTarget ? (
+            <p className="text-sm text-text-muted">
+              No punches recorded for this day.
+            </p>
+          ) : (
+            (fixTarget ? otherPunches : punches).map((p) => (
+              <EditablePunch
+                key={p.id}
+                punch={p}
+                timezone={timezone}
+                periodLocked={periodLocked}
+              />
+            ))
+          )}
+        </div>
+      ) : punches.length === 0 && !fixTarget ? (
+        <p className="text-sm text-text-muted">No punches recorded for this day.</p>
+      ) : null}
 
       {!periodLocked && (
-        <div className="space-y-2 rounded-card border border-dashed border-border bg-surface p-5">
-          <h2 className="text-lg font-semibold">Add manual punch</h2>
-          <p className="text-xs text-text-muted">
-            Times are entered as Eastern Time (America/New_York). Source will
-            be MANUAL_ADMIN. Editing later preserves the original timestamps
-            and requires a reason.
-          </p>
-          <CreateForm
-            periodId={periodId}
-            employeeId={employeeId}
-            date={date}
-            timezone={timezone}
-            suggestedClockIn={suggestedClockIn}
-            suggestedClockOut={suggestedClockOut}
-            returnTo={returnTo}
-          />
+        <div className="rounded-card border border-dashed border-border bg-surface p-4">
+          {fixTarget && !showAddManual ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowAddManual(true)}
+            >
+              Add a separate punch (second shift)
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">
+                {fixTarget ? "Add a separate punch" : "Add manual punch"}
+              </h2>
+              {fixTarget ? (
+                <p className="text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-input px-2 py-1.5">
+                  Use this only for a second in/out pair the same day — not to
+                  close the open shift above.
+                </p>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  Times are in {timezone}. Source will be MANUAL_ADMIN.
+                </p>
+              )}
+              <CreateForm
+                periodId={periodId}
+                employeeId={employeeId}
+                date={date}
+                timezone={timezone}
+                suggestedClockIn={suggestedClockIn}
+                suggestedClockOut={suggestedClockOut}
+                returnTo={returnTo}
+              />
+            </div>
+          )}
         </div>
       )}
       {periodLocked && (
@@ -93,6 +169,102 @@ export function PunchEditor({
         </p>
       )}
     </div>
+  );
+}
+
+/** Focused fix for open shift (clock-out only) or missing clock-in. */
+function FixPunchForm({
+  punch,
+  timezone,
+}: {
+  punch: Punch;
+  timezone: string;
+}) {
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState(false);
+  const closeOut = isOpenShiftPunch(punch);
+  const missingIn = isMissingClockInPunch(punch);
+
+  return (
+    <form
+      action={async (form) => {
+        setPending(true);
+        setError(null);
+        const result = await editPunchAction(punch.id, form);
+        setPending(false);
+        if (result?.error) setError(result.error);
+      }}
+      className="space-y-3 rounded-card border-2 border-amber-300/80 bg-amber-50/50 p-4"
+    >
+      {closeOut ? (
+        <>
+          <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
+            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+              On file (time clock)
+            </span>
+            <p className="mt-1 font-semibold tabular-nums">
+              Clock in: {formatWallClock(punch.clockIn, timezone)}
+            </p>
+          </div>
+          <input
+            type="hidden"
+            name="clockIn"
+            value={toLocalInputValue(punch.clockIn, timezone)}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="fix-clockOut">Clock out ({timezone})</Label>
+            <Input
+              id="fix-clockOut"
+              name="clockOut"
+              type="datetime-local"
+              required
+              defaultValue={defaultClockOutGuess(punch.clockIn, timezone)}
+            />
+          </div>
+        </>
+      ) : missingIn ? (
+        <>
+          <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
+            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+              On file (time clock)
+            </span>
+            <p className="mt-1 font-semibold tabular-nums">
+              Clock out:{" "}
+              {punch.clockOut
+                ? formatWallClock(punch.clockOut, timezone)
+                : "—"}
+            </p>
+          </div>
+          <input
+            type="hidden"
+            name="clockOut"
+            value={toLocalInputValue(punch.clockOut, timezone)}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="fix-clockIn">Clock in ({timezone})</Label>
+            <Input
+              id="fix-clockIn"
+              name="clockIn"
+              type="datetime-local"
+              required
+              defaultValue={toLocalInputValue(punch.clockIn, timezone)}
+            />
+          </div>
+        </>
+      ) : null}
+      <div className="space-y-1">
+        <Label>Reason (required)</Label>
+        <Input name="reason" required minLength={1} maxLength={500} />
+      </div>
+      {error && <p className="text-red-700 text-sm">{error}</p>}
+      <Button type="submit" disabled={pending}>
+        {pending
+          ? "Saving…"
+          : closeOut
+            ? "Close shift"
+            : "Save clock-in"}
+      </Button>
+    </form>
   );
 }
 
@@ -132,12 +304,7 @@ function CreateForm({
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="clockIn">Clock in (ET)</Label>
-          {/* `suggestedClockIn` is already a wall-clock string in ET
-              ("YYYY-MM-DDTHH:MM"), so pass it through directly — no
-              tz double-conversion. Previously we passed an ISO with
-              Z, which `new Date()` re-interpreted as UTC and the
-              wall-clock helper then shifted by another offset. */}
+          <Label htmlFor="clockIn">Clock in ({timezone})</Label>
           <Input
             id="clockIn"
             name="clockIn"
@@ -147,7 +314,7 @@ function CreateForm({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="clockOut">Clock out (ET, optional)</Label>
+          <Label htmlFor="clockOut">Clock out ({timezone}, optional)</Label>
           <Input
             id="clockOut"
             name="clockOut"
@@ -257,11 +424,11 @@ function EditablePunch({
         if (result?.error) setError(result.error);
         else setEditing(false);
       }}
-      className="space-y-2 rounded-card border border-amber-200 bg-amber-50/40 p-3 text-sm"
+      className="space-y-2 rounded-card border border-border bg-surface-2 p-3 text-sm"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Clock in (ET)</Label>
+          <Label>Clock in ({timezone})</Label>
           <Input
             name="clockIn"
             type="datetime-local"
@@ -270,7 +437,7 @@ function EditablePunch({
           />
         </div>
         <div className="space-y-1">
-          <Label>Clock out (ET)</Label>
+          <Label>Clock out ({timezone})</Label>
           <Input
             name="clockOut"
             type="datetime-local"
