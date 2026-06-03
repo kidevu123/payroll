@@ -180,6 +180,7 @@ export const notificationKind = z.enum([
   "period.locked",
   "payslip.disputed",
   "admin.announcement",
+  "hall_monitor.weekly_ready",
 ]);
 export type NotificationKind = z.infer<typeof notificationKind>;
 
@@ -204,6 +205,7 @@ export const notificationsSchema = z.object({
     "period.locked": { in_app: true, email: false, push: false },
     "payslip.disputed": { in_app: true, email: false, push: true },
     "admin.announcement": { in_app: true, email: false, push: true },
+    "hall_monitor.weekly_ready": { in_app: true, email: false, push: true },
   }),
 });
 export type NotificationsSettings = z.infer<typeof notificationsSchema>;

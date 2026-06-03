@@ -19,6 +19,7 @@ import {
   MessageSquareWarning,
   Workflow,
   BarChart3,
+  ClipboardCheck,
   ScrollText,
   Briefcase,
   Database,
@@ -66,6 +67,7 @@ const STATIC_NAV_SEEDS: NavSeed[] = [
   { id: "nav-salaried", href: "/salaried", labelKey: "salaried" },
   { id: "nav-calendar", href: "/calendar", labelKey: "calendar" },
   { id: "nav-requests", href: "/requests", labelKey: "requests" },
+  { id: "nav-hall-monitor", href: "/hall-monitor", labelKey: "hallMonitor" },
   { id: "nav-reports", href: "/reports", labelKey: "reports" },
   // Tools tucked under Settings → Admin tools — surface them in the
   // palette too so Cmd+K is the fast keyboard path.
@@ -86,6 +88,7 @@ const NAV_ICON_BY_HREF: Record<string, LucideIcon> = {
   "/calendar": CalendarDays,
   "/requests": MessageSquareWarning,
   "/ngteco": Workflow,
+  "/hall-monitor": ClipboardCheck,
   "/reports": BarChart3,
   "/audit": ScrollText,
   "/db": Database,

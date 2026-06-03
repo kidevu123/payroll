@@ -45,6 +45,7 @@
     "requests": "Requests",
     "ngteco": "NGTeco",
     "reports": "Reports",
+    "hallMonitor": "Hall monitor",
     "cashDrawer": "Cash drawer",
     "audit": "Audit",
     "database": "Database",

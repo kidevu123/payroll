@@ -106,6 +106,13 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
         url: "/ngteco",
         tag: "ingest_failed",
       };
+    case "hall_monitor.weekly_ready":
+      return {
+        title: "Weekly hall monitor",
+        body: "Review the outside verification report before payroll.",
+        url: "/hall-monitor",
+        tag: "hall_monitor",
+      };
     case "missed_punch.request_submitted":
     case "time_off.request_submitted":
       return {

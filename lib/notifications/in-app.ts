@@ -25,7 +25,8 @@ export type NotificationKind =
   // alongside so the push surface can render the exact message
   // (no canned fallback for announcements — the words ARE the
   // message).
-  | "admin.announcement";
+  | "admin.announcement"
+  | "hall_monitor.weekly_ready";
 
 export type DispatchEntry = {
   recipientId: string;

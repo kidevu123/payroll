@@ -20,6 +20,7 @@ const TITLE_KEY_MAP: Record<string, string> = {
   "/requests": "requests",
   "/ngteco": "ngteco",
   "/reports": "reports",
+  "/hall-monitor": "hallMonitor",
   "/cash-drawer": "cashDrawer",
   "/notifications": "notifications",
   "/audit": "audit",

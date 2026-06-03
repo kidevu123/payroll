@@ -236,6 +236,20 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     },
   );
 
+  // ── hall-monitor.weekly — outside verification (Monday 6am ET) ─────────
+  await boss.createQueue("hall-monitor.weekly");
+  await boss.work("hall-monitor.weekly", async () => {
+    const { handleHallMonitorWeekly } = await import(
+      "./handlers/hall-monitor-weekly"
+    );
+    await handleHallMonitorWeekly();
+  });
+  if (cronEnabled) {
+    await boss.schedule("hall-monitor.weekly", "0 6 * * 1", undefined, tzOpts);
+  } else {
+    await boss.unschedule("hall-monitor.weekly").catch(() => undefined);
+  }
+
   if (!cronEnabled) {
     logger.info("registerJobs: cronEnabled=false — all schedules skipped");
   }
