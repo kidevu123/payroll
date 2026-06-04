@@ -30,12 +30,18 @@ const REPORT_DIR = join(STORAGE_ROOT, "hall-monitor");
 function finding(
   partial: Omit<HallMonitorFinding, "id"> & { id?: string },
 ): HallMonitorFinding {
+  const { detail, bullets, href, hrefLabel, title, meaning, action, ...rest } =
+    partial;
   return {
     id: partial.id ?? `${partial.category}:${partial.message.slice(0, 40)}`,
-    severity: partial.severity,
-    category: partial.category,
-    message: partial.message,
-    ...(partial.detail ? { detail: partial.detail } : {}),
+    ...rest,
+    ...(title ? { title } : {}),
+    ...(meaning ? { meaning } : {}),
+    ...(action ? { action } : {}),
+    ...(bullets && bullets.length > 0 ? { bullets } : {}),
+    ...(href ? { href } : {}),
+    ...(hrefLabel ? { hrefLabel } : {}),
+    ...(detail ? { detail } : {}),
   };
 }
 
@@ -103,17 +109,32 @@ export async function runWeeklyHallMonitorAudit(
         severity: "fail",
         category: "ngteco_sync",
         message: "No successful NGTeco poll on record.",
+        title: "Time clock has never synced successfully",
+        meaning:
+          "Milo pulls punches from NGTeco automatically. Without a successful import, nobody's hours update on their own.",
+        action:
+          "Open NGTeco, confirm credentials, and run Poll now until it succeeds.",
+        href: "/ngteco",
+        hrefLabel: "Open NGTeco",
       }),
     );
   } else {
     const ageMs = now.getTime() - lastOk.finishedAt!.getTime();
     const ageHours = ageMs / (60 * 60 * 1000);
     if (ageHours > 2) {
+      const rounded = Math.round(ageHours);
       findings.push(
         finding({
           severity: ageHours > 6 ? "fail" : "warn",
           category: "ngteco_sync",
-          message: `Last successful NGTeco poll was ${Math.round(ageHours)}h ago.`,
+          message: `Last successful NGTeco poll was ${rounded}h ago.`,
+          title: `Time clock sync is ${rounded} hours behind`,
+          meaning:
+            "New clock-ins and clock-outs from the fingerprint machines may not be in Milo yet. Payroll could be wrong until sync catches up.",
+          action:
+            "Run Poll now from the dashboard. If it fails, fix NGTeco login first.",
+          href: "/dashboard",
+          hrefLabel: "Go to dashboard",
           detail: {
             finishedAt: lastOk.finishedAt?.toISOString(),
             eventsScraped: lastOk.eventsScraped,
@@ -126,6 +147,9 @@ export async function runWeeklyHallMonitorAudit(
           severity: "ok",
           category: "ngteco_sync",
           message: "NGTeco poll is current (within 2h).",
+          title: "Time clock sync is up to date",
+          meaning: "Punches are importing from NGTeco on schedule.",
+          action: "No action needed.",
         }),
       );
     }
@@ -137,6 +161,13 @@ export async function runWeeklyHallMonitorAudit(
         severity: failedPolls.length >= 3 ? "fail" : "warn",
         category: "ngteco_sync",
         message: `${failedPolls.length} failed NGTeco poll(s) during the week.`,
+        title: `${failedPolls.length} failed time-clock import(s) this week`,
+        meaning:
+          "The automatic login or scrape to NGTeco broke. Punches stop flowing into Milo until this is fixed.",
+        action:
+          "Try Poll now. If errors repeat, refresh NGTeco login in Settings.",
+        href: "/ngteco",
+        hrefLabel: "Open NGTeco",
         detail: {
           errors: failedPolls.slice(0, 5).map((p) => p.errorMessage),
         },
@@ -147,14 +178,21 @@ export async function runWeeklyHallMonitorAudit(
   // ── Roster / coverage setup ──────────────────────────────────────────────
   const missingNgtecoRef = hourlyActive.filter((e) => !e.ngtecoEmployeeRef);
   if (missingNgtecoRef.length > 0) {
+    const names = missingNgtecoRef.map((e) => e.displayName);
     findings.push(
       finding({
         severity: "warn",
         category: "roster",
         message: `${missingNgtecoRef.length} active hourly employee(s) have no NGTeco ref — poll will skip them.`,
-        detail: {
-          names: missingNgtecoRef.map((e) => e.displayName),
-        },
+        title: `${names.length} employee(s) not linked to the time clock`,
+        meaning:
+          "These people are active hourly in Milo but have no NGTeco ID. Automatic imports skip them.",
+        action:
+          "Open each employee and set their NGTeco employee ref from the time clock roster.",
+        bullets: names,
+        href: "/employees",
+        hrefLabel: "Open employees",
+        detail: { names },
       }),
     );
   }
@@ -164,11 +202,30 @@ export async function runWeeklyHallMonitorAudit(
     (p) => !p.voidedAt && isOpenShiftPunch(p),
   );
   if (openShifts.length > 0) {
+    const empName = new Map(employees.map((e) => [e.id, e.displayName]));
     findings.push(
       finding({
         severity: "warn",
         category: "punch_integrity",
         message: `${openShifts.length} open shift(s) still missing clock-out.`,
+        title: `${openShifts.length} shift(s) missing a clock-out`,
+        meaning:
+          "Someone punched in but has no clock-out on file. That day's hours are incomplete.",
+        action:
+          "Open the Time grid, pick the day, and close each open shift with the real clock-out.",
+        bullets: openShifts.slice(0, 8).map((p) => {
+          const name = empName.get(p.employeeId) ?? "Employee";
+          const when = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          }).format(p.clockIn);
+          return `${name} — clocked in ${when}, no clock-out yet`;
+        }),
+        href: "/time",
+        hrefLabel: "Open time grid",
         detail: {
           samples: openShifts.slice(0, 8).map((p) => ({
             employeeId: p.employeeId,
@@ -187,7 +244,20 @@ export async function runWeeklyHallMonitorAudit(
           severity: "warn",
           category: "punch_integrity",
           message: `${clusters.length} duplicate punch cluster(s) in period ${period.startDate}–${period.endDate}.`,
-          detail: { periodId: period.id, clusterCount: clusters.length },
+          title: `${clusters.length} possible duplicate punch(es)`,
+          meaning:
+            "The same shift may exist twice. That can double hours if you do not merge them.",
+          action:
+            "On the payroll period, use Find duplicates and keep the correct shift.",
+          bullets: [`Pay period ${period.startDate} – ${period.endDate}`],
+          href: `/payroll/${period.id}`,
+          hrefLabel: "Open this period",
+          detail: {
+            periodId: period.id,
+            periodStart: period.startDate,
+            periodEnd: period.endDate,
+            clusterCount: clusters.length,
+          },
         }),
       );
     }
@@ -253,7 +323,19 @@ export async function runWeeklyHallMonitorAudit(
           severity: "warn",
           category: "coverage",
           message: `${unresolved.length} unresolved missed-punch alert(s) on open period.`,
-          detail: { periodId: period.id },
+          title: `${unresolved.length} missed-punch problem(s) still open`,
+          meaning:
+            "Clock issues are flagged but not closed. Pay can be wrong if you run payroll before fixing them.",
+          action:
+            "Open Calendar → Pending, or the Time grid. Close shifts or approve employee fixes.",
+          bullets: [`Pay period ${period.startDate} – ${period.endDate}`],
+          href: "/calendar",
+          hrefLabel: "Open calendar",
+          detail: {
+            periodId: period.id,
+            periodStart: period.startDate,
+            periodEnd: period.endDate,
+          },
         }),
       );
     }
@@ -267,6 +349,13 @@ export async function runWeeklyHallMonitorAudit(
         severity: "warn",
         category: "pending_work",
         message: `${pendingMissed.length} missed-punch request(s) awaiting admin approval.`,
+        title: `${pendingMissed.length} employee fix(es) waiting for your OK`,
+        meaning:
+          "Someone submitted a missed punch correction. Payroll does not use it until you approve.",
+        action:
+          "Open Calendar → Pending. Compare on-file time vs what they proposed, then Approve or Reject.",
+        href: "/calendar",
+        hrefLabel: "Open pending",
       }),
     );
   }
@@ -281,6 +370,11 @@ export async function runWeeklyHallMonitorAudit(
         severity: "warn",
         category: "pending_work",
         message: `${pendingTimeOff.length} time-off request(s) pending.`,
+        title: `${pendingTimeOff.length} time-off request(s) waiting`,
+        meaning: "Employees asked for time off that you have not approved yet.",
+        action: "Open Calendar and approve or reject each request.",
+        href: "/calendar",
+        hrefLabel: "Open calendar",
       }),
     );
   }
@@ -436,8 +530,11 @@ export async function runWeeklyHallMonitorJob(): Promise<HallMonitorWeeklyReport
           path,
         },
         push: {
-          title: "Weekly hall monitor",
-          body: `${report.summary.fail} fail · ${report.summary.warn} warn — review before payroll`,
+          title: "Weekly payroll checklist",
+          body:
+            report.summary.fail > 0
+              ? `${report.summary.fail} item(s) need fixing before payroll — open Hall monitor`
+              : `${report.summary.warn} item(s) to review this week — open Hall monitor`,
           url: "/hall-monitor",
           tag: `hall_monitor_${report.weekEnd}`,
         },

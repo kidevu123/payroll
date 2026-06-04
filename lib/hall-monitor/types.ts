@@ -12,8 +12,18 @@ export type HallMonitorFinding = {
     | "ngteco_sync"
     | "pending_work"
     | "roster";
+  /** Short headline (machine + legacy). */
   message: string;
-  /** Optional structured detail for admin UI / JSON export. */
+  /** Plain-language card title (new reports). */
+  title?: string;
+  /** What this means for payroll. */
+  meaning?: string;
+  /** What the owner should do. */
+  action?: string;
+  bullets?: string[];
+  href?: string;
+  hrefLabel?: string;
+  /** Optional structured detail for support / JSON export. */
   detail?: Record<string, unknown>;
 };
 
