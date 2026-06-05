@@ -255,32 +255,31 @@ export default async function DashboardPage() {
         lastPollAt={lastPoll?.finishedAt ?? null}
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <PayrollRunCard
-          state={cardState}
-          {...(period
-            ? { period: { startDate: period.startDate, endDate: period.endDate } }
-            : {})}
-          {...(run?.id ? { runId: run.id } : {})}
-          {...(stats ? { stats } : {})}
-          {...(run?.employeeFixDeadline
-            ? {
-                fixDeadline: run.employeeFixDeadline
-                  .toISOString()
-                  .slice(0, 16)
-                  .replace("T", " "),
-              }
-            : {})}
-        />
-        <AttendancePanel
-          punched={punchedList}
-          approvedOut={approvedOutList}
-          noPunch={noPunchList}
-          todayLabel={shortDateLabel(today)}
-        />
-      </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-4">
+          <PayrollRunCard
+            state={cardState}
+            {...(period
+              ? {
+                  period: {
+                    startDate: period.startDate,
+                    endDate: period.endDate,
+                  },
+                }
+              : {})}
+            {...(run?.id ? { runId: run.id } : {})}
+            {...(stats ? { stats } : {})}
+            {...(run?.employeeFixDeadline
+              ? {
+                  fixDeadline: run.employeeFixDeadline
+                    .toISOString()
+                    .slice(0, 16)
+                    .replace("T", " "),
+                }
+              : {})}
+          />
 
-      <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="px-4 py-3">
             <CardTitle>Pending requests</CardTitle>
@@ -401,6 +400,17 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+          </div>
+        </div>
+
+        <div className="w-full shrink-0 xl:w-80 xl:sticky xl:top-[calc(5.75rem+env(safe-area-inset-top))] xl:max-h-[calc(100dvh-6.5rem-env(safe-area-inset-top))] xl:overflow-y-auto">
+          <AttendancePanel
+            punched={punchedList}
+            approvedOut={approvedOutList}
+            noPunch={noPunchList}
+            todayLabel={shortDateLabel(today)}
+          />
+        </div>
       </div>
     </div>
   );

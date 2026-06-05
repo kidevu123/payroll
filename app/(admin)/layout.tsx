@@ -129,7 +129,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}
         allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
       />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
         <Topbar
           email={session.user.email}
           role={session.user.role}

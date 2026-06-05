@@ -70,7 +70,7 @@ export function AttendancePanel({
   const hasAny = punched.length + approvedOut.length + noPunch.length > 0;
 
   return (
-    <div className="rounded-card border border-border bg-surface p-4 space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto">
+    <div className="rounded-card border border-border bg-surface p-4 space-y-4">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
         Today · {todayLabel}
       </div>

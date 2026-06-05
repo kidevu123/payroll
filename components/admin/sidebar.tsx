@@ -109,7 +109,9 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "hidden lg:flex w-64 shrink-0 flex-col sticky top-0 h-dvh",
+        // Fixed to the viewport so Settings + system status never scroll away
+        // when the main column is taller than the screen.
+        "hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 flex-col h-dvh",
         "bg-surface backdrop-blur-sm",
         // Layered right-edge treatment: subtle shadow + hairline border
         "border-r border-border/50",
@@ -151,7 +153,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="relative px-3 pb-4 pt-3 shrink-0 space-y-1">
+      <div className="relative mt-auto px-3 pb-4 pt-3 shrink-0 space-y-1">
         {/* Top hairline separator with brand-tinted center peak */}
         <span
           aria-hidden
