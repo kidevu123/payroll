@@ -10,7 +10,7 @@ import {
 } from "@/lib/db/queries/employees";
 import { listActiveShifts } from "@/lib/db/queries/shifts";
 import { EmployeesSetupBanner } from "@/components/domain/employees-setup-banner";
-import { SyncNgtecoRosterButton } from "@/components/domain/sync-ngteco-roster-button";
+import { EmployeesPageHeader } from "@/components/domain/employees-header-actions";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "TERMINATED";
 
@@ -65,29 +65,11 @@ export default async function EmployeesPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-title font-semibold tracking-tight">Employees</h1>
-          <p className="text-sm text-text-muted">
-            {employees.length} of {livingCount}{" "}
-            {livingCount === 1 ? "person" : "people"}
-            {allTerminated.length > 0 && (
-              <span className="text-text-subtle">
-                {" "}
-                · {allTerminated.length} terminated
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex items-end gap-2">
-          <SyncNgtecoRosterButton />
-          <Button asChild>
-            <Link href="/employees/new">
-              <Plus className="h-4 w-4" /> Add employee
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <EmployeesPageHeader
+        shownCount={employees.length}
+        livingCount={livingCount}
+        terminatedCount={allTerminated.length}
+      />
 
       <EmployeesSetupBanner employees={needingSetup} />
 
