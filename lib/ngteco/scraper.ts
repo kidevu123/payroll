@@ -2176,6 +2176,40 @@ export async function scrapeEmployeeRoster(
               }
               return "";
             };
+            const pickName = (row: Element, sels: string[]) => {
+              for (const s of sels) {
+                const el = row.querySelector(s);
+                if (!el) continue;
+                const avatar = el.querySelector(
+                  ".MuiAvatar-root, [class*='Avatar']",
+                );
+                let text = el.textContent?.trim() ?? "";
+                if (avatar) {
+                  const mark = avatar.textContent?.trim() ?? "";
+                  if (
+                    mark.length === 1 &&
+                    text.toLowerCase().startsWith((mark + mark).toLowerCase())
+                  ) {
+                    text = text.slice(1).trim();
+                  } else if (
+                    mark.length === 1 &&
+                    text.toLowerCase().startsWith(mark.toLowerCase())
+                  ) {
+                    const rest = text.slice(mark.length).trim();
+                    if (rest) text = rest;
+                  }
+                }
+                if (
+                  text.length >= 2 &&
+                  text[0]!.toLowerCase() === text[1]!.toLowerCase() &&
+                  /[A-Za-z]/.test(text[0]!)
+                ) {
+                  text = text.slice(1).trim();
+                }
+                if (text && !/^[—–-]$/.test(text)) return text;
+              }
+              return "";
+            };
             const result: RowRaw[] = [];
             for (const row of Array.from(
               document.querySelectorAll(args.rowSel),
@@ -2184,7 +2218,7 @@ export async function scrapeEmployeeRoster(
               if (!personId) continue;
               result.push({
                 personId,
-                personName: pick(row, args.nameSels),
+                personName: pickName(row, args.nameSels),
                 email: pick(row, args.emailSels),
                 department: pick(row, args.deptSels),
               });

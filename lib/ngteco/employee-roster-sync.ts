@@ -21,8 +21,10 @@ import {
   ScrapeFailure,
   type RawEmployeeRosterRow,
 } from "./scraper";
+import { sanitizeNgtecoPersonName } from "./person-name";
 
 export const NGTECO_IMPORT_NOTE_PREFIX = "NGTECO_IMPORT:";
+export const NGTECO_SETUP_IGNORED_TAG = "setup_ignored";
 
 const STORAGE_ROOT = process.env.NGTECO_STORAGE_DIR ?? "/data/ngteco";
 const SYNC_STATE_PATH = `${STORAGE_ROOT}/last-employee-roster-sync.json`;
@@ -168,7 +170,8 @@ export async function importNewEmployeesFromRoster(
       continue;
     }
 
-    const displayName = row.personName.trim() || `Person ${ref}`;
+    const displayName =
+      sanitizeNgtecoPersonName(row.personName) || `Person ${ref}`;
     const { email, noteExtra } = await resolveEmail(ref, row.email);
     const noteParts = [
       NGTECO_IMPORT_NOTE_PREFIX,

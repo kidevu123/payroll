@@ -10,6 +10,7 @@ import { payslips } from "@/lib/db/schema";
 import {
   archiveEmployee,
   createEmployee,
+  ignoreNgtecoSetupEmployee,
   updateEmployee,
 } from "@/lib/db/queries/employees";
 import { addRate } from "@/lib/db/queries/rate-history";
@@ -287,6 +288,26 @@ export async function recomputeAllPayslipsForEmployeeAction(
   revalidatePath("/payroll");
   revalidatePath("/reports");
   return { ok: true, recomputed, skipped };
+}
+
+export async function ignoreNgtecoSetupEmployeeAction(
+  employeeId: string,
+): Promise<{ error: string } | { ok: true }> {
+  const session = await requireAdmin();
+  const parsed = idSchema.safeParse(employeeId);
+  if (!parsed.success) return { error: "Invalid employee." };
+  try {
+    await ignoreNgtecoSetupEmployee(parsed.data, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/employees");
+    return { ok: true };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not dismiss setup.",
+    };
+  }
 }
 
 export async function syncNgtecoEmployeeRosterAction(): Promise<

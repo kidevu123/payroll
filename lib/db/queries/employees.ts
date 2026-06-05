@@ -14,6 +14,11 @@ import {
   type NewEmployee,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import {
+  looksLikeDoubledAvatarName,
+  sanitizeNgtecoPersonName,
+} from "@/lib/ngteco/person-name";
+import { NGTECO_SETUP_IGNORED_TAG } from "@/lib/ngteco/employee-roster-sync";
 
 export type Actor = {
   id: string;
@@ -94,9 +99,70 @@ export async function listEmployeesNeedingNgtecoSetup(): Promise<Employee[]> {
         sql`${employees.ngtecoEmployeeRef} IS NOT NULL`,
         sql`(${employees.payScheduleId} IS NULL OR ${employees.hourlyRateCents} IS NULL)`,
         sql`${employees.notes} LIKE 'NGTECO_IMPORT:%'`,
+        sql`${employees.notes} NOT LIKE ${`%${NGTECO_SETUP_IGNORED_TAG}%`}`,
       ),
     );
-  return rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  const repaired: Employee[] = [];
+  for (const row of rows) {
+    if (!looksLikeDoubledAvatarName(row.displayName)) {
+      repaired.push(row);
+      continue;
+    }
+    const fixed = sanitizeNgtecoPersonName(row.displayName);
+    if (fixed === row.displayName) {
+      repaired.push(row);
+      continue;
+    }
+    const [updated] = await db
+      .update(employees)
+      .set({
+        displayName: fixed,
+        legalName: fixed,
+        updatedAt: new Date(),
+      })
+      .where(eq(employees.id, row.id))
+      .returning();
+    repaired.push(updated ?? { ...row, displayName: fixed, legalName: fixed });
+  }
+
+  return repaired.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+export async function ignoreNgtecoSetupEmployee(
+  employeeId: string,
+  actor: Actor,
+): Promise<Employee> {
+  const emp = await getEmployee(employeeId);
+  if (!emp) throw new Error("Employee not found.");
+  if (!emp.notes?.includes("NGTECO_IMPORT:")) {
+    throw new Error("Only NGTeco auto-imports can be dismissed from setup.");
+  }
+  const notes = emp.notes.includes(NGTECO_SETUP_IGNORED_TAG)
+    ? emp.notes
+    : `${emp.notes} ${NGTECO_SETUP_IGNORED_TAG}`.trim();
+
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(employees)
+      .set({ notes, updatedAt: new Date() })
+      .where(eq(employees.id, employeeId))
+      .returning();
+    if (!row) throw new Error("ignoreNgtecoSetupEmployee: update failed");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "employee.update",
+        targetType: "Employee",
+        targetId: employeeId,
+        before: emp,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
 }
 
 export type CreateEmployeeInput = Omit<
