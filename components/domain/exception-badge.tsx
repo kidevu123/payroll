@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 type Issue =
   | "MISSING_IN"
   | "MISSING_OUT"
+  | "UNPAIRED_PUNCH"
   | "NO_PUNCH"
   | "SUSPICIOUS_DURATION"
   | "INVERTED_TIMES";
@@ -28,6 +29,11 @@ const META: Record<Issue, { key: string; tone: string; Icon: React.ComponentType
     key: "missingOut",
     tone: "bg-warn-50 text-warn-700 border-warn-200",
     Icon: Clock3,
+  },
+  UNPAIRED_PUNCH: {
+    key: "unpairedPunch",
+    tone: "bg-warn-50 text-warn-700 border-warn-200",
+    Icon: AlertCircle,
   },
   SUSPICIOUS_DURATION: {
     key: "suspicious",

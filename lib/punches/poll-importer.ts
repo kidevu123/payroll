@@ -30,6 +30,8 @@ export type PollImportSummary = {
   openShifts: number;
   /** Out-only NGTeco rows (missing clock-in sentinel). */
   missingClockIn: number;
+  /** Single punch where in vs out is unknown. */
+  unpairedPunches: number;
   /** Calendar days (company tz) that had punch events in this import. */
   daysTouched: string[];
 };
@@ -56,6 +58,7 @@ export async function importPunchPoll(
     pairsUpdated: 0,
     openShifts: 0,
     missingClockIn: 0,
+    unpairedPunches: 0,
     daysTouched: [],
   };
   if (events.length === 0) return summary;
@@ -123,8 +126,14 @@ export async function importPunchPoll(
     if (!periodId) continue;
     const pairedEvents = pairPunchEvents(g.events, options.timezone);
     for (const paired of pairedEvents) {
-      const inEv = paired.inEv ?? paired.outEv;
-      const outEv = paired.outEv;
+      const inEv =
+        paired.kind === "ambiguous"
+          ? paired.ev
+          : paired.kind === "outOnly"
+            ? paired.outEv
+            : paired.inEv;
+      const outEv =
+        paired.kind === "complete" ? paired.outEv : null;
       const clockIn = new Date(inEv.punchAt);
       const clockOut =
         paired.kind === "outOnly"
@@ -134,15 +143,19 @@ export async function importPunchPoll(
             : null;
       if (paired.kind === "open") summary.openShifts++;
       if (paired.kind === "outOnly") summary.missingClockIn++;
+      if (paired.kind === "ambiguous") summary.unpairedPunches++;
       const hashKey =
         paired.kind === "outOnly"
           ? `${g.empId}|outOnly|${inEv.punchAt}`
-          : `${g.empId}|${inEv.punchAt}`;
+          : paired.kind === "ambiguous"
+            ? `${g.empId}|ambiguous|${inEv.punchAt}`
+            : `${g.empId}|${inEv.punchAt}`;
       const hash = createHash("sha256")
         .update(hashKey)
         .digest("hex")
         .slice(0, 32);
       const noteParts = [
+        paired.kind === "ambiguous" ? "ambiguous:single" : null,
         paired.kind === "outOnly"
           ? null
           : inEv.verifyType
@@ -182,7 +195,11 @@ export async function importPunchPoll(
       // new IN event. If found, treat them as the same shift and
       // update its clockOut. We also re-stamp the hash so the next
       // poll converges on the canonical key.
-      if (existing.length === 0 && paired.kind !== "outOnly") {
+      if (
+        existing.length === 0 &&
+        paired.kind !== "outOnly" &&
+        paired.kind !== "ambiguous"
+      ) {
         const dayStart = new Date(`${g.day}T00:00:00Z`);
         const dayEnd = new Date(dayStart.getTime() + 86_400_000);
         const candidates = await db
@@ -214,6 +231,55 @@ export async function importPunchPoll(
             .update(punches)
             .set({ ngtecoRecordHash: hash })
             .where(eq(punches.id, matched.id));
+        }
+      }
+
+      // Convert legacy afternoon "out-only" guesses into ambiguous singles.
+      if (existing.length === 0 && paired.kind === "ambiguous") {
+        const dayStart = new Date(`${g.day}T00:00:00Z`);
+        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const dayRows = await db
+          .select({
+            id: punches.id,
+            clockIn: punches.clockIn,
+            clockOut: punches.clockOut,
+          })
+          .from(punches)
+          .where(
+            and(
+              eq(punches.employeeId, g.empId),
+              sql`${punches.clockIn} >= ${dayStart.toISOString()}::timestamptz`,
+              sql`${punches.clockIn} < ${dayEnd.toISOString()}::timestamptz`,
+              sql`${punches.voidedAt} IS NULL`,
+            ),
+          );
+        const targetMs = clockIn.getTime();
+        const legacy = dayRows.find((row) => {
+          const outMs = row.clockOut?.getTime() ?? null;
+          if (outMs === null) {
+            return (
+              Math.abs(row.clockIn.getTime() - targetMs) <=
+              DUPLICATE_PUNCH_WINDOW_MS
+            );
+          }
+          return (
+            outMs === row.clockIn.getTime() &&
+            Math.abs(row.clockIn.getTime() - targetMs) <=
+              DUPLICATE_PUNCH_WINDOW_MS
+          );
+        });
+        if (legacy) {
+          existing = [
+            {
+              id: legacy.id,
+              clockOut: legacy.clockOut,
+              voidedAt: null,
+            },
+          ];
+          await db
+            .update(punches)
+            .set({ ngtecoRecordHash: hash })
+            .where(eq(punches.id, legacy.id));
         }
       }
 
@@ -285,17 +351,20 @@ export async function importPunchPoll(
       if (existing.length > 0) {
         const row = existing[0]!;
         const recyclingVoided = row.voidedAt !== null;
+        const resolvedClockOut =
+          paired.kind === "ambiguous" ? null : clockOut;
         const clockOutChanged =
-          (row.clockOut === null && clockOut !== null) ||
+          (row.clockOut === null && resolvedClockOut !== null) ||
+          (row.clockOut !== null && resolvedClockOut === null) ||
           (row.clockOut !== null &&
-            clockOut !== null &&
-            row.clockOut.getTime() !== clockOut.getTime());
+            resolvedClockOut !== null &&
+            row.clockOut.getTime() !== resolvedClockOut.getTime());
         if (recyclingVoided || clockOutChanged) {
           await db
             .update(punches)
             .set({
               ...(paired.kind !== "outOnly" ? { clockIn } : {}),
-              clockOut,
+              clockOut: resolvedClockOut,
               notes: note,
               ...(recyclingVoided ? { voidedAt: null } : {}),
             })

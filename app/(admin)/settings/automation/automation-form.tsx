@@ -88,6 +88,48 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
             />
           </div>
 
+          <div className="space-y-3 rounded-card border border-border bg-surface-2 p-4 shadow-sm">
+            <div className="flex items-center gap-2">
+              <input
+                id="ngtecoRosterSyncEnabled"
+                type="checkbox"
+                name="ngtecoRosterSyncEnabled"
+                defaultChecked={automation.ngtecoEmployeeRosterSync.enabled}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="ngtecoRosterSyncEnabled">
+                Auto-import new people from NGTeco
+              </Label>
+            </div>
+            <p className="text-xs text-text-muted">
+              After a successful punch poll, Milo reads Group Management → Person
+              on the time clock and creates inactive employee stubs (ref, name,
+              email) so you can finish rate and schedule on Employees.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                id="ngtecoRosterNotify"
+                type="checkbox"
+                name="ngtecoRosterNotify"
+                defaultChecked={automation.ngtecoEmployeeRosterSync.notifyOnImport}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="ngtecoRosterNotify">Notify admins when new stubs are created</Label>
+            </div>
+            <div className="space-y-1 max-w-xs">
+              <Label htmlFor="ngtecoRosterMinHours">Minimum hours between roster syncs</Label>
+              <Input
+                id="ngtecoRosterMinHours"
+                name="ngtecoRosterMinHours"
+                type="number"
+                min={1}
+                max={168}
+                required
+                defaultValue={automation.ngtecoEmployeeRosterSync.minHoursBetweenSync}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label htmlFor="employeeFixWindowHours">Employee fix window (hours)</Label>

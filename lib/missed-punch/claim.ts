@@ -3,6 +3,7 @@ import { isBareWallClock, wallClockToUtc } from "@/lib/time/wall-clock";
 export type MissedPunchIssue =
   | "MISSING_IN"
   | "MISSING_OUT"
+  | "UNPAIRED_PUNCH"
   | "NO_PUNCH"
   | "SUSPICIOUS_DURATION"
   | "INVERTED_TIMES";
@@ -65,6 +66,20 @@ export function parseMissedPunchClaim(
       return { ok: false, error: "Enter the time you clocked out." };
     }
     return { ok: true, clockIn: null, clockOut };
+  }
+
+  if (input.issue === "UNPAIRED_PUNCH") {
+    if (!clockIn && !clockOut) {
+      return {
+        ok: false,
+        error:
+          "Enter the missing punch — either when you clocked in or when you clocked out.",
+      };
+    }
+    if (clockIn && clockOut && clockOut.getTime() <= clockIn.getTime()) {
+      return { ok: false, error: "Clock-out must be after clock-in." };
+    }
+    return { ok: true, clockIn, clockOut };
   }
 
   if (input.issue === "MISSING_IN") {

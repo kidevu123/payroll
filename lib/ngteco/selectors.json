@@ -12,13 +12,15 @@
   "navigation": {
     "viewAttendancePunchUrl": "/att/timecard/transaction",
     "mendAttendancePunchUrl": "/att/timecard/manual-log",
+    "employeeRosterUrl": "/hr/employee",
     "attendanceReportUrl": "/att/timecard/timecard",
     "reportsLink": "text=/Reports?/i",
     "punchReportLink": "text=/Punch.*Report|Attendance Report|Timecard Management/i",
     "reportMenu": "text=/^Report$/i",
     "attendanceMenu": "text=/^Attendance$/i",
     "viewAttendancePunchLink": ":text-is(\"View Attendance Punch\")",
-    "mendAttendancePunchLink": ":text-is(\"Mend Attendance Punch\")"
+    "mendAttendancePunchLink": ":text-is(\"Mend Attendance Punch\")",
+    "employeeRosterLink": ":text-is(\"Person\")"
   },
   "report": {
     "fromDate": "input[name='fromDate'], input[type='date']:nth-of-type(1)",
@@ -39,6 +41,16 @@
     "nextPageButton": "button[aria-label=\"Go to next page\"]:not([disabled])",
     "pageInfo": ".MuiTablePagination-displayedRows",
     "showMendedRecordsToggle": "label:has-text(\"Show mended records\"), :text-is(\"Show mended records\")"
+  },
+  "employeeRoster": {
+    "tableLandmark": ".MuiDataGrid-root",
+    "rowsContainer": ".MuiDataGrid-row",
+    "personNameCell": "[role=\"cell\"][data-field=\"person_name\"], [role=\"cell\"][data-field=\"employee_name\"], [role=\"cell\"][data-field=\"first_name\"]",
+    "personIdCell": "[role=\"cell\"][data-field=\"person_code\"], [role=\"cell\"][data-field=\"employee_code\"], [role=\"cell\"][data-field=\"person_id\"]",
+    "emailCell": "[role=\"cell\"][data-field=\"email\"]",
+    "departmentCell": "[role=\"cell\"][data-field=\"department_name\"], [role=\"cell\"][data-field=\"department\"]",
+    "nextPageButton": "button[aria-label=\"Go to next page\"]:not([disabled])",
+    "pageInfo": ".MuiTablePagination-displayedRows"
   },
   "challenge": {
     "twoFactorLandmark": "text=/Two[- ]Factor|2FA|Verification Code/i",

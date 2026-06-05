@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EmployeeRow } from "@/components/domain/employee-row";
 import { cn } from "@/lib/utils";
-import { listEmployees } from "@/lib/db/queries/employees";
+import {
+  listEmployees,
+  listEmployeesNeedingNgtecoSetup,
+} from "@/lib/db/queries/employees";
 import { listActiveShifts } from "@/lib/db/queries/shifts";
+import { EmployeesSetupBanner } from "@/components/domain/employees-setup-banner";
+import { SyncNgtecoRosterButton } from "@/components/domain/sync-ngteco-roster-button";
 
 type StatusFilter = "ACTIVE" | "INACTIVE" | "TERMINATED";
 
@@ -35,10 +40,11 @@ export default async function EmployeesPage({
   // Counts for the pill toggles — the unfiltered roster is small (≤100), so
   // re-fetching each status total without a search filter is cheap and
   // keeps the toggle UI honest about what each click will reveal.
-  const [allActive, allInactive, allTerminated] = await Promise.all([
+  const [allActive, allInactive, allTerminated, needingSetup] = await Promise.all([
     listEmployees({ status: "ACTIVE", ...(params.q ? { search: params.q } : {}) }),
     listEmployees({ status: "INACTIVE", ...(params.q ? { search: params.q } : {}) }),
     listEmployees({ status: "TERMINATED", ...(params.q ? { search: params.q } : {}) }),
+    listEmployeesNeedingNgtecoSetup(),
   ]);
   const livingCount = allActive.length + allInactive.length;
 
@@ -73,12 +79,17 @@ export default async function EmployeesPage({
             )}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/employees/new">
-            <Plus className="h-4 w-4" /> Add employee
-          </Link>
-        </Button>
+        <div className="flex items-end gap-2">
+          <SyncNgtecoRosterButton />
+          <Button asChild>
+            <Link href="/employees/new">
+              <Plus className="h-4 w-4" /> Add employee
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <EmployeesSetupBanner employees={needingSetup} />
 
       {/* Filter / search bar */}
       <form

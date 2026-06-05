@@ -99,6 +99,7 @@ export const punchSourceEnum = pgEnum("punch_source", [
 export const missedPunchIssueEnum = pgEnum("missed_punch_issue", [
   "MISSING_IN",
   "MISSING_OUT",
+  "UNPAIRED_PUNCH",
   "NO_PUNCH",
   "SUSPICIOUS_DURATION",
   "INVERTED_TIMES",

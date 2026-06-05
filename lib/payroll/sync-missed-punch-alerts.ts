@@ -110,6 +110,7 @@ export async function syncMissedPunchAlerts(
         clockIn: p.clockIn,
         clockOut: p.clockOut,
         voidedAt: p.voidedAt ?? null,
+        notes: p.notes ?? null,
       })),
       timeOff: timeOff.map((t) => ({
         employeeId: t.employeeId,

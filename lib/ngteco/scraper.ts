@@ -37,11 +37,13 @@ type Selectors = {
     /** Deep link — preferred over sidebar clicks when present. */
     viewAttendancePunchUrl?: string;
     mendAttendancePunchUrl?: string;
+    employeeRosterUrl?: string;
     attendanceReportUrl?: string;
     reportMenu?: string;
     attendanceMenu?: string;
     viewAttendancePunchLink?: string;
     mendAttendancePunchLink?: string;
+    employeeRosterLink?: string;
   };
   report: {
     fromDate: string;
@@ -62,6 +64,16 @@ type Selectors = {
     nextPageButton: string;
     pageInfo: string;
     showMendedRecordsToggle?: string;
+  };
+  employeeRoster?: {
+    tableLandmark: string;
+    rowsContainer: string;
+    personNameCell: string;
+    personIdCell: string;
+    emailCell: string;
+    departmentCell: string;
+    nextPageButton: string;
+    pageInfo: string;
   };
   challenge: { twoFactorLandmark: string; captchaLandmark: string };
 };
@@ -92,6 +104,27 @@ export type PollScrapeInput = {
 
 export type PollScrapeOutput = {
   events: RawPunchEvent[];
+  durationMs: number;
+};
+
+export type RawEmployeeRosterRow = {
+  /** NGTeco Person ID from Group Management → Person. */
+  personId: string;
+  personName: string;
+  email: string;
+  department: string;
+};
+
+export type EmployeeRosterScrapeInput = {
+  portalUrl: string;
+  username: string;
+  password: string;
+  headless: boolean;
+  runId: string;
+};
+
+export type EmployeeRosterScrapeOutput = {
+  rows: RawEmployeeRosterRow[];
   durationMs: number;
 };
 
@@ -780,6 +813,66 @@ async function navigateToViewAttendancePunch(
   }
 }
 
+async function isEmployeeRosterPageReady(
+  page: PlaywrightPage,
+  sel: Selectors,
+): Promise<boolean> {
+  if (!sel.employeeRoster) return false;
+  if (pathnameMatches(page, "/hr/employee")) return true;
+  return (await page.locator(sel.employeeRoster.tableLandmark).count()) > 0;
+}
+
+async function navigateToEmployeeRoster(
+  page: PlaywrightPage,
+  portalUrl: string,
+  sel: Selectors,
+): Promise<void> {
+  assertNotOnLoginPage(page, "pre-employee-roster-navigation");
+
+  if (sel.navigation.employeeRosterUrl) {
+    await gotoNgtecoPath(page, portalUrl, sel.navigation.employeeRosterUrl);
+    assertNotOnLoginPage(page, "employee-roster deep link");
+    if (await isEmployeeRosterPageReady(page, sel)) return;
+  }
+
+  try {
+    await page.waitForFunction(
+      () => {
+        const nav = document.querySelector("nav, aside, [role=navigation]");
+        return !!nav && (nav.textContent ?? "").trim().length > 20;
+      },
+      null,
+      { timeout: 8_000 },
+    );
+  } catch {
+    /* proceed */
+  }
+
+  await expandSidebarSection(page, ["Group Management", "Group management"]);
+
+  const clicked = await clickSidebarEntry(page, {
+    ...(sel.navigation.employeeRosterLink
+      ? { configuredSelector: sel.navigation.employeeRosterLink }
+      : {}),
+    textPatterns: [/^person$/i, /group.*person/i],
+  });
+
+  if (!clicked) {
+    const sidebarLabels = await readSidebarLabels(page);
+    throw new ScrapeFailure(
+      `NGTeco navigation: could not reach Person roster. URL=${page.url()}. Sidebar labels seen: ${sidebarLabels}. Update lib/ngteco/selectors.json#navigation.employeeRosterUrl or employeeRosterLink.`,
+      {},
+    );
+  }
+
+  assertNotOnLoginPage(page, "post-employee-roster navigation");
+  if (!(await isEmployeeRosterPageReady(page, sel))) {
+    await page.waitForSelector(sel.employeeRoster!.tableLandmark, {
+      timeout: 15_000,
+    });
+  }
+}
+
 async function navigateToMendAttendancePunch(
   page: PlaywrightPage,
   portalUrl: string,
@@ -1044,6 +1137,135 @@ export async function scrape(input: ScrapeInput): Promise<ScrapeOutput> {
   }
 }
 
+/** Open the portal, handle challenges, and log in when needed. */
+async function prepareNgtecoPage(
+  page: PlaywrightPage,
+  ctx: import("playwright-core").BrowserContext,
+  input: { portalUrl: string; username: string; password: string },
+  sel: Selectors,
+): Promise<void> {
+  await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
+
+  try {
+    await page.waitForFunction(
+      () => (document.body?.textContent ?? "").trim().length > 50,
+      null,
+      { timeout: 8_000 },
+    );
+  } catch {
+    /* proceed; downstream selector probes will catch a still-blank page */
+  }
+
+  if ((await page.locator(sel.challenge.twoFactorLandmark).count()) > 0) {
+    await ctx.close();
+    throw new ChallengeDetectedError("TWO_FACTOR");
+  }
+  if ((await page.locator(sel.challenge.captchaLandmark).count()) > 0) {
+    await ctx.close();
+    throw new ChallengeDetectedError("CAPTCHA");
+  }
+
+  const onLoginPage = await detectLoginPage(page, sel);
+  if (onLoginPage) {
+    await fillLoginField(page, "username", sel.login.username, input.username);
+    await fillLoginField(page, "password", sel.login.password, input.password);
+    await ensureAgreementChecked(page);
+    await primeIfCleared(page, "username", input.username);
+    await primeIfCleared(page, "password", input.password);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }).catch(() => {}),
+      clickLoginSubmit(page, sel.login.submit),
+    ]);
+    try {
+      await page.waitForFunction(
+        () =>
+          !window.location.pathname
+            .split("/")
+            .filter(Boolean)
+            .map((s) => s.toLowerCase())
+            .includes("login"),
+        null,
+        { timeout: 10_000 },
+      );
+    } catch {
+      const url = page.url();
+      let helper = "";
+      let fieldDump = "";
+      try {
+        const diag = await page.evaluate(() => {
+          const errs = Array.from(
+            document.querySelectorAll(
+              ".MuiFormHelperText-root.Mui-error, [role=alert], .MuiAlert-message",
+            ),
+          )
+            .map((e) => (e.textContent ?? "").trim())
+            .filter(Boolean)
+            .join(" | ");
+          const inputs = Array.from(
+            document.querySelectorAll<HTMLInputElement>("input"),
+          )
+            .filter((i) => {
+              const box = i.getBoundingClientRect();
+              const cs = getComputedStyle(i);
+              return (
+                box.width > 0 &&
+                box.height > 0 &&
+                cs.visibility !== "hidden" &&
+                cs.display !== "none" &&
+                cs.opacity !== "0"
+              );
+            })
+            .slice(0, 8)
+            .map((i) => {
+              const lenLabel =
+                i.type === "password"
+                  ? i.value.length
+                    ? `${i.value.length} chars`
+                    : "EMPTY"
+                  : i.value
+                    ? `"${i.value.slice(0, 24)}"`
+                    : "EMPTY";
+              return `${i.name || i.placeholder || i.type}=${lenLabel}`;
+            })
+            .join(", ");
+          return { errs, inputs };
+        });
+        helper = diag.errs;
+        fieldDump = diag.inputs;
+      } catch {
+        /* best-effort */
+      }
+      throw new ScrapeFailure(
+        `NGTeco login did not complete — page still on ${url}.${helper ? ` Form said: ${helper}.` : ""}${fieldDump ? ` Visible inputs at submit: ${fieldDump}.` : ""} If a field is EMPTY despite us claiming we filled it, NGTeco renamed/duplicated the input — update fillLoginField. Otherwise the credentials in Settings → NGTeco are out of date.`,
+        {},
+      );
+    }
+    try {
+      await page.waitForSelector(sel.login.loggedInLandmark, {
+        timeout: 4_000,
+      });
+    } catch {
+      try {
+        await page.waitForFunction(
+          () => {
+            const navs = Array.from(
+              document.querySelectorAll("nav, aside, [role=navigation]"),
+            );
+            return navs.some((n) => (n.textContent ?? "").trim().length > 40);
+          },
+          null,
+          { timeout: 6_000 },
+        );
+      } catch {
+        await page.waitForTimeout(1_500);
+      }
+    }
+    assertNotOnLoginPage(page, "post-login confirmation");
+  } else {
+    assertNotOnLoginPage(page, "initial page-load detection");
+  }
+}
+
 /**
  * Real-time per-punch scrape against the View Attendance Punch view. Runs
  * on a short interval (5–15 min) and pulls the most recent punches the
@@ -1108,200 +1330,7 @@ export async function scrapeViewAttendance(
   };
 
   try {
-    await page.goto(input.portalUrl, { waitUntil: "domcontentloaded" });
-
-    // Wait for the SPA to actually mount before we look at the DOM.
-    // domcontentloaded fires before MUI hydrates, and the post-redirect
-    // /user/login page has an empty body for a beat — without this
-    // wait, detectLoginPage can race the hydration and decide we're
-    // already inside the dashboard. networkidle is too aggressive on
-    // MUI (their telemetry pings keep the connection busy), so we wait
-    // for body to actually have content as a proxy for "first paint
-    // happened".
-    try {
-      await page.waitForFunction(
-        () => (document.body?.textContent ?? "").trim().length > 50,
-        null,
-        { timeout: 8_000 },
-      );
-    } catch {
-      /* proceed; downstream selector probes will catch a still-blank page */
-    }
-
-    // Challenge gates first.
-    if ((await page.locator(sel.challenge.twoFactorLandmark).count()) > 0) {
-      await ctx.close();
-      throw new ChallengeDetectedError("TWO_FACTOR");
-    }
-    if ((await page.locator(sel.challenge.captchaLandmark).count()) > 0) {
-      await ctx.close();
-      throw new ChallengeDetectedError("CAPTCHA");
-    }
-
-    // Login if needed. NGTeco rebuilt their login form on MUI; the
-    // configured CSS selector (Element Plus era) silently mis-targets,
-    // and fill() ends up writing to a hidden input while the visible
-    // Email field stays empty. Failure mode: form submits, MUI shows
-    // "This field is required!" on Email, and the SPA stays on /login.
-    //
-    // Fix: prefer label/role-based locators (those survive a CSS
-    // refactor) and fall through to the configured selector last.
-    // After submit, *verify* we left /login; if not, throw a clear
-    // error instead of timing out 30s downstream looking for menu
-    // links that will never appear.
-    const onLoginPage = await detectLoginPage(page, sel);
-    if (onLoginPage) {
-      await fillLoginField(
-        page,
-        "username",
-        sel.login.username,
-        input.username,
-      );
-      await fillLoginField(
-        page,
-        "password",
-        sel.login.password,
-        input.password,
-      );
-      // Tick the User Agreement / Privacy Policy checkbox — NGTeco's
-      // MUI login disables the submit button until it's checked, so
-      // skipping this step silently kept the form on /login.
-      await ensureAgreementChecked(page);
-      // Pre-submit re-check. The agreement checkbox click can blur a
-      // freshly-typed input; in some MUI configs, a blur with React
-      // state-not-yet-reconciled flushes the value back to empty (this
-      // was the exact failure the operator hit: "Visible inputs at
-      // submit: username=EMPTY, password=EMPTY"). Read the visible
-      // values right before clicking Login; if either dropped, re-prime
-      // through the native-setter + dispatch-event path which forces
-      // React's value tracker to register a change.
-      await primeIfCleared(page, "username", input.username);
-      await primeIfCleared(page, "password", input.password);
-      await Promise.all([
-        page
-          .waitForNavigation({ waitUntil: "domcontentloaded" })
-          .catch(() => {}),
-        clickLoginSubmit(page, sel.login.submit),
-      ]);
-      // Hard verification: did we actually get off /login? MUI's
-      // client-side validation can reject a partially-filled form
-      // and keep the SPA on the login route — that needs to fail
-      // loudly here, not 30s later when a menu click times out.
-      try {
-        // Inlined segment check — same logic as isLoginPath, but
-        // page.waitForFunction runs in the browser so no Node import.
-        // /login-help wouldn't false-trigger; only an exact "login"
-        // segment counts.
-        await page.waitForFunction(
-          () =>
-            !window.location.pathname
-              .split("/")
-              .filter(Boolean)
-              .map((s) => s.toLowerCase())
-              .includes("login"),
-          null,
-          { timeout: 10_000 },
-        );
-      } catch {
-        const url = page.url();
-        // Read any visible MUI form helper-text error so we can tell
-        // the operator *why* login failed (wrong password vs locked
-        // account vs captcha) instead of a generic "did not complete".
-        let helper = "";
-        // Also dump what's actually IN the visible inputs at submit
-        // time. "This field is required!" with our scraper insisting
-        // it filled both fields means fill landed in a hidden helper
-        // input — the inventory tells us which field was actually empty.
-        let fieldDump = "";
-        try {
-          const diag = await page.evaluate(() => {
-            const errs = Array.from(
-              document.querySelectorAll(
-                ".MuiFormHelperText-root.Mui-error, [role=alert], .MuiAlert-message",
-              ),
-            )
-              .map((e) => (e.textContent ?? "").trim())
-              .filter(Boolean)
-              .join(" | ");
-            const inputs = Array.from(
-              document.querySelectorAll<HTMLInputElement>("input"),
-            )
-              .filter((i) => {
-                const box = i.getBoundingClientRect();
-                const cs = getComputedStyle(i);
-                return (
-                  box.width > 0 &&
-                  box.height > 0 &&
-                  cs.visibility !== "hidden" &&
-                  cs.display !== "none" &&
-                  cs.opacity !== "0"
-                );
-              })
-              .slice(0, 8)
-              .map((i) => {
-                const lenLabel =
-                  i.type === "password"
-                    ? i.value.length
-                      ? `${i.value.length} chars`
-                      : "EMPTY"
-                    : i.value
-                      ? `"${i.value.slice(0, 24)}"`
-                      : "EMPTY";
-                return `${i.name || i.placeholder || i.type}=${lenLabel}`;
-              })
-              .join(", ");
-            return { errs, inputs };
-          });
-          helper = diag.errs;
-          fieldDump = diag.inputs;
-        } catch {
-          /* best-effort */
-        }
-        throw new ScrapeFailure(
-          `NGTeco login did not complete — page still on ${url}.${helper ? ` Form said: ${helper}.` : ""}${fieldDump ? ` Visible inputs at submit: ${fieldDump}.` : ""} If a field is EMPTY despite us claiming we filled it, NGTeco renamed/duplicated the input — update fillLoginField. Otherwise the credentials in Settings → NGTeco are out of date.`,
-          {},
-        );
-      }
-      // Post-login: confirm we're actually on a logged-in surface.
-      // The original code accepted "any nav element exists" as proof,
-      // but the /login page itself has nav elements (language picker,
-      // marketing footer), so a session that bounced straight back to
-      // /login satisfied the check. Now we wait for the loggedInLandmark
-      // *or* a nav with substantive text, AND re-check URL.
-      try {
-        await page.waitForSelector(sel.login.loggedInLandmark, {
-          timeout: 4_000,
-        });
-      } catch {
-        try {
-          await page.waitForFunction(
-            () => {
-              const navs = Array.from(
-                document.querySelectorAll("nav, aside, [role=navigation]"),
-              );
-              return navs.some((n) => (n.textContent ?? "").trim().length > 40);
-            },
-            null,
-            { timeout: 6_000 },
-          );
-        } catch {
-          await page.waitForTimeout(1_500);
-        }
-      }
-      // Final hard check: the post-login waits succeeded, but did we
-      // actually leave /login? A short SPA flash through a different
-      // route and back to /login can satisfy the URL waitForFunction
-      // above. Catch that here — without this, the navigation step
-      // proceeds against a login page and surfaces a confusing
-      // "couldn't find View Attendance Punch" error.
-      assertNotOnLoginPage(page, "post-login confirmation");
-    } else {
-      // Persistent profile said "already logged in". Trust but verify:
-      // make sure we aren't sitting on /login despite the DOM checks
-      // (e.g., MUI hadn't hydrated yet so the password field wasn't
-      // visible, but the URL has been /login the whole time).
-      assertNotOnLoginPage(page, "initial page-load detection");
-    }
+    await prepareNgtecoPage(page, ctx, input, sel);
 
     await navigateToViewAttendancePunch(page, input.portalUrl, sel);
     await ensureShowMendedRecords(page, sel);
@@ -1983,4 +2012,286 @@ function composeIso(
   // Default tz to America/New_York EDT (-04:00) when the page strips it.
   const tz = /^[+-]\d{2}:\d{2}$/.test(tzRaw) ? tzRaw : "-04:00";
   return `${dateIso}T${hh}:${mm}:${ss}${tz}`;
+}
+
+function splitSelectorList(selector: string): string[] {
+  return selector
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Scrape Group Management → Person (/hr/employee). Used to auto-import
+ * new time-clock people into Milo as inactive stubs.
+ */
+export async function scrapeEmployeeRoster(
+  input: EmployeeRosterScrapeInput,
+): Promise<EmployeeRosterScrapeOutput> {
+  const { mkdirSync, existsSync } = await import(
+    /* webpackIgnore: true */ "node:fs"
+  );
+  const { join } = await import(/* webpackIgnore: true */ "node:path");
+  const PROFILE_DIR = join(STORAGE_ROOT, "profile");
+  const FAILURES_DIR = join(STORAGE_ROOT, "failures");
+  const sel = await loadSelectors();
+  if (!sel.employeeRoster) {
+    throw new ScrapeFailure("selectors.employeeRoster not configured", {});
+  }
+  const t0 = Date.now();
+  if (!existsSync(PROFILE_DIR)) mkdirSync(PROFILE_DIR, { recursive: true });
+  const failureDir = join(FAILURES_DIR, `${input.runId}-roster`);
+
+  const { chromium } =
+    (await import("playwright")) as typeof import("playwright");
+  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+    headless: true,
+    viewport: { width: 1280, height: 900 },
+    locale: "en-US",
+  });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(20_000);
+
+  const captureFailure = async (reason: string): Promise<never> => {
+    if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
+    const screenshotPath = join(failureDir, "page.png");
+    const htmlPath = join(failureDir, "page.html");
+    try {
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      const html = await page.content();
+      const { writeFileSync } = await import(
+        /* webpackIgnore: true */ "node:fs"
+      );
+      writeFileSync(htmlPath, html);
+    } catch {
+      /* best-effort */
+    }
+    await ctx.close();
+    throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
+  };
+
+  try {
+    await prepareNgtecoPage(page, ctx, input, sel);
+    await navigateToEmployeeRoster(page, input.portalUrl, sel);
+    await page.waitForSelector(sel.employeeRoster.tableLandmark, {
+      timeout: 15_000,
+    });
+
+    const rosterSel = sel.employeeRoster;
+    let nameSels = splitSelectorList(rosterSel.personNameCell);
+    let idSels = splitSelectorList(rosterSel.personIdCell);
+    let emailSels = splitSelectorList(rosterSel.emailCell);
+    let deptSels = splitSelectorList(rosterSel.departmentCell);
+
+    const discovered = await page.evaluate(() => {
+      const fields: {
+        personId?: string;
+        personName?: string;
+        email?: string;
+        department?: string;
+      } = {};
+      for (const h of Array.from(
+        document.querySelectorAll('[role="columnheader"]'),
+      )) {
+        const field = h.getAttribute("data-field");
+        const text = (h.textContent ?? "").trim().toLowerCase();
+        if (!field) continue;
+        if (
+          /person\s*id|employee\s*(id|code)|\bid\b/.test(text) &&
+          !fields.personId
+        ) {
+          fields.personId = field;
+        } else if (/person\s*name|employee\s*name|name/.test(text) && !fields.personName) {
+          fields.personName = field;
+        } else if (/e-?mail/.test(text) && !fields.email) {
+          fields.email = field;
+        } else if (/department|dept/.test(text) && !fields.department) {
+          fields.department = field;
+        }
+      }
+      return fields;
+    });
+    const cellSel = (field: string | undefined) =>
+      field ? `[role="cell"][data-field="${field}"]` : null;
+    const prepend = (list: string[], field: string | undefined) => {
+      const sel = cellSel(field);
+      if (sel && !list.includes(sel)) list.unshift(sel);
+    };
+    prepend(idSels, discovered.personId);
+    prepend(nameSels, discovered.personName);
+    prepend(emailSels, discovered.email);
+    prepend(deptSels, discovered.department);
+
+    try {
+      await page.waitForFunction(
+        ({ rowSel, idSels }: { rowSel: string; idSels: string[] }) => {
+          const pick = (row: Element, sels: string[]) => {
+            for (const s of sels) {
+              const el = row.querySelector(s);
+              const text = el?.textContent?.trim() ?? "";
+              if (text && !/^[—–-]$/.test(text)) return text;
+            }
+            return "";
+          };
+          const rows = document.querySelectorAll(rowSel);
+          for (const row of Array.from(rows)) {
+            if (pick(row, idSels)) return true;
+          }
+          return false;
+        },
+        { rowSel: rosterSel.rowsContainer, idSels },
+        { timeout: 15_000 },
+      );
+    } catch {
+      /* empty roster or slow hydrate */
+    }
+
+    type RowRaw = {
+      personId: string;
+      personName: string;
+      email: string;
+      department: string;
+    };
+
+    const rows: RawEmployeeRosterRow[] = [];
+    const seenIds = new Set<string>();
+    let pages = 0;
+
+    while (pages < 50) {
+      pages++;
+      const collectVisible = async (): Promise<RowRaw[]> => {
+        const out = await page.evaluate(
+          (args: {
+            rowSel: string;
+            nameSels: string[];
+            idSels: string[];
+            emailSels: string[];
+            deptSels: string[];
+          }) => {
+            const pick = (row: Element, sels: string[]) => {
+              for (const s of sels) {
+                const el = row.querySelector(s);
+                const text = el?.textContent?.trim() ?? "";
+                if (text && !/^[—–-]$/.test(text)) return text;
+              }
+              return "";
+            };
+            const result: RowRaw[] = [];
+            for (const row of Array.from(
+              document.querySelectorAll(args.rowSel),
+            )) {
+              const personId = pick(row, args.idSels);
+              if (!personId) continue;
+              result.push({
+                personId,
+                personName: pick(row, args.nameSels),
+                email: pick(row, args.emailSels),
+                department: pick(row, args.deptSels),
+              });
+            }
+            return result;
+          },
+          {
+            rowSel: rosterSel.rowsContainer,
+            nameSels,
+            idSels,
+            emailSels,
+            deptSels,
+          },
+        );
+        return out as RowRaw[];
+      };
+
+      const pageKeys = new Set<string>();
+      const pageRows: RowRaw[] = [];
+      const scrollStep = async (offset: number): Promise<void> => {
+        await page.evaluate((y: number) => {
+          const scroller = document.querySelector(
+            ".MuiDataGrid-virtualScroller",
+          ) as HTMLElement | null;
+          if (scroller) scroller.scrollTop = y;
+        }, offset);
+      };
+
+      await scrollStep(0);
+      await page.waitForTimeout(150);
+      let stableCount = 0;
+      let lastSize = 0;
+      for (let step = 0; step < 60; step++) {
+        const visible = await collectVisible();
+        for (const r of visible) {
+          if (!r.personId) continue;
+          if (pageKeys.has(r.personId)) continue;
+          pageKeys.add(r.personId);
+          pageRows.push(r);
+        }
+        const reached = await page.evaluate(() => {
+          const sc = document.querySelector(
+            ".MuiDataGrid-virtualScroller",
+          ) as HTMLElement | null;
+          if (!sc) return true;
+          const next = sc.scrollTop + Math.max(200, sc.clientHeight - 80);
+          sc.scrollTop = next;
+          return sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4;
+        });
+        await page.waitForTimeout(120);
+        if (pageRows.length === lastSize) {
+          stableCount++;
+        } else {
+          stableCount = 0;
+          lastSize = pageRows.length;
+        }
+        if (reached && stableCount >= 1) break;
+        if (stableCount >= 3) break;
+      }
+      await scrollStep(0);
+
+      for (const r of pageRows) {
+        if (seenIds.has(r.personId)) continue;
+        seenIds.add(r.personId);
+        rows.push(r);
+      }
+
+      const next = page.locator(rosterSel.nextPageButton).first();
+      const hasNext =
+        (await next.count()) > 0 && (await next.isEnabled().catch(() => false));
+      if (!hasNext) break;
+      await Promise.all([
+        page.waitForTimeout(400),
+        next.click().catch(() => {}),
+      ]);
+      try {
+        await page.waitForFunction(
+          ({ rowSel, idSels }: { rowSel: string; idSels: string[] }) => {
+            const pick = (row: Element, sels: string[]) => {
+              for (const s of sels) {
+                const el = row.querySelector(s);
+                const text = el?.textContent?.trim() ?? "";
+                if (text && !/^[—–-]$/.test(text)) return text;
+              }
+              return "";
+            };
+            const rows = document.querySelectorAll(rowSel);
+            for (const row of Array.from(rows)) {
+              if (pick(row, idSels)) return true;
+            }
+            return false;
+          },
+          { rowSel: rosterSel.rowsContainer, idSels },
+          { timeout: 8_000 },
+        );
+      } catch {
+        break;
+      }
+    }
+
+    await ctx.close();
+    return { rows, durationMs: Date.now() - t0 };
+  } catch (err) {
+    if (err instanceof ChallengeDetectedError) throw err;
+    if (err instanceof ScrapeFailure) throw err;
+    return await captureFailure(
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 }

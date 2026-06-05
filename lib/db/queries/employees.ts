@@ -83,6 +83,22 @@ export async function getEmployee(id: string): Promise<Employee | null> {
   return row ?? null;
 }
 
+/** Inactive stubs auto-imported from NGTeco that still need rate/schedule. */
+export async function listEmployeesNeedingNgtecoSetup(): Promise<Employee[]> {
+  const rows = await db
+    .select()
+    .from(employees)
+    .where(
+      and(
+        eq(employees.status, "INACTIVE"),
+        sql`${employees.ngtecoEmployeeRef} IS NOT NULL`,
+        sql`(${employees.payScheduleId} IS NULL OR ${employees.hourlyRateCents} IS NULL)`,
+        sql`${employees.notes} LIKE 'NGTECO_IMPORT:%'`,
+      ),
+    );
+  return rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
 export type CreateEmployeeInput = Omit<
   NewEmployee,
   "id" | "createdAt" | "updatedAt" | "hourlyRateCents"

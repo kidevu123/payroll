@@ -37,6 +37,15 @@ const schema = z.object({
     .default(false),
   suspiciousDurationMinutesShortThreshold: z.coerce.number().int().min(1),
   suspiciousDurationMinutesLongThreshold: z.coerce.number().int().min(1),
+  ngtecoRosterSyncEnabled: z
+    .union([z.literal("on").transform(() => true), z.literal("off")])
+    .or(z.boolean())
+    .default(false),
+  ngtecoRosterNotify: z
+    .union([z.literal("on").transform(() => true), z.literal("off")])
+    .or(z.boolean())
+    .default(false),
+  ngtecoRosterMinHours: z.coerce.number().int().min(1).max(168),
 });
 
 export async function updateAutomationAction(
@@ -57,6 +66,9 @@ export async function updateAutomationAction(
     suspiciousDurationMinutesLongThreshold: formData.get(
       "suspiciousDurationMinutesLongThreshold",
     ),
+    ngtecoRosterSyncEnabled: formData.get("ngtecoRosterSyncEnabled") ?? "off",
+    ngtecoRosterNotify: formData.get("ngtecoRosterNotify") ?? "off",
+    ngtecoRosterMinHours: formData.get("ngtecoRosterMinHours"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -77,6 +89,11 @@ export async function updateAutomationAction(
       adminAutoNotifyOnIngestFail: v.adminAutoNotifyOnIngestFail === true,
       suspiciousDurationMinutesShortThreshold: v.suspiciousDurationMinutesShortThreshold,
       suspiciousDurationMinutesLongThreshold: v.suspiciousDurationMinutesLongThreshold,
+      ngtecoEmployeeRosterSync: {
+        enabled: v.ngtecoRosterSyncEnabled === true,
+        notifyOnImport: v.ngtecoRosterNotify === true,
+        minHoursBetweenSync: v.ngtecoRosterMinHours,
+      },
     },
     { actorId: session.user.id, actorRole: session.user.role },
   );

@@ -54,6 +54,22 @@ describe("parseMissedPunchClaim", () => {
     ).toBe(false);
   });
 
+  it("UNPAIRED_PUNCH accepts one missing side", () => {
+    const inOnly = parseMissedPunchClaim({
+      issue: "UNPAIRED_PUNCH",
+      claimedClockIn: "2026-06-02T08:00",
+      timezone: "America/New_York",
+    });
+    expect(inOnly).toMatchObject({ ok: true });
+
+    const outOnly = parseMissedPunchClaim({
+      issue: "UNPAIRED_PUNCH",
+      claimedClockOut: "2026-06-02T17:00",
+      timezone: "America/New_York",
+    });
+    expect(outOnly).toMatchObject({ ok: true });
+  });
+
   it("MISSING_IN accepts clock-in only", () => {
     const result = parseMissedPunchClaim({
       issue: "MISSING_IN",

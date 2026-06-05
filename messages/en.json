@@ -283,6 +283,9 @@
       "clockOut": "Clock out",
       "onFile": "Already on file",
       "onFileHint": "From the time clock — only enter the missing punch below.",
+      "unpairedOnFile": "Punch on file",
+      "unpairedOnFileHint": "We are not sure if this was a clock-in or clock-out. Enter whichever punch is missing.",
+      "enterMissingPunch": "Enter the missing punch",
       "enterClockIn": "When did you clock in?",
       "enterClockOut": "When did you clock out?",
       "whatHappened": "What happened?",
@@ -433,6 +436,7 @@
     "noPunch": "No punch",
     "missingIn": "Missing in",
     "missingOut": "Missing out",
+    "unpairedPunch": "Unpaired punch",
     "suspicious": "Suspicious",
     "invertedTimes": "Inverted times"
   },

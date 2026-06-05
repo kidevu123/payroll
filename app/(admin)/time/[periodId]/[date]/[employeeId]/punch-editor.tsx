@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PunchRow } from "@/components/domain/punch-row";
 import {
+  isAmbiguousSinglePunch,
   isMissingClockInPunch,
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
@@ -49,6 +50,7 @@ function defaultClockOutGuess(clockIn: Date, timezone: string): string {
 function findFixTarget(punches: Punch[]): Punch | null {
   const active = punches.filter((p) => !p.voidedAt);
   return (
+    active.find((p) => isAmbiguousSinglePunch(p)) ??
     active.find((p) => isOpenShiftPunch(p)) ??
     active.find((p) => isMissingClockInPunch(p)) ??
     null
@@ -87,14 +89,18 @@ export function PunchEditor({
       {fixTarget && !periodLocked ? (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">
-            {isOpenShiftPunch(fixTarget)
-              ? "Close open shift"
-              : "Add missing clock-in"}
+            {isAmbiguousSinglePunch(fixTarget)
+              ? "Complete unpaired punch"
+              : isOpenShiftPunch(fixTarget)
+                ? "Close open shift"
+                : "Add missing clock-in"}
           </h2>
           <p className="text-sm text-text-muted">
-            {isOpenShiftPunch(fixTarget)
-              ? "Clock-in is already on file from the time clock. Enter only the missing clock-out — do not add a new punch below."
-              : "Clock-out is on file. Enter only the missing clock-in."}
+            {isAmbiguousSinglePunch(fixTarget)
+              ? `One punch is on file at ${formatWallClock(fixTarget.clockIn, timezone)}. We are not sure if it was in or out — enter whichever side is missing.`
+              : isOpenShiftPunch(fixTarget)
+                ? "Clock-in is already on file from the time clock. Enter only the missing clock-out — do not add a new punch below."
+                : "Clock-out is on file. Enter only the missing clock-in."}
           </p>
           <FixPunchForm punch={fixTarget} timezone={timezone} />
         </div>
@@ -182,6 +188,7 @@ function FixPunchForm({
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const ambiguous = isAmbiguousSinglePunch(punch);
   const closeOut = isOpenShiftPunch(punch);
   const missingIn = isMissingClockInPunch(punch);
 
@@ -196,7 +203,36 @@ function FixPunchForm({
       }}
       className="space-y-3 rounded-card border-2 border-amber-300/80 bg-amber-50/50 p-4"
     >
-      {closeOut ? (
+      {ambiguous ? (
+        <>
+          <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
+            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+              On file (time clock)
+            </span>
+            <p className="mt-1 font-semibold tabular-nums">
+              Unpaired punch: {formatWallClock(punch.clockIn, timezone)}
+            </p>
+          </div>
+          <input
+            type="hidden"
+            name="clockIn"
+            value={toLocalInputValue(punch.clockIn, timezone)}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="fix-clockOut">Clock out ({timezone})</Label>
+            <Input
+              id="fix-clockOut"
+              name="clockOut"
+              type="datetime-local"
+              defaultValue={defaultClockOutGuess(punch.clockIn, timezone)}
+            />
+            <p className="text-xs text-text-muted">
+              If the on-file punch was actually their clock-out, edit clock-in
+              below instead (use Edit on the row after saving).
+            </p>
+          </div>
+        </>
+      ) : closeOut ? (
         <>
           <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
             <span className="text-xs font-medium text-text-muted uppercase tracking-wide">

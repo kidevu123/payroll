@@ -3,20 +3,13 @@ import type { RawPunchEvent } from "@/lib/ngteco/scraper";
 export type PairedPunchEvent =
   | { kind: "complete"; inEv: RawPunchEvent; outEv: RawPunchEvent }
   | { kind: "open"; inEv: RawPunchEvent; outEv: null }
-  | { kind: "outOnly"; inEv: null; outEv: RawPunchEvent };
+  /** @deprecated Legacy afternoon heuristic — importer may still read old rows. */
+  | { kind: "outOnly"; inEv: null; outEv: RawPunchEvent }
+  /** Lone punch — do not assume clock-in vs clock-out. */
+  | { kind: "ambiguous"; ev: RawPunchEvent };
 
 /** NGTeco emits duplicate punch-ins when app + device both fire within seconds. */
 export const DUPLICATE_PUNCH_WINDOW_MS = 5 * 60 * 1000;
-
-function localHour(iso: string, timezone: string): number {
-  return Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      hour: "2-digit",
-      hour12: false,
-    }).format(new Date(iso)),
-  );
-}
 
 /** Prefer hardware device punches over mobile app duplicates. */
 export function punchSourcePriority(source: string): number {
@@ -26,17 +19,10 @@ export function punchSourcePriority(source: string): number {
   return 2;
 }
 
-function classifySingleEvent(
-  event: RawPunchEvent,
-  timezone: string,
-): PairedPunchEvent {
-  // NGTeco punch rows do not reliably say "in" vs "out". A lone morning
-  // punch is safer as an open shift; a lone afternoon/evening punch is safer
-  // as out-only so payroll does not pay from that timestamp forward.
-  if (localHour(event.punchAt, timezone) >= 12) {
-    return { kind: "outOnly", inEv: null, outEv: event };
-  }
-  return { kind: "open", inEv: event, outEv: null };
+function classifySingleEvent(event: RawPunchEvent): PairedPunchEvent {
+  // NGTeco does not label in vs out on the punch grid. A single punch might
+  // be either side — alert the employee instead of guessing by time of day.
+  return { kind: "ambiguous", ev: event };
 }
 
 /**
@@ -74,7 +60,7 @@ export function pairPunchEvents(
   }
 
   if (open !== null) {
-    paired.push(classifySingleEvent(open, timezone));
+    paired.push(classifySingleEvent(open));
   }
   return paired;
 }

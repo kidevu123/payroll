@@ -1,5 +1,6 @@
 import type { MissedPunchRequest, Punch } from "@/lib/db/schema";
 import {
+  isAmbiguousSinglePunch,
   isMissingClockInPunch,
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
@@ -47,6 +48,9 @@ export function buildMissedPunchReviewContext(
   if (effectiveIssue === "MISSING_OUT") {
     const open = forDay.find((p) => isOpenShiftPunch(p));
     if (open) onFileClockIn = open.clockIn;
+  } else if (effectiveIssue === "UNPAIRED_PUNCH") {
+    const unpaired = forDay.find((p) => isAmbiguousSinglePunch(p));
+    if (unpaired) onFileClockIn = unpaired.clockIn;
   } else if (effectiveIssue === "MISSING_IN") {
     const sentinel = forDay.find((p) => isMissingClockInPunch(p));
     if (sentinel?.clockOut) onFileClockOut = sentinel.clockOut;

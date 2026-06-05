@@ -18,6 +18,7 @@ export async function AlertCard({
   issue:
     | "MISSING_IN"
     | "MISSING_OUT"
+    | "UNPAIRED_PUNCH"
     | "NO_PUNCH"
     | "SUSPICIOUS_DURATION"
     | "INVERTED_TIMES";

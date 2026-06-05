@@ -104,6 +104,20 @@ export type PollOptions = {
   daysBack?: number;
 };
 
+async function rosterSyncAfterSuccessfulScrape(runId: string): Promise<void> {
+  try {
+    const { maybeSyncNgtecoEmployeeRoster } = await import(
+      "@/lib/ngteco/employee-roster-sync"
+    );
+    await maybeSyncNgtecoEmployeeRoster(runId);
+  } catch (err) {
+    logger.warn(
+      { runId, err: err instanceof Error ? err.message : String(err) },
+      "punch.poll: employee roster sync failed (non-fatal)",
+    );
+  }
+}
+
 export async function handlePunchPoll(
   opts: PollOptions = {},
 ): Promise<PollSummary> {
@@ -221,6 +235,7 @@ export async function handlePunchPoll(
       "punch.poll: scrape ok",
     );
     if (result.events.length === 0) {
+      await rosterSyncAfterSuccessfulScrape(runId);
       return {
         ok: true,
         eventsScraped: 0,
@@ -280,6 +295,7 @@ export async function handlePunchPoll(
     const shouldSyncMissedPunches =
       localHour >= 19 ||
       summary.missingClockIn > 0 ||
+      summary.unpairedPunches > 0 ||
       summary.openShifts > 0 ||
       summary.pairsInserted > 0 ||
       summary.pairsUpdated > 0;
@@ -319,6 +335,9 @@ export async function handlePunchPoll(
         "punch.poll: poll-log prune failed (non-fatal)",
       );
     }
+
+    await rosterSyncAfterSuccessfulScrape(runId);
+
     return {
       ok: true,
       eventsScraped: result.events.length,

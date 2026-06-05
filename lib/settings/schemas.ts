@@ -131,6 +131,16 @@ export const automationSchema = z.object({
   adminAutoNotifyOnIngestFail: z.boolean().default(true),
   suspiciousDurationMinutesShortThreshold: z.number().int().min(1).default(240),
   suspiciousDurationMinutesLongThreshold: z.number().int().min(1).default(840),
+  // After a successful punch poll, scrape NGTeco Group Management → Person
+  // and auto-create inactive stubs for refs missing in Milo.
+  ngtecoEmployeeRosterSync: z
+    .object({
+      enabled: z.boolean(),
+      notifyOnImport: z.boolean(),
+      /** Debounce between roster scrapes (separate Playwright session). */
+      minHoursBetweenSync: z.number().int().min(1).max(168),
+    })
+    .default({ enabled: true, notifyOnImport: true, minHoursBetweenSync: 12 }),
 });
 export type AutomationSettings = z.infer<typeof automationSchema>;
 
@@ -181,6 +191,7 @@ export const notificationKind = z.enum([
   "payslip.disputed",
   "admin.announcement",
   "hall_monitor.weekly_ready",
+  "employee.ngteco_imported",
 ]);
 export type NotificationKind = z.infer<typeof notificationKind>;
 
@@ -206,6 +217,7 @@ export const notificationsSchema = z.object({
     "payslip.disputed": { in_app: true, email: false, push: true },
     "admin.announcement": { in_app: true, email: false, push: true },
     "hall_monitor.weekly_ready": { in_app: true, email: false, push: true },
+    "employee.ngteco_imported": { in_app: true, email: false, push: true },
   }),
 });
 export type NotificationsSettings = z.infer<typeof notificationsSchema>;

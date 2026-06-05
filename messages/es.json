@@ -283,6 +283,9 @@
       "clockOut": "Salida",
       "onFile": "Ya registrado",
       "onFileHint": "Del reloj — solo ingrese el fichaje que falta abajo.",
+      "unpairedOnFile": "Marcación registrada",
+      "unpairedOnFileHint": "No sabemos si fue entrada o salida. Ingrese el fichaje que falta.",
+      "enterMissingPunch": "Ingrese el fichaje que falta",
       "enterClockIn": "¿A qué hora entró?",
       "enterClockOut": "¿A qué hora salió?",
       "whatHappened": "¿Qué pasó?",
@@ -433,6 +436,7 @@
     "noPunch": "Sin marcación",
     "missingIn": "Falta entrada",
     "missingOut": "Falta salida",
+    "unpairedPunch": "Marcación sin pareja",
     "suspicious": "Sospechoso",
     "invertedTimes": "Horas invertidas"
   },

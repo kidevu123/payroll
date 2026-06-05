@@ -14,6 +14,7 @@ export function MissedPunchForm({
   issue,
   recordedClockIn,
   recordedClockOut,
+  recordedUnpairedPunch,
   defaultClockOut,
 }: {
   alertId: string;
@@ -22,6 +23,7 @@ export function MissedPunchForm({
   /** Wall-clock label already on file (fingerprint), e.g. "8:07 AM". */
   recordedClockIn?: string | null;
   recordedClockOut?: string | null;
+  recordedUnpairedPunch?: string | null;
   defaultClockOut?: string;
 }) {
   const t = useTranslations("employee.missedPunch");
@@ -30,6 +32,7 @@ export function MissedPunchForm({
 
   const onlyOut = issue === "MISSING_OUT";
   const onlyIn = issue === "MISSING_IN";
+  const unpaired = issue === "UNPAIRED_PUNCH";
 
   return (
     <form
@@ -51,6 +54,16 @@ export function MissedPunchForm({
             {t("clockIn")}: {recordedClockIn}
           </p>
           <p className="text-xs text-text-muted mt-1">{t("onFileHint")}</p>
+        </div>
+      ) : null}
+
+      {unpaired && recordedUnpairedPunch ? (
+        <div className="rounded-input border border-border bg-surface-2 px-3 py-2 text-sm">
+          <p className="text-xs font-medium text-text-muted uppercase tracking-wide">
+            {t("unpairedOnFile")}
+          </p>
+          <p className="mt-1 font-medium">{recordedUnpairedPunch}</p>
+          <p className="text-xs text-text-muted mt-1">{t("unpairedOnFileHint")}</p>
         </div>
       ) : null}
 
@@ -87,6 +100,30 @@ export function MissedPunchForm({
             required
             defaultValue={`${date}T08:00`}
           />
+        </div>
+      ) : unpaired ? (
+        <div className="space-y-2">
+          <p className="text-xs text-text-muted">{t("enterMissingPunch")}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="claimedClockIn">{t("clockIn")}</Label>
+              <Input
+                id="claimedClockIn"
+                name="claimedClockIn"
+                type="datetime-local"
+                defaultValue={`${date}T08:00`}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="claimedClockOut">{t("clockOut")}</Label>
+              <Input
+                id="claimedClockOut"
+                name="claimedClockOut"
+                type="datetime-local"
+                defaultValue={`${date}T17:00`}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">

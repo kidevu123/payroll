@@ -13,7 +13,7 @@ function ev(punchAt: string): RawPunchEvent {
 }
 
 describe("pairPunchEvents", () => {
-  it("treats one morning punch as an open shift missing clock-out", () => {
+  it("treats one morning punch as ambiguous (not assumed clock-in)", () => {
     const pairs = pairPunchEvents(
       [ev("2026-05-23T06:05:00-04:00")],
       "America/New_York",
@@ -21,14 +21,13 @@ describe("pairPunchEvents", () => {
 
     expect(pairs).toEqual([
       {
-        kind: "open",
-        inEv: ev("2026-05-23T06:05:00-04:00"),
-        outEv: null,
+        kind: "ambiguous",
+        ev: ev("2026-05-23T06:05:00-04:00"),
       },
     ]);
   });
 
-  it("treats one late-day punch as out-only so Milo asks for the missing clock-in", () => {
+  it("treats one afternoon punch as ambiguous (not assumed clock-out)", () => {
     const pairs = pairPunchEvents(
       [ev("2026-05-23T17:36:56-04:00")],
       "America/New_York",
@@ -36,14 +35,13 @@ describe("pairPunchEvents", () => {
 
     expect(pairs).toEqual([
       {
-        kind: "outOnly",
-        inEv: null,
-        outEv: ev("2026-05-23T17:36:56-04:00"),
+        kind: "ambiguous",
+        ev: ev("2026-05-23T17:36:56-04:00"),
       },
     ]);
   });
 
-  it("pairs complete shifts first and classifies a leftover late punch as out-only", () => {
+  it("pairs complete shifts first and classifies a leftover punch as ambiguous", () => {
     const pairs = pairPunchEvents(
       [
         ev("2026-05-23T06:05:00-04:00"),
@@ -53,7 +51,7 @@ describe("pairPunchEvents", () => {
       "America/New_York",
     );
 
-    expect(pairs.map((p) => p.kind)).toEqual(["complete", "outOnly"]);
+    expect(pairs.map((p) => p.kind)).toEqual(["complete", "ambiguous"]);
   });
 
   it("collapses duplicate punch-ins within five minutes into one open shift", () => {

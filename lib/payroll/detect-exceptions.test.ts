@@ -112,6 +112,21 @@ describe("detectExceptions", () => {
     );
   });
 
+  it("emits UNPAIRED_PUNCH for ambiguous single punches", () => {
+    const input = base();
+    const clockIn = new Date("2026-04-15T15:30:00-04:00");
+    input.punches = [
+      {
+        employeeId: "E1",
+        clockIn,
+        clockOut: null,
+        notes: "ambiguous:single",
+      },
+    ];
+    const alerts = detectExceptions(input);
+    expect(alerts.some((a) => a.issue === "UNPAIRED_PUNCH")).toBe(true);
+  });
+
   it("emits MISSING_IN for outOnly sentinel punches (clockIn === clockOut)", () => {
     const input = base();
     const t = new Date("2026-04-15T20:00:00Z");

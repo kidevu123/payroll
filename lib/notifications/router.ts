@@ -113,6 +113,19 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
         url: "/hall-monitor",
         tag: "hall_monitor",
       };
+    case "employee.ngteco_imported": {
+      const count =
+        typeof e.payload.count === "number" ? e.payload.count : 1;
+      return {
+        title: "New people from time clock",
+        body:
+          count === 1
+            ? "1 new person needs payroll setup on Employees."
+            : `${count} new people need payroll setup on Employees.`,
+        url: "/employees?status=INACTIVE",
+        tag: "ngteco_employee_import",
+      };
+    }
     case "missed_punch.request_submitted":
     case "time_off.request_submitted":
       return {

@@ -27,6 +27,7 @@ export type DetectInput = {
     clockIn: Date;
     clockOut: Date | null;
     voidedAt?: Date | null;
+    notes?: string | null;
   }[];
   /** Approved time-off rows that overlap the period. */
   timeOff: { employeeId: string; startDate: string; endDate: string }[];
@@ -54,6 +55,7 @@ export type DetectedAlert = {
     | "NO_PUNCH"
     | "MISSING_OUT"
     | "MISSING_IN"
+    | "UNPAIRED_PUNCH"
     | "SUSPICIOUS_DURATION"
     | "INVERTED_TIMES";
 };
@@ -124,6 +126,7 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
     complete: { ms: number }[];
     incomplete: { clockIn: Date }[];
     outOnly: number;
+    unpaired: number;
     /** clockOut < clockIn — produces 0 hours and silently underpays. */
     inverted: number;
   };
@@ -140,9 +143,16 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
       complete: [],
       incomplete: [],
       outOnly: 0,
+      unpaired: 0,
       inverted: 0,
     };
-    if (p.clockOut === null) {
+    if (
+      p.clockOut === null &&
+      typeof p.notes === "string" &&
+      p.notes.includes("ambiguous:single")
+    ) {
+      bucket.unpaired += 1;
+    } else if (p.clockOut === null) {
       bucket.incomplete.push({ clockIn: p.clockIn });
     } else if (p.clockOut.getTime() === p.clockIn.getTime()) {
       // Sentinel for an imported "clock-out without clock-in" record.
@@ -199,6 +209,10 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
           alerts.push({ employeeId: e.id, date: day, issue: "MISSING_OUT" });
           break; // one alert per day-employee — don't pile up
         }
+      }
+
+      if (bucket.unpaired > 0) {
+        alerts.push({ employeeId: e.id, date: day, issue: "UNPAIRED_PUNCH" });
       }
 
       if (bucket.outOnly > 0) {

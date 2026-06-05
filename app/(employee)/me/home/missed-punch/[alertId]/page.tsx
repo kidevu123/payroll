@@ -12,6 +12,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { localMidnightUtc } from "@/lib/utils";
 import {
+  isAmbiguousSinglePunch,
   isMissingClockInPunch,
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
@@ -67,9 +68,13 @@ export default async function MissedPunchFixPage({
 
   let recordedClockIn: string | null = null;
   let recordedClockOut: string | null = null;
+  let recordedUnpairedPunch: string | null = null;
   let defaultClockOut: string | undefined;
 
   for (const p of dayPunches) {
+    if (isAmbiguousSinglePunch(p)) {
+      recordedUnpairedPunch = formatWallClock(p.clockIn, tz);
+    }
     if (isOpenShiftPunch(p)) {
       recordedClockIn = formatWallClock(p.clockIn, tz);
       const outGuess = new Date(p.clockIn.getTime() + 8 * 60 * 60 * 1000);
@@ -100,6 +105,7 @@ export default async function MissedPunchFixPage({
             issue={alert.issue as MissedPunchIssue}
             {...(recordedClockIn ? { recordedClockIn } : {})}
             {...(recordedClockOut ? { recordedClockOut } : {})}
+            {...(recordedUnpairedPunch ? { recordedUnpairedPunch } : {})}
             {...(defaultClockOut ? { defaultClockOut } : {})}
           />
         </CardContent>

@@ -288,3 +288,23 @@ export async function recomputeAllPayslipsForEmployeeAction(
   revalidatePath("/reports");
   return { ok: true, recomputed, skipped };
 }
+
+export async function syncNgtecoEmployeeRosterAction(): Promise<
+  { error: string } | { ok: true; created: number; scraped: number }
+> {
+  await requireAdmin();
+  const { runNgtecoEmployeeRosterSync } = await import(
+    "@/lib/ngteco/employee-roster-sync"
+  );
+  const runId = `manual-roster-${Date.now()}`;
+  const summary = await runNgtecoEmployeeRosterSync({ runId, force: true });
+  revalidatePath("/employees");
+  if (!summary.ok) {
+    return { error: summary.reason ?? "Time clock sync failed." };
+  }
+  return {
+    ok: true,
+    created: summary.created ?? 0,
+    scraped: summary.scraped ?? 0,
+  };
+}
