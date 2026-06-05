@@ -107,12 +107,19 @@ export function EmployeeForm(props: Props) {
 
   const scheduleWarning =
     classification === "MONTHLY_HOURLY" && !monthlySchedule
-      ? "Monthly pay schedule is missing in Settings → Pay schedules. Save will fail until it exists."
+      ? "Monthly pay schedule is missing in Settings → Pay schedules. Activation will fail until it exists."
       : classification === "SEMI_HOURLY" && !semiSchedule
         ? "Semi-monthly pay schedule is missing in Settings → Pay schedules."
         : classification === "WEEKLY_HOURLY" && !weeklySchedule
           ? "Weekly pay schedule is missing in Settings → Pay schedules."
           : null;
+
+  const isNgtecoImport = e?.notes?.includes("NGTECO_IMPORT:");
+  const rateDefault =
+    e?.hourlyRateCents != null
+      ? (e.hourlyRateCents / 100).toFixed(2)
+      : "";
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form
@@ -264,6 +271,48 @@ export function EmployeeForm(props: Props) {
             <p className="text-xs text-text-muted">
               Type the dollar amount, e.g. 20 or 20.50.
             </p>
+          </div>
+        )}
+        {props.mode === "edit" && classification !== "SALARIED" && (
+          <div className="space-y-1">
+            <Label htmlFor="hourlyRateDollars">Hourly rate ($)</Label>
+            <Input
+              id="hourlyRateDollars"
+              name="hourlyRateDollars"
+              type="number"
+              min={0}
+              step={0.01}
+              defaultValue={rateDefault}
+              placeholder="20.00"
+            />
+            <input type="hidden" name="rateEffectiveFrom" value={today} />
+            <p className="text-xs text-text-muted">
+              Changing the rate creates a history entry effective today.
+            </p>
+          </div>
+        )}
+        {props.mode === "edit" && e && e.status !== "TERMINATED" && (
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="status">Payroll status</Label>
+            <select
+              id="status"
+              name="status"
+              defaultValue={e.status}
+              className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+            >
+              <option value="ACTIVE">
+                Active — appears on Time and Payroll
+              </option>
+              <option value="INACTIVE">
+                Inactive — imported or not paid yet
+              </option>
+            </select>
+            {e.status === "INACTIVE" && isNgtecoImport ? (
+              <p className="text-xs text-text-muted">
+                Set classification, hourly rate, then switch to Active and
+                save.
+              </p>
+            ) : null}
           </div>
         )}
         <div className="space-y-1">

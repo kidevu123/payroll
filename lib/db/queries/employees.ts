@@ -83,6 +83,22 @@ export async function listEmployees(
   return rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+/** Hourly/flat-task employees need rate + pay schedule before going active. */
+export function activationRequirementsMessage(input: {
+  payType: Employee["payType"];
+  payScheduleId: string | null;
+  hourlyRateCents: number | null;
+}): string | null {
+  if (input.payType === "SALARIED") return null;
+  if (!input.payScheduleId) {
+    return "Choose a classification with an active pay schedule before activating.";
+  }
+  if (input.hourlyRateCents == null) {
+    return "Set an hourly rate before activating.";
+  }
+  return null;
+}
+
 export async function getEmployee(id: string): Promise<Employee | null> {
   const [row] = await db.select().from(employees).where(eq(employees.id, id));
   return row ?? null;

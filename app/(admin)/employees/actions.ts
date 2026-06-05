@@ -8,8 +8,10 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { payslips } from "@/lib/db/schema";
 import {
+  activationRequirementsMessage,
   archiveEmployee,
   createEmployee,
+  getEmployee,
   ignoreNgtecoSetupEmployee,
   updateEmployee,
 } from "@/lib/db/queries/employees";
@@ -106,6 +108,17 @@ export async function createEmployeeAction(
   redirect(`/employees/${employee.id}`);
 }
 
+const hourlyRateDollarsField = z
+  .union([
+    z.literal("").transform(() => null),
+    z
+      .string()
+      .regex(/^\d+(\.\d{1,2})?$/, "Rate must be e.g. 15.00 (max 2 decimals)")
+      .transform((s) => Number(s)),
+  ])
+  .nullable()
+  .optional();
+
 const updateSchema = z.object({
   displayName: z.string().min(1).max(120),
   legalName: z.string().min(1).max(120),
@@ -117,6 +130,9 @@ const updateSchema = z.object({
     .union([z.literal("").transform(() => null), z.string().uuid()])
     .optional()
     .nullable(),
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  hourlyRateDollars: hourlyRateDollarsField,
+  rateEffectiveFrom: z.string().date().optional(),
   language: z.enum(["en", "es"]),
   notes: z.string().max(2000).optional().nullable(),
   requiresW2Upload: z.union([z.literal("1"), z.literal("0")]).optional(),
@@ -134,12 +150,15 @@ export async function updateEmployeeAction(
   if (!idSchema.safeParse(id).success) return { error: "Invalid id." };
   const parsed = updateSchema.safeParse({
     displayName: formData.get("displayName"),
-    legalName: formData.get("legalName"),
+    legalName: formData.get("legalName") || formData.get("displayName"),
     email: formData.get("email"),
     phone: formData.get("phone") || null,
     shiftId: formData.get("shiftId") || null,
     payType: formData.get("payType"),
     payScheduleId: formData.get("payScheduleId") || null,
+    status: formData.get("status") || undefined,
+    hourlyRateDollars: formData.get("hourlyRateDollars"),
+    rateEffectiveFrom: formData.get("rateEffectiveFrom") || undefined,
     language: formData.get("language"),
     notes: formData.get("notes") || null,
     requiresW2Upload: formData.get("requiresW2Upload") || "0",
@@ -149,6 +168,44 @@ export async function updateEmployeeAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const d = parsed.data;
+  const before = await getEmployee(id);
+  if (!before) return { error: "Employee not found." };
+  if (before.status === "TERMINATED") {
+    return { error: "Terminated employees cannot be edited here." };
+  }
+
+  const nextStatus = d.status ?? before.status;
+  let nextRateCents = before.hourlyRateCents;
+  if (
+    d.hourlyRateDollars !== undefined &&
+    d.hourlyRateDollars !== null &&
+    d.payType !== "SALARIED"
+  ) {
+    const cents = Math.round(d.hourlyRateDollars * 100);
+    if (cents !== before.hourlyRateCents) {
+      await addRate(
+        id,
+        {
+          effectiveFrom:
+            d.rateEffectiveFrom ?? new Date().toISOString().slice(0, 10),
+          hourlyRateCents: cents,
+          reason: "Updated from employee edit",
+        },
+        { id: session.user.id, role: session.user.role },
+      );
+      nextRateCents = cents;
+    }
+  }
+
+  if (nextStatus === "ACTIVE") {
+    const activationError = activationRequirementsMessage({
+      payType: d.payType,
+      payScheduleId: d.payScheduleId ?? before.payScheduleId,
+      hourlyRateCents: nextRateCents,
+    });
+    if (activationError) return { error: activationError };
+  }
+
   await updateEmployee(
     id,
     {
@@ -159,6 +216,7 @@ export async function updateEmployeeAction(
       shiftId: d.shiftId ?? null,
       payType: d.payType,
       payScheduleId: d.payScheduleId ?? null,
+      status: nextStatus,
       language: d.language,
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",

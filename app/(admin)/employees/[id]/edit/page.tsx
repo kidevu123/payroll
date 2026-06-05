@@ -34,8 +34,8 @@ export default async function EditEmployeePage({
       <div>
         <h1 className="text-2xl font-semibold">Edit employee</h1>
         <p className="text-sm text-text-muted">
-          Rate changes are tracked separately so historical pay computations
-          don&apos;t shift.
+          Set hourly rate and payroll status here. Rate changes are tracked in
+          history so past pay runs stay accurate.
         </p>
       </div>
       <EmployeeForm
