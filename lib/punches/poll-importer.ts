@@ -155,6 +155,10 @@ export async function importPunchPoll(
         .update(hashKey)
         .digest("hex")
         .slice(0, 32);
+      const scrapeRaw = (ev: RawPunchEvent) => {
+        if (!ev.rawDate && !ev.rawTime) return null;
+        return `scrape:${ev.rawDate ?? ""}|${ev.rawTime ?? ""}|${ev.rawTz ?? ""}`;
+      };
       const noteParts = [
         paired.kind === "ambiguous" ? "ambiguous:single" : null,
         paired.kind === "outOnly"
@@ -164,6 +168,8 @@ export async function importPunchPoll(
             : null,
         outEv?.verifyType ? `out:${outEv.verifyType}` : null,
         inEv.source ? `dev:${inEv.source}` : null,
+        scrapeRaw(inEv),
+        outEv ? scrapeRaw(outEv) : null,
         paired.kind === "outOnly" ? "missing:in" : null,
       ].filter(Boolean);
       const note = noteParts.length ? noteParts.join(" · ") : null;

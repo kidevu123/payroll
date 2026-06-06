@@ -41,6 +41,15 @@ function formatWallClock(d: Date, timezone: string): string {
   }).format(d);
 }
 
+function formatNgtecoSourceLine(notes: string): string {
+  const dev = notes.match(/dev:([^\s·]+)/)?.[1];
+  const scrape = notes.match(/scrape:([^·]+)/)?.[1];
+  const parts = ["From NGTeco time clock"];
+  if (dev) parts.push(`device ${dev}`);
+  if (scrape) parts.push(`scraped ${scrape.replace(/\|/g, " ")}`);
+  return parts.join(" · ");
+}
+
 function defaultClockOutGuess(clockIn: Date, timezone: string): string {
   const guess = new Date(clockIn.getTime() + 8 * 60 * 60 * 1000);
   return toLocalInputValue(guess, timezone);
@@ -212,6 +221,11 @@ function FixPunchForm({
             <p className="mt-1 font-semibold tabular-nums">
               Unpaired punch: {formatWallClock(punch.clockIn, timezone)}
             </p>
+            {punch.notes ? (
+              <p className="mt-1 text-xs text-text-muted font-normal">
+                {formatNgtecoSourceLine(punch.notes)}
+              </p>
+            ) : null}
           </div>
           <input
             type="hidden"

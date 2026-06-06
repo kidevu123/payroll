@@ -85,6 +85,10 @@ export type RawPunchEvent = {
   personName: string;
   /** Wall-clock punch instant in the device's timezone, ISO with offset. */
   punchAt: string;
+  /** Raw date/time cells as scraped — for audit when disputing clock data. */
+  rawDate?: string;
+  rawTime?: string;
+  rawTz?: string;
   /** "Fingerprint" / "Face" / "Manual" / etc. */
   verifyType: string;
   /** Device serial (e.g. NMR2241400323) from the Source column. */
@@ -1366,6 +1370,41 @@ export async function scrapeViewAttendance(
          0 events legitimately or log a failure with the screenshot. */
     }
 
+    const discoveredCols = await discoverViewPunchColumns(page);
+    const idSels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.personIdCell),
+      discoveredCols.personId,
+    );
+    const nameSels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.personNameCell),
+      discoveredCols.personName,
+    );
+    const dateSels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.punchDateCell),
+      discoveredCols.punchDate,
+    );
+    const timeSels = prependFieldSelector(
+      [
+        ...splitSelectorList(sel.viewPunch.punchTimeCell),
+        '[role="cell"][data-field="att_time"]',
+        '[role="cell"][data-field="punch_time"]',
+        '[role="cell"][data-field="attendance_time"]',
+      ],
+      discoveredCols.punchTime,
+    );
+    const verifySels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.verifyTypeCell),
+      discoveredCols.verifyType,
+    );
+    const tzSels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.timezoneCell),
+      discoveredCols.timezone,
+    );
+    const sourceSels = prependFieldSelector(
+      splitSelectorList(sel.viewPunch.sourceCell),
+      discoveredCols.source,
+    );
+
     const events: RawPunchEvent[] = [];
     const seenKeys = new Set<string>();
     let pages = 0;
@@ -1389,13 +1428,13 @@ export async function scrapeViewAttendance(
       // rows (whichever first).
       const evalArgs = {
         rowSel: sel.viewPunch.rowsContainer,
-        nameSel: sel.viewPunch.personNameCell,
-        idSel: sel.viewPunch.personIdCell,
-        dateSel: sel.viewPunch.punchDateCell,
-        timeSel: sel.viewPunch.punchTimeCell,
-        verifySel: sel.viewPunch.verifyTypeCell,
-        tzSel: sel.viewPunch.timezoneCell,
-        sourceSel: sel.viewPunch.sourceCell,
+        nameSels,
+        idSels,
+        dateSels,
+        timeSels,
+        verifySels,
+        tzSels,
+        sourceSels,
       };
       type RowRaw = {
         personName: string;
@@ -1408,21 +1447,27 @@ export async function scrapeViewAttendance(
       };
       const collectVisible = async (): Promise<RowRaw[]> => {
         const out = await page.evaluate((a: typeof evalArgs) => {
+          const pick = (row: Element, sels: string[]) => {
+            for (const s of sels) {
+              const text =
+                (
+                  row.querySelector(s) as HTMLElement | null
+                )?.textContent?.trim() ?? "";
+              if (text && !/^[—–-]$/.test(text)) return text;
+            }
+            return "";
+          };
           const result: Array<Record<string, string>> = [];
           const rows = document.querySelectorAll(a.rowSel);
           for (const row of Array.from(rows)) {
-            const get = (s: string) =>
-              (
-                row.querySelector(s) as HTMLElement | null
-              )?.textContent?.trim() ?? "";
             result.push({
-              personName: get(a.nameSel),
-              personId: get(a.idSel),
-              dateRaw: get(a.dateSel),
-              timeRaw: get(a.timeSel),
-              verifyType: get(a.verifySel),
-              tzRaw: get(a.tzSel),
-              source: get(a.sourceSel),
+              personName: pick(row, a.nameSels),
+              personId: pick(row, a.idSels),
+              dateRaw: pick(row, a.dateSels),
+              timeRaw: pick(row, a.timeSels),
+              verifyType: pick(row, a.verifySels),
+              tzRaw: pick(row, a.tzSels),
+              source: pick(row, a.sourceSels),
             });
           }
           return result;
@@ -1483,6 +1528,7 @@ export async function scrapeViewAttendance(
       await scrollStep(0);
 
       for (const r of pageRows) {
+        if (!looksLikeWallClockTime(r.timeRaw)) continue;
         const punchAt = composeIso(r.dateRaw, r.timeRaw, r.tzRaw);
         if (!punchAt) continue;
         const key = `${r.personId}|${punchAt}`;
@@ -1492,6 +1538,9 @@ export async function scrapeViewAttendance(
           personId: r.personId,
           personName: r.personName,
           punchAt,
+          rawDate: r.dateRaw,
+          rawTime: r.timeRaw,
+          rawTz: r.tzRaw,
           verifyType: r.verifyType,
           source: r.source,
         });
@@ -2019,6 +2068,89 @@ function splitSelectorList(selector: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+type DiscoveredViewPunchCols = {
+  punchDate?: string;
+  punchTime?: string;
+  personId?: string;
+  personName?: string;
+  verifyType?: string;
+  timezone?: string;
+  source?: string;
+};
+
+/** Prefer the column whose header says "Time", not "Status" / check-in-out. */
+async function discoverViewPunchColumns(
+  page: PlaywrightPage,
+): Promise<DiscoveredViewPunchCols> {
+  return page.evaluate(() => {
+    const fields: DiscoveredViewPunchCols = {};
+    for (const h of Array.from(
+      document.querySelectorAll('[role="columnheader"]'),
+    )) {
+      const field = h.getAttribute("data-field");
+      const text = (h.textContent ?? "").trim().toLowerCase();
+      if (!field) continue;
+      if (
+        /person\s*id|employee\s*(id|code)|\bperson\s*code\b/.test(text) &&
+        !fields.personId
+      ) {
+        fields.personId = field;
+      } else if (
+        /person\s*name|employee\s*name|^name$/.test(text) &&
+        !fields.personName
+      ) {
+        fields.personName = field;
+      } else if (
+        (/^date$|punch\s*date|att.*date/.test(text) ||
+          field === "att_date") &&
+        !fields.punchDate
+      ) {
+        fields.punchDate = field;
+      } else if (
+        (/^time$|punch\s*time|clock\s*time|attendance\s*time/.test(text) ||
+          /^(att_time|punch_time|attendance_time)$/.test(field)) &&
+        !/zone|format|status|state|verify/.test(text) &&
+        !fields.punchTime
+      ) {
+        fields.punchTime = field;
+      } else if (/verify|verification/.test(text) && !fields.verifyType) {
+        fields.verifyType = field;
+      } else if (
+        (/time\s*zone|timezone|offset/.test(text) || field === "timezone") &&
+        !fields.timezone
+      ) {
+        fields.timezone = field;
+      } else if (
+        (/source|punch\s*from|device/.test(text) || field === "punch_from") &&
+        !fields.source
+      ) {
+        fields.source = field;
+      }
+    }
+    return fields;
+  });
+}
+
+function cellSelectorForField(field: string | undefined): string | null {
+  return field ? `[role="cell"][data-field="${field}"]` : null;
+}
+
+function prependFieldSelector(
+  list: string[],
+  field: string | undefined,
+): string[] {
+  const sel = cellSelectorForField(field);
+  if (sel && !list.includes(sel)) return [sel, ...list];
+  return list;
+}
+
+/** NGTeco wall-clock cells are HH:MM or HH:MM:SS — not "Check In" labels. */
+function looksLikeWallClockTime(raw: string): boolean {
+  const t = raw.trim();
+  if (!t || /check|clock\s*in|clock\s*out|^in$|^out$/i.test(t)) return false;
+  return /^\d{1,2}:\d{2}(:\d{2})?$/.test(t);
 }
 
 /**
