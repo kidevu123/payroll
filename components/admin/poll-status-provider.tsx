@@ -155,11 +155,14 @@ function deriveUi(
   }
 
   if (running || (tracked && !status.finishedAt)) {
+    const longRun = (status.elapsedMs ?? 0) > 5 * 60 * 1000;
     return {
       show: true,
       phase: "running",
       title: `${watch?.label ?? "NGTeco punch poll"} — running`,
-      detail: `Scraping NGTeco and importing punches (${formatElapsed(status.elapsedMs)})`,
+      detail: longRun
+        ? `Scraping NGTeco (${formatElapsed(status.elapsedMs)}). Backfill polls can take up to ~90 min — leave this page if you want; the bar stays visible.`
+        : `Scraping NGTeco and importing punches (${formatElapsed(status.elapsedMs)})`,
       progress: "indeterminate",
     };
   }

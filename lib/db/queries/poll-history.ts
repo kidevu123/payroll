@@ -2,7 +2,7 @@
 // the manual "Poll Now" button log here. Surfaces "last poll: N min ago"
 // and a short error trail in the admin UI.
 
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   ngtecoPollLog,
@@ -44,10 +44,75 @@ export async function finishPoll(
     .where(eq(ngtecoPollLog.id, id));
 }
 
+/** True when pg-boss still has an active worker on ngteco.punch.poll. */
+export async function isPunchPollJobActive(): Promise<boolean> {
+  const result = await db.execute(sql`
+    SELECT 1
+    FROM pgboss.job
+    WHERE name = 'ngteco.punch.poll'
+      AND state = 'active'
+    LIMIT 1
+  `);
+  return result.length > 0;
+}
+
+const ORPHAN_NO_WORKER_MS = 20 * 60 * 1000;
+const ORPHAN_MAX_MS = 100 * 60 * 1000;
+
+/**
+ * Close poll-log rows left open when pg-boss expired the job at 15 min
+ * (old default) while Playwright kept running — or when the worker died.
+ * Called before reading status so the UI does not show "running" forever.
+ */
+export async function reconcileOrphanedPolls(): Promise<number> {
+  const open = await db
+    .select()
+    .from(ngtecoPollLog)
+    .where(isNull(ngtecoPollLog.finishedAt))
+    .orderBy(desc(ngtecoPollLog.startedAt));
+
+  if (open.length === 0) return 0;
+
+  const workerActive = await isPunchPollJobActive();
+  const now = Date.now();
+  let closed = 0;
+
+  for (const row of open) {
+    const elapsed = now - row.startedAt.getTime();
+    const shouldClose =
+      elapsed >= ORPHAN_MAX_MS ||
+      (elapsed >= ORPHAN_NO_WORKER_MS && !workerActive);
+
+    if (!shouldClose) continue;
+
+    await finishPoll(row.id, {
+      ok: false,
+      errorMessage:
+        elapsed >= ORPHAN_MAX_MS
+          ? "Poll timed out after 100+ minutes. Try again or use Backfill missing days."
+          : "Poll was interrupted (worker stopped). Try again — a fresh poll usually takes 1–5 min for today only.",
+    });
+    closed++;
+  }
+
+  return closed;
+}
+
 export async function getLastPoll(): Promise<NgtecoPollLogRow | null> {
   const [row] = await db
     .select()
     .from(ngtecoPollLog)
+    .orderBy(desc(ngtecoPollLog.startedAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Unfinished poll row, if any. Call reconcileOrphanedPolls() first. */
+export async function getInProgressPoll(): Promise<NgtecoPollLogRow | null> {
+  const [row] = await db
+    .select()
+    .from(ngtecoPollLog)
+    .where(isNull(ngtecoPollLog.finishedAt))
     .orderBy(desc(ngtecoPollLog.startedAt))
     .limit(1);
   return row ?? null;

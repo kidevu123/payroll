@@ -235,7 +235,7 @@ export async function handlePunchPoll(
       "punch.poll: scrape ok",
     );
     if (result.events.length === 0) {
-      await rosterSyncAfterSuccessfulScrape(runId);
+      void rosterSyncAfterSuccessfulScrape(runId);
       return {
         ok: true,
         eventsScraped: 0,
@@ -336,7 +336,7 @@ export async function handlePunchPoll(
       );
     }
 
-    await rosterSyncAfterSuccessfulScrape(runId);
+    void rosterSyncAfterSuccessfulScrape(runId);
 
     return {
       ok: true,

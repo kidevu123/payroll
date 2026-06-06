@@ -3,9 +3,13 @@
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
-import { getLastPoll } from "@/lib/db/queries/poll-history";
+import {
+  getInProgressPoll,
+  getLastPoll,
+  reconcileOrphanedPolls,
+} from "@/lib/db/queries/poll-history";
 
-const STUCK_MS = 15 * 60 * 1000;
+const STUCK_MS = 90 * 60 * 1000;
 
 export type PollPhase =
   | "idle"
@@ -16,7 +20,9 @@ export type PollPhase =
 
 export async function GET(): Promise<Response> {
   await requireAdmin();
-  const last = await getLastPoll();
+  await reconcileOrphanedPolls();
+  const inProgress = await getInProgressPoll();
+  const last = inProgress ?? (await getLastPoll());
   if (!last) {
     return NextResponse.json({
       id: null,

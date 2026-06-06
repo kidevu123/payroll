@@ -18,10 +18,15 @@ import {
 } from "@/lib/db/queries/payroll-runs";
 import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
 import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifications";
-import { getLastPoll } from "@/lib/db/queries/poll-history";
+import {
+  getInProgressPoll,
+  getLastPoll,
+  reconcileOrphanedPolls,
+} from "@/lib/db/queries/poll-history";
 import {
   makeManualPollJobData,
   NGTECO_PUNCH_POLL_QUEUE,
+  punchPollSendOptions,
 } from "@/lib/jobs/punch-poll-queue";
 import {
   recomputePayslip,
@@ -215,11 +220,20 @@ export type PollNowResult =
 export async function pollNowAction(): Promise<PollNowResult> {
   const session = await requireAdmin();
   try {
+    await reconcileOrphanedPolls();
+    const inProgress = await getInProgressPoll();
+    if (inProgress) {
+      return {
+        error:
+          "A poll is already running. Watch the status bar at the top — it can take several minutes while NGTeco loads.",
+      };
+    }
     const { getBoss } = await import("@/lib/jobs");
     const boss = await getBoss();
     const jobId = await boss.send(
       NGTECO_PUNCH_POLL_QUEUE,
       makeManualPollJobData(session.user.id),
+      punchPollSendOptions,
     );
     if (!jobId) return { error: "Poll could not be queued." };
     return { ok: true, queued: true, jobId };
@@ -257,6 +271,14 @@ export async function backfillPollAction(
     return { error: "Invalid daysBack — pick a value between 1 and 30." };
   }
   try {
+    await reconcileOrphanedPolls();
+    const inProgress = await getInProgressPoll();
+    if (inProgress) {
+      return {
+        error:
+          "A poll is already running. Wait for it to finish before starting a backfill.",
+      };
+    }
     const { getBoss } = await import("@/lib/jobs");
     const boss = await getBoss();
     const jobId = await boss.send(
@@ -264,6 +286,7 @@ export async function backfillPollAction(
       makeManualPollJobData(session.user.id, {
         daysBack: parsed.data.daysBack,
       }),
+      punchPollSendOptions,
     );
     if (!jobId) return { error: "Backfill could not be queued." };
     return { ok: true, queued: true, jobId };

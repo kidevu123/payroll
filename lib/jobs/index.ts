@@ -21,6 +21,7 @@ import { handlePayrollRunPublish } from "./handlers/payroll-run-publish";
 import { getSetting } from "@/lib/settings/runtime";
 import {
   NGTECO_PUNCH_POLL_QUEUE,
+  punchPollQueueOptions,
   type PunchPollJobData,
 } from "./punch-poll-queue";
 import { NGTECO_MANUAL_PUNCH_SYNC_QUEUE } from "@/lib/ngteco/manual-punch-sync";
@@ -168,7 +169,18 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   // teamSize/teamConcurrency=1 enforces single-runner semantics: a long
   // scrape that overruns its 15-min cron tick won't get a sibling polling
   // the same NGTeco profile (Playwright would crash on the locked profile).
-  await boss.createQueue(NGTECO_PUNCH_POLL_QUEUE);
+  await boss.createQueue(NGTECO_PUNCH_POLL_QUEUE, {
+    name: NGTECO_PUNCH_POLL_QUEUE,
+    ...punchPollQueueOptions,
+  });
+  try {
+    await boss.updateQueue(NGTECO_PUNCH_POLL_QUEUE, {
+      name: NGTECO_PUNCH_POLL_QUEUE,
+      ...punchPollQueueOptions,
+    });
+  } catch {
+    /* queue may not exist yet on first boot */
+  }
   await boss.work(
     NGTECO_PUNCH_POLL_QUEUE,
     { teamSize: 1, teamConcurrency: 1 } as Parameters<typeof boss.work>[1],
