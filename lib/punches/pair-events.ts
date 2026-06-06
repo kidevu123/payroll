@@ -41,9 +41,32 @@ export function pairPunchEvents(
 
   const paired: PairedPunchEvent[] = [];
   let open: RawPunchEvent | null = null;
+  /** Last clock-out that closed a complete shift (for app+device dup outs). */
+  let lastOutEv: RawPunchEvent | null = null;
 
   for (const ev of sorted) {
     if (open === null) {
+      // NGTeco often fires app + device clock-outs within seconds. The first
+      // out already closed the shift; treat the second as a duplicate, not
+      // a new ambiguous single (was creating false "unpaired punch" rows).
+      if (lastOutEv !== null) {
+        const gapFromLastOut =
+          new Date(ev.punchAt).getTime() -
+          new Date(lastOutEv.punchAt).getTime();
+        if (gapFromLastOut <= DUPLICATE_PUNCH_WINDOW_MS) {
+          if (
+            punchSourcePriority(ev.source) >
+            punchSourcePriority(lastOutEv.source)
+          ) {
+            const last = paired[paired.length - 1];
+            if (last?.kind === "complete") {
+              last.outEv = ev;
+            }
+            lastOutEv = ev;
+          }
+          continue;
+        }
+      }
       open = ev;
       continue;
     }
@@ -56,6 +79,7 @@ export function pairPunchEvents(
       continue;
     }
     paired.push({ kind: "complete", inEv: open, outEv: ev });
+    lastOutEv = ev;
     open = null;
   }
 

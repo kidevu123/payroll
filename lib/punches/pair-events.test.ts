@@ -82,6 +82,37 @@ describe("pairPunchEvents", () => {
     ]);
   });
 
+  it("collapses duplicate clock-outs after a complete shift (app + device)", () => {
+    const deviceIn = {
+      ...ev("2026-06-04T06:17:21-04:00"),
+      source: "NMR2241400323",
+      verifyType: "Fingerprint",
+    };
+    const deviceOut = {
+      ...ev("2026-06-04T18:17:29-04:00"),
+      source: "NMR2241400323",
+      verifyType: "Fingerprint",
+    };
+    const appOut = {
+      ...ev("2026-06-04T18:17:35-04:00"),
+      source: "app",
+      verifyType: "Punch",
+    };
+
+    const pairs = pairPunchEvents(
+      [deviceIn, deviceOut, appOut],
+      "America/New_York",
+    );
+
+    expect(pairs).toEqual([
+      {
+        kind: "complete",
+        inEv: deviceIn,
+        outEv: deviceOut,
+      },
+    ]);
+  });
+
   it("still pairs lunch breaks as separate shifts", () => {
     const pairs = pairPunchEvents(
       [

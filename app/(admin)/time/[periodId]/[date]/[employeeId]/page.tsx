@@ -7,6 +7,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { safeLocalReturnTo } from "@/lib/time/grid-links";
+import { voidSupersededAmbiguousPunches } from "@/lib/punches/superseded-ambiguous";
 import { PunchEditor } from "./punch-editor";
 
 export default async function PunchEditorPage({
@@ -22,13 +23,19 @@ export default async function PunchEditorPage({
     sp.returnTo,
     `/time?${new URLSearchParams({ period: periodId })}`,
   );
-  const [period, employee, allPunches, company] = await Promise.all([
+  const [period, employee, company] = await Promise.all([
     getPeriodById(periodId),
     getEmployee(employeeId),
-    listPunches({ periodId, employeeId, includeVoided: true }),
     getSetting("company"),
   ]);
   if (!period || !employee) notFound();
+
+  await voidSupersededAmbiguousPunches(employeeId, date);
+  const allPunches = await listPunches({
+    periodId,
+    employeeId,
+    includeVoided: true,
+  });
 
   // Sane "Add manual punch" defaults: 8 AM ET clock-in, blank clock-out.
   // Previously we passed dayStart -> dayStart+24h, which created a

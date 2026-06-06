@@ -224,7 +224,8 @@ function FixPunchForm({
               id="fix-clockOut"
               name="clockOut"
               type="datetime-local"
-              defaultValue={defaultClockOutGuess(punch.clockIn, timezone)}
+              required
+              placeholder="Enter the missing in or out time"
             />
             <p className="text-xs text-text-muted">
               If the on-file punch was actually their clock-out, edit clock-in
@@ -296,9 +297,11 @@ function FixPunchForm({
       <Button type="submit" disabled={pending}>
         {pending
           ? "Saving…"
-          : closeOut
-            ? "Close shift"
-            : "Save clock-in"}
+          : ambiguous
+            ? "Save clock-out"
+            : closeOut
+              ? "Close shift"
+              : "Save clock-in"}
       </Button>
     </form>
   );
