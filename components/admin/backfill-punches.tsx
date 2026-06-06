@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, CheckCircle2, History, Loader2 } from "lucide-react";
+import { AlertTriangle, History, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   backfillPollAction,
   type PollNowResult,
 } from "@/app/(admin)/payroll/actions";
+import { usePollStatus } from "@/components/admin/poll-status-provider";
 
 const PRESETS: Array<{ daysBack: number; label: string }> = [
   { daysBack: 1, label: "Yesterday + today" },
@@ -17,10 +18,13 @@ const PRESETS: Array<{ daysBack: number; label: string }> = [
 ];
 
 export function BackfillPunchesButton(): React.JSX.Element {
+  const { startWatching, status, isActive } = usePollStatus();
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<PollNowResult | null>(null);
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
+
+  const inProgress = isActive;
 
   React.useEffect(() => {
     if (!open) return;
@@ -39,6 +43,9 @@ export function BackfillPunchesButton(): React.JSX.Element {
     const r = await backfillPollAction(daysBack);
     setBusy(false);
     setResult(r);
+    if ("ok" in r) {
+      startWatching(`Backfill (${daysBack} days)`);
+    }
   }
 
   return (
@@ -47,12 +54,12 @@ export function BackfillPunchesButton(): React.JSX.Element {
         <Button
           size="sm"
           variant="ghost"
-          disabled={busy}
+          disabled={busy || inProgress}
           onClick={() => setOpen((v) => !v)}
         >
-          {busy ? (
+          {busy || inProgress ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> Queueing…
+              <Loader2 className="h-4 w-4 animate-spin" /> Running…
             </>
           ) : (
             <>
@@ -89,15 +96,6 @@ export function BackfillPunchesButton(): React.JSX.Element {
         <div className="flex items-start gap-2 rounded-card border border-red-200 bg-red-50 p-2 text-xs text-red-800">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{result.error}</span>
-        </div>
-      )}
-      {result && "ok" in result && (
-        <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
-          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
-          <span>
-            Backfill queued. You can leave this page; it will keep running in
-            the background.
-          </span>
         </div>
       )}
     </div>

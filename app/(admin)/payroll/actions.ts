@@ -254,7 +254,7 @@ export async function backfillPollAction(
   const session = await requireAdmin();
   const parsed = backfillSchema.safeParse({ daysBack });
   if (!parsed.success) {
-    return { error: "Invalid daysBack — pick a value between 1 and 14." };
+    return { error: "Invalid daysBack — pick a value between 1 and 30." };
   }
   try {
     const { getBoss } = await import("@/lib/jobs");

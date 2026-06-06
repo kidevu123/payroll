@@ -1,12 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Activity, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   pollNowAction,
   type PollNowResult,
 } from "@/app/(admin)/payroll/actions";
+import {
+  usePollLastLabel,
+  usePollStatus,
+} from "@/components/admin/poll-status-provider";
 
 type LastPoll = {
   startedAt: string | null;
@@ -18,25 +22,27 @@ type LastPoll = {
   errorMessage: string | null;
 };
 
-function formatRelative(iso: string | null): string {
-  if (!iso) return "never";
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return "just now";
-  const min = Math.round(ms / 60_000);
-  if (min < 60) return `${min} min ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return new Date(iso).toLocaleString();
-}
-
 export function PollPunchesNowButton({
   initialLast,
 }: {
   initialLast: LastPoll | null;
 }) {
+  const { startWatching, status, isActive } = usePollStatus();
+  const lastLabel = usePollLastLabel(initialLast);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<PollNowResult | null>(null);
-  const [last, setLast] = React.useState<LastPoll | null>(initialLast);
+
+  const inProgress = isActive;
+  const last = status?.startedAt
+    ? {
+        startedAt: status.startedAt,
+        finishedAt: status.finishedAt,
+        ok: status.ok,
+        pairsInserted: status.pairsInserted,
+        pairsUpdated: status.pairsUpdated,
+        errorMessage: status.errorMessage,
+      }
+    : initialLast;
 
   async function onClick() {
     setBusy(true);
@@ -45,23 +51,20 @@ export function PollPunchesNowButton({
     setBusy(false);
     setResult(r);
     if ("ok" in r) {
-      setLast({
-        startedAt: new Date().toISOString(),
-        finishedAt: null,
-        ok: true,
-        triggeredBy: "MANUAL",
-        pairsInserted: null,
-        pairsUpdated: null,
-        errorMessage: null,
-      });
+      startWatching("Poll punches");
     }
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="secondary" disabled={busy} onClick={onClick}>
-          {busy ? (
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={busy || inProgress}
+          onClick={onClick}
+        >
+          {busy || inProgress ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Polling…
             </>
@@ -74,10 +77,18 @@ export function PollPunchesNowButton({
         {last && (
           <span className="text-xs text-text-muted">
             Last:{" "}
-            <span className={last.ok ? "" : "text-red-700"}>
-              {formatRelative(last.startedAt)}
+            <span
+              className={
+                inProgress
+                  ? "text-brand-700 font-medium"
+                  : last.ok
+                    ? ""
+                    : "text-red-700"
+              }
+            >
+              {lastLabel}
             </span>
-            {last.ok && last.pairsInserted !== null && (
+            {!inProgress && last.ok && last.pairsInserted !== null && (
               <>
                 {" · "}
                 {last.pairsInserted} new
@@ -86,7 +97,7 @@ export function PollPunchesNowButton({
                   : ""}
               </>
             )}
-            {!last.ok && last.errorMessage && (
+            {!inProgress && !last.ok && last.errorMessage && (
               <>
                 {" · "}
                 <span className="text-red-700">{last.errorMessage}</span>
@@ -100,15 +111,6 @@ export function PollPunchesNowButton({
         <div className="flex items-start gap-2 rounded-card border border-red-200 bg-red-50 p-2 text-xs text-red-800">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{result.error}</span>
-        </div>
-      )}
-      {result && "ok" in result && (
-        <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">
-          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
-          <span>
-            Poll queued. You can leave this page; the import will keep running
-            in the background.
-          </span>
         </div>
       )}
     </div>

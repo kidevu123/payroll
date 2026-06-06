@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
+import { PollStatusBar, PollStatusProvider } from "@/components/admin/poll-status-provider";
 import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
@@ -130,24 +131,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
       />
       <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-        <Topbar
-          email={session.user.email}
-          role={session.user.role}
-          unreadCount={unread}
-          commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
-          company={companyForBrand}
-          currentLocale={locale}
-          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-        />
-        <MobileQuickNav
-          company={companyForBrand}
-          currentLocale={locale}
-          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-        />
-        <main className="flex-1 min-w-0 px-3 pb-10 pt-[calc(8.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-10 sm:pt-[calc(9rem+env(safe-area-inset-top))] lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
-          {children}
-        </main>
-        <AppFooter timezone={company?.timezone ?? "America/New_York"} />
+        <PollStatusProvider>
+          <Topbar
+            email={session.user.email}
+            role={session.user.role}
+            unreadCount={unread}
+            commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
+            company={companyForBrand}
+            currentLocale={locale}
+            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          />
+          <PollStatusBar />
+          <MobileQuickNav
+            company={companyForBrand}
+            currentLocale={locale}
+            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          />
+          <main className="flex-1 min-w-0 px-3 pb-10 pt-[calc(8.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-10 sm:pt-[calc(9rem+env(safe-area-inset-top))] lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
+            {children}
+          </main>
+          <AppFooter timezone={company?.timezone ?? "America/New_York"} />
+        </PollStatusProvider>
       </div>
       <FeedbackLauncher />
     </div>

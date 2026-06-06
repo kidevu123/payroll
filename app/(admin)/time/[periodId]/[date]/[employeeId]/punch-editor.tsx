@@ -187,7 +187,7 @@ export function PunchEditor({
   );
 }
 
-/** Focused fix for open shift (clock-out only) or missing clock-in. */
+/** Focused fix for open shift, missing clock-in, or ambiguous single punch. */
 function FixPunchForm({
   punch,
   timezone,
@@ -200,6 +200,14 @@ function FixPunchForm({
   const ambiguous = isAmbiguousSinglePunch(punch);
   const closeOut = isOpenShiftPunch(punch);
   const missingIn = isMissingClockInPunch(punch);
+  const onFileTime = toLocalInputValue(punch.clockIn, timezone);
+  const [onFileRole, setOnFileRole] = React.useState<"clock-in" | "clock-out">(
+    "clock-in",
+  );
+
+  const cleanedNotes =
+    punch.notes?.replace(/\bambiguous:single\b/g, "").replace(/\s+/g, " ").trim() ??
+    "";
 
   return (
     <form
@@ -227,25 +235,76 @@ function FixPunchForm({
               </p>
             ) : null}
           </div>
-          <input
-            type="hidden"
-            name="clockIn"
-            value={toLocalInputValue(punch.clockIn, timezone)}
-          />
-          <div className="space-y-1">
-            <Label htmlFor="fix-clockOut">Clock out ({timezone})</Label>
-            <Input
-              id="fix-clockOut"
-              name="clockOut"
-              type="datetime-local"
-              required
-              placeholder="Enter the missing in or out time"
-            />
-            <p className="text-xs text-text-muted">
-              If the on-file punch was actually their clock-out, edit clock-in
-              below instead (use Edit on the row after saving).
-            </p>
-          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">
+              The on-file punch was their…
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                <input
+                  type="radio"
+                  name="onFileRole"
+                  value="clock-in"
+                  checked={onFileRole === "clock-in"}
+                  onChange={() => setOnFileRole("clock-in")}
+                  className="accent-brand-700"
+                />
+                Clock in
+              </label>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+                <input
+                  type="radio"
+                  name="onFileRole"
+                  value="clock-out"
+                  checked={onFileRole === "clock-out"}
+                  onChange={() => setOnFileRole("clock-out")}
+                  className="accent-brand-700"
+                />
+                Clock out
+              </label>
+            </div>
+          </fieldset>
+
+          {onFileRole === "clock-in" ? (
+            <>
+              <input type="hidden" name="clockIn" value={onFileTime} />
+              <div className="space-y-1">
+                <Label htmlFor="fix-clockOut">Missing clock out ({timezone})</Label>
+                <Input
+                  id="fix-clockOut"
+                  name="clockOut"
+                  type="datetime-local"
+                  required
+                />
+                <p className="text-xs text-text-muted">
+                  On-file time stays as clock-in. Enter when they left.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <input type="hidden" name="clockOut" value={onFileTime} />
+              <div className="space-y-1">
+                <Label htmlFor="fix-clockIn">Missing clock in ({timezone})</Label>
+                <Input
+                  id="fix-clockIn"
+                  name="clockIn"
+                  type="datetime-local"
+                  required
+                />
+                <p className="text-xs text-text-muted">
+                  On-file time stays as clock-out. Enter when they arrived.
+                </p>
+              </div>
+            </>
+          )}
+
+          {cleanedNotes ? (
+            <input type="hidden" name="notes" value={cleanedNotes} />
+          ) : (
+            <input type="hidden" name="notes" value="" />
+          )}
         </>
       ) : closeOut ? (
         <>
@@ -312,7 +371,9 @@ function FixPunchForm({
         {pending
           ? "Saving…"
           : ambiguous
-            ? "Save clock-out"
+            ? onFileRole === "clock-in"
+              ? "Save clock-out"
+              : "Save clock-in"
             : closeOut
               ? "Close shift"
               : "Save clock-in"}
