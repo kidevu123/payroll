@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PunchRow } from "@/components/domain/punch-row";
 import {
+  inferAmbiguousOnFileRole,
   isAmbiguousSinglePunch,
   isMissingClockInPunch,
   isOpenShiftPunch,
+  validateAmbiguousPair,
 } from "@/lib/punches/missing-punch";
 import {
   createPunchAction,
@@ -27,7 +29,7 @@ function toLocalInputValue(d: Date | null, timezone: string): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
@@ -201,8 +203,9 @@ function FixPunchForm({
   const closeOut = isOpenShiftPunch(punch);
   const missingIn = isMissingClockInPunch(punch);
   const onFileTime = toLocalInputValue(punch.clockIn, timezone);
+  const onFileWallLabel = formatWallClock(punch.clockIn, timezone);
   const [onFileRole, setOnFileRole] = React.useState<"clock-in" | "clock-out">(
-    "clock-in",
+    () => inferAmbiguousOnFileRole(punch.clockIn, timezone),
   );
 
   const cleanedNotes =
@@ -214,6 +217,25 @@ function FixPunchForm({
       action={async (form) => {
         setPending(true);
         setError(null);
+        if (ambiguous) {
+          const missing =
+            onFileRole === "clock-in"
+              ? String(form.get("clockOut") ?? "")
+              : String(form.get("clockIn") ?? "");
+          const pairErr = validateAmbiguousPair(
+            onFileRole,
+            onFileTime,
+            missing,
+            timezone,
+            punch.clockIn,
+            () => onFileWallLabel,
+          );
+          if (pairErr) {
+            setPending(false);
+            setError(pairErr);
+            return;
+          }
+        }
         const result = await editPunchAction(punch.id, form);
         setPending(false);
         if (result?.error) setError(result.error);
@@ -238,7 +260,8 @@ function FixPunchForm({
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">
-              The on-file punch was their…
+              Was the {onFileWallLabel} punch when they arrived or when they
+              left?
             </legend>
             <div className="flex flex-wrap gap-2">
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
@@ -278,7 +301,8 @@ function FixPunchForm({
                   required
                 />
                 <p className="text-xs text-text-muted">
-                  On-file time stays as clock-in. Enter when they left.
+                  The {onFileWallLabel} punch stays as clock-in. Enter a later
+                  clock-out time.
                 </p>
               </div>
             </>
@@ -294,7 +318,8 @@ function FixPunchForm({
                   required
                 />
                 <p className="text-xs text-text-muted">
-                  On-file time stays as clock-out. Enter when they arrived.
+                  The {onFileWallLabel} punch stays as clock-out. Enter an
+                  earlier clock-in time (e.g. start of shift).
                 </p>
               </div>
             </>
