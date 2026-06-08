@@ -2,17 +2,25 @@ import type { PollOptions } from "@/lib/jobs/handlers/punch-poll";
 
 export const NGTECO_PUNCH_POLL_QUEUE = "ngteco.punch.poll";
 
-/** Playwright scrape + import can run ~70–90 min on auto-backfill. */
-export const PUNCH_POLL_EXPIRE_SECONDS = 7_200;
+/** Today-only manual poll — should finish in a few minutes. */
+export const PUNCH_POLL_TODAY_EXPIRE_SECONDS = 900;
 
-export const punchPollSendOptions = {
-  expireInSeconds: PUNCH_POLL_EXPIRE_SECONDS,
+/** Explicit multi-day backfill — may take longer. */
+export const PUNCH_POLL_BACKFILL_EXPIRE_SECONDS = 7_200;
+
+export const punchPollTodaySendOptions = {
+  expireInSeconds: PUNCH_POLL_TODAY_EXPIRE_SECONDS,
+  singletonKey: "active",
+} as const;
+
+export const punchPollBackfillSendOptions = {
+  expireInSeconds: PUNCH_POLL_BACKFILL_EXPIRE_SECONDS,
   singletonKey: "active",
 } as const;
 
 export const punchPollQueueOptions = {
   policy: "singleton" as const,
-  expireInSeconds: PUNCH_POLL_EXPIRE_SECONDS,
+  expireInSeconds: PUNCH_POLL_BACKFILL_EXPIRE_SECONDS,
 };
 
 export type PunchPollJobData = {
@@ -33,7 +41,11 @@ export function makeManualPollJobData(
   return {
     triggeredBy: "MANUAL",
     triggeredById,
-    ...(pollOptions ? { pollOptions } : {}),
+    pollOptions: {
+      daysBack: 0,
+      skipAutoBackfill: true,
+      ...(pollOptions ?? {}),
+    },
     force: true,
   };
 }

@@ -161,8 +161,8 @@ function deriveUi(
       phase: "running",
       title: `${watch?.label ?? "NGTeco punch poll"} — running`,
       detail: longRun
-        ? `Scraping NGTeco (${formatElapsed(status.elapsedMs)}). Backfill polls can take up to ~90 min — leave this page if you want; the bar stays visible.`
-        : `Scraping NGTeco and importing punches (${formatElapsed(status.elapsedMs)})`,
+        ? `Still scraping NGTeco (${formatElapsed(status.elapsedMs)}). If this exceeds ~15 min, cancel and use Backfill missing days for multi-day recovery.`
+        : `Scraping today's punches from NGTeco (${formatElapsed(status.elapsedMs)}) — usually 2–5 min`,
       progress: "indeterminate",
     };
   }

@@ -102,7 +102,17 @@ export type PollOptions = {
   /** How many calendar days back to ingest, in the company timezone.
    *  0 (default) = today only. 1 = today + yesterday. 7 = last 7 days. */
   daysBack?: number;
+  /** Manual "Poll punches now" sets this — today only, no auto-widen. */
+  skipAutoBackfill?: boolean;
 };
+
+/** ~35 employees × ~4 punches; avoids scrolling 1000+ historical rows. */
+const TODAY_MAX_ROWS = 250;
+
+function maxRowsForDaysBack(daysBack: number): number {
+  if (daysBack <= 0) return TODAY_MAX_ROWS;
+  return Math.min(2000, Math.max(400, daysBack * 200));
+}
 
 async function rosterSyncAfterSuccessfulScrape(runId: string): Promise<void> {
   try {
@@ -152,11 +162,8 @@ export async function handlePunchPoll(
   const username = openSealed(ngteco.usernameEncrypted);
   const password = openSealed(ngteco.passwordEncrypted);
 
-  // Backfill bumps maxRows so the virtual-scrolling MuiDataGrid is
-  // walked back far enough to cover the requested window. Default
-  // 1000 is fine for ~5 days at typical 50-employee, 4-punch/day
-  // density; multiply by daysBack with a floor of 1000 to keep
-  // today-only polls fast.
+  // maxRows caps how far the virtual grid scrolls. Today-only stays
+  // small (~250 rows); explicit backfill scales with daysBack.
   let daysBack = Math.max(0, Math.floor(opts.daysBack ?? 0));
 
   // AUTO-RECOVERY. The whole point of this system is "owner runs
@@ -173,7 +180,7 @@ export async function handlePunchPoll(
   // operator-triggered "Backfill missing days" button) — their
   // explicit window wins.
   let autoBackfillReason: string | null = null;
-  if (daysBack === 0) {
+  if (daysBack === 0 && !opts.skipAutoBackfill) {
     try {
       const { getLastSuccessfulPoll } = await import(
         "@/lib/db/queries/poll-history"
@@ -187,16 +194,12 @@ export async function handlePunchPoll(
       // widen the window. 4h reliably means "we missed at least one
       // 15-min cron tick AND a few retries."
       //
-      // Cap at 30 days: covers the "owner is in a car wreck and out
-      // for a month" scenario that motivates this whole self-healing
-      // path. NGTeco's View Attendance Punch view typically holds a
-      // rolling 30-90 day window; the scraper's page cap was raised
-      // to 200 in lockstep so we can actually walk that far back.
-      // Beyond 30 days the legacy CSV-export "Run NGTeco import now"
-      // flow is the right tool — it scopes by period dates.
+      // Cron auto-heal caps at 2 days. Wider recovery → Backfill button.
       if (hoursStale >= 4) {
+        // Cron self-heal only — keep scroll scope small. Use "Backfill
+        // missing days" for anything wider than ~2 days.
         const gapDays = Math.min(
-          30,
+          2,
           Math.max(1, Math.ceil(hoursStale / 24)),
         );
         daysBack = gapDays;
@@ -219,7 +222,7 @@ export async function handlePunchPoll(
       );
     }
   }
-  const maxRows = daysBack > 0 ? Math.max(1000, daysBack * 400) : undefined;
+  const maxRows = maxRowsForDaysBack(daysBack);
 
   try {
     const result = await scrapeViewAttendance({

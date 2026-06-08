@@ -26,7 +26,8 @@ import {
 import {
   makeManualPollJobData,
   NGTECO_PUNCH_POLL_QUEUE,
-  punchPollSendOptions,
+  punchPollBackfillSendOptions,
+  punchPollTodaySendOptions,
 } from "@/lib/jobs/punch-poll-queue";
 import {
   recomputePayslip,
@@ -233,7 +234,7 @@ export async function pollNowAction(): Promise<PollNowResult> {
     const jobId = await boss.send(
       NGTECO_PUNCH_POLL_QUEUE,
       makeManualPollJobData(session.user.id),
-      punchPollSendOptions,
+      punchPollTodaySendOptions,
     );
     if (!jobId) return { error: "Poll could not be queued." };
     return { ok: true, queued: true, jobId };
@@ -286,7 +287,7 @@ export async function backfillPollAction(
       makeManualPollJobData(session.user.id, {
         daysBack: parsed.data.daysBack,
       }),
-      punchPollSendOptions,
+      punchPollBackfillSendOptions,
     );
     if (!jobId) return { error: "Backfill could not be queued." };
     return { ok: true, queued: true, jobId };
