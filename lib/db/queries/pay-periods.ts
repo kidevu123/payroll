@@ -5,6 +5,7 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  employees,
   payPeriods,
   paySchedules,
   type PayPeriod,
@@ -480,6 +481,41 @@ export function periodBoundsForSchedule(
  * importer's resolvePeriodIdForDay or the Time-tab forward-roll),
  * tag it with the matching schedule so it doesn't read as UNASSIGNED.
  */
+/**
+ * Period row for an employee's punch on `dayIso`, using their pay schedule.
+ * Weekly employees land in the Mon–Sun week; semi-monthly/monthly in the
+ * calendar month — never a sibling schedule's overlapping period.
+ */
+export async function resolvePeriodIdForEmployeeDay(
+  employeeId: string,
+  dayIso: string,
+): Promise<string | null> {
+  const [emp] = await db
+    .select({ payScheduleId: employees.payScheduleId })
+    .from(employees)
+    .where(eq(employees.id, employeeId));
+  if (emp?.payScheduleId) {
+    const period = await ensurePeriodForSchedule(
+      emp.payScheduleId,
+      dayIso,
+      null,
+    );
+    return period.id;
+  }
+  const [existing] = await db
+    .select({ id: payPeriods.id })
+    .from(payPeriods)
+    .where(
+      and(
+        lte(payPeriods.startDate, dayIso),
+        gte(payPeriods.endDate, dayIso),
+      ),
+    )
+    .orderBy(desc(payPeriods.startDate))
+    .limit(1);
+  return existing?.id ?? null;
+}
+
 export async function ensurePeriodForSchedule(
   scheduleId: string,
   day: string,

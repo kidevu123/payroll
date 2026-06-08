@@ -462,24 +462,13 @@ export default async function TimePage({
   const days = eachDay(period.startDate, lastDay);
   const [allActive, punches, approvedTimeOff, adjacent] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
-    // "All" tab: query by clockIn date range so punches from every
-    // schedule's period in this window appear. Without this, an
-    // unscheduled period could be picked by pickPeriodForTab(null)
-    // while actual punches live under a different (scheduled) period,
-    // making the whole grid show dashes.
-    //
-    // Specific tab (Weekly / Semi-monthly): filter by the picked
-    // period's ID so only that schedule's punches appear. Synthetic
-    // forward-rolled period (period.id === "") has no real row yet —
-    // load all punches and filter by date below.
-    kindFilter
-      ? (period.id
-          ? listPunches({ periodId: period.id })
-          : listPunches({}))
-      : listPunches({
-          clockAfter: new Date(`${period.startDate}T00:00:00Z`),
-          clockBefore: new Date(`${lastDay}T23:59:59Z`),
-        }),
+    // Always load by date range. Filtering by period.id hid punches that
+    // were saved under a sibling schedule's overlapping period (e.g. a
+    // weekly employee's punch stuck in the semi-monthly Jun 1–30 row).
+    listPunches({
+      clockAfter: new Date(`${period.startDate}T00:00:00Z`),
+      clockBefore: new Date(`${lastDay}T23:59:59Z`),
+    }),
     // Approved time-off intersecting the displayed grid window. Owner
     // ask: "if I'm looking at Elvia's time it would help to know right
     // away she was off". So the cell shows the time-off type instead
@@ -505,18 +494,7 @@ export default async function TimePage({
       timeOffByDay.set(`${r.employeeId}|${dayIso}`, r.type);
     }
   }
-  // "All" tab punches are already filtered by date range in the query.
-  // Specific tabs: if the period is real (has an ID), all its punches
-  // are valid; synthetic periods need a client-side date filter.
-  const startEpoch = new Date(`${period.startDate}T00:00:00Z`).getTime();
-  const endEpoch = new Date(`${period.endDate}T23:59:59Z`).getTime();
-  const punchesInRange = (!kindFilter || period.id)
-    ? punches
-    : punches.filter((p) => {
-        const t = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-        const ms = t.getTime();
-        return ms >= startEpoch && ms <= endEpoch;
-      });
+  const punchesInRange = punches;
   // SALARIED staff don't punch — hide them from the grid so the admin
   // doesn't see "missed" red cells for everyone-on-salary every day.
   // Schedule-tab filter: when the admin picks Weekly / Semi-monthly,
@@ -723,11 +701,13 @@ export default async function TimePage({
                   );
                   const first = sorted[0];
                   const last = sorted[sorted.length - 1];
-                  const cellPeriodId = resolveTimeCellPeriodId({
-                    currentPeriodId: period.id,
-                    isAllTab: !kindFilter,
-                    punches: sorted,
-                  });
+                  const cellPeriodId = kindFilter
+                    ? period.id
+                    : resolveTimeCellPeriodId({
+                        currentPeriodId: period.id,
+                        isAllTab: true,
+                        punches: sorted,
+                      });
                   const closedMs = sorted.reduce((acc, p) => {
                     if (!p.clockOut) return acc;
                     return acc + (p.clockOut.getTime() - p.clockIn.getTime());

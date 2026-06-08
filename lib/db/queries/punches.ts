@@ -152,27 +152,29 @@ export async function createPunch(
   input: CreatePunchInput,
   actor: Actor,
 ): Promise<Punch> {
+  const { getSetting } = await import("@/lib/settings/runtime");
+  const { resolvePeriodIdForEmployeeDay } = await import("./pay-periods");
+  const company = await getSetting("company");
+  const dayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: company.timezone,
+  }).format(input.clockIn);
+  const periodId =
+    (await resolvePeriodIdForEmployeeDay(input.employeeId, dayIso)) ??
+    input.periodId;
+
   return db.transaction(async (tx) => {
-    await assertPeriodMutable(tx as unknown as typeof db, input.periodId);
-    // Period-boundary guard: reject punches whose clock-in or clock-out
-    // falls outside the assigned period. This catches NGTeco-imported
-    // punches with a drifted device clock AND manual punches submitted
-    // via the wrong period URL (the punch editor bakes periodId into the
-    // URL; if the admin reached a date via a stale/wrong URL, the guard
-    // prevents the punch landing in the wrong period). Admin must
-    // navigate to the correct period using the time-grid week arrows.
-    {
-      const { getSetting } = await import("@/lib/settings/runtime");
-      const company = await getSetting("company");
-      await assertPunchWithinPeriod(
-        tx as unknown as typeof db,
-        input.periodId,
-        input.clockIn,
-        input.clockOut ?? null,
-        company.timezone,
-      );
-    }
-    const [row] = await tx.insert(punches).values(input).returning();
+    await assertPeriodMutable(tx as unknown as typeof db, periodId);
+    await assertPunchWithinPeriod(
+      tx as unknown as typeof db,
+      periodId,
+      input.clockIn,
+      input.clockOut ?? null,
+      company.timezone,
+    );
+    const [row] = await tx
+      .insert(punches)
+      .values({ ...input, periodId })
+      .returning();
     if (!row) throw new Error("createPunch: insert returned no row");
     await writeAudit(
       {

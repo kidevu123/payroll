@@ -1,13 +1,14 @@
 "use server";
 
 import { z } from "zod";
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch } from "@/lib/db/queries/punches";
+import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
 import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
   type ManualPunchSyncJobData,
@@ -82,42 +83,33 @@ export async function addManualPunchAction(
     return { error: "Clock-out must be after clock-in." };
   }
 
-  const candidates = await db
-    .select()
-    .from(payPeriods)
-    .where(
-      and(
-        lte(payPeriods.startDate, parsed.data.date),
-        gte(payPeriods.endDate, parsed.data.date),
-      ),
-    )
-    .orderBy(desc(payPeriods.startDate));
-
-  // Filter to non-PAID periods first — admin shouldn't be retroactively
-  // editing already-paid weeks via the manual entry. If everything that
-  // covers the date is PAID, return a clear error so the admin unmarks
-  // the period explicitly.
-  const editable = candidates.filter((p) => p.state !== "PAID");
-  if (editable.length === 0) {
-    if (candidates.length === 0) {
-      return {
-        error: `No pay period covers ${parsed.data.date}. Create one in Settings → Pay periods first.`,
-      };
-    }
+  const periodId = await resolvePeriodIdForEmployeeDay(
+    parsed.data.employeeId,
+    parsed.data.date,
+  );
+  if (!periodId) {
     return {
-      error: `Every pay period covering ${parsed.data.date} is marked PAID. Unmark paid first to add punches.`,
+      error: `No pay period covers ${parsed.data.date}. Assign a pay schedule in Settings → Employees first.`,
     };
   }
-
-  // If multiple periods are eligible (e.g. weekly + semi-monthly overlap),
-  // prefer the OPEN one; if none are OPEN, take the most recent LOCKED.
-  const open = editable.find((p) => p.state === "OPEN");
-  const period = open ?? editable[0]!;
+  const period = await db
+    .select()
+    .from(payPeriods)
+    .where(eq(payPeriods.id, periodId))
+    .then((rows) => rows[0]);
+  if (!period) {
+    return { error: "Pay period not found." };
+  }
+  if (period.state === "PAID") {
+    return {
+      error: `Pay period covering ${parsed.data.date} is marked PAID. Unmark paid first to add punches.`,
+    };
+  }
 
   const punch = await createPunch(
     {
       employeeId: parsed.data.employeeId,
-      periodId: period.id,
+      periodId,
       clockIn: clockInD,
       clockOut: clockOutD,
       source: "MANUAL_ADMIN",
