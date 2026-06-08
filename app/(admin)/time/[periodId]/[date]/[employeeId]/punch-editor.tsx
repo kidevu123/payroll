@@ -14,13 +14,14 @@ import {
   isOpenShiftPunch,
   validateAmbiguousPair,
 } from "@/lib/punches/missing-punch";
+import { coerceDate } from "@/lib/time/wall-clock";
 import {
   createPunchAction,
   editPunchAction,
   voidPunchAction,
 } from "../../../actions";
 
-function toLocalInputValue(d: Date | null, timezone: string): string {
+function toLocalInputValue(d: Date | string | null, timezone: string): string {
   if (!d) return "";
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
@@ -30,17 +31,17 @@ function toLocalInputValue(d: Date | null, timezone: string): string {
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  }).formatToParts(d);
+  }).formatToParts(coerceDate(d));
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-function formatWallClock(d: Date, timezone: string): string {
+function formatWallClock(d: Date | string, timezone: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     hour: "numeric",
     minute: "2-digit",
-  }).format(d);
+  }).format(coerceDate(d));
 }
 
 function formatNgtecoSourceLine(notes: string): string {
@@ -52,8 +53,8 @@ function formatNgtecoSourceLine(notes: string): string {
   return parts.join(" · ");
 }
 
-function defaultClockOutGuess(clockIn: Date, timezone: string): string {
-  const guess = new Date(clockIn.getTime() + 8 * 60 * 60 * 1000);
+function defaultClockOutGuess(clockIn: Date | string, timezone: string): string {
+  const guess = new Date(coerceDate(clockIn).getTime() + 8 * 60 * 60 * 1000);
   return toLocalInputValue(guess, timezone);
 }
 

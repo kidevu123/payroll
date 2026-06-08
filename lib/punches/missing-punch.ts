@@ -1,8 +1,8 @@
-import { wallClockToUtc } from "@/lib/time/wall-clock";
+import { coerceDate, wallClockToUtc } from "@/lib/time/wall-clock";
 
 export function isAmbiguousSinglePunch(p: {
-  clockIn: Date;
-  clockOut: Date | null;
+  clockIn: Date | string;
+  clockOut: Date | string | null;
   notes?: string | null;
 }): boolean {
   return (
@@ -14,19 +14,20 @@ export function isAmbiguousSinglePunch(p: {
 
 /** Legacy out-only row stored with clockIn === clockOut as a sentinel. */
 export function isMissingClockInPunch(p: {
-  clockIn: Date;
-  clockOut: Date | null;
+  clockIn: Date | string;
+  clockOut: Date | string | null;
   notes?: string | null;
 }): boolean {
   if (isAmbiguousSinglePunch(p)) return false;
+  if (p.clockOut === null) return false;
   return (
-    p.clockOut !== null && p.clockIn.getTime() === p.clockOut.getTime()
+    coerceDate(p.clockIn).getTime() === coerceDate(p.clockOut).getTime()
   );
 }
 
 export function isOpenShiftPunch(p: {
-  clockIn: Date;
-  clockOut: Date | null;
+  clockIn: Date | string;
+  clockOut: Date | string | null;
   notes?: string | null;
 }): boolean {
   return (
@@ -37,12 +38,12 @@ export function isOpenShiftPunch(p: {
 }
 
 /** Local hour 0–23 for a stored UTC instant in company timezone. */
-export function wallClockHour(d: Date, timezone: string): number {
+export function wallClockHour(d: Date | string, timezone: string): number {
   const hour = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     hour: "numeric",
     hourCycle: "h23",
-  }).format(d);
+  }).format(coerceDate(d));
   return Number.parseInt(hour, 10);
 }
 
@@ -51,7 +52,7 @@ export function wallClockHour(d: Date, timezone: string): number {
  * day. Afternoon/evening punches are usually clock-outs (end of shift).
  */
 export function inferAmbiguousOnFileRole(
-  punchAt: Date,
+  punchAt: Date | string,
   timezone: string,
 ): "clock-in" | "clock-out" {
   return wallClockHour(punchAt, timezone) >= 14 ? "clock-out" : "clock-in";
@@ -63,8 +64,8 @@ export function validateAmbiguousPair(
   onFileWallClock: string,
   missingWallClock: string,
   timezone: string,
-  onFileAt: Date,
-  formatOnFile: (d: Date) => string,
+  onFileAt: Date | string,
+  formatOnFile: (d: Date | string) => string,
 ): string | null {
   const onFileUtc = wallClockToUtc(onFileWallClock, timezone);
   const missingUtc = wallClockToUtc(missingWallClock, timezone);

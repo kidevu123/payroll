@@ -11,31 +11,36 @@ import {
   isMissingClockInPunch,
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
+import { coerceDate } from "@/lib/time/wall-clock";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
-function formatClock(d: Date | null, timezone: string): string {
+function formatClock(d: Date | string | null, timezone: string): string {
   if (!d) return "—";
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
     timeZone: timezone,
-  }).format(d);
+  }).format(coerceDate(d));
 }
 
-function formatDay(d: Date, timezone: string): string {
+function formatDay(d: Date | string, timezone: string): string {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
     timeZone: timezone,
-  }).format(d);
+  }).format(coerceDate(d));
 }
 
 function durationHours(p: Punch): number {
   if (isMissingClockInPunch(p)) return 0;
   if (!p.clockOut) return 0;
-  return Math.max(0, (p.clockOut.getTime() - p.clockIn.getTime()) / MS_PER_HOUR);
+  return Math.max(
+    0,
+    (coerceDate(p.clockOut).getTime() - coerceDate(p.clockIn).getTime()) /
+      MS_PER_HOUR,
+  );
 }
 
 export function PunchRow({

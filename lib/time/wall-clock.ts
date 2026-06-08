@@ -60,3 +60,13 @@ export function wallClockToUtc(wallClock: string, tz: string): Date | null {
 export function isBareWallClock(s: string): boolean {
   return ISO_WALL_CLOCK_RE.test(s);
 }
+
+/** RSC serializes Date props to ISO strings before client hydration. */
+export function coerceDate(d: Date | string): Date {
+  if (d instanceof Date) return d;
+  const parsed = new Date(d);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new RangeError(`Invalid date: ${String(d)}`);
+  }
+  return parsed;
+}
