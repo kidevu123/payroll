@@ -205,6 +205,40 @@ async function detectLoginPage(
   return false;
 }
 
+/** NGTeco's MUI login form mounts after domcontentloaded. URL-based
+ *  detectLoginPage can return true while inputs are still absent. */
+async function waitForLoginFormReady(
+  page: import("playwright-core").Page,
+): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>("input"),
+      );
+      return inputs.some((i) => {
+        const box = i.getBoundingClientRect();
+        const cs = getComputedStyle(i);
+        const visible =
+          box.width > 0 &&
+          box.height > 0 &&
+          cs.visibility !== "hidden" &&
+          cs.display !== "none" &&
+          cs.opacity !== "0";
+        if (!visible) return false;
+        const type = (i.type || "").toLowerCase();
+        const name = (i.name || "").toLowerCase();
+        const placeholder = (i.placeholder || "").toLowerCase();
+        if (type === "password") return true;
+        if (type === "email" || name === "username") return true;
+        if (name.includes("user") || name.includes("email")) return true;
+        return placeholder.includes("email");
+      });
+    },
+    null,
+    { timeout: 20_000 },
+  );
+}
+
 /** Hard assertion: throws if the page is currently on /login. Use at
  *  boundary points where being on /login means a session bounce
  *  (cookies expired) or a credential rejection — failing loudly is
@@ -435,8 +469,11 @@ async function fillLoginField(
   } catch {
     /* keep placeholder */
   }
+  const emptyPage = inventory === "" || inventory === "(unable to read)";
   throw new ScrapeFailure(
-    `Could not locate a visible ${kind} field that accepts our value. Inputs on page (• = visible, · = hidden): ${inventory}. NGTeco probably renamed the field; update lib/ngteco/scraper.ts fillLoginField with the new attributes shown above.`,
+    emptyPage
+      ? `Could not locate a visible ${kind} field — the login form never appeared (page may still be loading or NGTeco changed the login UI). URL: ${page.url()}`
+      : `Could not locate a visible ${kind} field that accepts our value. Inputs on page (• = visible, · = hidden): ${inventory}. NGTeco probably renamed the field; update lib/ngteco/scraper.ts fillLoginField with the new attributes shown above.`,
     {},
   );
 }
@@ -1171,6 +1208,7 @@ async function prepareNgtecoPage(
 
   const onLoginPage = await detectLoginPage(page, sel);
   if (onLoginPage) {
+    await waitForLoginFormReady(page);
     await fillLoginField(page, "username", sel.login.username, input.username);
     await fillLoginField(page, "password", sel.login.password, input.password);
     await ensureAgreementChecked(page);
@@ -1846,6 +1884,7 @@ export async function addManualAttendancePunch(
     }
 
     if (await detectLoginPage(page, sel)) {
+      await waitForLoginFormReady(page);
       await fillLoginField(
         page,
         "username",
