@@ -6,8 +6,8 @@ describe("weekEndingSunday", () => {
     expect(weekEndingSunday("2026-06-07")).toBe("2026-06-07");
   });
 
-  it("returns prior Sunday when today is Tuesday", () => {
-    expect(weekEndingSunday("2026-06-03")).toBe("2026-06-01");
+  it("returns the Sunday ending the current Mon→Sun week", () => {
+    expect(weekEndingSunday("2026-06-03")).toBe("2026-06-07");
   });
 });
 

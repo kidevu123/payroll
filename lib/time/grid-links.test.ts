@@ -6,11 +6,10 @@ import {
 } from "./grid-links";
 
 describe("resolveTimeCellPeriodId", () => {
-  it("uses the actual punch period for All-tab cells", () => {
+  it("uses the punch period when punches exist", () => {
     expect(
       resolveTimeCellPeriodId({
-        currentPeriodId: "all-selected-period",
-        isAllTab: true,
+        currentPeriodId: "weekly-selected-period",
         punches: [
           {
             periodId: "semi-monthly-period",
@@ -21,25 +20,11 @@ describe("resolveTimeCellPeriodId", () => {
     ).toBe("semi-monthly-period");
   });
 
-  it("keeps the selected period for empty cells and schedule-specific tabs", () => {
+  it("keeps the selected period for empty cells", () => {
     expect(
       resolveTimeCellPeriodId({
         currentPeriodId: "weekly-period",
-        isAllTab: true,
         punches: [],
-      }),
-    ).toBe("weekly-period");
-
-    expect(
-      resolveTimeCellPeriodId({
-        currentPeriodId: "weekly-period",
-        isAllTab: false,
-        punches: [
-          {
-            periodId: "other-period",
-            clockIn: "2026-05-26T14:01:00.000Z",
-          },
-        ],
       }),
     ).toBe("weekly-period");
   });

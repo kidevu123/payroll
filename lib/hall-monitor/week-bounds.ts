@@ -1,6 +1,6 @@
 const MS_PER_DAY = 86_400_000;
 
-/** Most recent Sunday (inclusive) on or before `todayIso` in company TZ. */
+/** Sunday ending the Mon→Sun pay week that contains `todayIso`. */
 export function weekEndingSunday(todayIso: string): string {
   const [y, m, d] = todayIso.split("-").map(Number) as [
     number,
@@ -9,7 +9,8 @@ export function weekEndingSunday(todayIso: string): string {
   ];
   const utc = new Date(Date.UTC(y, m - 1, d));
   const dow = utc.getUTCDay();
-  const end = new Date(utc.getTime() - dow * MS_PER_DAY);
+  const daysUntilSunday = dow === 0 ? 0 : 7 - dow;
+  const end = new Date(utc.getTime() + daysUntilSunday * MS_PER_DAY);
   return formatIso(end);
 }
 

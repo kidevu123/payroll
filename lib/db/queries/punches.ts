@@ -204,26 +204,32 @@ export async function editPunch(
   actor: Actor,
 ): Promise<Punch> {
   if (!reason.trim()) throw new Error("editPunch: reason is required");
+  const { getSetting } = await import("@/lib/settings/runtime");
+  const { resolvePeriodIdForEmployeeDay } = await import("./pay-periods");
+  const company = await getSetting("company");
   const result = await db.transaction(async (tx) => {
     const [before] = await tx.select().from(punches).where(eq(punches.id, id));
     if (!before) throw new Error(`editPunch: ${id} not found`);
-    await assertPeriodMutable(tx as unknown as typeof db, before.periodId);
-    {
-      const { getSetting } = await import("@/lib/settings/runtime");
-      const company = await getSetting("company");
-      const nextIn = patch.clockIn ?? before.clockIn;
-      const nextOut =
-        patch.clockOut !== undefined ? patch.clockOut : before.clockOut;
-      await assertPunchWithinPeriod(
-        tx as unknown as typeof db,
-        before.periodId,
-        nextIn,
-        nextOut ?? null,
-        company.timezone,
-      );
-    }
+    const nextIn = patch.clockIn ?? before.clockIn;
+    const nextOut =
+      patch.clockOut !== undefined ? patch.clockOut : before.clockOut;
+    const dayIso = new Intl.DateTimeFormat("en-CA", {
+      timeZone: company.timezone,
+    }).format(nextIn);
+    const periodId =
+      (await resolvePeriodIdForEmployeeDay(before.employeeId, dayIso)) ??
+      before.periodId;
+    await assertPeriodMutable(tx as unknown as typeof db, periodId);
+    await assertPunchWithinPeriod(
+      tx as unknown as typeof db,
+      periodId,
+      nextIn,
+      nextOut ?? null,
+      company.timezone,
+    );
     const next = {
       ...patch,
+      periodId,
       // First edit captures original timestamps; subsequent edits keep them.
       originalClockIn: before.originalClockIn ?? before.clockIn,
       originalClockOut: before.originalClockOut ?? before.clockOut,

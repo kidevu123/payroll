@@ -1828,27 +1828,21 @@ export async function addManualAttendancePunch(
     // the saved row has the requested offset.
   };
 
-  const expectedManualRowVisible = async (): Promise<boolean> =>
+  const manualPunchTimePrefix = input.punchTime.slice(0, 5);
+
+  const locateExpectedManualRow = () =>
     page
       .locator("tr, [role='row']")
       .filter({ hasText: input.personId })
       .filter({ hasText: input.punchDate })
-      .filter({ hasText: input.punchTime })
-      .filter({ hasText: input.timeZoneOffset })
+      .filter({ hasText: manualPunchTimePrefix })
+      .filter({ hasText: input.timeZoneOffset });
+
+  const expectedManualRowVisible = async (): Promise<boolean> =>
+    locateExpectedManualRow()
       .count()
       .then((count) => count > 0)
       .catch(() => false);
-
-  const waitForExpectedManualRow = async (
-    timeoutMs = 20_000,
-  ): Promise<boolean> => {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      if (await expectedManualRowVisible()) return true;
-      await page.waitForTimeout(500);
-    }
-    return expectedManualRowVisible();
-  };
 
   const waitForManualLogGridRefresh = async (): Promise<void> => {
     await page
@@ -1861,6 +1855,39 @@ export async function addManualAttendancePunch(
         { timeout: 12_000 },
       )
       .catch(() => undefined);
+  };
+
+  const approveManualPunchIfNeeded = async (): Promise<void> => {
+    const row = locateExpectedManualRow().first();
+    if ((await row.count().catch(() => 0)) === 0) return;
+    const text = await row.innerText().catch(() => "");
+    if (/approved/i.test(text)) return;
+
+    const checkbox = row.locator('input[type="checkbox"]').first();
+    if ((await checkbox.count().catch(() => 0)) === 0) return;
+    await checkbox.check({ timeout: 8_000 });
+    const approvalButton = page.getByRole("button", { name: /^approval$/i });
+    if ((await approvalButton.count().catch(() => 0)) === 0) return;
+    await approvalButton.click({ timeout: 10_000 });
+    await page.waitForTimeout(1_000);
+    await waitForManualLogGridRefresh();
+    const afterText = await row.innerText().catch(() => "");
+    if (!/approved/i.test(afterText)) {
+      throw new Error(
+        `NGTeco manual punch saved but approval did not stick for ${input.personId} ${input.punchDate} ${manualPunchTimePrefix}.`,
+      );
+    }
+  };
+
+  const waitForExpectedManualRow = async (
+    timeoutMs = 20_000,
+  ): Promise<boolean> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await expectedManualRowVisible()) return true;
+      await page.waitForTimeout(500);
+    }
+    return expectedManualRowVisible();
   };
 
   try {
@@ -1925,6 +1952,7 @@ export async function addManualAttendancePunch(
     await waitForManualLogGridRefresh();
 
     if (await expectedManualRowVisible()) {
+      await approveManualPunchIfNeeded();
       await ctx.close();
       return;
     }
@@ -1933,7 +1961,7 @@ export async function addManualAttendancePunch(
       .locator("tr, [role='row']")
       .filter({ hasText: input.personId })
       .filter({ hasText: input.punchDate })
-      .filter({ hasText: input.punchTime });
+      .filter({ hasText: manualPunchTimePrefix });
     const wrongTimezoneCount = await wrongTimezoneRows.count().catch(() => 0);
     for (let i = 0; i < wrongTimezoneCount; i++) {
       const row = wrongTimezoneRows.nth(i);
@@ -2054,6 +2082,7 @@ export async function addManualAttendancePunch(
         `NGTeco manual punch saved without expected timezone ${input.timeZoneOffset}; refusing to mark sync successful.`,
       );
     }
+    await approveManualPunchIfNeeded();
 
     await ctx.close();
   } catch (err) {

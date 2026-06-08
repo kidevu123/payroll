@@ -5,10 +5,9 @@ export type TimeGridPunchLink = {
 
 export function resolveTimeCellPeriodId(args: {
   currentPeriodId: string;
-  isAllTab: boolean;
   punches: TimeGridPunchLink[];
 }): string {
-  if (!args.isAllTab || args.punches.length === 0) {
+  if (args.punches.length === 0) {
     return args.currentPeriodId;
   }
 

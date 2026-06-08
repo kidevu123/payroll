@@ -20,10 +20,16 @@ import {
 } from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
-import { formatHoursMinutes, formatTimeShort } from "@/lib/utils";
+import { formatHoursMinutes, formatTimeShort, localMidnightUtc } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -141,10 +147,14 @@ async function pickPeriodForTab(
     };
   }
 
-  // Step 2: Any OPEN period for the cadence (most recent).
+  // Step 2: Any OPEN period for the cadence that hasn't ended yet.
   const anyOpenWhere = kind
-    ? and(eq(payPeriods.state, "OPEN"), eq(paySchedules.periodKind, kind))
-    : eq(payPeriods.state, "OPEN");
+    ? and(
+        eq(payPeriods.state, "OPEN"),
+        eq(paySchedules.periodKind, kind),
+        gte(payPeriods.endDate, today),
+      )
+    : and(eq(payPeriods.state, "OPEN"), gte(payPeriods.endDate, today));
   const [anyOpen] = await openTodayBase
     .where(anyOpenWhere)
     .orderBy(desc(payPeriods.startDate))
@@ -368,13 +378,10 @@ export default async function TimePage({
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
-  const returnToParams = new URLSearchParams();
-  if (tab !== "all") returnToParams.set("schedule", tab);
-  if (sp.period) returnToParams.set("period", sp.period);
-  const returnTo = `/time${returnToParams.size ? `?${returnToParams.toString()}` : ""}`;
 
   // If a specific period ID is in the URL (?period=UUID), load it directly
   // so the admin can navigate to past/future weeks via the prev/next arrows.
+  // Ignore ?period= when it belongs to a different schedule tab.
   // Otherwise fall back to auto-selecting the current period for the tab.
   let period: PeriodView | null = null;
   if (sp.period) {
@@ -385,10 +392,12 @@ export default async function TimePage({
         endDate: payPeriods.endDate,
         payScheduleId: payPeriods.payScheduleId,
         state: payPeriods.state,
+        kind: paySchedules.periodKind,
       })
       .from(payPeriods)
+      .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
       .where(eq(payPeriods.id, sp.period));
-    if (row) {
+    if (row && (!kindFilter || row.kind === kindFilter)) {
       period = {
         id: row.id,
         startDate: row.startDate,
@@ -401,6 +410,11 @@ export default async function TimePage({
   if (!period) {
     period = await pickPeriodForTab(kindFilter, today);
   }
+
+  const returnToParams = new URLSearchParams();
+  if (tab !== "all") returnToParams.set("schedule", tab);
+  if (period?.id) returnToParams.set("period", period.id);
+  const returnTo = `/time${returnToParams.size ? `?${returnToParams.toString()}` : ""}`;
 
   if (!period) {
     const payrollHref =
@@ -466,8 +480,10 @@ export default async function TimePage({
     // were saved under a sibling schedule's overlapping period (e.g. a
     // weekly employee's punch stuck in the semi-monthly Jun 1–30 row).
     listPunches({
-      clockAfter: new Date(`${period.startDate}T00:00:00Z`),
-      clockBefore: new Date(`${lastDay}T23:59:59Z`),
+      clockAfter: localMidnightUtc(period.startDate, company.timezone),
+      clockBefore: new Date(
+        localMidnightUtc(addDaysIso(lastDay, 1), company.timezone).getTime() - 1,
+      ),
     }),
     // Approved time-off intersecting the displayed grid window. Owner
     // ask: "if I'm looking at Elvia's time it would help to know right
@@ -701,13 +717,10 @@ export default async function TimePage({
                   );
                   const first = sorted[0];
                   const last = sorted[sorted.length - 1];
-                  const cellPeriodId = kindFilter
-                    ? period.id
-                    : resolveTimeCellPeriodId({
-                        currentPeriodId: period.id,
-                        isAllTab: true,
-                        punches: sorted,
-                      });
+                  const cellPeriodId = resolveTimeCellPeriodId({
+                    currentPeriodId: period.id,
+                    punches: sorted,
+                  });
                   const closedMs = sorted.reduce((acc, p) => {
                     if (!p.clockOut) return acc;
                     return acc + (p.clockOut.getTime() - p.clockIn.getTime());
