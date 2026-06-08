@@ -7,6 +7,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { safeLocalReturnTo } from "@/lib/time/grid-links";
+import { reconcileOrphanDayPairs } from "@/lib/punches/reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "@/lib/punches/superseded-ambiguous";
 import { PunchEditor } from "./punch-editor";
 
@@ -31,6 +32,7 @@ export default async function PunchEditorPage({
   if (!period || !employee) notFound();
 
   await voidSupersededAmbiguousPunches(employeeId, date);
+  await reconcileOrphanDayPairs(employeeId, date);
   const allPunches = await listPunches({
     periodId,
     employeeId,

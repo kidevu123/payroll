@@ -21,6 +21,7 @@ import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
+import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
 
 export type PollImportSummary = {
@@ -414,6 +415,7 @@ export async function importPunchPoll(
     }
 
     await voidSupersededAmbiguousPunches(g.empId, g.day);
+    await reconcileOrphanDayPairs(g.empId, g.day);
   }
 
   if (summary.pairsInserted + summary.pairsUpdated + summary.unmatchedRefs > 0) {
