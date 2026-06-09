@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildCashDenominationSummary } from "./cash-denominations";
+import {
+  buildCashDenominationSummary,
+  buildPayrollCashInputs,
+} from "./cash-denominations";
 
 describe("buildCashDenominationSummary", () => {
   it("aggregates bills per employee envelope, not just by grand total", () => {
@@ -51,5 +54,35 @@ describe("buildCashDenominationSummary", () => {
       count: 1,
       totalCents: 10000,
     });
+  });
+
+  it("includes temp/manual labor alongside stored payslips", () => {
+    const inputs = buildPayrollCashInputs({
+      payslips: [
+        {
+          employeeId: "employee-1",
+          roundedPayCents: 1542000,
+          voidedAt: null,
+        },
+      ],
+      employees: [{ id: "employee-1", displayName: "Employee One" }],
+      computedRows: [],
+      tempWorkers: [
+        {
+          id: "temp-1",
+          workerName: "Chintu Bolle",
+          amountCents: 20000,
+          deletedAt: null,
+        },
+      ],
+    });
+
+    const summary = buildCashDenominationSummary(inputs);
+
+    expect(summary.totalCents).toBe(1562000);
+    expect(summary.rows.map((r) => [r.employeeName, r.roundedPayCents])).toEqual([
+      ["Chintu Bolle", 20000],
+      ["Employee One", 1542000],
+    ]);
   });
 });

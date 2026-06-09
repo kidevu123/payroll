@@ -9,6 +9,29 @@ export type CashDenominationInput = {
   roundedPayCents: number;
 };
 
+export type PayrollCashPayslip = {
+  employeeId: string;
+  roundedPayCents: number;
+  voidedAt?: Date | string | null;
+};
+
+export type PayrollCashEmployee = {
+  id: string;
+  displayName: string;
+};
+
+export type PayrollCashComputedRow = {
+  employee: PayrollCashEmployee;
+  result: { roundedCents: number };
+};
+
+export type PayrollCashTempWorker = {
+  id: string;
+  workerName: string;
+  amountCents: number;
+  deletedAt?: Date | string | null;
+};
+
 export type CashDenominationRow = CashDenominationInput & {
   bills: CashBillCounts;
   remainderCents: number;
@@ -77,4 +100,42 @@ export function buildCashDenominationSummary(
       totalCents: totals[value] * value * 100,
     })),
   };
+}
+
+export function buildPayrollCashInputs(args: {
+  payslips: PayrollCashPayslip[];
+  employees: PayrollCashEmployee[];
+  computedRows: PayrollCashComputedRow[];
+  tempWorkers: PayrollCashTempWorker[];
+}): CashDenominationInput[] {
+  const employeeById = new Map(args.employees.map((e) => [e.id, e]));
+  const activePayslips = args.payslips.filter((p) => !p.voidedAt);
+  const employeeInputs =
+    activePayslips.length > 0
+      ? activePayslips.flatMap((p) => {
+          const employee = employeeById.get(p.employeeId);
+          if (!employee) return [];
+          return [
+            {
+              employeeId: p.employeeId,
+              employeeName: employee.displayName,
+              roundedPayCents: p.roundedPayCents,
+            },
+          ];
+        })
+      : args.computedRows.map((row) => ({
+          employeeId: row.employee.id,
+          employeeName: row.employee.displayName,
+          roundedPayCents: row.result.roundedCents,
+        }));
+
+  const tempInputs = args.tempWorkers
+    .filter((worker) => !worker.deletedAt)
+    .map((worker) => ({
+      employeeId: `temp:${worker.id}`,
+      employeeName: worker.workerName,
+      roundedPayCents: worker.amountCents,
+    }));
+
+  return [...employeeInputs, ...tempInputs];
 }

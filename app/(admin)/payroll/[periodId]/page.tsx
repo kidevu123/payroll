@@ -53,7 +53,11 @@ import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
 import { CashDenominationButton } from "./cash-denomination-button";
 import { requireSession } from "@/lib/auth-guards";
-import { buildCashDenominationSummary } from "@/lib/payroll/cash-denominations";
+import {
+  buildCashDenominationSummary,
+  buildPayrollCashInputs,
+} from "@/lib/payroll/cash-denominations";
+import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -312,13 +316,17 @@ export default async function PeriodReviewPage({
     { hours: 0, gross: 0, rounded: 0 },
   );
 
-  // Use stored payslip data when it's authoritative (LEGACY_IMPORT or any
-  // PAID period). Otherwise prefer live computePay results so the admin
-  // sees the latest from current punches.
-  const useStoredTotals =
-    period.state === "PAID" ||
-    run?.source === "LEGACY_IMPORT" ||
-    (payslipSum > 0 && liveTotals.rounded === 0);
+  // Use stored payslip data when it's authoritative: PAID periods,
+  // employee-visible published periods, legacy imports, or periods where
+  // live punches are missing. Otherwise prefer live computePay results so
+  // the admin sees the latest from current punches before publishing.
+  const useStoredTotals = shouldUseStoredPayrollTotals({
+    periodState: period.state,
+    runSource: run?.source ?? null,
+    publishedToPortalAt: run?.publishedToPortalAt ?? null,
+    payslipSumCents: payslipSum,
+    liveRoundedCents: liveTotals.rounded,
+  });
 
   // Map employee_id -> active payslip for quick row override.
   const payslipByEmployee = new Map(
@@ -390,25 +398,13 @@ export default async function PeriodReviewPage({
     (acc, e) => acc + e.amountCents,
     0,
   );
-  const activePayslips = allPayslips.filter((p) => !p.voidedAt);
-  const cashSource =
-    activePayslips.length > 0
-      ? activePayslips.flatMap((p) => {
-          const employee = allEmployees.find((e) => e.id === p.employeeId);
-          if (!employee) return [];
-          return [
-            {
-              employeeId: p.employeeId,
-              employeeName: employee.displayName,
-              roundedPayCents: p.roundedPayCents,
-            },
-          ];
-        })
-      : displayRows.map((row) => ({
-          employeeId: row.employee.id,
-          employeeName: row.employee.displayName,
-          roundedPayCents: row.result.roundedCents,
-        }));
+  const periodGrandTotalCents = totals.rounded + tempWorkersTotalCents;
+  const cashSource = buildPayrollCashInputs({
+    payslips: useStoredTotals ? allPayslips : [],
+    employees: allEmployees,
+    computedRows: displayRows,
+    tempWorkers,
+  });
   const cashSummary = buildCashDenominationSummary(cashSource);
   const periodLabel = `${period.startDate} – ${canonicalEndForScheduleName(
     period.startDate,
@@ -465,7 +461,7 @@ export default async function PeriodReviewPage({
                 {displayRows.length} emp ·{" "}
                 <span className="font-medium text-text">
                   <MoneyDisplay
-                    cents={totals.rounded + tempWorkersTotalCents}
+                    cents={periodGrandTotalCents}
                     monospace={false}
                   />
                 </span>
@@ -507,9 +503,7 @@ export default async function PeriodReviewPage({
                     (s, r) => s + (r.incomplete ?? 0),
                     0,
                   )}
-                  periodGrossRoundedCents={allPayslips
-                    .filter((p) => !p.voidedAt)
-                    .reduce((s, p) => s + (p.roundedPayCents ?? 0), 0)}
+                  periodGrossRoundedCents={periodGrandTotalCents}
                 />
               </>
             )}
@@ -930,7 +924,7 @@ export default async function PeriodReviewPage({
                   <div></div>
                   <div></div>
                   <div className="text-right font-mono tabular-nums">
-                    <MoneyDisplay cents={totals.rounded + tempWorkersTotalCents} />
+                    <MoneyDisplay cents={periodGrandTotalCents} />
                   </div>
                   <div></div>
                 </div>
