@@ -177,12 +177,14 @@ export function ReportsTable({
   reports,
   zohoOrgs,
   drawerBalanceCents = 0,
+  canManageReports = true,
 }: {
   reports: ReportRow[];
   zohoOrgs: ZohoOrganization[];
   /** Current cash-on-hand. Drives the "Pay from cash drawer" dialog
    *  so the operator sees what's available before confirming. */
   drawerBalanceCents?: number;
+  canManageReports?: boolean;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -317,6 +319,7 @@ export function ReportsTable({
               haute={haute}
               boomin={boomin}
               drawerBalanceCents={drawerBalanceCents}
+              canManageReports={canManageReports}
             />,
           );
         }
@@ -339,6 +342,7 @@ function PeriodGroup({
   haute,
   boomin,
   drawerBalanceCents,
+  canManageReports,
 }: {
   group: GroupedReport;
   busyId: string | null;
@@ -357,6 +361,7 @@ function PeriodGroup({
   haute: ZohoOrganization | undefined;
   boomin: ZohoOrganization | undefined;
   drawerBalanceCents: number;
+  canManageReports: boolean;
 }) {
   const accent = scheduleAccent(group.scheduleName);
   const periodTotal = sumGroupTotal(group);
@@ -433,7 +438,7 @@ function PeriodGroup({
           )}
         </div>
         <div className="flex items-center gap-3 text-right whitespace-nowrap">
-          {periodState === "LOCKED" && (
+          {canManageReports && periodState === "LOCKED" && (
             <Button
               size="sm"
               variant="secondary"
@@ -471,7 +476,7 @@ function PeriodGroup({
           flow obvious — you see the period total, the drawer balance,
           and one click commits the cash withdrawal + period mark-paid
           in the same transaction. */}
-      {payOpen && periodState === "LOCKED" && (
+      {canManageReports && payOpen && periodState === "LOCKED" && (
         <div className="px-4 py-3 border-t border-border/60 bg-amber-50/40">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
@@ -698,6 +703,7 @@ function PeriodGroup({
                       )
                     }
                     onDeleteRequest={() => setConfirmDelete(r.id)}
+                    canManage={canManageReports}
                   />
                 )}
               </div>
@@ -725,6 +731,7 @@ function RowOverflowMenu({
   onRepushHaute,
   onRepushBoomin,
   onDeleteRequest,
+  canManage,
 }: {
   runId: string;
   periodId: string;
@@ -741,6 +748,7 @@ function RowOverflowMenu({
   onRepushHaute: () => void;
   onRepushBoomin: () => void;
   onDeleteRequest: () => void;
+  canManage: boolean;
 }) {
   const publishBusy = busyId === `${runId}:publish`;
   const hauteBusy = busyId === `${runId}:push:${hauteOrgId ?? ""}`;
@@ -784,7 +792,7 @@ function RowOverflowMenu({
           </Link>
         </DropdownMenuItem>
 
-        {!published && !isLegacy && (
+        {canManage && !published && !isLegacy && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Visibility</DropdownMenuLabel>
@@ -801,57 +809,61 @@ function RowOverflowMenu({
           </>
         )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Zoho Books</DropdownMenuLabel>
-        <DropdownMenuItem
-          disabled={hauteBusy}
-          onSelect={(e) => {
-            e.preventDefault();
-            if (pushedHaute) onRepushHaute();
-            else onPushHaute();
-          }}
-        >
-          {pushedHaute ? (
-            <RefreshCw className="h-3.5 w-3.5" />
-          ) : (
-            <Send className="h-3.5 w-3.5" />
-          )}
-          {hauteBusy
-            ? "Working…"
-            : pushedHaute
-            ? "Re-push to Haute"
-            : "Push to Haute"}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={boominBusy}
-          onSelect={(e) => {
-            e.preventDefault();
-            if (pushedBoomin) onRepushBoomin();
-            else onPushBoomin();
-          }}
-        >
-          {pushedBoomin ? (
-            <RefreshCw className="h-3.5 w-3.5" />
-          ) : (
-            <Send className="h-3.5 w-3.5" />
-          )}
-          {boominBusy
-            ? "Working…"
-            : pushedBoomin
-            ? "Re-push to Boomin"
-            : "Push to Boomin"}
-        </DropdownMenuItem>
+        {canManage && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Zoho Books</DropdownMenuLabel>
+            <DropdownMenuItem
+              disabled={hauteBusy}
+              onSelect={(e) => {
+                e.preventDefault();
+                if (pushedHaute) onRepushHaute();
+                else onPushHaute();
+              }}
+            >
+              {pushedHaute ? (
+                <RefreshCw className="h-3.5 w-3.5" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+              {hauteBusy
+                ? "Working…"
+                : pushedHaute
+                ? "Re-push to Haute"
+                : "Push to Haute"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={boominBusy}
+              onSelect={(e) => {
+                e.preventDefault();
+                if (pushedBoomin) onRepushBoomin();
+                else onPushBoomin();
+              }}
+            >
+              {pushedBoomin ? (
+                <RefreshCw className="h-3.5 w-3.5" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+              {boominBusy
+                ? "Working…"
+                : pushedBoomin
+                ? "Re-push to Boomin"
+                : "Push to Boomin"}
+            </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          destructive
-          onSelect={(e) => {
-            e.preventDefault();
-            onDeleteRequest();
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Delete report…
-        </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              destructive
+              onSelect={(e) => {
+                e.preventDefault();
+                onDeleteRequest();
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete report…
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

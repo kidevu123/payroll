@@ -20,6 +20,7 @@ import { employees, punches, payPeriods } from "@/lib/db/schema";
 import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
+import { localMidnightUtc } from "@/lib/utils";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
@@ -47,6 +48,21 @@ function normalizeRef(s: string): string {
 
 function dayKey(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
+}
+
+export function localDayBoundsForPollImport(
+  dayIso: string,
+  timezone: string,
+): { dayStart: Date; dayEnd: Date } {
+  const dayStart = localMidnightUtc(dayIso, timezone);
+  const dayEnd = localMidnightUtc(addDaysIso(dayIso, 1), timezone);
+  return { dayStart, dayEnd };
+}
+
+function addDaysIso(dayIso: string, days: number): string {
+  const d = new Date(`${dayIso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function importPunchPoll(
@@ -208,8 +224,10 @@ export async function importPunchPoll(
         paired.kind !== "outOnly" &&
         paired.kind !== "ambiguous"
       ) {
-        const dayStart = new Date(`${g.day}T00:00:00Z`);
-        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const { dayStart, dayEnd } = localDayBoundsForPollImport(
+          g.day,
+          options.timezone,
+        );
         const candidates = await db
           .select({
             id: punches.id,
@@ -244,8 +262,10 @@ export async function importPunchPoll(
 
       // Convert legacy afternoon "out-only" guesses into ambiguous singles.
       if (existing.length === 0 && paired.kind === "ambiguous") {
-        const dayStart = new Date(`${g.day}T00:00:00Z`);
-        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const { dayStart, dayEnd } = localDayBoundsForPollImport(
+          g.day,
+          options.timezone,
+        );
         const dayRows = await db
           .select({
             id: punches.id,
@@ -294,8 +314,10 @@ export async function importPunchPoll(
       // Repair mis-paired micro-shifts (duplicate punch-ins treated as in/out)
       // and attach orphan clock-outs to the real open shift on the same day.
       if (existing.length === 0) {
-        const dayStart = new Date(`${g.day}T00:00:00Z`);
-        const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+        const { dayStart, dayEnd } = localDayBoundsForPollImport(
+          g.day,
+          options.timezone,
+        );
         const dayRows = await db
           .select({
             id: punches.id,

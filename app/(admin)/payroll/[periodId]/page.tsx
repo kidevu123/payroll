@@ -824,7 +824,8 @@ export default async function PeriodReviewPage({
               </div>
             </div>
 
-            <div className="hidden space-y-0.5 md:block">
+            <div className="hidden space-y-0.5 overflow-x-auto md:block">
+              <div className="min-w-[760px]">
               <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
@@ -854,11 +855,11 @@ export default async function PeriodReviewPage({
                               {employee.displayName}
                             </Link>
                           )}
-                          <div className="text-xs text-text-muted">
-                            {rateLabel(employee)}
-                          </div>
-                        </div>
-                        <span className="text-right font-mono tabular-nums">
+	                          <div className="text-xs text-text-muted">
+	                            {rateLabel(employee)}
+	              </div>
+	              </div>
+	                        <span className="text-right font-mono tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
@@ -928,9 +929,10 @@ export default async function PeriodReviewPage({
                   </div>
                   <div></div>
                 </div>
-              )}
-            </div>
-            </>
+	              )}
+	            </div>
+	            </div>
+	            </>
           )}
         </CardContent>
       </Card>

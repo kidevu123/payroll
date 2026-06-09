@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildManualPunchSyncEvents,
   formatNgtecoManualPunchTimestamp,
+  selectManualPunchSyncEvents,
 } from "./manual-punch-sync";
 
 describe("buildManualPunchSyncEvents", () => {
@@ -40,6 +41,45 @@ describe("buildManualPunchSyncEvents", () => {
         clockOut: null,
       }),
     ).toThrow(/no NGTeco ID/);
+  });
+});
+
+describe("selectManualPunchSyncEvents", () => {
+  it("syncs only the new clock-in when an NGTeco ambiguous single was an on-file clock-out", () => {
+    const events = selectManualPunchSyncEvents({
+      punchId: "p1",
+      source: "NGTECO_AUTO",
+      personId: "36",
+      employeeName: "Jennifer Perez",
+      clockIn: new Date("2026-05-22T10:07:00.000Z"),
+      clockOut: new Date("2026-05-22T22:09:00.000Z"),
+      originalClockIn: new Date("2026-05-22T22:09:00.000Z"),
+      originalClockOut: null,
+    });
+
+    expect(events).toEqual([
+      {
+        kind: "clockIn",
+        punchAt: new Date("2026-05-22T10:07:00.000Z"),
+        personId: "36",
+        employeeName: "Jennifer Perez",
+      },
+    ]);
+  });
+
+  it("syncs only the new clock-out when an NGTeco open punch was closed", () => {
+    const events = selectManualPunchSyncEvents({
+      punchId: "p1",
+      source: "NGTECO_AUTO",
+      personId: "36",
+      employeeName: "Jennifer Perez",
+      clockIn: new Date("2026-05-22T10:07:00.000Z"),
+      clockOut: new Date("2026-05-22T22:09:00.000Z"),
+      originalClockIn: new Date("2026-05-22T10:07:00.000Z"),
+      originalClockOut: null,
+    });
+
+    expect(events.map((event) => event.kind)).toEqual(["clockOut"]);
   });
 });
 

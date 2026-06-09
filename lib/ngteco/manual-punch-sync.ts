@@ -44,6 +44,32 @@ export function buildManualPunchSyncEvents(input: {
   return events;
 }
 
+export function selectManualPunchSyncEvents(input: {
+  punchId: string;
+  source: string;
+  personId: string | null;
+  employeeName: string;
+  clockIn: Date;
+  clockOut: Date | null;
+  originalClockIn?: Date | null;
+  originalClockOut?: Date | null;
+}): ManualPunchSyncEvent[] {
+  const events = buildManualPunchSyncEvents(input);
+  if (input.source !== "NGTECO_AUTO" || input.originalClockOut !== null) {
+    return events;
+  }
+  if (!input.clockOut || !input.originalClockIn) return events;
+
+  const originalInMs = input.originalClockIn.getTime();
+  const clockInChanged = input.clockIn.getTime() !== originalInMs;
+  const clockOutIsOriginalSingle = input.clockOut.getTime() === originalInMs;
+
+  if (clockInChanged && clockOutIsOriginalSingle) {
+    return events.filter((event) => event.kind === "clockIn");
+  }
+  return events.filter((event) => event.kind === "clockOut");
+}
+
 export function formatNgtecoManualPunchTimestamp(
   punchAt: Date,
   timeZone: string,

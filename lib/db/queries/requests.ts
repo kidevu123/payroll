@@ -18,7 +18,10 @@ import {
   type TimeOffRequest,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
-import { isMissingClockInPunch } from "@/lib/punches/missing-punch";
+import {
+  isAmbiguousSinglePunch,
+  isMissingClockInPunch,
+} from "@/lib/punches/missing-punch";
 import {
   timeOffChangeApprovalPlan,
   type TimeOffChangeAction,
@@ -149,6 +152,20 @@ export async function createMissedPunchRequest(
   actor: Actor,
 ): Promise<MissedPunchRequest> {
   return db.transaction(async (tx) => {
+    if (input.alertId) {
+      const [existing] = await tx
+        .select()
+        .from(missedPunchRequests)
+        .where(
+          and(
+            eq(missedPunchRequests.alertId, input.alertId),
+            eq(missedPunchRequests.status, "PENDING"),
+          ),
+        )
+        .limit(1);
+      if (existing) return existing;
+    }
+
     const [row] = await tx
       .insert(missedPunchRequests)
       .values(input)
@@ -250,6 +267,52 @@ export async function approveMissedPunchRequest(
       : [];
 
     let punch;
+    if (alert?.issue === "UNPAIRED_PUNCH") {
+      const dayPunches = await tx
+        .select()
+        .from(punches)
+        .where(
+          and(
+            eq(punches.employeeId, before.employeeId),
+            eq(punches.periodId, periodId),
+            isNull(punches.voidedAt),
+          ),
+        );
+      const unpaired = dayPunches.find(
+        (p) =>
+          dayFmt.format(p.clockIn) === before.date &&
+          isAmbiguousSinglePunch(p),
+      );
+      if (unpaired) {
+        const onFileAt =
+          unpaired.clockIn instanceof Date
+            ? unpaired.clockIn
+            : new Date(unpaired.clockIn);
+        const nextClockIn = before.claimedClockIn ?? onFileAt;
+        const nextClockOut = before.claimedClockOut ?? onFileAt;
+        if (nextClockOut.getTime() <= nextClockIn.getTime()) {
+          throw new Error(
+            "approveMissedPunchRequest: unpaired punch resolution must create a valid in/out range",
+          );
+        }
+        const [updated] = await tx
+          .update(punches)
+          .set({
+            clockIn: nextClockIn,
+            clockOut: nextClockOut,
+            editedById: actor.id,
+            editedAt: new Date(),
+            editReason: `Approved unpaired punch request ${before.id}`,
+            notes: unpaired.notes
+              ? `${unpaired.notes}\nApproved unpaired punch request ${before.id}`
+              : `Approved unpaired punch request ${before.id}`,
+          })
+          .where(eq(punches.id, unpaired.id))
+          .returning();
+        punch = updated;
+      }
+    }
+
     if (
       alert?.issue === "MISSING_IN" &&
       before.claimedClockIn &&

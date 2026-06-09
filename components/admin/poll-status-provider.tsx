@@ -231,7 +231,7 @@ function PollStatusBarView({
       role="status"
       aria-live="polite"
       className={cn(
-        "border-b px-3 py-2 sm:px-4",
+        "border-b px-3 py-2 sm:px-4 mt-[calc(3.5rem+env(safe-area-inset-top))] lg:mt-0",
         ui.progress === "success" &&
           "border-emerald-200 bg-emerald-50 text-emerald-950",
         ui.progress === "error" && "border-red-200 bg-red-50 text-red-950",

@@ -9,6 +9,8 @@ import { payPeriods } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch } from "@/lib/db/queries/punches";
 import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
+import { getSetting } from "@/lib/settings/runtime";
+import { isBareWallClock, wallClockToUtc } from "@/lib/time/wall-clock";
 import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
   type ManualPunchSyncJobData,
@@ -47,6 +49,15 @@ const schema = z.object({
     .transform((v) => v || null),
 });
 
+async function parsePunchInput(input: string): Promise<Date | null> {
+  if (isBareWallClock(input)) {
+    const company = await getSetting("company");
+    return wallClockToUtc(input, company.timezone);
+  }
+  const d = new Date(input);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /**
  * Add a manual punch from anywhere — resolves the pay period from the
  * date automatically. Used by the global /punches/new entry point so
@@ -70,13 +81,13 @@ export async function addManualPunchAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const clockInD = new Date(parsed.data.clockIn);
+  const clockInD = await parsePunchInput(parsed.data.clockIn);
   const clockOutD = parsed.data.clockOut
-    ? new Date(parsed.data.clockOut)
+    ? await parsePunchInput(parsed.data.clockOut)
     : null;
-  if (Number.isNaN(clockInD.getTime()))
+  if (!clockInD)
     return { error: "Invalid clock-in time." };
-  if (clockOutD && Number.isNaN(clockOutD.getTime())) {
+  if (parsed.data.clockOut && !clockOutD) {
     return { error: "Invalid clock-out time." };
   }
   if (clockOutD && clockOutD <= clockInD) {

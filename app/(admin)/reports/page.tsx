@@ -18,6 +18,7 @@ import { db } from "@/lib/db";
 import { zohoOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ReportsTable } from "./reports-table";
+import { requireSession } from "@/lib/auth-guards";
 import {
   ScheduleTabs,
   parseScheduleTab,
@@ -32,6 +33,7 @@ export default async function ReportsPage({
   searchParams: Promise<{ schedule?: string }>;
 }) {
   const sp = await searchParams;
+  const session = await requireSession();
   const tab = parseScheduleTab(sp.schedule);
   const kind = scheduleTabToKind(tab);
   const [reports, orgs, drawerBalanceCents] = await Promise.all([
@@ -65,6 +67,7 @@ export default async function ReportsPage({
         reports={reports}
         zohoOrgs={orgs}
         drawerBalanceCents={drawerBalanceCents}
+        canManageReports={session.user.role !== "ACCOUNTANT"}
       />
 
       <Card>

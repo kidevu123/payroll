@@ -261,7 +261,7 @@ export function MobileQuickNav({
         aria-label={tNav("openNavigation")}
         className="lg:hidden fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] z-40 rounded-2xl border border-border/80 bg-surface/95 p-1.5 shadow-pop backdrop-blur-md"
       >
-        <div className="grid grid-cols-5 items-stretch gap-1">
+        <div className="grid auto-cols-fr grid-flow-col items-stretch gap-1">
           {quickItems.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (

@@ -187,7 +187,8 @@ export default async function RunReviewPage({
           {rendered.length === 0 ? (
             <p className="text-sm text-text-muted">No punches, tasks, or alerts on this run.</p>
           ) : (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 overflow-x-auto">
+              <div className="min-w-[860px]">
               {/* Header row — kept in sync with the summary grid below. */}
               <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
                 <div></div>
@@ -306,6 +307,7 @@ export default async function RunReviewPage({
                 </div>
                 <div></div>
                 <div></div>
+              </div>
               </div>
             </div>
           )}

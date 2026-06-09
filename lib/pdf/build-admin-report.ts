@@ -3,20 +3,22 @@
 // Zoho push call into here so the PDF the accountant signs and the
 // summary table inside Zoho are guaranteed to match.
 
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { taskPayLineItems } from "@/lib/db/schema";
+import { payrollRuns, taskPayLineItems } from "@/lib/db/schema";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listShifts } from "@/lib/db/queries/shifts";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
+import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { canonicalEndForSchedule } from "@/lib/payroll/period-boundaries";
 import { paySchedules } from "@/lib/db/schema";
+import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 import type { AdminReportInput } from "./types";
 
 function tzDayKey(d: Date, tz: string): string {
@@ -67,6 +69,30 @@ export function normalizePrintablePersonName(
     .replace(/\s+/g, " ");
 }
 
+type ReportTotals = AdminReportInput["employees"][number]["totals"];
+
+export function chooseReportTotals(args: {
+  useStoredPayslip: boolean;
+  live: ReportTotals;
+  payslip?: {
+    hoursWorked: string | number;
+    grossPayCents: number;
+    roundedPayCents: number;
+    taskPayCents: number;
+  } | null;
+}): ReportTotals {
+  if (!args.useStoredPayslip || !args.payslip) return args.live;
+  const taskCents = args.payslip.taskPayCents ?? 0;
+  return {
+    hours: Number(args.payslip.hoursWorked ?? 0),
+    regularCents: Math.max(0, args.payslip.grossPayCents - taskCents),
+    overtimeCents: 0,
+    taskCents,
+    grossCents: args.payslip.grossPayCents,
+    roundedCents: args.payslip.roundedPayCents,
+  };
+}
+
 export type AdminReportArtifacts = {
   pdfBytes: Buffer;
   filename: string;
@@ -111,18 +137,13 @@ export async function buildAdminReportArtifacts(
     periodSchedule?.periodKind ?? null,
   );
 
-  const employeeFilter = period.payScheduleId
-    ? { payScheduleId: period.payScheduleId }
-    : {};
-  const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks] =
+  const [allEmployees, punches, payRules, company, shifts, tempWorkers, tasks, allPayslips] =
     await Promise.all([
-      // Match the publish handler's exact schedule isolation, with no status
-      // filter. Terminated/inactive
-      // employees who got a payslip on this period (mid-period termination)
-      // should still appear on the printed admin report so the accountant
-      // can sign for what was actually paid. The "no punches no tasks"
-      // skip below naturally drops anyone irrelevant.
-      listEmployees(employeeFilter),
+      // Fetch all employees. For unpublished live reports we still filter to
+      // the period schedule below; for published/visible reports, active
+      // payslips are canonical and must continue to print even if the
+      // employee's schedule/status changed after publish.
+      listEmployees(),
       listPunches({ periodId }),
       getSetting("payRules"),
       getSetting("company"),
@@ -132,7 +153,29 @@ export async function buildAdminReportArtifacts(
         .select()
         .from(taskPayLineItems)
         .where(eq(taskPayLineItems.periodId, periodId)),
+      listPayslipsForPeriod(periodId, { includeVoided: true }),
     ]);
+  const [run] = await db
+    .select()
+    .from(payrollRuns)
+    .where(eq(payrollRuns.periodId, periodId))
+    .orderBy(desc(payrollRuns.createdAt))
+    .limit(1);
+  const activePayslips = allPayslips.filter((p) => !p.voidedAt);
+  const payslipByEmployee = new Map(
+    activePayslips.map((p) => [p.employeeId, p]),
+  );
+  const payslipSumCents = activePayslips.reduce(
+    (sum, p) => sum + p.roundedPayCents,
+    0,
+  );
+  const useStoredTotals = shouldUseStoredPayrollTotals({
+    periodState: period.state,
+    runSource: run?.source ?? null,
+    publishedToPortalAt: run?.publishedToPortalAt ?? null,
+    payslipSumCents,
+    liveRoundedCents: 0,
+  });
 
   const shiftById = new Map(shifts.map((s) => [s.id, s]));
   const tasksByEmployee = new Map<string, typeof tasks>();
@@ -193,11 +236,28 @@ export async function buildAdminReportArtifacts(
   const summaryRows: SummaryRow[] = [];
   const printedEmployeeNames = new Set<string>();
 
+  const reportEmployeeIds = useStoredTotals
+    ? new Set(activePayslips.map((p) => p.employeeId))
+    : null;
+  const liveScheduleEmployeeIds =
+    !useStoredTotals && period.payScheduleId
+      ? new Set(
+          allEmployees
+            .filter((e) => e.payScheduleId === period.payScheduleId)
+            .map((e) => e.id),
+        )
+      : null;
+
   for (const e of allEmployees) {
+    if (reportEmployeeIds && !reportEmployeeIds.has(e.id)) continue;
+    if (liveScheduleEmployeeIds && !liveScheduleEmployeeIds.has(e.id)) continue;
     if (e.payType === "SALARIED") continue;
     const ePunches = punchesByEmployee.get(e.id) ?? [];
     const eTasks = tasksByEmployee.get(e.id) ?? [];
-    if (ePunches.length === 0 && eTasks.length === 0) continue;
+    const storedPayslip = payslipByEmployee.get(e.id) ?? null;
+    if (!storedPayslip && ePunches.length === 0 && eTasks.length === 0) {
+      continue;
+    }
     const rates = await listRates(e.id);
     const result = computePay({
       punches: ePunches,
@@ -222,7 +282,26 @@ export async function buildAdminReportArtifacts(
           : {}),
       },
     });
-    if (result.totalHours <= 0 && result.taskCents <= 0) continue;
+    const liveTotals = {
+      hours: result.totalHours,
+      regularCents: result.regularCents,
+      overtimeCents: result.overtimeCents,
+      taskCents: result.taskCents,
+      grossCents: result.grossCents,
+      roundedCents: result.roundedCents,
+    };
+    const totals = chooseReportTotals({
+      useStoredPayslip: useStoredTotals,
+      live: liveTotals,
+      payslip: storedPayslip,
+    });
+    if (
+      totals.hours <= 0 &&
+      totals.taskCents <= 0 &&
+      totals.roundedCents <= 0
+    ) {
+      continue;
+    }
     const dayInOut = buildDayInOut(ePunches);
     // Build the day list, then fill in any missing calendar day in the
     // canonical period with a "no record" placeholder. Without this,
@@ -265,14 +344,7 @@ export async function buildAdminReportArtifacts(
       shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
       hourlyRateCents: e.hourlyRateCents,
       days: filledDays,
-      totals: {
-        hours: result.totalHours,
-        regularCents: result.regularCents,
-        overtimeCents: result.overtimeCents,
-        taskCents: result.taskCents,
-        grossCents: result.grossCents,
-        roundedCents: result.roundedCents,
-      },
+      totals,
       taskPay: eTasks.map((t) => ({
         description: t.description,
         amountCents: t.amountCents,
@@ -285,9 +357,9 @@ export async function buildAdminReportArtifacts(
     summaryRows.push({
       legacyId: reportLegacyId,
       displayName: e.displayName,
-      hours: result.totalHours,
-      grossCents: result.grossCents,
-      roundedCents: result.roundedCents,
+      hours: totals.hours,
+      grossCents: totals.grossCents,
+      roundedCents: totals.roundedCents,
     });
   }
 

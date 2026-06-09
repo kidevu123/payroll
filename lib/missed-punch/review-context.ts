@@ -50,7 +50,13 @@ export function buildMissedPunchReviewContext(
     if (open) onFileClockIn = open.clockIn;
   } else if (effectiveIssue === "UNPAIRED_PUNCH") {
     const unpaired = forDay.find((p) => isAmbiguousSinglePunch(p));
-    if (unpaired) onFileClockIn = unpaired.clockIn;
+    if (unpaired) {
+      if (request.claimedClockIn && !request.claimedClockOut) {
+        onFileClockOut = unpaired.clockIn;
+      } else {
+        onFileClockIn = unpaired.clockIn;
+      }
+    }
   } else if (effectiveIssue === "MISSING_IN") {
     const sentinel = forDay.find((p) => isMissingClockInPunch(p));
     if (sentinel?.clockOut) onFileClockOut = sentinel.clockOut;

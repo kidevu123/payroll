@@ -20,7 +20,10 @@ import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { notifications, pushSubscriptions } from "@/lib/db/schema";
 import { vapidConfigured } from "@/lib/notifications/push";
-import { dismissNotificationAction } from "./actions";
+import {
+  dismissAllNotificationsAction,
+  dismissNotificationAction,
+} from "./actions";
 import { PushToggle } from "./push-toggle";
 
 export default async function NotificationsPage() {
@@ -83,9 +86,24 @@ export default async function NotificationsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
           <CardTitle>{t("recentTitle")}</CardTitle>
           <CardDescription>{t("recentDescription")}</CardDescription>
+          </div>
+          {recent.length > 0 && (
+            <form action={dismissAllNotificationsAction}>
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Clear all
+              </Button>
+            </form>
+          )}
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (

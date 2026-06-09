@@ -27,3 +27,19 @@ export async function dismissNotificationAction(
 
   revalidatePath("/me/profile/notifications");
 }
+
+export async function dismissAllNotificationsAction(): Promise<void> {
+  const session = await requireSession();
+
+  await db
+    .update(notifications)
+    .set({ dismissedAt: new Date(), readAt: new Date() })
+    .where(
+      and(
+        eq(notifications.recipientId, session.user.id),
+        isNull(notifications.dismissedAt),
+      ),
+    );
+
+  revalidatePath("/me/profile/notifications");
+}

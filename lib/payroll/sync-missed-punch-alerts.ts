@@ -140,7 +140,9 @@ export async function syncMissedPunchAlerts(
     }
     if (detected.length === 0) continue;
 
-    const existing = await listAlertsForPeriod(period.id);
+    const existing = await listAlertsForPeriod(period.id, {
+      unresolvedOnly: true,
+    });
     const existingKey = new Set(
       existing.map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
     );

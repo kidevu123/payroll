@@ -78,7 +78,7 @@ export default async function EmployeeLayout({
     },
   };
   return (
-    <div className="min-h-dvh pb-20 bg-page">
+    <div className="min-h-dvh pb-[calc(5.5rem+env(safe-area-inset-bottom))] bg-page">
       <ServiceWorkerRegister />
       {/* Phone-first shell: max-w-md feels right on a phone, but on
           tablet (sm+) the 448px cap looked cramped — esp. the calendar
@@ -89,7 +89,7 @@ export default async function EmployeeLayout({
         {children}
       </div>
       <AppFooter
-        className="pb-2 max-w-md sm:max-w-2xl mx-auto"
+        className="pb-4 max-w-md sm:max-w-2xl mx-auto"
         timezone={company?.timezone ?? "America/New_York"}
       />
       <BottomNav hideTime={isSalaried} />
