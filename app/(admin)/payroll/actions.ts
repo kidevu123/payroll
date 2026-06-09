@@ -126,6 +126,32 @@ export async function publishLockedPeriodAction(
   revalidatePath("/reports");
 }
 
+export async function backupAdminReportToZohoAction(
+  periodId: string,
+  runId?: string | null,
+): Promise<{ error?: string } | void> {
+  await requireAdmin();
+  if (!idSchema.safeParse(periodId).success) return { error: "Invalid period id." };
+  if (runId && !idSchema.safeParse(runId).success) {
+    return { error: "Invalid run id." };
+  }
+  try {
+    const { enqueueZohoAdminReportBackup } = await import(
+      "@/lib/jobs/handlers/zoho-admin-report-backup"
+    );
+    await enqueueZohoAdminReportBackup({ periodId, runId: runId ?? null });
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Could not queue Zoho admin report backup.",
+    };
+  }
+  revalidatePath(`/payroll/${periodId}`);
+  revalidatePath("/reports");
+}
+
 const unlockSchema = z.object({ reason: z.string().min(1).max(500) });
 
 export async function unlockPeriodAction(

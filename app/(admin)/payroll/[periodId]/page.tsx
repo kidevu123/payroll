@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Printer,
   Scissors,
+  UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +53,7 @@ import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
 import { CashDenominationButton } from "./cash-denomination-button";
+import { backupAdminReportToZohoAction } from "../actions";
 import { requireSession } from "@/lib/auth-guards";
 import {
   buildCashDenominationSummary,
@@ -544,6 +546,16 @@ export default async function PeriodReviewPage({
               summary={cashSummary}
               periodLabel={periodLabel}
             />
+            <form
+              action={async () => {
+                "use server";
+                await backupAdminReportToZohoAction(period.id, run?.id ?? null);
+              }}
+            >
+              <Button type="submit" variant="secondary" className="justify-start">
+                <UploadCloud className="h-4 w-4" /> Back up admin report
+              </Button>
+            </form>
             {run?.pdfPath && (
               <Button asChild variant="secondary" className="justify-start">
                 <Link
