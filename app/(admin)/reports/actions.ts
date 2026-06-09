@@ -66,6 +66,16 @@ export async function publishReportAction(
       };
     }
     await publishToPortal(id, actor);
+    if (run.periodId) {
+      try {
+        const { enqueueZohoAdminReportBackup } = await import(
+          "@/lib/jobs/handlers/zoho-admin-report-backup"
+        );
+        await enqueueZohoAdminReportBackup({ periodId: run.periodId, runId: id });
+      } catch {
+        // Do not fail portal publishing because backup enqueue is unavailable.
+      }
+    }
     if (!run.publishedToPortalAt) {
       await notifyEmployeesPayslipsPublished(id);
     }

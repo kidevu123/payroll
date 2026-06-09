@@ -120,6 +120,14 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                             {o.defaultPaidThroughName ?? "—"}
                           </div>
                         )}
+                        {o.workdriveAdminReportBackupEnabled && (
+                          <div className="text-xs text-emerald-700">
+                            Admin report backup: WorkDrive folder{" "}
+                            <span className="font-mono">
+                              {o.workdriveAdminReportFolderId ?? "missing"}
+                            </span>
+                          </div>
+                        )}
                         {status && (
                           <div className="text-xs text-text-muted italic">{status}</div>
                         )}
@@ -274,6 +282,35 @@ function OrgForm({
         <Label htmlFor={`ven-${org?.id ?? "new"}`}>Vendor name (optional, unused)</Label>
         <Input id={`ven-${org?.id ?? "new"}`} name="defaultVendorName" defaultValue={org?.defaultVendorName ?? ""} />
       </div>
+      <div className="space-y-1 sm:col-span-2 rounded-card border border-emerald-200 bg-emerald-50/60 p-3">
+        <p className="text-xs font-semibold text-emerald-900">
+          Zoho WorkDrive admin report backup
+        </p>
+        <p className="mt-1 text-xs text-emerald-800">
+          Paste the WorkDrive folder ID from the folder URL. Reconnect this
+          Zoho org after saving so OAuth grants the WorkDrive upload scope.
+        </p>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`wd-folder-${org?.id ?? "new"}`}>
+          WorkDrive folder ID
+        </Label>
+        <Input
+          id={`wd-folder-${org?.id ?? "new"}`}
+          name="workdriveAdminReportFolderId"
+          defaultValue={org?.workdriveAdminReportFolderId ?? ""}
+          placeholder="abc123folderid"
+        />
+      </div>
+      <label className="flex items-center gap-2 self-end rounded-input border border-border bg-surface px-3 py-2 text-sm">
+        <input
+          type="checkbox"
+          name="workdriveAdminReportBackupEnabled"
+          defaultChecked={org?.workdriveAdminReportBackupEnabled ?? false}
+          className="h-4 w-4"
+        />
+        Back up admin reports to WorkDrive
+      </label>
       <div className="flex items-center justify-end gap-2 sm:col-span-2">
         <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
           Cancel

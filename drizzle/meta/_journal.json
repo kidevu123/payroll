@@ -246,6 +246,20 @@
       "when": 1779740000000,
       "tag": "0034_soft_delete_announcements",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779820000000,
+      "tag": "0035_unpaired_punch_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0036_zoho_admin_report_workdrive",
+      "breakpoints": true
     }
   ]
 }

@@ -544,21 +544,35 @@ export async function testZohoConnection(
     .where(eq(zohoOrganizations.id, organizationId));
   if (!org) return { ok: false, message: "Organization not found." };
   const result = await validateConnection(org);
+  let finalResult = result;
+  if (result.ok && org.workdriveAdminReportBackupEnabled) {
+    const { testWorkDriveUploadScope } = await import("./workdrive");
+    const drive = await testWorkDriveUploadScope(org);
+    finalResult = drive.ok
+      ? {
+          ok: true,
+          message: `${result.message} WorkDrive connection OK.`,
+        }
+      : {
+          ok: false,
+          message: `Books OK. WorkDrive failed: ${drive.message}`,
+        };
+  }
   await db
     .update(zohoOrganizations)
     .set({
       lastConnectionTestAt: new Date(),
-      lastConnectionTestOk: result.ok,
+      lastConnectionTestOk: finalResult.ok,
       updatedAt: new Date(),
     })
     .where(eq(zohoOrganizations.id, organizationId));
   await writeAudit({
     actorId: actor.id,
     actorRole: actor.role,
-    action: result.ok ? "zoho.test.ok" : "zoho.test.error",
+    action: finalResult.ok ? "zoho.test.ok" : "zoho.test.error",
     targetType: "ZohoOrganization",
     targetId: organizationId,
-    after: { ok: result.ok, message: result.message },
+    after: { ok: finalResult.ok, message: finalResult.message },
   });
-  return result;
+  return finalResult;
 }

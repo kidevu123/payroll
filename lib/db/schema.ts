@@ -1133,6 +1133,15 @@ export const zohoOrganizations = pgTable(
     defaultPaidThroughId: text("default_paid_through_id"),
     defaultVendorName: text("default_vendor_name"),
     defaultVendorId: text("default_vendor_id"),
+    // Optional WorkDrive target for admin report PDF backups. The folder id is
+    // copied from the WorkDrive URL; when enabled, published admin reports are
+    // uploaded there with duplicate protection.
+    workdriveAdminReportFolderId: text("workdrive_admin_report_folder_id"),
+    workdriveAdminReportBackupEnabled: boolean(
+      "workdrive_admin_report_backup_enabled",
+    )
+      .notNull()
+      .default(false),
     active: boolean("active").notNull().default(true),
     lastConnectionTestAt: timestamp("last_connection_test_at", {
       withTimezone: true,
@@ -1186,6 +1195,46 @@ export const zohoPushes = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Zoho WorkDrive admin-report backups — one row per attempt. Successful rows
+// are unique by org + period + PDF hash, so retrying a job cannot fill the
+// Drive folder with duplicate copies of the same report.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const zohoAdminReportBackups = pgTable(
+  "zoho_admin_report_backups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => payPeriods.id, { onDelete: "cascade" }),
+    payrollRunId: uuid("payroll_run_id").references(() => payrollRuns.id, {
+      onDelete: "set null",
+    }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => zohoOrganizations.id, { onDelete: "restrict" }),
+    folderId: text("folder_id").notNull(),
+    zohoFileId: text("zoho_file_id"),
+    filename: text("filename").notNull(),
+    sha256: text("sha256").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    status: text("status").notNull(), // 'OK' | 'ERROR'
+    errorMessage: text("error_message"),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("zoho_admin_report_backups_period_idx").on(t.periodId),
+    index("zoho_admin_report_backups_org_idx").on(t.organizationId),
+    uniqueIndex("zoho_admin_report_backups_ok_unique")
+      .on(t.periodId, t.organizationId, t.sha256)
+      .where(sql`${t.status} = 'OK'`),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Inferred row types — re-export from a single place for ergonomics.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1226,6 +1275,10 @@ export type ZohoOrganization = typeof zohoOrganizations.$inferSelect;
 export type NewZohoOrganization = typeof zohoOrganizations.$inferInsert;
 export type ZohoPush = typeof zohoPushes.$inferSelect;
 export type NewZohoPush = typeof zohoPushes.$inferInsert;
+export type ZohoAdminReportBackup =
+  typeof zohoAdminReportBackups.$inferSelect;
+export type NewZohoAdminReportBackup =
+  typeof zohoAdminReportBackups.$inferInsert;
 export type TempWorkerEntry = typeof tempWorkerEntries.$inferSelect;
 export type NewTempWorkerEntry = typeof tempWorkerEntries.$inferInsert;
 export type NgtecoPollLogRow = typeof ngtecoPollLog.$inferSelect;

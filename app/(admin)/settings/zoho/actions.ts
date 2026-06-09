@@ -35,6 +35,10 @@ const baseSchema = z.object({
   defaultVendorId: z
     .union([z.string().max(60), z.literal("").transform(() => null)])
     .nullable(),
+  workdriveAdminReportFolderId: z
+    .union([z.string().max(160), z.literal("").transform(() => null)])
+    .nullable(),
+  workdriveAdminReportBackupEnabled: z.boolean().default(false),
 });
 
 const createSchema = baseSchema.extend({
@@ -59,6 +63,10 @@ function parseFields(formData: FormData) {
     defaultPaidThroughId: formData.get("defaultPaidThroughId") || null,
     defaultVendorName: formData.get("defaultVendorName") || null,
     defaultVendorId: formData.get("defaultVendorId") || null,
+    workdriveAdminReportFolderId:
+      formData.get("workdriveAdminReportFolderId") || null,
+    workdriveAdminReportBackupEnabled:
+      formData.get("workdriveAdminReportBackupEnabled") === "on",
   };
 }
 

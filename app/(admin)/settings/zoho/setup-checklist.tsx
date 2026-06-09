@@ -14,8 +14,10 @@ import {
 const ZOHO_SCOPES = [
   "ZohoBooks.expenses.CREATE",
   "ZohoBooks.expenses.READ",
+  "ZohoBooks.expenses.DELETE",
   "ZohoBooks.settings.READ",
   "ZohoBooks.contacts.READ",
+  "WorkDrive.files.CREATE",
 ];
 
 export function SetupChecklist({

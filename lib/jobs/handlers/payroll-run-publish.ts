@@ -373,6 +373,22 @@ export async function handlePayrollRunPublish(data: {
     }
   }
 
+  try {
+    const { enqueueZohoAdminReportBackup } = await import(
+      "./zoho-admin-report-backup"
+    );
+    await enqueueZohoAdminReportBackup({ periodId: period.id, runId });
+  } catch (err) {
+    logger.error(
+      {
+        runId,
+        periodId: period.id,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      "publish: failed to enqueue Zoho WorkDrive admin report backup",
+    );
+  }
+
   // Admin confirmation. Employee notifications are sent when the admin
   // publishes to the employee portal (publishedToPortalAt), not merely
   // when internal PDF generation finishes.

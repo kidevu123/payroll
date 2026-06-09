@@ -25,6 +25,11 @@ import {
   type PunchPollJobData,
 } from "./punch-poll-queue";
 import { NGTECO_MANUAL_PUNCH_SYNC_QUEUE } from "@/lib/ngteco/manual-punch-sync";
+import {
+  handleZohoAdminReportBackup,
+  ZOHO_ADMIN_REPORT_BACKUP_QUEUE,
+  type ZohoAdminReportBackupJob,
+} from "./handlers/zoho-admin-report-backup";
 
 let bossPromise: Promise<PgBoss> | null = null;
 
@@ -160,6 +165,25 @@ async function registerJobs(boss: PgBoss): Promise<void> {
       const data = j.data as { runId?: string };
       if (!data?.runId) continue;
       await handlePayrollRunPublish({ runId: data.runId });
+    }
+  });
+
+  // ── zoho.admin-report.backup — upload admin report PDF to WorkDrive ────
+  await boss.createQueue(ZOHO_ADMIN_REPORT_BACKUP_QUEUE);
+  await boss.work(ZOHO_ADMIN_REPORT_BACKUP_QUEUE, async (jobs) => {
+    for (const j of jobs) {
+      const data = j.data as Partial<ZohoAdminReportBackupJob>;
+      if (!data?.periodId) {
+        logger.error(
+          { jobId: j.id },
+          "zoho.admin-report.backup: missing periodId",
+        );
+        continue;
+      }
+      await handleZohoAdminReportBackup({
+        periodId: data.periodId,
+        runId: data.runId ?? null,
+      });
     }
   });
 

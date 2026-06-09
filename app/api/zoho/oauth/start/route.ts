@@ -9,11 +9,17 @@ import { getOrg } from "@/lib/db/queries/zoho";
 import { open as openSealed } from "@/lib/crypto/vault";
 
 // expenses.DELETE is required for the Re-push flow (delete the prior
-// expense, then post fresh). Without it Zoho returns 401 code 57 on
-// any DELETE call, leaving the admin unable to resync after a total
-// change. Existing connections need to be re-connected once to pick
-// up the new scope (Zoho doesn't auto-upgrade tokens).
-const SCOPES = "ZohoBooks.expenses.CREATE,ZohoBooks.expenses.READ,ZohoBooks.expenses.DELETE,ZohoBooks.settings.READ,ZohoBooks.contacts.READ";
+// expense, then post fresh). WorkDrive.files.CREATE is required for
+// admin-report PDF backups. Existing connections need to be re-connected
+// once to pick up new scopes (Zoho doesn't auto-upgrade tokens).
+const SCOPES = [
+  "ZohoBooks.expenses.CREATE",
+  "ZohoBooks.expenses.READ",
+  "ZohoBooks.expenses.DELETE",
+  "ZohoBooks.settings.READ",
+  "ZohoBooks.contacts.READ",
+  "WorkDrive.files.CREATE",
+].join(",");
 
 function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
   return (

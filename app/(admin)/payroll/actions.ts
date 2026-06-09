@@ -106,6 +106,14 @@ export async function publishLockedPeriodAction(
 
     const wasVisible = !!run.publishedToPortalAt;
     await publishToPortal(run.id, actor);
+    try {
+      const { enqueueZohoAdminReportBackup } = await import(
+        "@/lib/jobs/handlers/zoho-admin-report-backup"
+      );
+      await enqueueZohoAdminReportBackup({ periodId, runId: run.id });
+    } catch {
+      // Payroll publication should not be rolled back by a backup enqueue issue.
+    }
     if (!wasVisible) {
       await notifyEmployeesPayslipsPublished(run.id);
     }

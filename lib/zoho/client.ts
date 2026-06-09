@@ -59,7 +59,9 @@ async function decryptOrgSecrets(org: ZohoOrganization): Promise<{
   };
 }
 
-async function getAccessToken(org: ZohoOrganization): Promise<string> {
+export async function getZohoAccessToken(
+  org: ZohoOrganization,
+): Promise<string> {
   const cached = tokenCache.get(org.id);
   const now = Date.now();
   if (cached && cached.expiresAt > now + 30_000) {
@@ -117,11 +119,11 @@ async function authedFetch(
   //  - 429 / 502 / 503 / 504 → exponential backoff up to 3 attempts,
   //    honoring Retry-After when present (Zoho rate-limits at 100/min/org)
   //  - other 4xx/5xx → return as-is for the caller to surface
-  let token = await getAccessToken(org);
+  let token = await getZohoAccessToken(org);
   let resp = await doFetch(token);
   if (resp.status === 401) {
     tokenCache.delete(org.id);
-    token = await getAccessToken(org);
+    token = await getZohoAccessToken(org);
     resp = await doFetch(token);
   }
   let attempt = 0;
@@ -422,7 +424,7 @@ export async function attachReceipt(input: {
   bytes: Uint8Array;
 }): Promise<void> {
   const { org, expenseId, filename, mime, bytes } = input;
-  const token = await getAccessToken(org);
+  const token = await getZohoAccessToken(org);
   const url = `${org.apiDomain}/books/v3/expenses/${encodeURIComponent(expenseId)}/receipt?organization_id=${org.organizationId}`;
   const form = new FormData();
   form.set("receipt", new Blob([bytes as BlobPart], { type: mime }), filename);

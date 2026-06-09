@@ -49,6 +49,8 @@ export type CreateOrgInput = {
   defaultPaidThroughId?: string | null;
   defaultVendorName?: string | null;
   defaultVendorId?: string | null;
+  workdriveAdminReportFolderId?: string | null;
+  workdriveAdminReportBackupEnabled?: boolean;
 };
 
 export async function createOrg(
@@ -68,6 +70,9 @@ export async function createOrg(
     defaultPaidThroughId: input.defaultPaidThroughId ?? null,
     defaultVendorName: input.defaultVendorName ?? null,
     defaultVendorId: input.defaultVendorId ?? null,
+    workdriveAdminReportFolderId: input.workdriveAdminReportFolderId ?? null,
+    workdriveAdminReportBackupEnabled:
+      input.workdriveAdminReportBackupEnabled ?? false,
     active: true,
   };
   return db.transaction(async (tx) => {
@@ -101,6 +106,8 @@ export type UpdateOrgPatch = Partial<{
   defaultPaidThroughId: string | null;
   defaultVendorName: string | null;
   defaultVendorId: string | null;
+  workdriveAdminReportFolderId: string | null;
+  workdriveAdminReportBackupEnabled: boolean;
   active: boolean;
 }>;
 
@@ -133,6 +140,15 @@ export async function updateOrg(
       : {}),
     ...(patch.defaultVendorId !== undefined
       ? { defaultVendorId: patch.defaultVendorId }
+      : {}),
+    ...(patch.workdriveAdminReportFolderId !== undefined
+      ? { workdriveAdminReportFolderId: patch.workdriveAdminReportFolderId }
+      : {}),
+    ...(patch.workdriveAdminReportBackupEnabled !== undefined
+      ? {
+          workdriveAdminReportBackupEnabled:
+            patch.workdriveAdminReportBackupEnabled,
+        }
       : {}),
     ...(patch.active !== undefined ? { active: patch.active } : {}),
     updatedAt: new Date(),
