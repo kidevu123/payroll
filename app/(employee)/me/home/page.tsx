@@ -106,7 +106,10 @@ export default async function EmployeeHome() {
     const [punches, rates, openAlerts] = await Promise.all([
       listPunches({ periodId: period.id, employeeId: employee.id }),
       listRates(employee.id),
-      listAlertsForEmployee(employee.id, { unresolvedOnly: true }),
+      listAlertsForEmployee(employee.id, {
+        unresolvedOnly: true,
+        periodId: period.id,
+      }),
     ]);
     alerts = openAlerts;
     const result = computePay({

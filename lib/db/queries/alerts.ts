@@ -20,11 +20,12 @@ export async function listAlertsForPeriod(
 
 export async function listAlertsForEmployee(
   employeeId: string,
-  opts: { unresolvedOnly?: boolean } = {},
+  opts: { unresolvedOnly?: boolean; periodId?: string } = {},
 ): Promise<MissedPunchAlert[]> {
-  const where = opts.unresolvedOnly
-    ? and(eq(missedPunchAlerts.employeeId, employeeId), isNull(missedPunchAlerts.resolvedAt))
-    : eq(missedPunchAlerts.employeeId, employeeId);
+  const conds = [eq(missedPunchAlerts.employeeId, employeeId)];
+  if (opts.unresolvedOnly) conds.push(isNull(missedPunchAlerts.resolvedAt));
+  if (opts.periodId) conds.push(eq(missedPunchAlerts.periodId, opts.periodId));
+  const where = conds.length === 1 ? conds[0] : and(...conds);
   return db.select().from(missedPunchAlerts).where(where);
 }
 
