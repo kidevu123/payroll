@@ -1,7 +1,8 @@
 # docker compose for the payroll platform.
 #
-# Three services:
+# Four services:
 #   app     — the Next.js app + pg-boss worker (one process owns the queue)
+#   mcp     — payroll MCP server (AI agent read/write API on port 3100)
 #   db      — Postgres 16 with the citext extension installed by the migrator
 #   backup  — sidecar that pg_dumps once a day and prunes archives older than 30d
 #
@@ -78,6 +79,53 @@ services:
       timeout: 5s
       retries: 6
       start_period: 30s
+    networks:
+      - internal
+      - egress
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_GIT_SHA: ${BUILD_GIT_SHA:-dev}
+        BUILD_GIT_BRANCH: ${BUILD_GIT_BRANCH:-rebuild/foundation}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://payroll:${POSTGRES_PASSWORD:-payroll}@db:5432/payroll
+      NGTECO_VAULT_KEY: ${NGTECO_VAULT_KEY:?NGTECO_VAULT_KEY must be set in .env}
+      STORAGE_ROOT: /data
+      NODE_ENV: production
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?MCP_SERVICE_TOKEN must be set in .env}
+      MCP_ACTOR_EMAIL: ${MCP_ACTOR_EMAIL:-${OWNER_EMAIL:-}}
+      MCP_HTTP_HOST: "0.0.0.0"
+      MCP_HTTP_PORT: "3100"
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+    volumes:
+      - ./data:/data
+    ports:
+      - "${MCP_HTTP_HOST_PORT:-3100}:3100"
+    command:
+      - sh
+      - -c
+      - node ./node_modules/tsx/dist/cli.mjs --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --http
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - internal
       - egress

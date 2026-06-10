@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "payroll": {
+      "url": "http://REPLACE_HOST:3100/mcp",
+      "headers": {
+        "Authorization": "Bearer REPLACE_MCP_SERVICE_TOKEN"
+      }
+    }
+  }
+}

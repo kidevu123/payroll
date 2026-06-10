@@ -120,6 +120,7 @@ COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/mcp-server ./mcp-server
 
 # Default storage root — host-mounted in compose.
 RUN mkdir -p /data/uploads /data/payslips /data/ngteco /data/backups

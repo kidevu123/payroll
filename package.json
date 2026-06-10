@@ -16,10 +16,13 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "mcp:stdio": "tsx --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --stdio",
+    "mcp:http": "tsx --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --http"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@node-rs/argon2": "^2.0.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.55.0",
@@ -43,7 +46,9 @@
     "@react-pdf/renderer": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.36.4",
+    "express": "^4.21.2",
     "lucide-react": "^0.460.0",
     "next": "^15.5.15",
     "next-auth": "5.0.0-beta.31",
@@ -61,6 +66,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^22.9.1",
     "@types/react": "^19.2.14",
