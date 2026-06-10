@@ -9,6 +9,7 @@ import {
   Wallet,
   BarChart3,
   ClipboardCheck,
+  Bot,
   Settings2,
   Briefcase,
   CalendarRange,
@@ -44,6 +45,7 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
     headingKey: "operate",
     items: [
       { href: "/hall-monitor", labelKey: "hallMonitor", icon: ClipboardCheck },
+      { href: "/assistant", labelKey: "assistant", icon: Bot },
       { href: "/reports", labelKey: "reports", icon: BarChart3 },
       { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
       { href: "/notifications", labelKey: "notifications", icon: Megaphone },
