@@ -63,6 +63,18 @@ describe("detectExceptions", () => {
     expect(detectExceptions(input)).toHaveLength(0);
   });
 
+  it("does not emit alerts before the employee hire date", () => {
+    const input = base();
+    input.employees = [{ id: "E1", status: "ACTIVE", hiredOn: "2026-04-16" }];
+    const alerts = detectExceptions(input);
+    expect(alerts.some((a) => a.date < "2026-04-16")).toBe(false);
+    expect(alerts.map((a) => a.date)).toEqual([
+      "2026-04-16",
+      "2026-04-17",
+      "2026-04-18",
+    ]);
+  });
+
   it("emits MISSING_OUT when a punch is incomplete and >18h old", () => {
     const input = base();
     const clockIn = new Date(NOW.getTime() - 19 * 60 * 60 * 1000);

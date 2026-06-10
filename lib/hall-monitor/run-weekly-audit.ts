@@ -277,6 +277,7 @@ export async function runWeeklyHallMonitorAudit(
       employees: employees.map((e) => ({
         id: e.id,
         status: e.status,
+        hiredOn: e.hiredOn,
       })),
       punches: periodPunches,
       timeOff,

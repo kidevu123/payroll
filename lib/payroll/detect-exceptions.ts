@@ -21,7 +21,12 @@ const SAME_DAY_CLOSE_MIN_AGE_MS = 6 * MS_PER_HOUR;
 
 export type DetectInput = {
   /** ACTIVE employees only — the caller filters. */
-  employees: { id: string; status: "ACTIVE" | "INACTIVE" | "TERMINATED" }[];
+  employees: {
+    id: string;
+    status: "ACTIVE" | "INACTIVE" | "TERMINATED";
+    /** First valid work date for alerting, YYYY-MM-DD. */
+    hiredOn?: string;
+  }[];
   punches: {
     employeeId: string;
     clockIn: Date;
@@ -181,6 +186,7 @@ export function detectExceptions(input: DetectInput): DetectedAlert[] {
     const empBuckets = byEmpDay.get(e.id);
     const empTimeOff = timeOffByEmp.get(e.id) ?? [];
     for (const day of days) {
+      if (e.hiredOn && day < e.hiredOn) continue;
       const dow = dayOfWeekInTimezone(day);
       const isWorking = workingSet.has(dow);
       const isHoliday = holidaySet.has(day);

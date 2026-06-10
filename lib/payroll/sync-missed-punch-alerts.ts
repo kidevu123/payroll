@@ -8,7 +8,11 @@ import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listHolidaysInRange } from "@/lib/db/queries/holidays";
 import { listApprovedTimeOffInRange } from "@/lib/db/queries/time-off";
-import { listAlertsForPeriod, createAlerts } from "@/lib/db/queries/alerts";
+import {
+  listAlertsForPeriod,
+  createAlerts,
+  resolveAlert,
+} from "@/lib/db/queries/alerts";
 import {
   userIdsForEmployees,
   adminUserIds,
@@ -29,7 +33,7 @@ function dayInTimezone(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
 }
 
-/** Drop same-day NO_PUNCH until the local end-of-day window (7pm). */
+/** Drop same-day alerts until the local end-of-day window (7pm). */
 export function filterAlertsForPollSync(
   alerts: DetectedAlert[],
   timezone: string,
@@ -44,10 +48,26 @@ export function filterAlertsForPollSync(
     }).format(now),
   );
   return alerts.filter((a) => {
-    if (a.issue !== "NO_PUNCH") return true;
     if (a.date < today) return true;
     return localHour >= 19;
   });
+}
+
+export function staleAlertsToResolve(
+  existing: Array<{
+    id: string;
+    employeeId: string;
+    date: string;
+    issue: DetectedAlert["issue"];
+  }>,
+  detected: DetectedAlert[],
+): string[] {
+  const detectedKey = new Set(
+    detected.map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
+  );
+  return existing
+    .filter((a) => !detectedKey.has(`${a.employeeId}|${a.date}|${a.issue}`))
+    .map((a) => a.id);
 }
 
 export type SyncMissedPunchResult = {
@@ -104,7 +124,11 @@ export async function syncMissedPunchAlerts(
     ]);
 
     let detected = detectExceptions({
-      employees: employees.map((e) => ({ id: e.id, status: e.status })),
+      employees: employees.map((e) => ({
+        id: e.id,
+        status: e.status,
+        hiredOn: e.hiredOn,
+      })),
       punches: punches.map((p) => ({
         employeeId: p.employeeId,
         clockIn: p.clockIn,
@@ -138,13 +162,23 @@ export async function syncMissedPunchAlerts(
     if (opts.filterAlerts) {
       detected = opts.filterAlerts(detected);
     }
-    if (detected.length === 0) continue;
 
     const existing = await listAlertsForPeriod(period.id, {
       unresolvedOnly: true,
     });
+    const existingInScope = opts.limitToDates
+      ? existing.filter((a) => opts.limitToDates!.has(a.date))
+      : existing;
+    const staleIds = staleAlertsToResolve(existingInScope, detected);
+    for (const id of staleIds) {
+      await resolveAlert(id);
+    }
+    if (detected.length === 0) continue;
+
     const existingKey = new Set(
-      existing.map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
+      existing
+        .filter((a) => !staleIds.includes(a.id))
+        .map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
     );
     const fresh = detected.filter(
       (a) => !existingKey.has(`${a.employeeId}|${a.date}|${a.issue}`),
