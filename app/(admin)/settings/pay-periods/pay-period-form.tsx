@@ -30,7 +30,7 @@ export function PayPeriodForm({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold tracking-tight">Pay periods</h2>
+      <h2 className="text-heading font-semibold tracking-tight text-text">Pay periods</h2>
         <form
           action={async (form) => {
             setPending(true);

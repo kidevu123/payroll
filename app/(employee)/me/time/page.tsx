@@ -8,6 +8,7 @@ import { Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HoursDisplay } from "@/components/domain/hours-display";
+import { PageHeader } from "@/components/ui/page-header";
 import { AutoRefresh } from "@/components/employee/auto-refresh";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-guards";
@@ -109,14 +110,14 @@ export default async function EmployeeTime() {
   }
 
   return (
-    <main className="px-4 py-6 space-y-4">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{t("title")}</h1>
-          <p className="text-sm text-text-muted">{t("subtitle")}</p>
-        </div>
-        <AutoRefresh intervalMs={60_000} label={t("updatesLabel")} />
-      </header>
+    <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
+      <PageHeader
+        density="employee"
+        title={t("title")}
+        description={t("subtitle")}
+        meta={today}
+        actions={<AutoRefresh intervalMs={60_000} label={t("updatesLabel")} />}
+      />
 
       <Card>
         <CardHeader>

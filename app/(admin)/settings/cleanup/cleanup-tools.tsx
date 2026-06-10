@@ -138,7 +138,7 @@ export function CleanupTools() {
       {/* 0. Tag legacy NULL-schedule periods by length (run BEFORE merge) */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="text-heading font-semibold flex items-center gap-2">
             <Wrench className="h-4 w-4 text-brand-700" />
             Tag legacy periods by schedule
           </h2>
@@ -180,7 +180,7 @@ export function CleanupTools() {
       {/* 1. Backfill NULL run totals */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="text-heading font-semibold flex items-center gap-2">
             <Wrench className="h-4 w-4 text-brand-700" />
             Backfill NULL run totals
           </h2>
@@ -226,7 +226,7 @@ export function CleanupTools() {
       {/* 2. Empty orphan periods */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="text-heading font-semibold flex items-center gap-2">
             <Trash2 className="h-4 w-4 text-brand-700" />
             Empty orphan pay periods
           </h2>
@@ -304,7 +304,7 @@ export function CleanupTools() {
       {/* 3. Overlapping periods — inline merge per pair */}
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
-          <h2 className="text-base font-semibold flex items-center gap-2">
+          <h2 className="text-heading font-semibold flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-700" />
             Overlapping pay periods
           </h2>

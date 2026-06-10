@@ -47,6 +47,7 @@ import {
   employees,
 } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
+import { PageHeader } from "@/components/ui/page-header";
 import { NgtecoRunNowButton } from "@/components/admin/ngteco-run-now";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
@@ -239,30 +240,35 @@ export default async function PayrollPage({
       ? daysBetween(todayIso, heroDisplayEnd)
       : null;
 
+  const periodSummary =
+    openCount > 0 || lockedCount > 0
+      ? [
+          openCount > 0 ? `${openCount} open` : null,
+          lockedCount > 0 ? `${lockedCount} locked` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : undefined;
+
   return (
     <div className="space-y-5">
-      {/* Header: title + tabs + summary chips. */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
-          <p className="text-xs text-text-muted">
+      <PageHeader
+        title="Run payroll"
+        description={
+          <>
             Trigger an import or upload a CSV. Historical reports live in{" "}
-            <Link href="/reports" className="text-brand-700 underline underline-offset-2">
+            <Link
+              href="/reports"
+              className="text-brand-700 underline underline-offset-2 hover:text-brand-800"
+            >
               Reports
             </Link>
             .
-          </p>
-          <ScheduleTabs
-            current={tab}
-            basePath="/payroll"
-          />
-        </div>
-        <div className="text-xs text-text-muted">
-          {openCount > 0 && <span>{openCount} open</span>}
-          {openCount > 0 && lockedCount > 0 && " · "}
-          {lockedCount > 0 && <span>{lockedCount} locked</span>}
-        </div>
-      </div>
+          </>
+        }
+        meta={periodSummary}
+      />
+      <ScheduleTabs current={tab} basePath="/payroll" />
 
       {/* Hero: active workflow. The left accent bar + tinted background
           give weekly vs semi-monthly distinct visual identities. The "All"

@@ -1,19 +1,24 @@
 import { requireAdmin } from "@/lib/auth-guards";
-import { assistantConfigured } from "@/lib/assistant/chat";
+import {
+  assistantConfigured,
+  assistantProviderLabel,
+} from "@/lib/assistant/chat";
+import { PageHeader } from "@/components/ui/page-header";
 import { AssistantChat } from "@/components/admin/assistant-chat";
 
 export default async function AssistantPage() {
   await requireAdmin();
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-text">
-          Assistant
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Payroll copilot for owners and admins. Not visible to employees.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Assistant"
+        description="Payroll copilot for owners and admins — same tools as MCP, in plain English."
+        meta={
+          assistantConfigured()
+            ? assistantProviderLabel() ?? undefined
+            : "Configure Ollama or Anthropic on the server to enable replies."
+        }
+      />
       <AssistantChat configured={assistantConfigured()} />
     </div>
   );

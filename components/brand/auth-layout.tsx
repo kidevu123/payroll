@@ -32,13 +32,13 @@ export async function AuthLayout({
 }) {
   const company = await loadCompany();
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="min-h-dvh flex flex-col shell-auth">
       <main className="flex-1 flex items-center justify-center px-4 py-10 sm:px-6 page-enter">
         <div className="w-full max-w-[420px]">
           {/* Elevated card — soft hairline + premium shadow. The ambient
               brand-tinted page background shows through around the card. */}
           <div
-            className="rounded-card bg-surface border border-border/70 shadow-card-strong px-8 pt-8 pb-7 sm:px-10 sm:pt-10 sm:pb-8"
+            className="rounded-card bg-surface/95 border border-border/70 shadow-card-strong backdrop-blur-sm px-8 pt-8 pb-7 sm:px-10 sm:pt-10 sm:pb-8"
           >
             <div className="flex flex-col items-center text-center">
               {/* When the company has uploaded a logo, that image already
@@ -58,7 +58,7 @@ export async function AuthLayout({
                   {eyebrow}
                 </p>
               ) : null}
-              <h1 className="mt-1.5 text-2xl font-semibold tracking-tight antialiased text-text">
+              <h1 className="mt-1.5 text-title font-semibold tracking-tight antialiased text-text">
                 {title}
               </h1>
               {description ? (

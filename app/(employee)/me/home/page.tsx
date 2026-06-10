@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { WeekStatsCard } from "@/components/employee/week-stats-card";
 import { AlertCard } from "@/components/employee/alert-card";
 import { MoneyDisplay } from "@/components/domain/money-display";
@@ -248,14 +249,11 @@ export default async function EmployeeHome() {
 
   return (
     <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight antialiased">
-          {t("greeting", { name: firstName })}
-        </h1>
-        <p className="text-sm text-text-muted leading-relaxed">
-          {today}
-        </p>
-      </header>
+      <PageHeader
+        density="employee"
+        title={t("greeting", { name: firstName })}
+        meta={today}
+      />
 
       {!isSalaried && (
         <WeekStatsCard

@@ -65,6 +65,8 @@ services:
       VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL:-noreply@example.com}
       STORAGE_ROOT: /data
       NODE_ENV: production
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ASSISTANT_MODEL: ${ASSISTANT_MODEL:-}
     volumes:

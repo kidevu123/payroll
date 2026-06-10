@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Assistant is not configured. Set ANTHROPIC_API_KEY on the server.",
+          "Assistant is not configured. Set OLLAMA_BASE_URL + OLLAMA_MODEL, or ANTHROPIC_API_KEY on the server.",
       },
       { status: 503 },
     );

@@ -317,24 +317,36 @@ type CellState =
 // Background + text for cells that show a filled chip (data cells).
 function cellPillClasses(state: CellState): string {
   switch (state) {
-    case "complete":   return "bg-emerald-50 text-emerald-800";
-    case "incomplete": return "bg-amber-50 text-amber-800";
-    case "pto":        return "bg-emerald-100/70 text-emerald-900";
-    case "sick":       return "bg-amber-100/70 text-amber-900";
-    case "unpaid":     return "bg-surface-2 text-text-muted";
-    case "other":      return "bg-purple-100/70 text-purple-900";
-    default:           return "";
+    case "complete":
+      return "bg-success-50 text-success-800";
+    case "incomplete":
+      return "bg-warn-50 text-warn-800";
+    case "pto":
+      return "bg-success-100/80 text-success-900";
+    case "sick":
+      return "bg-warn-100/80 text-warn-900";
+    case "unpaid":
+      return "bg-surface-2 text-text-muted";
+    case "other":
+      return "bg-info-50 text-info-800";
+    default:
+      return "";
   }
 }
 
 // Dot color for the legend.
 function legendDotClass(state: CellState): string {
   switch (state) {
-    case "complete":   return "bg-emerald-500";
-    case "incomplete": return "bg-amber-400";
-    case "missed":     return "bg-red-400";
-    case "pto":        return "bg-emerald-400";
-    default:           return "bg-border-strong";
+    case "complete":
+      return "bg-success-500";
+    case "incomplete":
+      return "bg-warn-500";
+    case "missed":
+      return "bg-danger-500";
+    case "pto":
+      return "bg-success-400";
+    default:
+      return "bg-border-strong";
   }
 }
 
@@ -564,7 +576,7 @@ export default async function TimePage({
       case "PAID":
         return { label: "Paid", cls: "bg-success-50 text-success-700 border-success-200/80" };
       default:
-        return { label: "Open", cls: "bg-emerald-50 text-emerald-700 border-emerald-200/80" };
+        return { label: "Open", cls: "bg-success-50 text-success-700 border-success-200/80" };
     }
   })();
 
@@ -574,9 +586,9 @@ export default async function TimePage({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-heading font-bold tracking-tight">Time</h1>
+            <h1 className="text-title font-semibold tracking-tight">Time</h1>
             <span
-              className={`inline-flex items-center rounded-chip border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${stateBadge.cls}`}
+              className={`inline-flex items-center rounded-chip border px-2 py-0.5 text-caption font-semibold uppercase tracking-wider ${stateBadge.cls}`}
             >
               {stateBadge.label}
             </span>
@@ -596,7 +608,7 @@ export default async function TimePage({
                 <ChevronLeft className="h-3.5 w-3.5" />
               </span>
             )}
-            <span className="text-sm text-text-muted font-medium tabular-nums px-0.5">
+            <span className="text-body text-text-muted font-medium tabular-nums px-0.5">
               {period.startDate}
               <span className="mx-1.5 text-text-subtle">&rarr;</span>
               {lastDay}
@@ -629,7 +641,7 @@ export default async function TimePage({
               <Plus className="h-3.5 w-3.5" /> Add manual punch
             </Link>
           </Button>
-          <div className="flex items-center gap-3 text-[11px] text-text-muted font-medium">
+          <div className="flex items-center gap-3 text-caption text-text-muted font-medium">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />
             <Legend label="Missed" state="missed" />
@@ -642,11 +654,11 @@ export default async function TimePage({
         <BackfillAlert openCountFromPriorDays={staleOpenPunchCount} />
       )}
 
-      <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
-        <table className="min-w-full text-xs border-collapse">
+      <div className="overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
+        <table className="min-w-full text-body border-collapse">
           <thead>
-            <tr className="border-b border-border/80">
-              <th className="sticky left-0 z-10 bg-surface-2/80 text-left px-4 py-2.5 text-[10px] font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
+            <tr className="border-b border-border/80 bg-surface-2/90">
+              <th className="sticky left-0 z-10 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
                 Employee
               </th>
               {days.map((d) => {
@@ -654,7 +666,7 @@ export default async function TimePage({
                 return (
                   <th
                     key={d}
-                    className={`w-28 py-2.5 px-2 text-center whitespace-nowrap ${isToday ? "bg-brand-50/60" : "bg-surface-2/40"}`}
+                    className={`w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50/70" : ""}`}
                   >
                     <span className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}>
                       <span className="text-[9.5px] font-bold uppercase tracking-widest">
@@ -680,7 +692,7 @@ export default async function TimePage({
                 key={e.id}
                 className="border-t border-border/40 group hover:bg-surface-2/30 transition-colors"
               >
-                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/50 px-4 py-2 font-semibold text-[12px] text-text whitespace-nowrap border-r border-border/40 transition-colors">
+                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body text-text whitespace-nowrap border-r border-border/40 transition-colors">
                   {e.displayName}
                 </td>
                 {days.map((d) => {
@@ -802,7 +814,7 @@ function PunchCellContent({
     return <span className="text-text-subtle/30 text-[11px] select-none">—</span>;
   }
   if (state === "missed") {
-    return <span className="text-red-300 text-[12px] font-medium">—</span>;
+    return <span className="text-danger-400 text-body font-medium">—</span>;
   }
 
   // Time-off label: compact uppercase badge.

@@ -32,7 +32,7 @@ export function GoogleCalendarForm({
   return (
     <div className="space-y-4 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-semibold">Google Calendar</h1>
+        <h1 className="text-title font-semibold tracking-tight text-text">Google Calendar</h1>
         <p className="text-sm text-text-muted">
           Push approved time-off requests to a Google Calendar so the team
           can see who&apos;s out at a glance.

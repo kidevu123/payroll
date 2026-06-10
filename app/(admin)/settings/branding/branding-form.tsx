@@ -33,7 +33,7 @@ export function BrandingForm({ company }: { company: CompanySettings }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Branding</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Branding</h2>
         <p className="text-xs text-text-muted">
           Logo cascades to the sidebar, login page, payslip PDFs, and PWA app
           icon.

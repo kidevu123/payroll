@@ -124,7 +124,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }));
 
   return (
-    <div className="min-h-dvh flex overflow-x-hidden bg-page">
+    <div className="min-h-dvh flex overflow-x-hidden bg-page shell-admin">
       <Sidebar
         company={companyForBrand}
         role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}

@@ -26,7 +26,7 @@ export function NgtecoForm({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">NGTeco connection</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">NGTeco connection</h2>
         <p className="text-xs text-text-muted">
           Credentials are encrypted at rest with AES-GCM. Plaintext only
           crosses the boundary the moment a Playwright session opens.
@@ -104,7 +104,7 @@ export function NgtecoForm({
       </div>
 
       <div className="space-y-2 pt-4 border-t border-border">
-        <h2 className="text-lg font-semibold tracking-tight">Run import now</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Run import now</h2>
         <p className="text-xs text-text-muted">
           Creates a PayrollRun against the current open period and enqueues
           ngteco.import. View progress + screenshots on /ngteco.

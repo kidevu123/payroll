@@ -39,7 +39,7 @@ export function PaySchedulesManager({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Pay schedules</h2>
+          <h2 className="text-heading font-semibold tracking-tight text-text">Pay schedules</h2>
           <p className="text-xs text-text-muted">
             Each employee is assigned to one. Run-tick fires per
             schedule&apos;s cron and includes only its employees.

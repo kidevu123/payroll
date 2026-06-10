@@ -46,7 +46,7 @@ export default async function LoginPage({
                 Sign in with SSO
               </Button>
             </form>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-xs text-text-muted">
               <hr className="flex-1" />
               <span>or sign in with email</span>
               <hr className="flex-1" />

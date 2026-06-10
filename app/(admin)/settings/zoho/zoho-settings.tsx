@@ -31,7 +31,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Zoho Books</h2>
+          <h2 className="text-heading font-semibold tracking-tight text-text">Zoho Books</h2>
           <p className="text-xs text-text-muted">
             One organization per company you push expenses to. Refresh tokens
             are sealed via the AES-GCM vault.

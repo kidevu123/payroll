@@ -17,7 +17,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold tracking-tight">Holidays</h2>
+      <h2 className="text-heading font-semibold tracking-tight text-text">Holidays</h2>
         <form
           action={async (form) => {
             setPending(true);

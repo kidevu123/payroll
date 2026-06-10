@@ -81,17 +81,35 @@
 
   /* ── Semantic tints (light surface) ────────────────────────────────── */
   --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
   --color-success-200: #a7f3d0;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
   --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
   --color-warn-50: #fffbeb;
+  --color-warn-100: #fef3c7;
   --color-warn-200: #fde68a;
+  --color-warn-600: #d97706;
   --color-warn-700: #b45309;
+  --color-warn-800: #92400e;
+  --color-warn-900: #78350f;
   --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
   --color-danger-200: #fecaca;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
   --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
   --color-info-50: #eff6ff;
+  --color-info-100: #dbeafe;
   --color-info-200: #bfdbfe;
+  --color-info-600: #2563eb;
   --color-info-700: #1d4ed8;
+  --color-info-800: #1e40af;
+  --color-info-900: #1e3a8a;
 }
 
 /*
@@ -120,17 +138,35 @@
       specific surface — verify there first, override there second.
     */
     --color-success-50: #022c22;
-    --color-success-200: #064e3b;
+    --color-success-100: #064e3b;
+    --color-success-200: #065f46;
+    --color-success-500: #10b981;
+    --color-success-600: #34d399;
     --color-success-700: #34d399;
+    --color-success-800: #6ee7b7;
+    --color-success-900: #a7f3d0;
     --color-warn-50: #2c1e02;
+    --color-warn-100: #422006;
     --color-warn-200: #5a3a06;
+    --color-warn-600: #fbbf24;
     --color-warn-700: #fbbf24;
+    --color-warn-800: #fcd34d;
+    --color-warn-900: #fde68a;
     --color-danger-50: #2c0a0a;
+    --color-danger-100: #450a0a;
     --color-danger-200: #5a1414;
+    --color-danger-500: #f87171;
+    --color-danger-600: #fca5a5;
     --color-danger-700: #fca5a5;
+    --color-danger-800: #fecaca;
+    --color-danger-900: #fee2e2;
     --color-info-50: #0a1f3d;
+    --color-info-100: #0f2a4d;
     --color-info-200: #14315c;
+    --color-info-600: #60a5fa;
     --color-info-700: #93c5fd;
+    --color-info-800: #bfdbfe;
+    --color-info-900: #dbeafe;
     --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5),
       0 6px 16px -4px rgb(0 0 0 / 0.6);
     --shadow-card-strong: 0 1px 2px 0 rgb(0 0 0 / 0.6),
@@ -179,6 +215,69 @@ td.num,
 
 .page-enter {
   animation: page-enter 150ms ease-out both;
+}
+
+/*
+  App shells — subtle ambient backgrounds. Restrained brand tint at the
+  top of admin/auth views; employee shell stays flat for PWA clarity.
+*/
+.shell-admin {
+  background-color: var(--color-page);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-brand-50) 55%, transparent) 0%,
+    transparent 18rem
+  );
+}
+
+.shell-auth {
+  background-color: var(--color-page);
+  background-image:
+    radial-gradient(
+      ellipse 90% 55% at 50% -15%,
+      color-mix(in srgb, var(--color-brand-100) 45%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 100% 100%,
+      color-mix(in srgb, var(--color-brand-50) 35%, transparent),
+      transparent
+    );
+}
+
+.shell-employee {
+  background-color: var(--color-page);
+}
+
+@media (prefers-color-scheme: dark) {
+  .shell-admin {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-brand-900) 35%, transparent) 0%,
+      transparent 16rem
+    );
+  }
+
+  .shell-auth {
+    background-image:
+      radial-gradient(
+        ellipse 90% 55% at 50% -15%,
+        color-mix(in srgb, var(--color-brand-900) 50%, transparent),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 50% 35% at 100% 100%,
+        color-mix(in srgb, var(--color-brand-800) 25%, transparent),
+        transparent
+      );
+  }
+}
+
+/* Shared page title block — pairs with components/ui/page-header.tsx */
+.page-header-rule {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  padding-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
 /*

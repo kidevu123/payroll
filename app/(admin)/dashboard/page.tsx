@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
 import {
   Card,
@@ -247,7 +248,13 @@ export default async function DashboardPage() {
     : "NO_RUN";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <PageHeader
+        title="Dashboard"
+        description="Today’s attendance, open period, and items waiting on you."
+        meta={shortDateLabel(today)}
+      />
+
       <StatStrip
         inToday={punchedList.length}
         totalActive={employees.length}
@@ -403,7 +410,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="w-full shrink-0 xl:w-80 xl:sticky xl:top-[calc(5.75rem+env(safe-area-inset-top))] xl:max-h-[calc(100dvh-6.5rem-env(safe-area-inset-top))] xl:overflow-y-auto">
+        <div className="w-full shrink-0 lg:w-72 xl:w-80 lg:sticky lg:top-[calc(5.75rem+env(safe-area-inset-top))] lg:max-h-[calc(100dvh-6.5rem-env(safe-area-inset-top))] lg:overflow-y-auto">
           <AttendancePanel
             punched={punchedList}
             approvedOut={approvedOutList}

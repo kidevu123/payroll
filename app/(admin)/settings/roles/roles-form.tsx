@@ -71,7 +71,7 @@ export function RolesMatrixForm({
       className="space-y-4"
     >
       <header className="space-y-1">
-        <h2 className="text-lg font-semibold">Roles &amp; access</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Roles &amp; access</h2>
         <p className="text-sm text-text-muted">
           Choose which sections of the admin app each role can see. Changes
           apply on the next page load. Owner always has access to everything;

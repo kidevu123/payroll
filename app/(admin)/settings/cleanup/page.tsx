@@ -13,7 +13,7 @@ export default async function CleanupPage() {
   return (
     <div className="space-y-4 max-w-3xl">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Data cleanup</h1>
+        <h1 className="text-title font-semibold tracking-tight text-text">Data cleanup</h1>
         <p className="text-xs text-text-muted">
           One-shot fixes for legacy drift surfaced by the audit fleet. Each
           action runs in its own transaction with row-level verification and

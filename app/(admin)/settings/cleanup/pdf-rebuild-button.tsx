@@ -56,7 +56,7 @@ export function PdfRebuildButton() {
   return (
     <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
       <div>
-        <h2 className="text-base font-semibold flex items-center gap-2">
+        <h2 className="text-heading font-semibold flex items-center gap-2">
           <FileText className="h-4 w-4 text-brand-700" />
           Rebuild periods from PDF JSON
         </h2>

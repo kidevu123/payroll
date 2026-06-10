@@ -13,7 +13,7 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
   const [pending, setPending] = React.useState(false);
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold tracking-tight">Automation</h2>
+      <h2 className="text-heading font-semibold tracking-tight text-text">Automation</h2>
         <form
           action={async (form) => {
             setPending(true);

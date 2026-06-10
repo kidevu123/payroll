@@ -49,7 +49,7 @@ function StatTile({
 }) {
   return (
     <div className={`rounded-card border px-3 py-3 ${TONE_CLASSES[tone]}`}>
-      <div className="text-[9px] font-semibold uppercase tracking-wider text-text-subtle mb-1">
+      <div className="text-caption font-semibold uppercase tracking-wider text-text-subtle mb-1">
         {label}
       </div>
       <div
@@ -57,7 +57,7 @@ function StatTile({
       >
         {value}
       </div>
-      <div className={`text-[10px] mt-0.5 ${TONE_SUB[tone]}`}>{sub}</div>
+      <div className={`text-caption mt-0.5 ${TONE_SUB[tone]}`}>{sub}</div>
     </div>
   );
 }

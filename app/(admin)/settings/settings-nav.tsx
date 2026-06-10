@@ -62,10 +62,20 @@ const TOOL_TABS: readonly Tab[] = [
 export function SettingsNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
-        <nav aria-label="Settings sections" className="lg:sticky lg:top-6 self-start space-y-4">
+    <div className="space-y-6">
+      <header className="page-header-rule pb-4">
+        <h1 className="text-title font-semibold tracking-tight text-text">
+          Settings
+        </h1>
+        <p className="text-body text-text-muted mt-1 max-w-2xl">
+          Company profile, pay rules, integrations, and admin tools.
+        </p>
+      </header>
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-8">
+        <nav
+          aria-label="Settings sections"
+          className="lg:sticky lg:top-6 self-start rounded-card border border-border/70 bg-surface p-2 shadow-card space-y-3"
+        >
           <ul className="space-y-0.5">
             {CONFIG_TABS.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -74,22 +84,22 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
                   <Link
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-input text-sm",
+                      "flex items-center gap-2.5 px-3 py-2 rounded-input text-body border-l-2 transition-colors",
                       active
-                        ? "bg-brand-50 text-brand-700 font-medium"
-                        : "text-text-muted hover:bg-surface-2 hover:text-text",
+                        ? "border-brand-700 bg-brand-50/80 text-brand-800 font-medium"
+                        : "border-transparent text-text-muted hover:bg-surface-2 hover:text-text",
                     )}
                   >
-                    <Icon className="h-4 w-4" aria-hidden />
+                    <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                     {label}
                   </Link>
                 </li>
               );
             })}
           </ul>
-          <div className="border-t border-border/60" />
+          <div className="border-t border-border/60 mx-1" />
           <div>
-            <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-subtle/80">
+            <div className="px-3 mb-1.5 text-caption font-semibold uppercase tracking-widest text-text-subtle">
               Admin tools
             </div>
             <ul className="space-y-0.5">
@@ -97,9 +107,9 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="flex items-center gap-3 px-3 py-2 rounded-input text-sm text-text-muted hover:bg-surface-2 hover:text-text"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-input text-body border-l-2 border-transparent text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
                   >
-                    <Icon className="h-4 w-4" aria-hidden />
+                    <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                     {label}
                   </Link>
                 </li>
@@ -107,7 +117,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
             </ul>
           </div>
         </nav>
-        <section>{children}</section>
+        <section className="min-w-0 space-y-6">{children}</section>
       </div>
     </div>
   );

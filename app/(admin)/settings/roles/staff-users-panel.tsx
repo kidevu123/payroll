@@ -48,7 +48,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
   return (
     <section className="space-y-4">
       <header className="space-y-1">
-        <h2 className="text-lg font-semibold">Staff logins</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Staff logins</h2>
         <p className="text-sm text-text-muted">
           Create a sign-in for an accountant, payroll-staff, or admin
           who doesn&rsquo;t punch a clock. They&rsquo;ll log in directly

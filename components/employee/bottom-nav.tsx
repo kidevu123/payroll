@@ -34,11 +34,11 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
   return (
     <nav
       aria-label="Employee navigation"
-      className="fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_2px_0_rgb(15_23_42_/_0.04)]"
+      className="fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur-md supports-[backdrop-filter]:bg-surface/85 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(9_9_11_/_0.08)]"
     >
       <ul
         className={cn(
-          "grid max-w-md mx-auto",
+          "grid max-w-md sm:max-w-2xl mx-auto",
           hideTime ? "grid-cols-4" : "grid-cols-5",
         )}
       >

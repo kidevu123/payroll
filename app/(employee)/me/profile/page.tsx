@@ -74,7 +74,7 @@ export default async function EmployeeProfile() {
             }
           />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <h1 className="text-base font-semibold tracking-tight antialiased truncate">
+            <h1 className="text-title font-semibold tracking-tight antialiased truncate">
               {employee.displayName}
             </h1>
             <p className="text-xs text-text-muted truncate">

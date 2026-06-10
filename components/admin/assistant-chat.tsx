@@ -58,18 +58,16 @@ export function AssistantChat({ configured }: { configured: boolean }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <Card className="flex min-h-[32rem] flex-col">
-        <CardHeader className="border-b border-border/60">
-          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+        <CardHeader className="border-b border-border/60 py-3">
+          <CardTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-brand-700" aria-hidden />
-            Milo Assistant
+            Chat
           </CardTitle>
-          <p className="text-[13px] text-text-muted">
-            Admin-only. Same powers as the payroll MCP server — ask in plain
-            English.
-          </p>
           {!configured && (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-              Set <code className="text-xs">ANTHROPIC_API_KEY</code> on the
+            <p className="rounded-input border border-warn-200 bg-warn-50 px-3 py-2 text-body text-warn-900">
+              Set <code className="text-caption">OLLAMA_BASE_URL</code> +{" "}
+              <code className="text-caption">OLLAMA_MODEL</code>, or{" "}
+              <code className="text-caption">ANTHROPIC_API_KEY</code>, on the
               server to enable replies.
             </p>
           )}

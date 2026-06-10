@@ -7,6 +7,7 @@ import { Download, FileText, Wallet } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
@@ -139,15 +140,12 @@ export default async function EmployeePayList() {
   const orphanDocs = payrollDocs.filter((d) => !matchedIds.has(d.id));
 
   return (
-    <main className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight antialiased">
-          {t("title")}
-        </h1>
-        <p className="text-sm text-text-muted leading-relaxed">
-          {t("subtitle")}
-        </p>
-      </header>
+    <main className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 max-w-3xl mx-auto">
+      <PageHeader
+        density="employee"
+        title={t("title")}
+        description={t("subtitle")}
+      />
 
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState

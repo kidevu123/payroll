@@ -22,7 +22,7 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold tracking-tight">Pay rules</h2>
+      <h2 className="text-heading font-semibold tracking-tight text-text">Pay rules</h2>
       <form
           action={async (form) => {
             setPending(true);

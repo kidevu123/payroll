@@ -43,7 +43,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Shifts</h2>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Shifts</h2>
         {!creating && (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> Add shift
