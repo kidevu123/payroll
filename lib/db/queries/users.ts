@@ -40,6 +40,15 @@ export async function findUserById(id: string): Promise<User | null> {
   return row ?? null;
 }
 
+export async function findFirstOwnerUser(): Promise<User | null> {
+  const [row] = await db
+    .select()
+    .from(users)
+    .where(eq(users.role, "OWNER"))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function createUser(input: NewUser): Promise<User> {
   const [row] = await db.insert(users).values(input).returning();
   if (!row) throw new Error("createUser: insert returned no row");

@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "MCP server for the Milo payroll app — read/write payroll ops for AI agents.",
-  "type": "module",
   "bin": {
     "payroll-mcp": "./dist/index.js"
   },

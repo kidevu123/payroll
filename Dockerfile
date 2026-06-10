@@ -121,6 +121,15 @@ COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/mcp-server ./mcp-server
+RUN npx esbuild mcp-server/src/index.ts \
+    --bundle \
+    --platform=node \
+    --target=node22 \
+    --format=cjs \
+    --outfile=mcp-server/run.cjs \
+    --tsconfig=mcp-server/tsconfig.json \
+    --packages=external \
+    --alias:@/lib=./lib
 
 # Default storage root — host-mounted in compose.
 RUN mkdir -p /data/uploads /data/payslips /data/ngteco /data/backups

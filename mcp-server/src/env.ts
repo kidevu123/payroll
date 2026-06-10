@@ -1,9 +1,8 @@
 import { config } from "dotenv";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
-const here = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(here, "../../.env") });
+// Local dev loads repo-root .env; production gets vars from Docker/env.
+config({ path: resolve(process.cwd(), ".env") });
 
 export function requireEnv(name: string): string {
   const value = process.env[name]?.trim();

@@ -105,10 +105,8 @@ services:
       - ./data:/data
     ports:
       - "${MCP_HTTP_HOST_PORT:-3100}:3100"
-    command:
-      - sh
-      - -c
-      - node ./node_modules/tsx/dist/cli.mjs --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --http
+    working_dir: /app
+    command: ["node", "mcp-server/run.cjs", "--http"]
     healthcheck:
       test:
         [

@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
 import type { Actor } from "@/lib/db/queries/employees";
-import { findUserByEmail, findUserById } from "@/lib/db/queries/users";
+import {
+  findFirstOwnerUser,
+  findUserByEmail,
+  findUserById,
+} from "@/lib/db/queries/users";
 import { optionalEnv, requireEnv } from "./env.js";
 
 const ADMIN_ROLES = new Set<Actor["role"]>([
@@ -51,11 +52,7 @@ export async function resolveMcpActorWithFallback(): Promise<Actor> {
   try {
     return await resolveMcpActor();
   } catch {
-    const [owner] = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, "OWNER"))
-      .limit(1);
+    const owner = await findFirstOwnerUser();
     if (!owner) {
       throw new Error(
         "Could not resolve MCP actor. Set MCP_ACTOR_EMAIL or MCP_ACTOR_USER_ID.",
