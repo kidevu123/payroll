@@ -31,8 +31,12 @@ import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
-import { listAlertsForEmployee } from "@/lib/db/queries/alerts";
-import { listRecentForEmployee } from "@/lib/db/queries/time-off";
+import { listAlertsForEmployee, resolveAlert } from "@/lib/db/queries/alerts";
+import {
+  listApprovedTimeOffInRange,
+  listRecentForEmployee,
+} from "@/lib/db/queries/time-off";
+import { listHolidaysInRange } from "@/lib/db/queries/holidays";
 import { CancelTimeOffButton } from "./cancel-time-off-button";
 import { RequestTimeOffCancellationButton } from "./request-time-off-cancellation-button";
 import { isEmployeeEditableTimeOff } from "@/lib/time-off/change-request";
@@ -44,6 +48,11 @@ import {
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
+import { detectExceptions } from "@/lib/payroll/detect-exceptions";
+import {
+  filterAlertsForPollSync,
+  staleAlertsToResolve,
+} from "@/lib/payroll/sync-missed-punch-alerts";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -80,9 +89,11 @@ export default async function EmployeeHome() {
 
   const isSalaried = employee.payType === "SALARIED";
 
-  const [company, payRules] = await Promise.all([
+  const [company, payRules, payPeriodSettings, automation] = await Promise.all([
     getSetting("company"),
     getSetting("payRules"),
+    getSetting("payPeriod"),
+    getSetting("automation"),
   ]);
   const today = todayInTz(company.timezone);
   // Pick the period that matches THIS employee's pay schedule. A weekly
@@ -103,15 +114,64 @@ export default async function EmployeeHome() {
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
   if (period && !isSalaried) {
-    const [punches, rates, openAlerts] = await Promise.all([
+    const [punches, rates, openAlerts, holidays, approvedTimeOff] = await Promise.all([
       listPunches({ periodId: period.id, employeeId: employee.id }),
       listRates(employee.id),
       listAlertsForEmployee(employee.id, {
         unresolvedOnly: true,
         periodId: period.id,
       }),
+      listHolidaysInRange(period.startDate, period.endDate),
+      listApprovedTimeOffInRange(period.startDate, period.endDate),
     ]);
-    alerts = openAlerts;
+    const detected = filterAlertsForPollSync(
+      detectExceptions({
+        employees: [
+          {
+            id: employee.id,
+            status: employee.status,
+            hiredOn: employee.hiredOn,
+          },
+        ],
+        punches: punches.map((p) => ({
+          employeeId: p.employeeId,
+          clockIn: p.clockIn,
+          clockOut: p.clockOut,
+          voidedAt: p.voidedAt ?? null,
+          notes: p.notes ?? null,
+        })),
+        timeOff: approvedTimeOff.map((t) => ({
+          employeeId: t.employeeId,
+          startDate: t.startDate,
+          endDate: t.endDate,
+        })),
+        holidays: holidays.map((h) => h.date),
+        period: {
+          id: period.id,
+          startDate: period.startDate,
+          endDate: period.endDate,
+        },
+        workingDays: payPeriodSettings.workingDays,
+        now: new Date(),
+        timezone: company.timezone,
+        thresholds: {
+          shortMinutes: automation.suspiciousDurationMinutesShortThreshold,
+          longMinutes: automation.suspiciousDurationMinutesLongThreshold,
+        },
+      }),
+      company.timezone,
+      new Date(),
+    );
+    const staleIds = staleAlertsToResolve(openAlerts, detected);
+    for (const id of staleIds) await resolveAlert(id);
+    const validKeys = new Set(
+      detected.map((a) => `${a.employeeId}|${a.date}|${a.issue}`),
+    );
+    alerts = openAlerts.filter(
+      (a) =>
+        !staleIds.includes(a.id) &&
+        validKeys.has(`${a.employeeId}|${a.date}|${a.issue}`),
+    );
     const result = computePay({
       punches,
       rateAt: (p) => {
