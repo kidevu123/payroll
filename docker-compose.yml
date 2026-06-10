@@ -84,12 +84,7 @@ services:
       - egress
 
   mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BUILD_GIT_SHA: ${BUILD_GIT_SHA:-dev}
-        BUILD_GIT_BRANCH: ${BUILD_GIT_BRANCH:-rebuild/foundation}
+    image: payroll-app
     restart: unless-stopped
     depends_on:
       db:
