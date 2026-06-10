@@ -13,6 +13,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
+import { buildEmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -49,17 +50,11 @@ export default async function EmployeeDay({
     (p) =>
       new Intl.DateTimeFormat("en-CA", { timeZone: company.timezone }).format(p.clockIn) === date,
   );
-  // Pre-fill the report form with the first punch if one exists.
-  const firstPunch = dayPunches[0];
-  const fmtForInput = (d: Date | null): string => {
-    if (!d) return "";
-    return `${date}T${new Intl.DateTimeFormat("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: company.timezone,
-      hourCycle: "h23",
-    }).format(d)}`;
-  };
+  const reportMode = buildEmployeeReportFixMode({
+    date,
+    timezone: company.timezone,
+    punches: dayPunches,
+  });
 
   let totalMs = 0;
   for (const p of dayPunches) {
@@ -122,8 +117,7 @@ export default async function EmployeeDay({
 
       <ReportFixForm
         date={date}
-        defaultIn={fmtForInput(firstPunch?.clockIn ?? null)}
-        defaultOut={fmtForInput(firstPunch?.clockOut ?? null)}
+        mode={reportMode}
       />
     </main>
   );

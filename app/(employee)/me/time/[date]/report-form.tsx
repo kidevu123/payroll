@@ -7,15 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { reportPunchFixAction } from "./actions";
+import type { EmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 
 export function ReportFixForm({
   date,
-  defaultIn,
-  defaultOut,
+  mode,
 }: {
   date: string;
-  defaultIn?: string;
-  defaultOut?: string;
+  mode: EmployeeReportFixMode;
 }) {
   const t = useTranslations("employee.day");
   const [open, setOpen] = React.useState(false);
@@ -43,28 +42,108 @@ export function ReportFixForm({
     >
       <input type="hidden" name="date" value={date} />
       <p className="text-sm text-text-muted">
-        {t("reportInstructions", { date })}
+        {mode.kind === "NO_PUNCH_OR_CORRECTION"
+          ? t("reportInstructions", { date })
+          : t("missingPunchInstructions", { date })}
       </p>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <Label htmlFor="claimedClockIn">{t("correctClockIn")}</Label>
-          <Input
-            id="claimedClockIn"
-            name="claimedClockIn"
-            type="datetime-local"
-            defaultValue={defaultIn ?? `${date}T08:00`}
-          />
+      {mode.kind === "MISSING_OUT" ? (
+        <>
+          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+              {t("onFile")}
+            </p>
+            <p className="mt-1 font-medium">
+              {t("clockIn")}: {mode.recordedClockIn}
+            </p>
+            <p className="mt-1 text-xs text-text-muted">{t("onFileHint")}</p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="claimedClockOut">{t("enterClockOut")}</Label>
+            <Input
+              id="claimedClockOut"
+              name="claimedClockOut"
+              type="datetime-local"
+              required
+              defaultValue={mode.defaultClockOut}
+            />
+          </div>
+        </>
+      ) : mode.kind === "MISSING_IN" ? (
+        <>
+          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+              {t("onFile")}
+            </p>
+            <p className="mt-1 font-medium">
+              {t("clockOut")}: {mode.recordedClockOut}
+            </p>
+            <p className="mt-1 text-xs text-text-muted">{t("onFileHint")}</p>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="claimedClockIn">{t("enterClockIn")}</Label>
+            <Input
+              id="claimedClockIn"
+              name="claimedClockIn"
+              type="datetime-local"
+              required
+              defaultValue={mode.defaultClockIn}
+            />
+          </div>
+        </>
+      ) : mode.kind === "UNPAIRED_PUNCH" ? (
+        <div className="space-y-2">
+          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+            <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+              {t("unpairedOnFile")}
+            </p>
+            <p className="mt-1 font-medium">{mode.recordedUnpairedPunch}</p>
+            <p className="mt-1 text-xs text-text-muted">
+              {t("unpairedOnFileHint")}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="claimedClockIn">{t("clockIn")}</Label>
+              <Input
+                id="claimedClockIn"
+                name="claimedClockIn"
+                type="datetime-local"
+                defaultValue={mode.defaultClockIn}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="claimedClockOut">{t("clockOut")}</Label>
+              <Input
+                id="claimedClockOut"
+                name="claimedClockOut"
+                type="datetime-local"
+                defaultValue={mode.defaultClockOut}
+              />
+            </div>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="claimedClockOut">{t("correctClockOutOptional")}</Label>
-          <Input
-            id="claimedClockOut"
-            name="claimedClockOut"
-            type="datetime-local"
-            defaultValue={defaultOut ?? ""}
-          />
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="claimedClockIn">{t("correctClockIn")}</Label>
+            <Input
+              id="claimedClockIn"
+              name="claimedClockIn"
+              type="datetime-local"
+              defaultValue={mode.defaultClockIn}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="claimedClockOut">{t("correctClockOutOptional")}</Label>
+            <Input
+              id="claimedClockOut"
+              name="claimedClockOut"
+              type="datetime-local"
+              defaultValue={mode.defaultClockOut}
+            />
+          </div>
         </div>
-      </div>
+      )}
       <div className="space-y-1">
         <Label htmlFor="reason">{t("whatHappened")}</Label>
         <textarea
