@@ -70,6 +70,21 @@ describe("parseMissedPunchClaim", () => {
     expect(outOnly).toMatchObject({ ok: true });
   });
 
+  it("UNPAIRED_PUNCH rejects replacing both sides", () => {
+    expect(
+      parseMissedPunchClaim({
+        issue: "UNPAIRED_PUNCH",
+        claimedClockIn: "2026-06-02T08:00",
+        claimedClockOut: "2026-06-02T17:00",
+        timezone: "America/New_York",
+      }),
+    ).toEqual({
+      ok: false,
+      error:
+        "Only enter the one missing punch. The existing punch on file stays attached to the request.",
+    });
+  });
+
   it("MISSING_IN accepts clock-in only", () => {
     const result = parseMissedPunchClaim({
       issue: "MISSING_IN",
@@ -93,4 +108,3 @@ describe("parseMissedPunchClaim", () => {
     ).toEqual({ ok: false, error: "Clock-out must be after clock-in." });
   });
 });
-

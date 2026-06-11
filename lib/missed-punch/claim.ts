@@ -76,8 +76,12 @@ export function parseMissedPunchClaim(
           "Enter the missing punch — either when you clocked in or when you clocked out.",
       };
     }
-    if (clockIn && clockOut && clockOut.getTime() <= clockIn.getTime()) {
-      return { ok: false, error: "Clock-out must be after clock-in." };
+    if (clockIn && clockOut) {
+      return {
+        ok: false,
+        error:
+          "Only enter the one missing punch. The existing punch on file stays attached to the request.",
+      };
     }
     return { ok: true, clockIn, clockOut };
   }

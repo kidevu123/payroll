@@ -29,6 +29,9 @@ export function MissedPunchForm({
   const t = useTranslations("employee.missedPunch");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [unpairedMissingSide, setUnpairedMissingSide] = React.useState<
+    "clockIn" | "clockOut"
+  >("clockOut");
 
   const onlyOut = issue === "MISSING_OUT";
   const onlyIn = issue === "MISSING_IN";
@@ -104,26 +107,55 @@ export function MissedPunchForm({
       ) : unpaired ? (
         <div className="space-y-2">
           <p className="text-xs text-text-muted">{t("enterMissingPunch")}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="claimedClockIn">{t("clockIn")}</Label>
-              <Input
-                id="claimedClockIn"
-                name="claimedClockIn"
-                type="datetime-local"
-                defaultValue={`${date}T08:00`}
+          <fieldset className="grid gap-2">
+            <legend className="sr-only">{t("missingSideLabel")}</legend>
+            <label className="flex items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm">
+              <input
+                type="radio"
+                name="unpairedMissingSide"
+                value="clockOut"
+                checked={unpairedMissingSide === "clockOut"}
+                onChange={() => setUnpairedMissingSide("clockOut")}
               />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="claimedClockOut">{t("clockOut")}</Label>
-              <Input
-                id="claimedClockOut"
-                name="claimedClockOut"
-                type="datetime-local"
-                defaultValue={`${date}T17:00`}
+              <span>{t("missingClockOutChoice")}</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm">
+              <input
+                type="radio"
+                name="unpairedMissingSide"
+                value="clockIn"
+                checked={unpairedMissingSide === "clockIn"}
+                onChange={() => setUnpairedMissingSide("clockIn")}
               />
-            </div>
+              <span>{t("missingClockInChoice")}</span>
+            </label>
+          </fieldset>
+          <div className="space-y-1">
+            {unpairedMissingSide === "clockOut" ? (
+              <>
+                <Label htmlFor="claimedClockOut">{t("enterClockOut")}</Label>
+                <Input
+                  id="claimedClockOut"
+                  name="claimedClockOut"
+                  type="datetime-local"
+                  required
+                  defaultValue={defaultClockOut ?? `${date}T17:00`}
+                />
+              </>
+            ) : (
+              <>
+                <Label htmlFor="claimedClockIn">{t("enterClockIn")}</Label>
+                <Input
+                  id="claimedClockIn"
+                  name="claimedClockIn"
+                  type="datetime-local"
+                  required
+                  defaultValue={`${date}T08:00`}
+                />
+              </>
+            )}
           </div>
+          <p className="text-xs text-text-muted">{t("existingPunchStays")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">

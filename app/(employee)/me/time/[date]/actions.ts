@@ -17,6 +17,10 @@ import { parseMissedPunchClaim } from "@/lib/missed-punch/claim";
 
 const schema = z.object({
   date: z.string().date(),
+  issue: z
+    .enum(["MISSING_IN", "MISSING_OUT", "UNPAIRED_PUNCH", "NO_PUNCH"])
+    .optional()
+    .nullable(),
   claimedClockIn: z.string().optional().nullable(),
   claimedClockOut: z.string().optional().nullable(),
   reason: z.string().min(1).max(500),
@@ -35,6 +39,7 @@ export async function reportPunchFixAction(
   if (!session.user.employeeId) return { error: "Account not linked." };
   const parsed = schema.safeParse({
     date: formData.get("date"),
+    issue: formData.get("issue") || null,
     claimedClockIn: formData.get("claimedClockIn"),
     claimedClockOut: formData.get("claimedClockOut") || null,
     reason: formData.get("reason"),
@@ -43,11 +48,13 @@ export async function reportPunchFixAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const company = await getSetting("company");
-  const claim = parseMissedPunchClaim({
+  const claimInput = {
     claimedClockIn: parsed.data.claimedClockIn,
     claimedClockOut: parsed.data.claimedClockOut,
     timezone: company.timezone,
-  });
+    ...(parsed.data.issue ? { issue: parsed.data.issue } : {}),
+  };
+  const claim = parseMissedPunchClaim(claimInput);
   if (!claim.ok) return { error: claim.error };
 
   // Find a period that CONTAINS the date (start <= date <= end). The
