@@ -284,13 +284,20 @@ export async function approveMissedPunchRequest(
           isAmbiguousSinglePunch(p),
       );
       if (unpaired) {
-        const onFileAt =
-          unpaired.clockIn instanceof Date
-            ? unpaired.clockIn
-            : new Date(unpaired.clockIn);
-        const nextClockIn = before.claimedClockIn ?? onFileAt;
-        const nextClockOut = before.claimedClockOut ?? onFileAt;
-        if (nextClockOut.getTime() <= nextClockIn.getTime()) {
+        const dayKeyFn = (d: Date) => dayFmt.format(d);
+        const ctx = buildMissedPunchReviewContext(
+          before,
+          "UNPAIRED_PUNCH",
+          dayPunches,
+          dayKeyFn,
+        );
+        const nextClockIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
+        const nextClockOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
+        if (
+          !nextClockIn ||
+          !nextClockOut ||
+          nextClockOut.getTime() <= nextClockIn.getTime()
+        ) {
           throw new Error(
             "approveMissedPunchRequest: unpaired punch resolution must create a valid in/out range",
           );
