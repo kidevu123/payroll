@@ -6,6 +6,10 @@ import type { Payslip, Employee } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  PayslipPdfActions,
+  payslipPdfHref,
+} from "@/components/domain/payslip-pdf-actions";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -28,6 +32,7 @@ type Row = {
     | "roundedPayCents"
     | "voidedAt"
     | "voidReason"
+    | "pdfPath"
   >;
   employee: Pick<Employee, "id" | "displayName">;
 };
@@ -61,6 +66,7 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
               <th className="py-2 px-3 font-medium text-right">Hours</th>
               <th className="py-2 px-3 font-medium text-right">Amount</th>
               <th className="py-2 px-3 font-medium">Status</th>
+              <th className="py-2 px-3 font-medium text-right">Payslip</th>
               <th className="py-2 px-3 font-medium text-right" />
             </tr>
           </thead>
@@ -113,6 +119,18 @@ function PayslipRow({ row }: { row: Row }) {
           )}
         </td>
         <td className="py-2 px-3 text-right">
+          {payslipPdfHref(row.payslip) ? (
+            <PayslipPdfActions
+              url={payslipPdfHref(row.payslip)!}
+              printLabel="Print"
+              downloadLabel="PDF"
+              layout="inline"
+            />
+          ) : (
+            <span className="text-xs text-text-subtle">—</span>
+          )}
+        </td>
+        <td className="py-2 px-3 text-right">
           {isVoided ? (
             <form
               action={async () => {
@@ -161,7 +179,7 @@ function PayslipRow({ row }: { row: Row }) {
       </tr>
       {confirming && !isVoided && (
         <tr>
-          <td colSpan={5} className="px-3 pb-3">
+          <td colSpan={6} className="px-3 pb-3">
             <form
               action={async (form) => {
                 setPending(true);

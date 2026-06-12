@@ -24,6 +24,7 @@ import Link from "next/link";
 import { ChevronRight, AlertTriangle, FileText, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { PayslipPdfActions, payslipPdfHref } from "@/components/domain/payslip-pdf-actions";
 import { StatusPill, type StatusKind } from "./status-pill";
 import { MoneyDisplay } from "./money-display";
 import { HoursDisplay } from "./hours-display";
@@ -61,6 +62,8 @@ export type PayslipCardProps = {
   docs?: PayslipCardDoc[];
   /** Localised "View" label for the doc download buttons. */
   viewLabel?: string;
+  /** When set, show Print / Download for the official PDF payslip. */
+  printPdfUrl?: string;
   className?: string;
 };
 
@@ -143,6 +146,14 @@ export function PayslipCard(props: PayslipCardProps) {
       </div>
     ) : null;
 
+  const printSection = props.printPdfUrl ? (
+    <PayslipPdfActions
+      url={props.printPdfUrl}
+      printLabel={t("printPayslip")}
+      downloadLabel={t("downloadPayslip")}
+    />
+  ) : null;
+
   // Wrap the link area + the docs section in a single chrome `div` so
   // the docs sit visually inside the period card. We can't put the
   // doc download `<a>` tags inside the outer `<Link>` (nested anchors
@@ -159,24 +170,20 @@ export function PayslipCard(props: PayslipCardProps) {
     inner
   );
 
-  if (!docsSection) return linkArea;
+  if (!docsSection && !printSection) return linkArea;
 
   return (
     <div
       className={cn(
         "rounded-card overflow-hidden border border-border/70 bg-surface shadow-card",
-        isDisputed &&
-          "ring-1 ring-warn-200/70",
+        isDisputed && "ring-1 ring-warn-200/70",
         props.className,
       )}
     >
-      {/* Header link uses its own chrome via `inner`; we strip the
-          outer card border by overlaying with a transparent inner.
-          The simplest path is to just render `inner` without the
-          card border-classes (they're already on the wrapper). */}
       <div className="[&>div]:border-0 [&>div]:rounded-none [&>div]:shadow-none [&>a>div]:border-0 [&>a>div]:rounded-none [&>a>div]:shadow-none">
         {linkArea}
       </div>
+      {printSection}
       {docsSection}
     </div>
   );

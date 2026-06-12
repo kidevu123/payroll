@@ -53,6 +53,10 @@ import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
 import { CashDenominationButton } from "./cash-denomination-button";
+import {
+  PayslipPdfActions,
+  payslipPdfHref,
+} from "@/components/domain/payslip-pdf-actions";
 import { backupAdminReportToZohoAction } from "../actions";
 import { requireSession } from "@/lib/auth-guards";
 import {
@@ -721,6 +725,8 @@ export default async function PeriodReviewPage({
               {displayRows.map((row) => {
                 const { employee, result, incomplete, punches } = row;
                 const ePunches = punches.filter((p) => !p.voidedAt);
+                const slip = payslipByEmployee.get(employee.id);
+                const pdfUrl = payslipPdfHref(slip);
                 return (
                   <details
                     key={employee.id}
@@ -793,6 +799,16 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                       </div>
+                      {pdfUrl ? (
+                        <div className="mt-3 flex justify-end">
+                          <PayslipPdfActions
+                            url={pdfUrl}
+                            printLabel="Print"
+                            downloadLabel="PDF"
+                            layout="inline"
+                          />
+                        </div>
+                      ) : null}
                     </summary>
                     <PunchSubTable
                       punches={ePunches}
@@ -850,6 +866,8 @@ export default async function PeriodReviewPage({
                 {displayRows.map((row) => {
                   const { employee, result, incomplete, punches } = row;
                   const ePunches = punches.filter((p) => !p.voidedAt);
+                  const slip = payslipByEmployee.get(employee.id);
+                  const pdfUrl = payslipPdfHref(slip);
                   return (
                     <details key={employee.id} className="group">
                       <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
@@ -870,6 +888,15 @@ export default async function PeriodReviewPage({
 	                          <div className="text-xs text-text-muted">
 	                            {rateLabel(employee)}
 	              </div>
+                          {pdfUrl ? (
+                            <PayslipPdfActions
+                              url={pdfUrl}
+                              printLabel="Print"
+                              downloadLabel="PDF"
+                              layout="inline"
+                              className="mt-1"
+                            />
+                          ) : null}
 	              </div>
 	                        <span className="text-right font-mono tabular-nums">
                           <HoursDisplay
@@ -976,6 +1003,7 @@ export default async function PeriodReviewPage({
                   roundedPayCents: p.roundedPayCents,
                   voidedAt: p.voidedAt,
                   voidReason: p.voidReason,
+                  pdfPath: p.pdfPath,
                 },
                 employee: { id: e.id, displayName: e.displayName },
               };

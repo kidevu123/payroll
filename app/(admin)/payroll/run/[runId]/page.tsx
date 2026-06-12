@@ -13,6 +13,10 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { ExceptionBadge } from "@/components/domain/exception-badge";
+import {
+  PayslipPdfActions,
+  payslipPdfHref,
+} from "@/components/domain/payslip-pdf-actions";
 import { getRun, listExceptions } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
@@ -238,7 +242,14 @@ export default async function RunReviewPage({
                           )}
                         </span>
                         <span className="text-xs">
-                          {payslip ? (
+                          {payslip && payslipPdfHref(payslip) ? (
+                            <PayslipPdfActions
+                              url={payslipPdfHref(payslip)!}
+                              printLabel="Print"
+                              downloadLabel="PDF"
+                              layout="inline"
+                            />
+                          ) : payslip ? (
                             <span className="inline-flex items-center gap-1 text-success-700 font-medium">
                               <CircleCheck className="h-3.5 w-3.5" />
                               {payslip.acknowledgedAt ? "ack" : "published"}

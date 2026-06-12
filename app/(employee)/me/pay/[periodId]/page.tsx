@@ -26,6 +26,8 @@ import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
+import { PayslipPdfActions } from "@/components/employee/payslip-pdf-actions";
+import { PrintPageButton } from "@/components/employee/print-page-button";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -129,11 +131,13 @@ export default async function EmployeePayslipViewer({
 
   return (
     <main className="space-y-5 p-4 sm:p-6 max-w-3xl mx-auto">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/me/pay">
-          <ArrowLeft className="h-4 w-4" /> {t("allPayslips")}
-        </Link>
-      </Button>
+      <div className="no-print">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link href="/me/pay">
+            <ArrowLeft className="h-4 w-4" /> {t("allPayslips")}
+          </Link>
+        </Button>
+      </div>
 
       {!payslip ? (
         <Card>
@@ -232,6 +236,8 @@ async function PayslipBody({
 
   const isDisputed = !!payslip.disputedAt && !payslip.disputeResolvedAt;
   const isAcknowledged = !!payslip.acknowledgedAt && !isDisputed;
+  const hasPdf = payslip.pdfPath?.toLowerCase().endsWith(".pdf") ?? false;
+  const pdfUrl = hasPdf ? `/api/payslips/${payslip.id}/pdf` : null;
 
   return (
     <>
@@ -339,6 +345,33 @@ async function PayslipBody({
           )}
         </CardContent>
       </Card>
+
+      {pdfUrl ? (
+        <Card className="no-print">
+          <CardHeader>
+            <CardTitle>{t("printablePayslip")}</CardTitle>
+            <CardDescription>{t("printableDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <PayslipPdfActions
+              url={pdfUrl}
+              printLabel={t("printPayslip")}
+              downloadLabel={t("downloadPayslip")}
+              className="rounded-input border border-border/70"
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="no-print">
+          <CardHeader>
+            <CardTitle>{t("printablePayslip")}</CardTitle>
+            <CardDescription>{t("printSummaryHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <PrintPageButton label={t("printSummary")} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -450,14 +483,8 @@ async function PayslipBody({
         </CardContent>
       </Card>
 
-      {/* The full-page signature PDF used to embed here as a 70vh
-          iframe. Owner ask: replace it with the compact card view —
-          the hero summary + daily breakdown above already shows
-          everything (hours, total, daily punches) without the heavy
-          signature framing. Spreadsheet-attached fallback remains for
-          legacy imports that ship .xlsx instead of .pdf. */}
-      {payslip.pdfPath && !payslip.pdfPath.toLowerCase().endsWith(".pdf") ? (
-        <Card>
+      {payslip.pdfPath && !hasPdf ? (
+        <Card className="no-print">
           <CardContent className="p-6 space-y-3 text-sm">
             <p className="text-text-muted leading-relaxed">
               {t("spreadsheetAttached")}
@@ -474,7 +501,7 @@ async function PayslipBody({
       {/* Sticky-feeling actions footer. Acknowledge is the primary CTA;
           Report-a-problem stays a quiet ghost. The whole strip sits in a
           slim card so on mobile it visually anchors below the breakdown. */}
-      <Card className="bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      <Card className="no-print bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
         <CardContent className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <ReportProblemButton
             payslipId={payslip.id}

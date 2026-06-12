@@ -15,11 +15,14 @@ import {
 } from "@/lib/db/queries/payslips";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const session = await requireSession();
   const { id } = await context.params;
+  const forceDownload =
+    new URL(req.url).searchParams.get("download") === "1" ||
+    new URL(req.url).searchParams.get("download") === "true";
   const payslip = await getPayslip(id);
   if (!payslip) return new NextResponse("not found", { status: 404 });
   const isAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
@@ -63,10 +66,12 @@ export async function GET(
           ? "text/csv"
           : "application/octet-stream";
   const fileBase = `payslip-${payslip.periodId}`;
+  const disposition =
+    isPdf && !forceDownload ? "inline" : "attachment";
   return new NextResponse(bytes as unknown as BodyInit, {
     headers: {
       "Content-Type": contentType,
-      "Content-Disposition": `${isPdf ? "inline" : "attachment"}; filename="${fileBase}.${ext}"`,
+      "Content-Disposition": `${disposition}; filename="${fileBase}.${ext}"`,
       "Cache-Control": "private, no-store",
     },
   });

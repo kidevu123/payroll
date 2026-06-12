@@ -307,6 +307,9 @@ td.num,
     background: #fff;
     color: #000;
   }
+  .shell-employee {
+    padding-bottom: 0 !important;
+  }
   .no-print {
     display: none !important;
   }

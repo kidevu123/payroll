@@ -35,6 +35,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
 import { AccountSection } from "./account-section";
 import { RecomputePayslipsButton } from "./recompute-button";
+import { PayslipPdfActions, payslipPdfHref } from "@/components/domain/payslip-pdf-actions";
 
 export default async function EmployeeDetailPage({
   params,
@@ -245,14 +246,21 @@ export default async function EmployeeDetailPage({
                           {payslip.acknowledgedAt && " · acknowledged"}
                         </p>
                       </div>
-                      {payslip.pdfPath ? (
+                      {payslipPdfHref(payslip) ? (
+                        <PayslipPdfActions
+                          url={payslipPdfHref(payslip)!}
+                          printLabel="Print"
+                          downloadLabel="PDF"
+                          layout="inline"
+                        />
+                      ) : payslip.pdfPath ? (
                         <Button asChild size="sm" variant="ghost">
                           <Link
                             href={`/api/payslips/${payslip.id}/pdf`}
                             target="_blank"
                             rel="noopener"
                           >
-                            <Download className="h-3.5 w-3.5" /> PDF
+                            <Download className="h-3.5 w-3.5" /> File
                           </Link>
                         </Button>
                       ) : (

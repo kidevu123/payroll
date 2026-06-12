@@ -165,6 +165,9 @@ export default async function EmployeePayList() {
                   : payslip.publishedAt
                     ? "published"
                     : "pending";
+            const printPdfUrl = payslip.pdfPath?.toLowerCase().endsWith(".pdf")
+              ? `/api/payslips/${payslip.id}/pdf`
+              : undefined;
             return (
               <PayslipCard
                 key={payslip.id}
@@ -176,6 +179,7 @@ export default async function EmployeePayList() {
                 hoursDecimalPlaces={payRules.hoursDecimalPlaces}
                 state={state}
                 href={`/me/pay/${payslip.periodId}`}
+                {...(printPdfUrl ? { printPdfUrl } : {})}
                 docs={docs.map((d) => ({
                   id: d.id,
                   originalFilename: d.originalFilename,
