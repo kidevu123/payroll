@@ -76,6 +76,40 @@ export type CutSheetInput = {
   generatedAt: string;
 };
 
+/** Compact multi-period batch print for one employee (admin). */
+export type EmployeePayslipBatchInput = {
+  company: {
+    name: string;
+    brandColorHex: string;
+    locale: string;
+  };
+  employee: {
+    displayName: string;
+    legacyId: string | null;
+    hourlyRateCents: number | null;
+    shiftName: string | null;
+  };
+  rules: { hoursDecimalPlaces: number };
+  periods: {
+    startDate: string;
+    endDate: string;
+    days: {
+      date: string;
+      hours: number;
+      cents: number;
+      inTime?: string;
+      outTime?: string;
+    }[];
+    totals: {
+      hours: number;
+      grossCents: number;
+      roundedCents: number;
+    };
+    taskPay: { description: string; amountCents: number }[];
+  }[];
+  generatedAt: string;
+};
+
 /**
  * Combined admin period report — one section per employee in the legacy
  * "Date / In / Out / Hours / Pay" format, then a final-page Payroll Summary

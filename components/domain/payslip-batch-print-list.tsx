@@ -22,11 +22,13 @@ export type PayslipBatchItem = {
 function batchPdfUrl(
   employeeId: string,
   ids: string[],
-  opts: { download?: boolean; layout?: "1" | "2" },
+  opts: { download?: boolean },
 ): string {
-  const params = new URLSearchParams({ ids: ids.join(",") });
+  const params = new URLSearchParams({
+    ids: ids.join(","),
+    layout: "compact",
+  });
   if (opts.download) params.set("download", "1");
-  if (opts.layout === "1") params.set("layout", "1");
   return `/api/employees/${employeeId}/payslips/batch-pdf?${params}`;
 }
 
@@ -37,13 +39,8 @@ export function PayslipBatchPrintList({
   employeeId: string;
   items: PayslipBatchItem[];
 }) {
-  const printableIds = useMemo(
-    () =>
-      new Set(
-        items
-          .filter((i) => payslipPdfHref({ id: i.id, pdfPath: i.pdfPath }))
-          .map((i) => i.id),
-      ),
+  const selectableIds = useMemo(
+    () => new Set(items.map((i) => i.id)),
     [items],
   );
 
@@ -58,33 +55,31 @@ export function PayslipBatchPrintList({
     });
   };
 
-  const selectAllPrintable = () => {
-    setSelected(new Set(printableIds));
+  const selectAll = () => {
+    setSelected(new Set(selectableIds));
   };
 
   const clearSelection = () => setSelected(new Set());
 
-  const selectedPrintable = [...selected].filter((id) => printableIds.has(id));
-  const count = selectedPrintable.length;
+  const selectedIds = [...selected];
+  const count = selectedIds.length;
   const batchUrl =
-    count > 0 ? batchPdfUrl(employeeId, selectedPrintable, { layout: "2" }) : null;
+    count > 0 ? batchPdfUrl(employeeId, selectedIds, {}) : null;
   const batchDownloadUrl =
-    count > 0
-      ? batchPdfUrl(employeeId, selectedPrintable, { download: true, layout: "2" })
-      : null;
+    count > 0 ? batchPdfUrl(employeeId, selectedIds, { download: true }) : null;
 
   return (
     <div className="space-y-3">
-      {printableIds.size > 0 && (
+      {items.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pb-1 border-b border-border/60">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="h-8 text-xs"
-            onClick={selectAllPrintable}
+            onClick={selectAll}
           >
-            Select all ({printableIds.size})
+            Select all ({items.length})
           </Button>
           {selected.size > 0 && (
             <Button
@@ -102,7 +97,7 @@ export function PayslipBatchPrintList({
               <Button asChild size="sm" variant="secondary" className="h-8 text-xs">
                 <Link href={batchUrl} target="_blank" rel="noopener noreferrer">
                   <Printer className="h-3.5 w-3.5" />
-                  Print {count} selected (2 per page)
+                  Print {count} selected (compact)
                 </Link>
               </Button>
               <Button asChild size="sm" variant="outline" className="h-8 text-xs">
@@ -117,9 +112,8 @@ export function PayslipBatchPrintList({
       )}
 
       <ul className="divide-y divide-border/60">
-        {items.map((item) => {
+          {items.map((item) => {
           const pdfUrl = payslipPdfHref({ id: item.id, pdfPath: item.pdfPath });
-          const canSelect = Boolean(pdfUrl);
           const checked = selected.has(item.id);
           return (
             <li
@@ -130,17 +124,13 @@ export function PayslipBatchPrintList({
               )}
             >
               <div className="flex items-start gap-2 min-w-0 flex-1">
-                {canSelect ? (
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-brand-700"
-                    checked={checked}
-                    onChange={() => toggle(item.id)}
-                    aria-label={`Select payslip ${item.periodLabel}`}
-                  />
-                ) : (
-                  <span className="mt-1 w-4 shrink-0" aria-hidden />
-                )}
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-brand-700"
+                  checked={checked}
+                  onChange={() => toggle(item.id)}
+                  aria-label={`Select payslip ${item.periodLabel}`}
+                />
                 <div className="min-w-0">
                   <p className="font-medium truncate">{item.periodLabel}</p>
                   <p className="text-xs text-text-muted">
