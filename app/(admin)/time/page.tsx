@@ -692,8 +692,13 @@ export default async function TimePage({
                 key={e.id}
                 className="border-t border-border/40 group hover:bg-surface-2/30 transition-colors"
               >
-                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body text-text whitespace-nowrap border-r border-border/40 transition-colors">
-                  {e.displayName}
+                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body whitespace-nowrap border-r border-border/40 transition-colors">
+                  <Link
+                    href={`/employees/${e.id}`}
+                    className="text-text hover:text-brand-700 hover:underline underline-offset-2 transition-colors"
+                  >
+                    {e.displayName}
+                  </Link>
                 </td>
                 {days.map((d) => {
                   const isToday = d === today;
