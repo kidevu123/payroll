@@ -1,6 +1,6 @@
 // Compact batch payslip sheet — one employee, multiple pay periods.
-// Four period cards per landscape letter page (same density as the period
-// cut sheet) instead of scaling full-page PDFs two-up.
+// Landscape letter: up to 8 period cards per page (4 columns × 2 rows).
+// Weekly payslips (≤7 day rows) pack 8 to a sheet; denser periods use fewer.
 
 import {
   Document,
@@ -12,7 +12,21 @@ import {
 import type { EmployeePayslipBatchInput } from "./types";
 
 const PAGE_PADDING = 14;
-const CARDS_PER_PAGE = 4;
+const GRID_COLUMNS = 4;
+
+/** Pick page capacity from the tallest period card in the batch. */
+function cardsPerPage(periods: EmployeePayslipBatchInput["periods"]): number {
+  const maxRows = Math.max(
+    1,
+    ...periods.map(
+      (p) =>
+        p.days.filter((d) => d.hours > 0).length + p.taskPay.length,
+    ),
+  );
+  if (maxRows <= 7) return 8;
+  if (maxRows <= 11) return 4;
+  return 2;
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -55,15 +69,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   cell: {
-    width: "25%",
-    padding: 3,
+    width: `${100 / GRID_COLUMNS}%`,
+    padding: 2,
   },
   card: {
     borderWidth: 0.5,
     borderColor: "#dbe4f0",
     borderRadius: 4,
-    padding: 6,
-    minHeight: 130,
+    padding: 5,
   },
   row: {
     flexDirection: "row",
@@ -174,7 +187,8 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput }) {
-  const pages = chunk(data.periods, CARDS_PER_PAGE);
+  const perPage = cardsPerPage(data.periods);
+  const pages = chunk(data.periods, perPage);
   const empMeta = [
     data.employee.legacyId ? `ID: ${data.employee.legacyId}` : null,
     data.employee.hourlyRateCents != null
@@ -207,7 +221,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
           ) : null}
           <View style={styles.grid}>
             {periods.map((period, i) => {
-              const n = pageIdx * CARDS_PER_PAGE + i + 1;
+              const n = pageIdx * perPage + i + 1;
               return (
                 <View key={`${period.startDate}-${period.endDate}`} style={styles.cell} wrap={false}>
                   <View
