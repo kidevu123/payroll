@@ -13,10 +13,10 @@ const idSchema = z.string().uuid();
 
 export async function GET(
   req: Request,
-  ctx: { params: Promise<{ employeeId: string }> },
+  ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   await requireAdmin();
-  const { employeeId } = await ctx.params;
+  const { id: employeeId } = await ctx.params;
   if (!idSchema.safeParse(employeeId).success) {
     return new NextResponse("invalid employee", { status: 400 });
   }
@@ -35,8 +35,8 @@ export async function GET(
   if (ids.length > 52) {
     return new NextResponse("too many payslips (max 52)", { status: 400 });
   }
-  for (const id of ids) {
-    if (!idSchema.safeParse(id).success) {
+  for (const payslipId of ids) {
+    if (!idSchema.safeParse(payslipId).success) {
       return new NextResponse("invalid payslip id", { status: 400 });
     }
   }
@@ -47,21 +47,21 @@ export async function GET(
     url.searchParams.get("download") === "true";
 
   const buffers: Buffer[] = [];
-  for (const id of ids) {
-    const payslip = await getPayslip(id);
+  for (const payslipId of ids) {
+    const payslip = await getPayslip(payslipId);
     if (!payslip || payslip.employeeId !== employeeId) {
-      return new NextResponse(`payslip not found: ${id}`, { status: 404 });
+      return new NextResponse(`payslip not found: ${payslipId}`, { status: 404 });
     }
     if (!payslip.pdfPath?.toLowerCase().endsWith(".pdf")) {
       return new NextResponse(
-        `payslip ${id} has no printable PDF — pick periods with PDF generated`,
+        `payslip ${payslipId} has no printable PDF — pick periods with PDF generated`,
         { status: 422 },
       );
     }
     try {
       buffers.push(await readFile(payslip.pdfPath));
     } catch {
-      return new NextResponse(`payslip file missing: ${id}`, { status: 410 });
+      return new NextResponse(`payslip file missing: ${payslipId}`, { status: 410 });
     }
   }
 
