@@ -396,7 +396,7 @@ export async function recomputePayslip(
     });
 
     const { writePayslipPdfFromCompute } = await import(
-      "@/lib/pdf/render-payslip-pdf"
+      /* webpackIgnore: true */ "@/lib/pdf/render-payslip-pdf"
     );
     const pdfPath =
       employee.payType === "SALARIED"

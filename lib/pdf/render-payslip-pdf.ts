@@ -142,14 +142,9 @@ export async function renderPayslipPdfBuffer(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
   const PAYSLIP_DOC_PATH = "/app/.next/pdf/payslip.js";
-  let payslipDoc: typeof import("@/lib/pdf/payslip");
-  try {
-    payslipDoc = (await import(
-      /* webpackIgnore: true */ PAYSLIP_DOC_PATH
-    )) as typeof import("@/lib/pdf/payslip");
-  } catch {
-    payslipDoc = await import("@/lib/pdf/payslip");
-  }
+  const payslipDoc = (await import(
+    /* webpackIgnore: true */ PAYSLIP_DOC_PATH
+  )) as typeof import("@/lib/pdf/payslip");
   return renderer.renderToBuffer(
     payslipDoc.PayslipDoc({ data: docInput }),
   ) as Promise<Buffer>;

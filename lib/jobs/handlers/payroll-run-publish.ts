@@ -35,13 +35,6 @@ import { adminUserIds } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { dispatch } from "@/lib/notifications/router";
-import {
-  buildPayslipDocInput,
-  PAYSLIP_ROOT,
-  renderPayslipPdfBuffer,
-  tzDayKey,
-  writePayslipPdfFile,
-} from "@/lib/pdf/render-payslip-pdf";
 import type { SignatureReportInput } from "@/lib/pdf/types";
 
 export async function handlePayrollRunPublish(data: {
@@ -72,6 +65,13 @@ export async function handlePayrollRunPublish(data: {
   const { mkdirSync } = await import(/* webpackIgnore: true */ "fs");
   const { join } = await import(/* webpackIgnore: true */ "path");
   const { writeFile } = await import(/* webpackIgnore: true */ "fs/promises");
+  const {
+    buildPayslipDocInput,
+    PAYSLIP_ROOT,
+    renderPayslipPdfBuffer,
+    tzDayKey,
+    writePayslipPdfFile,
+  } = await import(/* webpackIgnore: true */ "@/lib/pdf/render-payslip-pdf");
 
   // Cohort filter — three layers, in order of precedence:
   //   1. run.cohortEmployeeIds — explicit admin selection from the upload
