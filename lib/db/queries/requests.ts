@@ -32,11 +32,30 @@ import {
 } from "@/lib/missed-punch/review-context";
 import { listPunches } from "@/lib/db/queries/punches";
 import { localMidnightUtc } from "@/lib/utils";
+import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 export type Actor = {
   id: string;
   role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
+
+/** Re-anchor a claimed instant onto the request date in company tz (wrong-day typos). */
+function anchorClaimToRequestDate(
+  instant: Date,
+  requestDateIso: string,
+  timezone: string,
+): Date | null {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    hourCycle: "h23",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  const wall = `${requestDateIso}T${get("hour")}:${get("minute")}:${get("second")}`;
+  return wallClockToUtc(wall, timezone);
+}
 
 // ── Missed-punch requests ───────────────────────────────────────────────────
 
@@ -291,8 +310,24 @@ export async function approveMissedPunchRequest(
           dayPunches,
           dayKeyFn,
         );
-        const nextClockIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
-        const nextClockOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
+        let nextClockIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
+        let nextClockOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
+        if (
+          nextClockIn &&
+          nextClockOut &&
+          nextClockOut.getTime() <= nextClockIn.getTime() &&
+          before.claimedClockOut &&
+          !before.claimedClockIn
+        ) {
+          const anchored = anchorClaimToRequestDate(
+            before.claimedClockOut,
+            before.date,
+            company.timezone,
+          );
+          if (anchored && anchored.getTime() > nextClockIn.getTime()) {
+            nextClockOut = anchored;
+          }
+        }
         if (
           !nextClockIn ||
           !nextClockOut ||

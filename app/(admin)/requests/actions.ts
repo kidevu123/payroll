@@ -52,32 +52,26 @@ export async function approveMissedPunchAction(
       { id: session.user.id, role: session.user.role },
     );
   } catch (err) {
-    if (err instanceof Error) {
-      if (
-        err.message.includes(
-          "clock-in is required unless an open punch can be closed",
-        )
-      ) {
-        return {
-          error:
-            "This request only has a clock-out time, but Milo could not find an open punch to close. Ask the employee for the clock-in too, or add the punch manually.",
-        };
-      }
-      if (
-        err.message.includes(
-          "unpaired punch resolution must create a valid in/out range",
-        )
-      ) {
-        return {
-          error:
-            "The claimed time does not pair correctly with the punch on file. Reject and ask the employee to re-submit with the correct missing clock-in or clock-out.",
-        };
-      }
-      if (err.message.includes("no claimed punch time")) {
-        return { error: "This request has no punch time to approve." };
-      }
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("clock-in is required unless an open punch can be closed")) {
+      return {
+        error:
+          "This request only has a clock-out time, but Milo could not find an open punch to close. Ask the employee for the clock-in too, or add the punch manually.",
+      };
     }
-    throw err;
+    if (msg.includes("unpaired punch resolution must create a valid in/out range")) {
+      return {
+        error:
+          "The claimed time does not pair correctly with the punch on file. Reject and ask the employee to re-submit with the correct missing clock-in or clock-out.",
+      };
+    }
+    if (msg.includes("no claimed punch time")) {
+      return { error: "This request has no punch time to approve." };
+    }
+    return {
+      error:
+        "Could not approve this request. Reject it and ask the employee to re-submit, or add the punch manually.",
+    };
   }
   // Notify the employee.
   const recipientId = await userIdForEmployee(before.employeeId);
