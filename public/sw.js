@@ -1,7 +1,7 @@
 // Offline shell. Caches the static app chrome only — no employee data
 // is cached for privacy reasons.
 
-const CACHE = "payroll-shell-v1";
+const CACHE = "payroll-shell-v2";
 const OFFLINE_PAGE = "/offline";
 const SHELL = [OFFLINE_PAGE, "/manifest.webmanifest"];
 
@@ -22,7 +22,19 @@ self.addEventListener("activate", (event) => {
         Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
+      .then((clients) => {
+        for (const client of clients) {
+          client.postMessage({ type: "SW_ACTIVATED" });
+        }
+      })
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("push", (event) => {
