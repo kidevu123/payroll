@@ -35,77 +35,14 @@ import { adminUserIds } from "@/lib/db/queries/recipients";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { dispatch } from "@/lib/notifications/router";
-import type {
-  PayslipDocInput,
-  SignatureReportInput,
-} from "@/lib/pdf/types";
-
-const PAYSLIP_ROOT = process.env.PAYSLIP_STORAGE_DIR ?? "/data/payslips";
-
-/**
- * Format a Date as a YYYY-MM-DD calendar day in the supplied timezone.
- * Mirrors the bucket key computePay uses (it pre-shifts before passing to
- * dayKey), so the maps stay aligned.
- */
-function tzDayKey(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
-}
-
-/** Format a Date as HH:MM:SS in the supplied timezone (24h). */
-function tzTimeOfDay(d: Date, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  let h = "00";
-  let m = "00";
-  let s = "00";
-  for (const p of parts) {
-    if (p.type === "hour") h = p.value === "24" ? "00" : p.value;
-    else if (p.type === "minute") m = p.value;
-    else if (p.type === "second") s = p.value;
-  }
-  return `${h}:${m}:${s}`;
-}
-
-/**
- * For each day a punch contributes hours to, find the earliest clockIn and
- * the latest clockOut (formatted in company timezone). Voided + incomplete
- * punches are skipped — they don't contribute pay either.
- */
-function buildDayInOut(
-  ePunches: { clockIn: Date | string; clockOut: Date | string | null; voidedAt?: Date | string | null }[],
-  tz: string,
-): Map<string, { inTime?: string; outTime?: string }> {
-  const out = new Map<string, { inMs: number; outMs: number }>();
-  for (const p of ePunches) {
-    if (p.voidedAt) continue;
-    if (!p.clockOut) continue;
-    const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-    const outT = p.clockOut instanceof Date ? p.clockOut : new Date(p.clockOut);
-    if (Number.isNaN(inT.getTime()) || Number.isNaN(outT.getTime())) continue;
-    if (outT.getTime() <= inT.getTime()) continue;
-    const day = tzDayKey(inT, tz);
-    const cur = out.get(day);
-    if (!cur) {
-      out.set(day, { inMs: inT.getTime(), outMs: outT.getTime() });
-    } else {
-      if (inT.getTime() < cur.inMs) cur.inMs = inT.getTime();
-      if (outT.getTime() > cur.outMs) cur.outMs = outT.getTime();
-    }
-  }
-  const formatted = new Map<string, { inTime?: string; outTime?: string }>();
-  for (const [day, v] of out) {
-    formatted.set(day, {
-      inTime: tzTimeOfDay(new Date(v.inMs), tz),
-      outTime: tzTimeOfDay(new Date(v.outMs), tz),
-    });
-  }
-  return formatted;
-}
+import {
+  buildPayslipDocInput,
+  PAYSLIP_ROOT,
+  renderPayslipPdfBuffer,
+  tzDayKey,
+  writePayslipPdfFile,
+} from "@/lib/pdf/render-payslip-pdf";
+import type { SignatureReportInput } from "@/lib/pdf/types";
 
 export async function handlePayrollRunPublish(data: {
   runId: string;
@@ -215,11 +152,7 @@ export async function handlePayrollRunPublish(data: {
   // type-check a deploy-time-emitted file from source. Use string
   // expressions so TS doesn't try to resolve them as static imports;
   // the casts pin the public shape we depend on.
-  const PAYSLIP_DOC_PATH = "/app/.next/pdf/payslip.js";
   const SIG_DOC_PATH = "/app/.next/pdf/signature-report.js";
-  const payslipDoc = (await import(
-    /* webpackIgnore: true */ PAYSLIP_DOC_PATH
-  )) as typeof import("@/lib/pdf/payslip");
   const signatureDoc = (await import(
     /* webpackIgnore: true */ SIG_DOC_PATH
   )) as typeof import("@/lib/pdf/signature-report");
@@ -266,53 +199,21 @@ export async function handlePayrollRunPublish(data: {
       },
     });
 
-    const pdfPath = join(periodDir, `${e.id}.pdf`);
-    // Build first-in / last-out maps per day in company timezone — feeds the
-    // legacy-format daily table (Date / In / Out / Hours / Pay).
-    const dayInOut = buildDayInOut(ePunches, company.timezone);
-    const docInput: PayslipDocInput = {
-      company: {
-        name: company.name,
-        address: company.address,
-        brandColorHex: company.brandColorHex,
-        locale: company.locale,
-      },
-      employee: {
-        displayName: e.displayName,
-        legalName: e.legalName,
-        legacyId: e.legacyId,
-        shiftName: e.shiftId ? shiftById.get(e.shiftId)?.name ?? null : null,
-        hourlyRateCents: e.hourlyRateCents,
-      },
-      period: { startDate: period.startDate, endDate: period.endDate },
-      rules: {
-        rounding: payRules.rounding,
-        hoursDecimalPlaces: payRules.hoursDecimalPlaces,
-      },
-      days: result.byDay.map((d) => {
-        const io = dayInOut.get(d.date);
-        return {
-          ...d,
-          ...(io?.inTime ? { inTime: io.inTime } : {}),
-          ...(io?.outTime ? { outTime: io.outTime } : {}),
-        };
-      }),
-      totals: {
-        hours: result.totalHours,
-        regularCents: result.regularCents,
-        overtimeCents: result.overtimeCents,
-        taskCents: result.taskCents,
-        grossCents: result.grossCents,
-        roundedCents: result.roundedCents,
-      },
-      taskPay: eTasks.map((t) => ({
+    const docInput = buildPayslipDocInput({
+      company,
+      employee: e,
+      shiftName: e.shiftId ? (shiftById.get(e.shiftId)?.name ?? null) : null,
+      period,
+      payRules,
+      punches: ePunches,
+      tasks: eTasks.map((t) => ({
         description: t.description,
         amountCents: t.amountCents,
       })),
-      generatedAt: new Date().toISOString(),
-    };
-    const buf = await renderer.renderToBuffer(payslipDoc.PayslipDoc({ data: docInput }));
-    await writeFile(pdfPath, buf);
+      result,
+    });
+    const buf = await renderPayslipPdfBuffer(docInput);
+    const pdfPath = await writePayslipPdfFile(period.startDate, e.id, buf);
 
     await upsertPayslip({
       employeeId: e.id,

@@ -395,6 +395,20 @@ export async function recomputePayslip(
       },
     });
 
+    const { writePayslipPdfFromCompute } = await import(
+      "@/lib/pdf/render-payslip-pdf"
+    );
+    const pdfPath =
+      employee.payType === "SALARIED"
+        ? null
+        : await writePayslipPdfFromCompute({
+            employeeId: before.employeeId,
+            periodId: before.periodId,
+            punches,
+            tasks,
+            result,
+          });
+
     const [row] = await tx
       .update(payslips)
       .set({
@@ -402,7 +416,7 @@ export async function recomputePayslip(
         grossPayCents: result.grossCents,
         roundedPayCents: result.roundedCents,
         taskPayCents: result.taskCents,
-        pdfPath: null,
+        pdfPath,
         generatedAt: new Date(),
       })
       .where(eq(payslips.id, id))
