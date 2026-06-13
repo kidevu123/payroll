@@ -35,7 +35,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
 import { AccountSection } from "./account-section";
 import { RecomputePayslipsButton } from "./recompute-button";
-import { PayslipPdfActions, payslipPdfHref } from "@/components/domain/payslip-pdf-actions";
+import { PayslipBatchPrintList } from "@/components/domain/payslip-batch-print-list";
 
 export default async function EmployeeDetailPage({
   params,
@@ -225,50 +225,19 @@ export default async function EmployeeDetailPage({
                   No payslips yet for this employee.
                 </p>
               ) : (
-                <ul className="divide-y divide-border/60">
-                  {payslipsWithPeriods.map(({ payslip, period }) => (
-                    <li
-                      key={payslip.id}
-                      className="flex items-center justify-between gap-2 py-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">
-                          {period
-                            ? `${period.startDate} – ${period.endDate}`
-                            : "Unknown period"}
-                        </p>
-                        <p className="text-xs text-text-muted">
-                          {Number(payslip.hoursWorked).toFixed(2)} h ·{" "}
-                          <MoneyDisplay
-                            cents={payslip.roundedPayCents}
-                            monospace={false}
-                          />
-                          {payslip.acknowledgedAt && " · acknowledged"}
-                        </p>
-                      </div>
-                      {payslipPdfHref(payslip) ? (
-                        <PayslipPdfActions
-                          url={payslipPdfHref(payslip)!}
-                          printLabel="Print"
-                          downloadLabel="PDF"
-                          layout="inline"
-                        />
-                      ) : payslip.pdfPath ? (
-                        <Button asChild size="sm" variant="ghost">
-                          <Link
-                            href={`/api/payslips/${payslip.id}/pdf`}
-                            target="_blank"
-                            rel="noopener"
-                          >
-                            <Download className="h-3.5 w-3.5" /> File
-                          </Link>
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-text-subtle">No PDF</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <PayslipBatchPrintList
+                  employeeId={employee.id}
+                  items={payslipsWithPeriods.map(({ payslip, period }) => ({
+                    id: payslip.id,
+                    periodLabel: period
+                      ? `${period.startDate} – ${period.endDate}`
+                      : "Unknown period",
+                    hoursLabel: `${Number(payslip.hoursWorked).toFixed(2)} h`,
+                    payLabel: `$${(payslip.roundedPayCents / 100).toFixed(2)}`,
+                    acknowledged: Boolean(payslip.acknowledgedAt),
+                    pdfPath: payslip.pdfPath,
+                  }))}
+                />
               )}
             </CardContent>
           </Card>
