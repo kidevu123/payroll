@@ -71,7 +71,7 @@ export async function handlePayrollRunPublish(data: {
     renderPayslipPdfBuffer,
     tzDayKey,
     writePayslipPdfFile,
-  } = await import(/* webpackIgnore: true */ "@/lib/pdf/render-payslip-pdf");
+  } = await import("@/lib/pdf/render-payslip-pdf");
 
   // Cohort filter — three layers, in order of precedence:
   //   1. run.cohortEmployeeIds — explicit admin selection from the upload
