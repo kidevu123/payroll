@@ -9,6 +9,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { safeLocalReturnTo } from "@/lib/time/grid-links";
 import { reconcileOrphanDayPairs } from "@/lib/punches/reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "@/lib/punches/superseded-ambiguous";
+import { mergeChainedDaySegments } from "@/lib/punches/merge-chained-day-segments";
 import { PunchEditor } from "./punch-editor";
 
 export default async function PunchEditorPage({
@@ -33,6 +34,7 @@ export default async function PunchEditorPage({
 
   await voidSupersededAmbiguousPunches(employeeId, date, company.timezone);
   await reconcileOrphanDayPairs(employeeId, date, company.timezone);
+  await mergeChainedDaySegments(employeeId, date, company.timezone);
   const allPunches = await listPunches({
     periodId,
     employeeId,

@@ -25,6 +25,7 @@ import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
 import { autoMergeDuplicatePunchesForDay } from "./auto-merge-day-duplicates";
+import { mergeChainedDaySegments } from "./merge-chained-day-segments";
 import { shiftsAreNearDuplicates } from "./near-duplicate-shift";
 
 export type PollImportSummary = {
@@ -41,6 +42,8 @@ export type PollImportSummary = {
   daysTouched: string[];
   /** Near-duplicate rows voided after import (auto-merge per employee-day). */
   duplicatesMerged: number;
+  /** Chained micro-segments collapsed into one shift per employee-day. */
+  chainsMerged: number;
 };
 
 function normalizeRef(s: string): string {
@@ -83,6 +86,7 @@ export async function importPunchPoll(
     unpairedPunches: 0,
     daysTouched: [],
     duplicatesMerged: 0,
+    chainsMerged: 0,
   };
   if (events.length === 0) return summary;
   // Node built-in `crypto` is registered as a webpack server external in
@@ -496,6 +500,11 @@ export async function importPunchPoll(
     );
     await reconcileOrphanDayPairs(g.empId, g.day, options.timezone);
     summary.duplicatesMerged += await autoMergeDuplicatePunchesForDay(
+      g.empId,
+      g.day,
+      options.timezone,
+    );
+    summary.chainsMerged += await mergeChainedDaySegments(
       g.empId,
       g.day,
       options.timezone,
