@@ -68,6 +68,12 @@ export async function approveMissedPunchAction(
     if (msg.includes("no claimed punch time")) {
       return { error: "This request has no punch time to approve." };
     }
+    if (msg.includes("day already has completed punches on file")) {
+      return {
+        error:
+          "This day already has punch data on file (often from NGTeco). Void or edit the existing punches on the Time page instead of approving a duplicate shift.",
+      };
+    }
     return {
       error:
         "Could not approve this request. Reject it and ask the employee to re-submit, or add the punch manually.",

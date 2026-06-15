@@ -30,6 +30,12 @@ import {
   buildMissedPunchReviewContext,
   type MissedPunchReviewContext,
 } from "@/lib/missed-punch/review-context";
+import {
+  dayHasClosedPunch,
+  DUPLICATE_SHIFT_ON_DAY,
+  findOpenPunchOnDay,
+  punchesForCalendarDay,
+} from "@/lib/punches/approve-missed-punch-guards";
 import { listPunches } from "@/lib/db/queries/punches";
 import { localMidnightUtc } from "@/lib/utils";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
@@ -393,23 +399,22 @@ export async function approveMissedPunchRequest(
       }
     }
 
-    if (
-      before.claimedClockOut &&
-      (alert?.issue === "MISSING_OUT" || !before.claimedClockIn)
-    ) {
-      const openPunches = await tx
+    if (before.claimedClockOut) {
+      const dayPunches = await tx
         .select()
         .from(punches)
         .where(
           and(
             eq(punches.employeeId, before.employeeId),
             eq(punches.periodId, periodId),
-            isNull(punches.clockOut),
             isNull(punches.voidedAt),
           ),
         );
-      const openPunchForRequestDate = openPunches.find(
-        (p) => dayFmt.format(p.clockIn) === before.date,
+      const forDay = punchesForCalendarDay(dayPunches, claimedDay, dayFmt.format);
+      const openPunchForRequestDate = findOpenPunchOnDay(
+        forDay,
+        claimedDay,
+        dayFmt.format,
       );
       if (openPunchForRequestDate) {
         const [updated] = await tx
@@ -426,6 +431,23 @@ export async function approveMissedPunchRequest(
           .where(eq(punches.id, openPunchForRequestDate.id))
           .returning();
         punch = updated;
+      }
+    }
+
+    if (!punch && before.claimedClockIn && before.claimedClockOut) {
+      const dayPunches = await tx
+        .select()
+        .from(punches)
+        .where(
+          and(
+            eq(punches.employeeId, before.employeeId),
+            eq(punches.periodId, periodId),
+            isNull(punches.voidedAt),
+          ),
+        );
+      const forDay = punchesForCalendarDay(dayPunches, claimedDay, dayFmt.format);
+      if (dayHasClosedPunch(forDay)) {
+        throw new Error(DUPLICATE_SHIFT_ON_DAY);
       }
     }
 
