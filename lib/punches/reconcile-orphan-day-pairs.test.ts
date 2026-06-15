@@ -50,7 +50,11 @@ describe("reconcileOrphanDayPairs", () => {
       },
     ]);
 
-    const voided = await reconcileOrphanDayPairs("emp-1", "2026-06-06");
+    const voided = await reconcileOrphanDayPairs(
+      "emp-1",
+      "2026-06-06",
+      "America/New_York",
+    );
 
     expect(voided).toBe(1);
     expect(updateMock).toHaveBeenCalled();
@@ -66,7 +70,11 @@ describe("reconcileOrphanDayPairs", () => {
       },
     ]);
 
-    const voided = await reconcileOrphanDayPairs("emp-1", "2026-06-06");
+    const voided = await reconcileOrphanDayPairs(
+      "emp-1",
+      "2026-06-06",
+      "America/New_York",
+    );
     expect(voided).toBe(0);
     expect(updateMock).not.toHaveBeenCalled();
   });

@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { punches } from "@/lib/db/schema";
 import { DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { isAmbiguousSinglePunch } from "./missing-punch";
+import { localDayBoundsForPollImport } from "./poll-importer";
 
 const MAX_PAIR_SPAN_MS = 16 * 60 * 60 * 1000;
 
@@ -41,9 +42,9 @@ function cleanedNotes(notes: string | null): string {
 export async function reconcileOrphanDayPairs(
   empId: string,
   day: string,
+  timezone: string,
 ): Promise<number> {
-  const dayStart = new Date(`${day}T00:00:00Z`);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const { dayStart, dayEnd } = localDayBoundsForPollImport(day, timezone);
 
   const dayRows = await db
     .select({

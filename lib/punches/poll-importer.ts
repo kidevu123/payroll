@@ -24,6 +24,8 @@ import { localMidnightUtc } from "@/lib/utils";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
+import { autoMergeDuplicatePunchesForDay } from "./auto-merge-day-duplicates";
+import { shiftsAreNearDuplicates } from "./near-duplicate-shift";
 
 export type PollImportSummary = {
   rawEvents: number;
@@ -37,6 +39,8 @@ export type PollImportSummary = {
   unpairedPunches: number;
   /** Calendar days (company tz) that had punch events in this import. */
   daysTouched: string[];
+  /** Near-duplicate rows voided after import (auto-merge per employee-day). */
+  duplicatesMerged: number;
 };
 
 function normalizeRef(s: string): string {
@@ -78,6 +82,7 @@ export async function importPunchPoll(
     missingClockIn: 0,
     unpairedPunches: 0,
     daysTouched: [],
+    duplicatesMerged: 0,
   };
   if (events.length === 0) return summary;
   // Node built-in `crypto` is registered as a webpack server external in
@@ -378,6 +383,54 @@ export async function importPunchPoll(
         }
       }
 
+      // Second complete shift on the same day (rescrape skew, device+app
+      // double-fire). Hash is IN-only so ±seconds produce a new row.
+      if (
+        existing.length === 0 &&
+        paired.kind === "complete" &&
+        clockOut
+      ) {
+        const { dayStart, dayEnd } = localDayBoundsForPollImport(
+          g.day,
+          options.timezone,
+        );
+        const closedOnDay = await db
+          .select({
+            id: punches.id,
+            clockIn: punches.clockIn,
+            clockOut: punches.clockOut,
+          })
+          .from(punches)
+          .where(
+            and(
+              eq(punches.employeeId, g.empId),
+              sql`${punches.clockIn} >= ${dayStart.toISOString()}::timestamptz`,
+              sql`${punches.clockIn} < ${dayEnd.toISOString()}::timestamptz`,
+              sql`${punches.clockOut} IS NOT NULL`,
+              sql`${punches.voidedAt} IS NULL`,
+            ),
+          );
+        const nearDup = closedOnDay.find((row) =>
+          shiftsAreNearDuplicates(
+            { clockIn, clockOut },
+            { clockIn: row.clockIn, clockOut: row.clockOut },
+          ),
+        );
+        if (nearDup) {
+          existing = [
+            {
+              id: nearDup.id,
+              clockOut: nearDup.clockOut,
+              voidedAt: null,
+            },
+          ];
+          await db
+            .update(punches)
+            .set({ ngtecoRecordHash: hash })
+            .where(eq(punches.id, nearDup.id));
+        }
+      }
+
       if (existing.length > 0) {
         const row = existing[0]!;
         const recyclingVoided = row.voidedAt !== null;
@@ -436,8 +489,17 @@ export async function importPunchPoll(
       }
     }
 
-    await voidSupersededAmbiguousPunches(g.empId, g.day);
-    await reconcileOrphanDayPairs(g.empId, g.day);
+    await voidSupersededAmbiguousPunches(
+      g.empId,
+      g.day,
+      options.timezone,
+    );
+    await reconcileOrphanDayPairs(g.empId, g.day, options.timezone);
+    summary.duplicatesMerged += await autoMergeDuplicatePunchesForDay(
+      g.empId,
+      g.day,
+      options.timezone,
+    );
   }
 
   if (summary.pairsInserted + summary.pairsUpdated + summary.unmatchedRefs > 0) {

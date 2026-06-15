@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { punches } from "@/lib/db/schema";
 import { DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
+import { localDayBoundsForPollImport } from "./poll-importer";
 
 /**
  * Void false "ambiguous:single" rows created when app + device both fired at
@@ -10,9 +11,9 @@ import { DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 export async function voidSupersededAmbiguousPunches(
   empId: string,
   day: string,
+  timezone: string,
 ): Promise<number> {
-  const dayStart = new Date(`${day}T00:00:00Z`);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const { dayStart, dayEnd } = localDayBoundsForPollImport(day, timezone);
   const dayRows = await db
     .select({
       id: punches.id,

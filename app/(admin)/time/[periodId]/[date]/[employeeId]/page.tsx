@@ -31,8 +31,8 @@ export default async function PunchEditorPage({
   ]);
   if (!period || !employee) notFound();
 
-  await voidSupersededAmbiguousPunches(employeeId, date);
-  await reconcileOrphanDayPairs(employeeId, date);
+  await voidSupersededAmbiguousPunches(employeeId, date, company.timezone);
+  await reconcileOrphanDayPairs(employeeId, date, company.timezone);
   const allPunches = await listPunches({
     periodId,
     employeeId,
