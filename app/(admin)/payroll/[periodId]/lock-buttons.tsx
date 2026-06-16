@@ -42,7 +42,7 @@ export function LockButtons({
     // amber card blew out the bar's height and shoved everything
     // around).
     return (
-      <div className="flex flex-col items-end gap-1.5">
+      <div className="relative flex flex-col items-end gap-1.5">
         <Button
           size="sm"
           variant="secondary"
@@ -60,7 +60,7 @@ export function LockButtons({
               if (result?.error) setError(result.error);
               else setUnmarkOpen(false);
             }}
-            className="rounded-card border border-amber-200 bg-amber-50/40 p-2.5 space-y-2 w-72"
+            className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warn-300 bg-surface p-2.5 shadow-pop space-y-2"
           >
             <p className="text-[11px] text-text-muted leading-snug">
               Unmark paid for {period.startDate}? If the period was paid from
@@ -132,7 +132,7 @@ export function LockButtons({
 
   // LOCKED — admin can mark paid (to record actual payment) or unlock to fix.
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <div className="flex flex-wrap items-center gap-2">
         <form
           action={async () => {
@@ -193,16 +193,14 @@ export function LockButtons({
             {pending ? "Marking…" : "Mark as paid"}
           </Button>
         </form>
-        {!unlockOpen && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setUnlockOpen(true)}
-            title="Unlock to correct punches before payment."
-          >
-            <Unlock className="h-4 w-4" /> Unlock
-          </Button>
-        )}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setUnlockOpen((v) => !v)}
+          title="Unlock to correct punches before payment."
+        >
+          <Unlock className="h-4 w-4" /> Unlock
+        </Button>
       </div>
       {error && <p className="text-xs text-red-700">{error}</p>}
 
@@ -216,7 +214,7 @@ export function LockButtons({
             if (result?.error) setError(result.error);
             else setUnlockOpen(false);
           }}
-          className="rounded-card border border-amber-200 bg-amber-50/40 p-2.5 space-y-2 w-72"
+          className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warn-300 bg-surface p-2.5 shadow-pop space-y-2"
         >
           <p className="text-[11px] text-text-muted leading-snug">
             Unlock {period.startDate}? Reason will be audited.
