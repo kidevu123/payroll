@@ -9,6 +9,7 @@ import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
+import { ConfirmHoursHero } from "@/components/employee/confirm-hours-hero";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
@@ -146,6 +147,11 @@ export default async function EmployeePayList() {
         title={t("title")}
         description={t("subtitle")}
       />
+
+      {/* Same impossible-to-miss prompt as the home tab so acknowledgement
+          is caught in either place. Renders only when a published payslip
+          awaits confirmation; salaried employees never have one. */}
+      {!isSalaried && <ConfirmHoursHero employeeId={session.user.employeeId} />}
 
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState

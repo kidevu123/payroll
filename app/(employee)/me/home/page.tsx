@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { WeekStatsCard } from "@/components/employee/week-stats-card";
 import { AlertCard } from "@/components/employee/alert-card";
+import { ConfirmHoursHero } from "@/components/employee/confirm-hours-hero";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { StatusPill } from "@/components/domain/status-pill";
@@ -254,6 +255,12 @@ export default async function EmployeeHome() {
         title={t("greeting", { name: firstName })}
         meta={today}
       />
+
+      {/* Impossible-to-miss acknowledgement prompt. Renders only when this
+          employee has a published payslip awaiting confirmation; returns
+          null otherwise. Surfaces the existing acknowledge action that was
+          previously buried at the bottom of /me/pay/[periodId]. */}
+      {!isSalaried && <ConfirmHoursHero employeeId={employee.id} />}
 
       {!isSalaried && (
         <WeekStatsCard
