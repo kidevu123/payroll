@@ -459,10 +459,17 @@ export function periodBoundsForSchedule(
       endDate: iso(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()),
     };
   }
-  if (
-    schedule.periodKind === "SEMI_MONTHLY" ||
-    schedule.periodKind === "MONTHLY"
-  ) {
+  if (schedule.periodKind === "SEMI_MONTHLY") {
+    // Two periods per month: the 1st-15th, then the 16th-end-of-month.
+    // (Previously this fell through to the MONTHLY branch and returned the
+    // whole month, so a semi-monthly schedule showed a single Jun 1-30 row.)
+    if (dom <= 15) {
+      return { startDate: iso(y, m, 1), endDate: iso(y, m, 15) };
+    }
+    const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return { startDate: iso(y, m, 16), endDate: iso(y, m, lastDay) };
+  }
+  if (schedule.periodKind === "MONTHLY") {
     const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     return { startDate: iso(y, m, 1), endDate: iso(y, m, lastDay) };
   }

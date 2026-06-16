@@ -676,6 +676,18 @@ export async function assignPeriodScheduleAction(
     if (msg === "PERIOD_NOT_FOUND") return { error: "Period not found." };
     if (msg === "PERIOD_PAID")
       return { error: "Can't change the schedule on a PAID period." };
+    // 23505 = unique violation: that schedule already owns a period with these
+    // exact dates, so tagging this orphan onto it would duplicate. Tell the
+    // operator the real reason instead of a useless "try again".
+    const code = (err as { code?: string })?.code;
+    if (code === "23505") {
+      return {
+        error:
+          "That schedule already has a period for these dates, so this one can't be assigned to it. Delete this duplicate period or pick a different schedule.",
+      };
+    }
+    const { logger } = await import("@/lib/telemetry");
+    logger.error({ err, periodId }, "period.assign_schedule: unexpected failure");
     return { error: "Couldn't save schedule. Try again." };
   }
   revalidatePath(`/payroll/${periodId}`);

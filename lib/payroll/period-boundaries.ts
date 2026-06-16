@@ -162,9 +162,24 @@ export function getMonthlyCalendarBounds(date: string): PeriodBounds {
 }
 
 /**
- * @deprecated Name kept for importers — now returns full-month bounds
- * (same as monthly). Semi-monthly payroll is scheduled at month-end only.
+ * Semi-monthly bounds: the 1st-15th, then the 16th-end-of-month. Two pay
+ * periods per month. (This previously returned full-month bounds; the owner
+ * confirmed semi-monthly is a true twice-monthly split.)
  */
 export function getSemiMonthlyBounds(date: string): PeriodBounds {
-  return getMonthlyCalendarBounds(date);
+  const target = parseDay(date);
+  const y = target.getUTCFullYear();
+  const m = target.getUTCMonth();
+  const dom = target.getUTCDate();
+  if (dom <= 15) {
+    return {
+      startDate: formatDay(new Date(Date.UTC(y, m, 1))),
+      endDate: formatDay(new Date(Date.UTC(y, m, 15))),
+    };
+  }
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return {
+    startDate: formatDay(new Date(Date.UTC(y, m, 16))),
+    endDate: formatDay(new Date(Date.UTC(y, m, lastDay))),
+  };
 }

@@ -118,8 +118,15 @@
   more than v6 — surface is two stops above page, surface-2 above surface,
   so cards visibly float on the dark background.
 */
-@media (prefers-color-scheme: dark) {
-  :root {
+/*
+  Dark theme is OPT-IN, not OS-driven. It used to apply automatically via
+  `@media (prefers-color-scheme: dark)`, but many components use fixed colors
+  that don't retarget, so OS dark mode rendered washed-out, low-contrast pages
+  (Reports, Salaried, acknowledgement cards). Milo is a light-first brand;
+  these tokens now only apply when <html class="dark"> is set, so the polished
+  light theme always shows until a real, audited dark theme + toggle ships.
+*/
+:root.dark {
     color-scheme: dark;
     --color-page: #09090b;
     --color-surface: #18181b;
@@ -176,11 +183,11 @@
       0 12px 28px -6px rgb(0 0 0 / 0.65);
     --shadow-pop: 0 12px 32px -6px rgb(0 0 0 / 0.7),
       0 4px 8px -2px rgb(0 0 0 / 0.5);
-  }
 }
 
 html,
 body {
+  color-scheme: light;
   background: var(--color-page);
   color: var(--color-text);
   font-family: var(--font-sans);
@@ -249,7 +256,7 @@ td.num,
   background-color: var(--color-page);
 }
 
-@media (prefers-color-scheme: dark) {
+:root.dark {
   .shell-admin {
     background-image: linear-gradient(
       180deg,
