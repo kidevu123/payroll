@@ -14,6 +14,8 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
 import { PayrollRunCard } from "@/components/domain/payroll-run-card";
 import { StatStrip } from "@/components/domain/stat-strip";
+import { ScheduleCockpit } from "@/components/domain/schedule-cockpit";
+import { computeScheduleCockpit } from "@/lib/payroll/schedule-cockpit";
 import { AttendancePanel } from "@/components/domain/attendance-panel";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listTodayPunches } from "@/lib/db/queries/punches";
@@ -78,6 +80,10 @@ export default async function DashboardPage() {
   ]);
 
   const pendingTotal = pendingMissed.length + pendingTimeOff.length;
+
+  // Per-schedule cockpit: one box per active schedule (Weekly / Semi-monthly /
+  // Monthly), each with its own period total. Never summed across schedules.
+  const cockpitRows = await computeScheduleCockpit(today);
 
   // ── Period stats ─────────────────────────────────────────────────────────
   // Computed whenever a period exists, regardless of run state. This ensures
@@ -254,6 +260,8 @@ export default async function DashboardPage() {
         description="Today’s attendance, open period, and items waiting on you."
         meta={shortDateLabel(today)}
       />
+
+      <ScheduleCockpit rows={cockpitRows} />
 
       <StatStrip
         inToday={punchedList.length}
