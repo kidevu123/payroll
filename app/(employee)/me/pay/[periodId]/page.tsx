@@ -186,19 +186,14 @@ async function PayslipBody({
   dateLocale: string;
 }) {
   const t = await getTranslations("employee.pay");
-  // Pull every punch the employee has and filter by date range against the
-  // employee's display tz — covers cases where punches are stored on a
-  // different period_id than the one the payslip is pinned to (e.g. legacy
-  // imports where weekly periods bracket the actual report range).
-  const all = await listPunches({ employeeId: payslip.employeeId });
-  const start = period.startDate;
-  const end = period.endDate;
-  const inRange = all.filter((p) => {
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(
-      p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
-    );
-    return day >= start && day <= end && !p.voidedAt;
-  });
+  // Use the same period-scoped punch set the payslip was generated from.
+  // Date-range reads can pull rows from duplicate/overlapping legacy
+  // periods and make a published payslip look wrong even when its own
+  // stored totals are internally consistent.
+  const inRange = (await listPunches({
+    employeeId: payslip.employeeId,
+    periodId: payslip.periodId,
+  })).filter((p) => !p.voidedAt);
 
   // Group by day in employee tz.
   const byDay = new Map<string, typeof inRange>();
@@ -539,4 +534,3 @@ function HeroStat({
     </div>
   );
 }
-

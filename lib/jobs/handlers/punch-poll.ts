@@ -109,6 +109,28 @@ export type PollOptions = {
 /** ~35 employees × ~4 punches; avoids scrolling 1000+ historical rows. */
 const TODAY_MAX_ROWS = 250;
 
+type MissedPunchSyncPollShape = {
+  completePairs: number;
+  missingClockIn: number;
+  openShifts: number;
+  pairsUpdated: number;
+  unpairedPunches: number;
+};
+
+export function shouldSuppressMissedPunchSyncAfterPoll(
+  summary: MissedPunchSyncPollShape,
+  localHour: number,
+): boolean {
+  return (
+    localHour >= 19 &&
+    summary.unpairedPunches > 0 &&
+    summary.completePairs === 0 &&
+    summary.openShifts === 0 &&
+    summary.missingClockIn === 0 &&
+    summary.pairsUpdated === 0
+  );
+}
+
 function maxRowsForDaysBack(daysBack: number): number {
   if (daysBack <= 0) return TODAY_MAX_ROWS;
   return Math.min(2000, Math.max(400, daysBack * 200));
@@ -296,12 +318,13 @@ export async function handlePunchPoll(
       }).format(new Date()),
     );
     const shouldSyncMissedPunches =
-      localHour >= 19 ||
-      summary.missingClockIn > 0 ||
-      summary.unpairedPunches > 0 ||
-      summary.openShifts > 0 ||
-      summary.pairsInserted > 0 ||
-      summary.pairsUpdated > 0;
+      !shouldSuppressMissedPunchSyncAfterPoll(summary, localHour) &&
+      (localHour >= 19 ||
+        summary.missingClockIn > 0 ||
+        summary.unpairedPunches > 0 ||
+        summary.openShifts > 0 ||
+        summary.pairsInserted > 0 ||
+        summary.pairsUpdated > 0);
     if (shouldSyncMissedPunches) {
       try {
         const daySet = new Set(summary.daysTouched);
@@ -313,6 +336,9 @@ export async function handlePunchPoll(
         }
         await syncMissedPunchAlerts({
           ...(daySet.size > 0 ? { limitToDates: daySet } : {}),
+          ...(summary.periodIdsTouched.length > 0
+            ? { periodIds: new Set(summary.periodIdsTouched) }
+            : {}),
           filterAlerts: (alerts) =>
             filterAlertsForPollSync(alerts, company.timezone, new Date()),
         });
@@ -322,6 +348,11 @@ export async function handlePunchPoll(
           "punch.poll: missed-punch sync failed (non-fatal)",
         );
       }
+    } else if (shouldSuppressMissedPunchSyncAfterPoll(summary, localHour)) {
+      logger.warn(
+        { runId, ...summary },
+        "punch.poll: skipped missed-punch sync because scrape returned only ambiguous evening singles",
+      );
     }
 
     // Best-effort retention prune: keep poll log rows ≤90 days. Skipped

@@ -79,6 +79,8 @@ export type SyncMissedPunchResult = {
 export type SyncMissedPunchOpts = {
   /** When set, only emit alerts whose date is in this set (post-poll). */
   limitToDates?: ReadonlySet<string>;
+  /** When set, only scan these pay periods (post-poll touched scope). */
+  periodIds?: ReadonlySet<string>;
   /** Extra filter (e.g. skip same-day NO_PUNCH before 7pm). */
   filterAlerts?: (alerts: DetectedAlert[]) => DetectedAlert[];
   /** When set, only scan this period (payroll run path). */
@@ -108,11 +110,14 @@ export async function syncMissedPunchAlerts(
         .select()
         .from(payPeriods)
         .where(eq(payPeriods.state, "OPEN"));
+  const periodsToScan = opts.periodIds
+    ? openPeriods.filter((p) => opts.periodIds!.has(p.id))
+    : openPeriods;
 
   let alertsCreated = 0;
   let employeeNotices = 0;
 
-  for (const period of openPeriods) {
+  for (const period of periodsToScan) {
     const employeeFilter = period.payScheduleId
       ? { payScheduleId: period.payScheduleId }
       : {};
@@ -264,7 +269,7 @@ export async function syncMissedPunchAlerts(
   }
 
   return {
-    periodsScanned: openPeriods.length,
+    periodsScanned: periodsToScan.length,
     alertsCreated,
     employeeNotices,
   };

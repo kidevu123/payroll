@@ -40,6 +40,10 @@ export type PollImportSummary = {
   unpairedPunches: number;
   /** Calendar days (company tz) that had punch events in this import. */
   daysTouched: string[];
+  /** Pay periods that received or updated punch rows in this import. */
+  periodIdsTouched: string[];
+  /** Complete in/out pairs in this import. */
+  completePairs: number;
   /** Near-duplicate rows voided after import (auto-merge per employee-day). */
   duplicatesMerged: number;
   /** Chained micro-segments collapsed into one shift per employee-day. */
@@ -85,6 +89,8 @@ export async function importPunchPoll(
     missingClockIn: 0,
     unpairedPunches: 0,
     daysTouched: [],
+    periodIdsTouched: [],
+    completePairs: 0,
     duplicatesMerged: 0,
     chainsMerged: 0,
   };
@@ -151,6 +157,9 @@ export async function importPunchPoll(
       scheduleByEmp.get(g.empId) ?? null,
     );
     if (!periodId) continue;
+    if (!summary.periodIdsTouched.includes(periodId)) {
+      summary.periodIdsTouched.push(periodId);
+    }
     const pairedEvents = pairPunchEvents(g.events, options.timezone);
     for (const paired of pairedEvents) {
       const inEv =
@@ -169,6 +178,7 @@ export async function importPunchPoll(
             ? new Date(outEv.punchAt)
             : null;
       if (paired.kind === "open") summary.openShifts++;
+      if (paired.kind === "complete") summary.completePairs++;
       if (paired.kind === "outOnly") summary.missingClockIn++;
       if (paired.kind === "ambiguous") summary.unpairedPunches++;
       const hashKey =
