@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
-import { PayrollRunCard } from "@/components/domain/payroll-run-card";
 import { StatStrip } from "@/components/domain/stat-strip";
 import { ScheduleCockpit } from "@/components/domain/schedule-cockpit";
 import { computeScheduleCockpit } from "@/lib/payroll/schedule-cockpit";
+import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { AttendancePanel } from "@/components/domain/attendance-panel";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listTodayPunches } from "@/lib/db/queries/punches";
@@ -24,7 +24,7 @@ import {
   getCurrentPeriod,
   getMostRecentPeriod,
 } from "@/lib/db/queries/pay-periods";
-import { getCurrentRun, listRuns } from "@/lib/db/queries/payroll-runs";
+import { listRuns } from "@/lib/db/queries/payroll-runs";
 import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
 import {
   listPendingMissedPunchRequests,
@@ -61,7 +61,6 @@ export default async function DashboardPage() {
 
   const period =
     (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
-  const run = await getCurrentRun();
 
   const [
     employees,
@@ -249,10 +248,6 @@ export default async function DashboardPage() {
       : null,
   }));
 
-  const cardState: Parameters<typeof PayrollRunCard>[0]["state"] = run
-    ? run.state
-    : "NO_RUN";
-
   return (
     <div className="space-y-5">
       <PageHeader
@@ -272,27 +267,24 @@ export default async function DashboardPage() {
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-4">
-          <PayrollRunCard
-            state={cardState}
-            {...(period
-              ? {
-                  period: {
-                    startDate: period.startDate,
-                    endDate: period.endDate,
-                  },
-                }
-              : {})}
-            {...(run?.id ? { runId: run.id } : {})}
-            {...(stats ? { stats } : {})}
-            {...(run?.employeeFixDeadline
-              ? {
-                  fixDeadline: run.employeeFixDeadline
-                    .toISOString()
-                    .slice(0, 16)
-                    .replace("T", " "),
-                }
-              : {})}
-          />
+          {/* One general sync — pulls every punch and files it to the right
+              period automatically. Replaces the old per-period "Run NGTeco
+              import" / single active-period card (the cockpit above covers
+              per-schedule status). */}
+          <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold tracking-tight">
+                  Sync punches from NGTeco
+                </h2>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Pulls every punch and files it to the right period and
+                  employee automatically — no need to pick a period.
+                </p>
+              </div>
+              <PollPunchesNowButton initialLast={null} />
+            </div>
+          </div>
 
           <div className="grid gap-4 md:grid-cols-2">
         <Card>
