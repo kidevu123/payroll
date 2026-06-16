@@ -538,21 +538,34 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
   );
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold tracking-tight">Run payroll</h1>
-          <p className="text-xs text-text-muted">
-            Salaried staff are paid externally. No payroll run — just
-            upload the paystub when it arrives. Each upload pre-fills
-            the period dates from the employee&apos;s pay schedule.
-          </p>
-          <ScheduleTabs current={currentTab} basePath="/payroll" />
-        </div>
-        <div className="text-xs text-text-muted">
-          {salariedExclusive.length} salaried employee
-          {salariedExclusive.length === 1 ? "" : "s"}
-        </div>
-      </div>
+      {/* Identical header + tabs markup to the non-salaried branch so the
+          tab strip never shifts vertically when you switch cadences. The
+          salaried-specific note moved below the tabs. */}
+      <PageHeader
+        title="Run payroll"
+        description={
+          <>
+            Trigger an import or upload a CSV. Historical reports live in{" "}
+            <Link
+              href="/reports"
+              className="text-brand-700 underline underline-offset-2 hover:text-brand-800"
+            >
+              Reports
+            </Link>
+            .
+          </>
+        }
+        meta={`${salariedExclusive.length} salaried employee${
+          salariedExclusive.length === 1 ? "" : "s"
+        }`}
+      />
+      <ScheduleTabs current={currentTab} basePath="/payroll" />
+
+      <p className="text-xs text-text-muted">
+        Salaried staff are paid externally. No payroll run — just upload the
+        paystub when it arrives. Each upload pre-fills the period dates from the
+        employee&apos;s pay schedule.
+      </p>
 
       {salariedExclusive.length === 0 ? (
         <EmptyState

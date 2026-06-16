@@ -79,67 +79,89 @@ export function NgtecoRunNowButton({
     }
   }
 
-  if (status) {
-    const ok = status.state === "AWAITING_ADMIN_REVIEW" || status.state === "AWAITING_EMPLOYEE_FIXES";
-    const failed = status.state === "INGEST_FAILED" || status.state === "FAILED";
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm">
-          {ok ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-          ) : failed ? (
-            <AlertTriangle className="h-4 w-4 text-red-600" />
-          ) : (
-            <Loader2 className="h-4 w-4 animate-spin text-brand-700" />
-          )}
-          <span className="font-medium">{status.state.replace(/_/g, " ")}</span>
-          {status.lastError && (
-            <span className="text-red-700 text-xs">{status.lastError}</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" variant="secondary">
-            <Link href={`/payroll/run/${status.id}`}>Open run</Link>
-          </Button>
-          {!busy && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setStatus(null);
-                setConfirming(false);
-              }}
-            >
-              Run another
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const ok =
+    status?.state === "AWAITING_ADMIN_REVIEW" ||
+    status?.state === "AWAITING_EMPLOYEE_FIXES";
+  const failed =
+    status?.state === "INGEST_FAILED" || status?.state === "FAILED";
+  const panelOpen = confirming || !!status;
 
-  if (!confirming) {
-    return (
-      <Button size={size === "sm" ? "sm" : "default"} onClick={() => setConfirming(true)}>
+  // The trigger button always renders at a constant size and stays in the
+  // button row; the confirm + status UI floats in an absolutely-positioned
+  // panel below it. That way changing state never reflows the sibling
+  // buttons (Open period / Upload CSV) — they used to jump on every click.
+  return (
+    <div className="relative inline-block">
+      <Button
+        size={size === "sm" ? "sm" : "default"}
+        onClick={() => {
+          if (status) return;
+          setConfirming((c) => !c);
+        }}
+      >
         <Play className="h-4 w-4" /> Run NGTeco import now
       </Button>
-    );
-  }
 
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-text-muted">
-        Pull punches from NGTeco for the current period. This may take a minute.
-      </p>
-      <div className="flex items-center gap-2">
-        <Button size="sm" disabled={busy} onClick={startRun}>
-          {busy ? "Starting…" : "Yes, run now"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-          Cancel
-        </Button>
-      </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {panelOpen && (
+        <div className="absolute left-0 top-full z-30 mt-2 w-72 rounded-card border border-border bg-surface p-3 shadow-pop">
+          {status ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                {ok ? (
+                  <CheckCircle2 className="h-4 w-4 text-success-700" />
+                ) : failed ? (
+                  <AlertTriangle className="h-4 w-4 text-danger-600" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-brand-700" />
+                )}
+                <span className="font-medium">
+                  {status.state.replace(/_/g, " ")}
+                </span>
+              </div>
+              {status.lastError && (
+                <p className="text-xs text-danger-700">{status.lastError}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <Button asChild size="sm" variant="secondary">
+                  <Link href={`/payroll/run/${status.id}`}>Open run</Link>
+                </Button>
+                {!busy && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setStatus(null);
+                      setConfirming(false);
+                    }}
+                  >
+                    Run another
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-text-muted">
+                Pull punches from NGTeco for the current period. This may take a
+                minute.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" disabled={busy} onClick={startRun}>
+                  {busy ? "Starting…" : "Yes, run now"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setConfirming(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {error && <p className="text-xs text-danger-700">{error}</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
