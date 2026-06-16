@@ -391,6 +391,22 @@ export default async function TimePage({
   const tab = parseScheduleTab(sp.schedule);
   const kindFilter = scheduleTabToKind(tab);
 
+  // Salaried staff don't punch a clock — the Time grid is hourly punches only.
+  // Without this guard the Salaried tab falls through (no kind filter) and
+  // lists every hourly employee, which looked like data had moved around.
+  if (tab === "salaried") {
+    return (
+      <div className="space-y-5">
+        <ScheduleTabs current={tab} basePath="/time" />
+        <EmptyState
+          icon={CalendarDays}
+          title="Salaried staff don't punch a clock"
+          description="Salaried employees are paid externally and have no time punches. Manage their paystubs and documents on the Salaried page."
+        />
+      </div>
+    );
+  }
+
   // If a specific period ID is in the URL (?period=UUID), load it directly
   // so the admin can navigate to past/future weeks via the prev/next arrows.
   // Ignore ?period= when it belongs to a different schedule tab.
