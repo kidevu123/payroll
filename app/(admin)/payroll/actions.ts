@@ -19,6 +19,7 @@ import {
 import { handlePayrollRunPublish } from "@/lib/jobs/handlers/payroll-run-publish";
 import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifications";
 import {
+  finishPoll,
   getInProgressPoll,
   getLastPoll,
   reconcileOrphanedPolls,
@@ -252,6 +253,35 @@ export type PollNowResult =
  * Manually trigger a punch.poll run as a background job. The pg-boss
  * worker owns the scrape/import so leaving the page cannot cancel it.
  */
+/**
+ * Stop a running NGTeco poll on demand. This is what the "Stop poll" control
+ * on the status banner calls — previously the banner's X only hid itself
+ * client-side while the scrape (and its headless Chrome) kept running. Here we
+ * actually: force-kill the browser, mark the in-progress poll-log row
+ * cancelled, and let pg-boss reclaim the now-throwing handler.
+ */
+export async function cancelPollAction(): Promise<
+  { ok: true; killed: number } | { error: string }
+> {
+  await requireAdmin();
+  try {
+    const { killAllChromium } = await import("@/lib/ngteco/chromium-reaper");
+    const killed = await killAllChromium();
+    const inProgress = await getInProgressPoll();
+    if (inProgress) {
+      await finishPoll(inProgress.id, {
+        ok: false,
+        errorMessage: "Cancelled by admin from the status bar.",
+      });
+    }
+    return { ok: true, killed };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not cancel the poll.",
+    };
+  }
+}
+
 export async function pollNowAction(): Promise<PollNowResult> {
   const session = await requireAdmin();
   try {

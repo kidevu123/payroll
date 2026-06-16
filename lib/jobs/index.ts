@@ -237,6 +237,34 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     await boss.unschedule(NGTECO_PUNCH_POLL_QUEUE).catch(() => undefined);
   }
 
+  // ── ngteco.chrome-reaper — orphaned-browser backstop ───────────────────
+  // pg-boss can abandon a poll (15-min expiry) without killing the headless
+  // Chrome the handler spawned. The runner's hard timeout kills it in the
+  // common case; this sweep is defense-in-depth. It only fires when NO poll
+  // is active, so a legitimate in-flight (or long backfill) scrape is never
+  // touched — any chrome alive while the queue is idle is by definition an
+  // orphan from a job pg-boss already gave up on.
+  await boss.createQueue("ngteco.chrome-reaper");
+  await boss.work("ngteco.chrome-reaper", async () => {
+    const { isPunchPollJobActive } = await import(
+      "@/lib/db/queries/poll-history"
+    );
+    if (await isPunchPollJobActive()) return;
+    const { killAllChromium } = await import("@/lib/ngteco/chromium-reaper");
+    const killed = await killAllChromium();
+    if (killed > 0) {
+      logger.warn(
+        { killed },
+        "ngteco.chrome-reaper: reaped orphaned chrome with no active poll",
+      );
+    }
+  });
+  if (cronEnabled) {
+    await boss.schedule("ngteco.chrome-reaper", "*/5 * * * *", undefined, tzOpts);
+  } else {
+    await boss.unschedule("ngteco.chrome-reaper").catch(() => undefined);
+  }
+
   // ── ngteco.manual-punch.sync — Milo manual punch write-back ─────────────
   await boss.createQueue(NGTECO_MANUAL_PUNCH_SYNC_QUEUE);
   await boss.work(

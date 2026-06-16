@@ -6,9 +6,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
+  Square,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cancelPollAction } from "@/app/(admin)/payroll/actions";
 import { cn } from "@/lib/utils";
 
 const WATCH_KEY = "payroll:poll-watch";
@@ -40,6 +42,8 @@ type PollStatusContextValue = {
   status: PollStatusResponse | null;
   visible: boolean;
   dismiss: () => void;
+  /** Force-kill the running poll (server-side) and refresh status. */
+  cancel: () => void;
   watch: WatchState | null;
   /** True while a poll is queued, running, or stuck. */
   isActive: boolean;
@@ -211,11 +215,16 @@ function deriveUi(
 function PollStatusBarView({
   ui,
   onDismiss,
+  onCancel,
 }: {
   ui: ReturnType<typeof deriveUi>;
   onDismiss: () => void;
+  onCancel: () => void;
 }) {
   if (!ui.show) return null;
+
+  const isInFlight =
+    ui.phase === "running" || ui.phase === "queued" || ui.phase === "stuck";
 
   const Icon =
     ui.progress === "success"
@@ -272,6 +281,19 @@ function PollStatusBarView({
             </div>
           )}
         </div>
+        {isInFlight && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 shrink-0 gap-1.5 px-2 text-red-700 hover:bg-red-100 hover:text-red-800"
+            onClick={onCancel}
+            aria-label="Stop the running poll and kill its browser"
+          >
+            <Square className="h-3.5 w-3.5" />
+            <span className="text-xs font-medium">Stop poll</span>
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
@@ -374,6 +396,14 @@ export function PollStatusProvider({
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
   }, []);
 
+  const cancel = React.useCallback(() => {
+    // Fire-and-forget the server-side kill, then refresh so the bar reflects
+    // the cancelled/failed state instead of spinning forever.
+    void cancelPollAction()
+      .catch(() => undefined)
+      .then(() => fetchStatus());
+  }, [fetchStatus]);
+
   const visible = !dismissed && deriveUi(watch, status).show;
   const isActive =
     visible ||
@@ -389,10 +419,11 @@ export function PollStatusProvider({
       status,
       visible,
       dismiss,
+      cancel,
       watch,
       isActive,
     }),
-    [startWatching, status, visible, dismiss, watch, isActive],
+    [startWatching, status, visible, dismiss, cancel, watch, isActive],
   );
 
   return (
@@ -413,6 +444,7 @@ export function PollStatusBar() {
     <PollStatusBarView
       ui={show ? ui : { ...ui, show: false }}
       onDismiss={ctx.dismiss}
+      onCancel={ctx.cancel}
     />
   );
 }

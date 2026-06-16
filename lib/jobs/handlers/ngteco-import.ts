@@ -17,16 +17,15 @@ export async function handleNgtecoImport(
   data: { runId: string },
 ): Promise<void> {
   const { runId } = data;
-  // webpackIgnore: tells webpack NOT to bundle these chunks — the modules are
-  // resolved at runtime by Node, which is the only runtime that ever calls
-  // this handler. Without the ignore, webpack walks Playwright + fs/path on
-  // edge bundles and the build fails.
-  const importModule = (await import(
-    /* webpackIgnore: true */ "../../ngteco/import.js"
-  )) as typeof import("@/lib/ngteco/import");
-  const scraperModule = (await import(
-    /* webpackIgnore: true */ "../../ngteco/scraper.js"
-  )) as typeof import("@/lib/ngteco/scraper");
+  // Dynamic-import via the "@/" alias — same pattern punch-poll.ts uses and
+  // the only one that actually resolves in the standalone build. The previous
+  // `webpackIgnore` + relative "../../ngteco/import.js" resolved at runtime to
+  // /app/.next/ngteco/import.js, which does not exist in the standalone
+  // output, so every "Run NGTeco import now" failed with ERR_MODULE_NOT_FOUND.
+  // These imports are still dynamic, so the Playwright + node:fs chain stays
+  // out of the edge bundle for instrumentation.ts.
+  const importModule = await import("@/lib/ngteco/import");
+  const scraperModule = await import("@/lib/ngteco/scraper");
   const { runImport } = importModule;
   const { ScrapeFailure, ChallengeDetectedError } = scraperModule;
   try {
