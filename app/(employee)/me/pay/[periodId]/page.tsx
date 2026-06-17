@@ -207,6 +207,37 @@ async function PayslipBody({
   }
   const days = Array.from(byDay.keys()).sort();
 
+  // Deduped + chronologically sorted punches for a single day. Shared by the
+  // mobile stacked-card view and the sm+ table so both render identically.
+  function sortedDayPunches(day: string) {
+    return dedupNearDuplicatePunches(
+      byDay
+        .get(day)!
+        .slice()
+        .sort((a, b) => {
+          const ai = a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn);
+          const bi = b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn);
+          return ai.getTime() - bi.getTime();
+        }),
+    );
+  }
+
+  // Normalize one punch into the in/out/hours/est-pay shape both views use.
+  function punchRow(p: (typeof inRange)[number]) {
+    const inT = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
+    const outT = p.clockOut
+      ? p.clockOut instanceof Date
+        ? p.clockOut
+        : new Date(p.clockOut)
+      : null;
+    const hours = outT ? (outT.getTime() - inT.getTime()) / MS_PER_HOUR : null;
+    const estCents =
+      hours !== null && rateCents !== null && payType === "HOURLY"
+        ? Math.round(hours * rateCents)
+        : null;
+    return { inT, outT, hours, estCents };
+  }
+
   // Compute the actual hours from the deduped punch list. If this disagrees
   // with what's stored on the payslip by more than half an hour, surface
   // both figures with a "this is a legacy import" callout so the employee
@@ -381,94 +412,130 @@ async function PayslipBody({
               {t("noClockInRecords")}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
-                    <th className="px-3 py-3 font-medium">{t("day")}</th>
-                    <th className="px-3 py-3 font-medium">{t("in")}</th>
-                    <th className="px-3 py-3 font-medium">{t("out")}</th>
-                    <th className="px-3 py-3 font-medium text-right">{t("hours")}</th>
-                    {payType === "HOURLY" && (
-                      <th className="px-3 py-3 font-medium text-right">
-                        {t("estPay")}
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {days.flatMap((d) => {
-                    const list = dedupNearDuplicatePunches(
-                      byDay
-                        .get(d)!
-                        .slice()
-                        .sort((a, b) => {
-                          const ai =
-                            a.clockIn instanceof Date
-                              ? a.clockIn
-                              : new Date(a.clockIn);
-                          const bi =
-                            b.clockIn instanceof Date
-                              ? b.clockIn
-                              : new Date(b.clockIn);
-                          return ai.getTime() - bi.getTime();
-                        }),
-                    );
-                    return list.map((p, i) => {
-                      const inT =
-                        p.clockIn instanceof Date
-                          ? p.clockIn
-                          : new Date(p.clockIn);
-                      const outT = p.clockOut
-                        ? p.clockOut instanceof Date
-                          ? p.clockOut
-                          : new Date(p.clockOut)
-                        : null;
-                      const hours = outT
-                        ? (outT.getTime() - inT.getTime()) / MS_PER_HOUR
-                        : null;
-                      const estCents =
-                        hours !== null &&
-                        rateCents !== null &&
-                        payType === "HOURLY"
-                          ? Math.round(hours * rateCents)
-                          : null;
-                      return (
-                        <tr
-                          key={p.id}
-                          className="transition-colors hover:bg-surface-2/40"
-                        >
-                          <td className="px-3 py-3 text-xs font-medium text-text">
-                            {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
-                          </td>
-                          <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
-                            {fmtTime(inT, tz, dateLocale)}
-                          </td>
-                          <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
-                            {fmtTime(outT, tz, dateLocale)}
-                          </td>
-                          <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
-                            {hours !== null ? hours.toFixed(2) : "—"}
-                          </td>
-                          {payType === "HOURLY" && (
-                            <td className="px-3 py-3 text-right text-xs tabular-nums text-text">
-                              {estCents !== null ? (
-                                <MoneyDisplay
-                                  cents={estCents}
-                                  monospace={false}
-                                />
-                              ) : (
-                                "—"
-                              )}
+            <>
+              {/* Mobile: stacked per-day cards — no horizontal scroll, no
+                  tiny table cells. The sm+ table view is hidden here. */}
+              <ul className="space-y-2.5 sm:hidden">
+                {days.map((d) => {
+                  const list = sortedDayPunches(d);
+                  return (
+                    <li
+                      key={d}
+                      className="rounded-input border border-border/70 bg-surface px-3 py-3"
+                    >
+                      <p className="text-sm font-medium tracking-tight text-text antialiased">
+                        {fmtDayLabel(d, tz, dateLocale)}
+                      </p>
+                      <ul className="mt-2 space-y-2">
+                        {list.map((p) => {
+                          const r = punchRow(p);
+                          return (
+                            <li
+                              key={p.id}
+                              className="flex items-center justify-between gap-3 border-t border-border/40 pt-2 first:border-t-0 first:pt-0"
+                            >
+                              <span className="flex flex-col gap-0.5 text-xs">
+                                <span className="text-text-muted">
+                                  {t("in")}{" "}
+                                  <span className="font-mono tabular-nums text-text">
+                                    {fmtTime(r.inT, tz, dateLocale)}
+                                  </span>
+                                  <span className="mx-1.5 text-text-subtle">
+                                    →
+                                  </span>
+                                  {t("out")}{" "}
+                                  <span className="font-mono tabular-nums text-text">
+                                    {fmtTime(r.outT, tz, dateLocale)}
+                                  </span>
+                                </span>
+                              </span>
+                              <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                                <span className="font-mono text-xs tabular-nums text-text">
+                                  {r.hours !== null ? r.hours.toFixed(2) : "—"}
+                                  <span className="ml-1 lowercase text-text-subtle">
+                                    {t("hours")}
+                                  </span>
+                                </span>
+                                {payType === "HOURLY" && (
+                                  <span className="text-xs tabular-nums text-text-muted">
+                                    {r.estCents !== null ? (
+                                      <MoneyDisplay
+                                        cents={r.estCents}
+                                        monospace={false}
+                                      />
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {/* sm+ : the original table layout, no overflow needed at width. */}
+              <div className="hidden sm:block">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+                      <th className="px-3 py-3 font-medium">{t("day")}</th>
+                      <th className="px-3 py-3 font-medium">{t("in")}</th>
+                      <th className="px-3 py-3 font-medium">{t("out")}</th>
+                      <th className="px-3 py-3 font-medium text-right">{t("hours")}</th>
+                      {payType === "HOURLY" && (
+                        <th className="px-3 py-3 font-medium text-right">
+                          {t("estPay")}
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {days.flatMap((d) => {
+                      const list = sortedDayPunches(d);
+                      return list.map((p, i) => {
+                        const r = punchRow(p);
+                        return (
+                          <tr
+                            key={p.id}
+                            className="transition-colors hover:bg-surface-2/40"
+                          >
+                            <td className="px-3 py-3 text-xs font-medium text-text">
+                              {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
                             </td>
-                          )}
-                        </tr>
-                      );
-                    });
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                              {fmtTime(r.inT, tz, dateLocale)}
+                            </td>
+                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                              {fmtTime(r.outT, tz, dateLocale)}
+                            </td>
+                            <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
+                              {r.hours !== null ? r.hours.toFixed(2) : "—"}
+                            </td>
+                            {payType === "HOURLY" && (
+                              <td className="px-3 py-3 text-right text-xs tabular-nums text-text">
+                                {r.estCents !== null ? (
+                                  <MoneyDisplay
+                                    cents={r.estCents}
+                                    monospace={false}
+                                  />
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      });
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
           <p className="mt-3 px-3 text-[11px] text-text-muted leading-relaxed">
             {t("estPayExplain", {

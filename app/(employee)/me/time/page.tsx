@@ -136,12 +136,12 @@ export default async function EmployeeTime() {
         <CardContent className="space-y-2">
           {todayPunches.length === 0 ? (
             <div className="space-y-2">
-              <p className="text-sm text-text-muted">
+              <p className="text-sm text-text-muted leading-relaxed">
                 {t("noPunchesToday")}
               </p>
               <Link
                 href={`/me/time/${today}`}
-                className="text-xs font-medium text-brand-700 hover:underline"
+                className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700 hover:underline"
               >
                 {t("openDayDetail")}
               </Link>
@@ -170,14 +170,20 @@ export default async function EmployeeTime() {
                     </span>
                   </span>
                   {!p.clockOut && (
-                    <span className="text-xs text-emerald-700 font-medium shrink-0">{t("onTheClock")}</span>
+                    <span className="inline-flex items-center gap-1 rounded-chip border border-success-200/80 bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 shrink-0">
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-1.5 rounded-full bg-success-700"
+                      />
+                      {t("onTheClock")}
+                    </span>
                   )}
                 </div>
               ))}
-              <div className="pt-2">
+              <div className="pt-1">
                 <Link
                   href={`/me/time/${today}`}
-                  className="text-xs text-brand-700 hover:underline"
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-brand-700 hover:underline"
                 >
                   {t("openDayDetail")}
                 </Link>
@@ -218,15 +224,23 @@ export default async function EmployeeTime() {
                       <Link
                         key={d}
                         href={`/me/time/${d}`}
-                        className="flex items-center justify-between py-2 text-sm hover:bg-surface-2 -mx-2 px-2 rounded"
+                        className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-input px-2 text-sm transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
                       >
-                        <span className="font-medium">{d}</span>
-                        <span className="flex items-center gap-3 text-xs text-text-muted">
-                          {edited ? <span>{t("edited")}</span> : null}
-                          <HoursDisplay
-                            hours={totalMs / MS_PER_HOUR}
-                            decimals={payRules.hoursDecimalPlaces}
-                          />
+                        <span className="font-medium tabular-nums text-text">
+                          {d}
+                        </span>
+                        <span className="flex items-center gap-2.5 text-xs text-text-muted">
+                          {edited ? (
+                            <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 px-1.5 py-0.5 text-[10px] font-medium">
+                              {t("edited")}
+                            </span>
+                          ) : null}
+                          <span className="tabular-nums font-medium text-text">
+                            <HoursDisplay
+                              hours={totalMs / MS_PER_HOUR}
+                              decimals={payRules.hoursDecimalPlaces}
+                            />
+                          </span>
                         </span>
                       </Link>
                     );

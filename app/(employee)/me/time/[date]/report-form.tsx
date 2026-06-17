@@ -4,8 +4,12 @@ import * as React from "react";
 import { Flag } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Field,
+  TextareaField,
+  FormError,
+  SideRadio,
+} from "@/components/employee/form-field";
 import { reportPunchFixAction } from "./actions";
 import type { EmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 
@@ -26,7 +30,12 @@ export function ReportFixForm({
 
   if (!open) {
     return (
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+      <Button
+        size="lg"
+        variant="secondary"
+        className="w-full sm:w-auto"
+        onClick={() => setOpen(true)}
+      >
         <Flag className="h-4 w-4" /> {t("reportFix")}
       </Button>
     );
@@ -41,7 +50,7 @@ export function ReportFixForm({
         setPending(false);
         if (result?.error) setError(result.error);
       }}
-      className="space-y-3 rounded-card border border-border bg-surface-2 p-4 shadow-sm"
+      className="space-y-4 rounded-card border border-border bg-surface-2 p-4 shadow-card"
     >
       <input type="hidden" name="date" value={date} />
       {mode.kind !== "NO_PUNCH_OR_CORRECTION" ? (
@@ -54,150 +63,141 @@ export function ReportFixForm({
       </p>
       {mode.kind === "MISSING_OUT" ? (
         <>
-          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+          <div className="rounded-input border border-border bg-surface px-3 py-2.5 text-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
               {t("onFile")}
             </p>
             <p className="mt-1 font-medium">
               {t("clockIn")}: {mode.recordedClockIn}
             </p>
-            <p className="mt-1 text-xs text-text-muted">{t("onFileHint")}</p>
+            <p className="mt-1 text-xs text-text-muted leading-relaxed">
+              {t("onFileHint")}
+            </p>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="claimedClockOut">{t("enterClockOut")}</Label>
-            <Input
-              id="claimedClockOut"
-              name="claimedClockOut"
-              type="datetime-local"
-              required
-              defaultValue={mode.defaultClockOut}
-            />
-          </div>
+          <Field
+            id="claimedClockOut"
+            name="claimedClockOut"
+            type="datetime-local"
+            required
+            defaultValue={mode.defaultClockOut}
+            label={t("enterClockOut")}
+          />
         </>
       ) : mode.kind === "MISSING_IN" ? (
         <>
-          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+          <div className="rounded-input border border-border bg-surface px-3 py-2.5 text-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
               {t("onFile")}
             </p>
             <p className="mt-1 font-medium">
               {t("clockOut")}: {mode.recordedClockOut}
             </p>
-            <p className="mt-1 text-xs text-text-muted">{t("onFileHint")}</p>
+            <p className="mt-1 text-xs text-text-muted leading-relaxed">
+              {t("onFileHint")}
+            </p>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="claimedClockIn">{t("enterClockIn")}</Label>
-            <Input
-              id="claimedClockIn"
-              name="claimedClockIn"
-              type="datetime-local"
-              required
-              defaultValue={mode.defaultClockIn}
-            />
-          </div>
+          <Field
+            id="claimedClockIn"
+            name="claimedClockIn"
+            type="datetime-local"
+            required
+            defaultValue={mode.defaultClockIn}
+            label={t("enterClockIn")}
+          />
         </>
       ) : mode.kind === "UNPAIRED_PUNCH" ? (
-        <div className="space-y-2">
-          <div className="rounded-input border border-border bg-surface px-3 py-2 text-sm">
+        <div className="space-y-3">
+          <div className="rounded-input border border-border bg-surface px-3 py-2.5 text-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
               {t("unpairedOnFile")}
             </p>
             <p className="mt-1 font-medium">{mode.recordedUnpairedPunch}</p>
-            <p className="mt-1 text-xs text-text-muted">
+            <p className="mt-1 text-xs text-text-muted leading-relaxed">
               {t("unpairedOnFileHint")}
             </p>
           </div>
           <fieldset className="grid gap-2">
             <legend className="sr-only">{t("missingSideLabel")}</legend>
-            <label className="flex items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm">
-              <input
-                type="radio"
-                name="unpairedMissingSide"
-                value="clockOut"
-                checked={unpairedMissingSide === "clockOut"}
-                onChange={() => setUnpairedMissingSide("clockOut")}
-              />
-              <span>{t("missingClockOutChoice")}</span>
-            </label>
-            <label className="flex items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm">
-              <input
-                type="radio"
-                name="unpairedMissingSide"
-                value="clockIn"
-                checked={unpairedMissingSide === "clockIn"}
-                onChange={() => setUnpairedMissingSide("clockIn")}
-              />
-              <span>{t("missingClockInChoice")}</span>
-            </label>
-          </fieldset>
-          <div className="space-y-1">
-            {unpairedMissingSide === "clockOut" ? (
-              <>
-                <Label htmlFor="claimedClockOut">{t("enterClockOut")}</Label>
-                <Input
-                  id="claimedClockOut"
-                  name="claimedClockOut"
-                  type="datetime-local"
-                  required
-                  defaultValue={mode.defaultClockOut}
-                />
-              </>
-            ) : (
-              <>
-                <Label htmlFor="claimedClockIn">{t("enterClockIn")}</Label>
-                <Input
-                  id="claimedClockIn"
-                  name="claimedClockIn"
-                  type="datetime-local"
-                  required
-                  defaultValue={mode.defaultClockIn}
-                />
-              </>
-            )}
-          </div>
-          <p className="text-xs text-text-muted">{t("existingPunchStays")}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="claimedClockIn">{t("correctClockIn")}</Label>
-            <Input
-              id="claimedClockIn"
-              name="claimedClockIn"
-              type="datetime-local"
-              defaultValue={mode.defaultClockIn}
+            <SideRadio
+              checked={unpairedMissingSide === "clockOut"}
+              onChange={() => setUnpairedMissingSide("clockOut")}
+              value="clockOut"
+              label={t("missingClockOutChoice")}
             />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="claimedClockOut">{t("correctClockOutOptional")}</Label>
-            <Input
+            <SideRadio
+              checked={unpairedMissingSide === "clockIn"}
+              onChange={() => setUnpairedMissingSide("clockIn")}
+              value="clockIn"
+              label={t("missingClockInChoice")}
+            />
+          </fieldset>
+          {unpairedMissingSide === "clockOut" ? (
+            <Field
               id="claimedClockOut"
               name="claimedClockOut"
               type="datetime-local"
+              required
               defaultValue={mode.defaultClockOut}
+              label={t("enterClockOut")}
             />
-          </div>
+          ) : (
+            <Field
+              id="claimedClockIn"
+              name="claimedClockIn"
+              type="datetime-local"
+              required
+              defaultValue={mode.defaultClockIn}
+              label={t("enterClockIn")}
+            />
+          )}
+          <p className="text-xs text-text-muted leading-relaxed">
+            {t("existingPunchStays")}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Field
+            id="claimedClockIn"
+            name="claimedClockIn"
+            type="datetime-local"
+            defaultValue={mode.defaultClockIn}
+            label={t("correctClockIn")}
+          />
+          <Field
+            id="claimedClockOut"
+            name="claimedClockOut"
+            type="datetime-local"
+            defaultValue={mode.defaultClockOut}
+            label={t("correctClockOutOptional")}
+          />
         </div>
       )}
-      <div className="space-y-1">
-        <Label htmlFor="reason">{t("whatHappened")}</Label>
-        <textarea
-          id="reason"
-          name="reason"
-          required
-          minLength={1}
-          maxLength={500}
-          rows={3}
-          placeholder={t("reasonPlaceholder")}
-          className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
-        />
-      </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
-      <div className="flex items-center justify-end gap-2">
-        <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+      <TextareaField
+        id="reason"
+        name="reason"
+        required
+        minLength={1}
+        maxLength={500}
+        placeholder={t("reasonPlaceholder")}
+        label={t("whatHappened")}
+      />
+      <FormError message={error} />
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <Button
+          type="button"
+          size="lg"
+          variant="ghost"
+          className="w-full sm:w-auto"
+          onClick={() => setOpen(false)}
+        >
           {t("cancel")}
         </Button>
-        <Button type="submit" size="sm" disabled={pending}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full sm:w-auto"
+          disabled={pending}
+        >
           {pending ? t("submitting") : t("sendToAdmin")}
         </Button>
       </div>

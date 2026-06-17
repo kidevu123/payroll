@@ -35,8 +35,8 @@ export default async function ChangeTimeOffPage({
   }
 
   return (
-    <main className="space-y-4 px-4 py-6">
-      <Button asChild variant="ghost" size="sm">
+    <main className="space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/home">
           <ArrowLeft className="h-4 w-4" /> {t("back")}
         </Link>

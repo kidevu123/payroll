@@ -4,8 +4,13 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 import { CalendarDays, Clock3, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Field,
+  SelectField,
+  TextareaField,
+  FormError,
+} from "@/components/employee/form-field";
 import { submitTimeOffAction } from "./actions";
 
 type DayOffType = "PERSONAL" | "SICK" | "UNPAID" | "OTHER";
@@ -40,7 +45,7 @@ export function TimeOffForm({
         setPending(false);
         if (r?.error) setError(r.error);
       }}
-      className="space-y-3"
+      className="space-y-4"
     >
       <div className="space-y-1.5">
         <Label>{t("requestKind")}</Label>
@@ -62,82 +67,67 @@ export function TimeOffForm({
       <input type="hidden" name="type" value={type} />
 
       {isPartial ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <SingleDateField defaultValue={defaultDate} />
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="partialStartTime">{t("arriveAt")}</Label>
-              <Input
-                id="partialStartTime"
-                name="partialStartTime"
-                type="time"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="partialEndTime">{t("leaveAt")}</Label>
-              <Input
-                id="partialEndTime"
-                name="partialEndTime"
-                type="time"
-              />
-            </div>
+            <Field
+              id="partialStartTime"
+              name="partialStartTime"
+              type="time"
+              label={t("arriveAt")}
+            />
+            <Field
+              id="partialEndTime"
+              name="partialEndTime"
+              type="time"
+              label={t("leaveAt")}
+            />
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {!isHourly && (
-            <div className="space-y-1">
-              <Label htmlFor="dayOffType">{t("type")}</Label>
-              <select
-                id="dayOffType"
-                value={dayOffType}
-                onChange={(e) => setDayOffType(e.target.value as DayOffType)}
-                className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
-              >
-                <option value="PERSONAL">{t("personalLabel")}</option>
-                <option value="SICK">{t("sickLabel")}</option>
-                <option value="UNPAID">{t("unpaidLabel")}</option>
-                <option value="OTHER">{t("otherLabel")}</option>
-              </select>
-            </div>
+            <SelectField
+              id="dayOffType"
+              label={t("type")}
+              value={dayOffType}
+              onChange={(e) => setDayOffType(e.target.value as DayOffType)}
+            >
+              <option value="PERSONAL">{t("personalLabel")}</option>
+              <option value="SICK">{t("sickLabel")}</option>
+              <option value="UNPAID">{t("unpaidLabel")}</option>
+              <option value="OTHER">{t("otherLabel")}</option>
+            </SelectField>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="startDate">{t("start")}</Label>
-              <Input
-                id="startDate"
-                name="startDate"
-                type="date"
-                defaultValue={defaultDate}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="endDate">{t("end")}</Label>
-              <Input
-                id="endDate"
-                name="endDate"
-                type="date"
-                defaultValue={defaultDate}
-                required
-              />
-            </div>
+            <Field
+              id="startDate"
+              name="startDate"
+              type="date"
+              defaultValue={defaultDate}
+              required
+              label={t("start")}
+            />
+            <Field
+              id="endDate"
+              name="endDate"
+              type="date"
+              defaultValue={defaultDate}
+              required
+              label={t("end")}
+            />
           </div>
         </div>
       )}
 
-      <div className="space-y-1">
-        <Label htmlFor="reason">{t("reasonOptional")}</Label>
-        <textarea
-          id="reason"
-          name="reason"
-          maxLength={500}
-          rows={3}
-          className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
-        />
-      </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
-      <Button type="submit" disabled={pending} className="w-full">
+      <TextareaField
+        id="reason"
+        name="reason"
+        maxLength={500}
+        label={t("reasonOptional")}
+      />
+      <FormError message={error} />
+      <Button type="submit" size="lg" disabled={pending} className="w-full">
         {pending ? t("submitting") : t("submitRequest")}
       </Button>
     </form>
@@ -176,15 +166,15 @@ function SingleDateField({ defaultValue }: { defaultValue: string }) {
   const t = useTranslations("employee.timeOff");
   const [date, setDate] = React.useState(defaultValue);
   return (
-    <div className="space-y-1">
-      <Label htmlFor="schedDate">{t("date")}</Label>
-      <Input
+    <div className="space-y-1.5">
+      <Field
         id="schedDate"
         name="startDate"
         type="date"
         value={date}
         onChange={(e) => setDate(e.target.value)}
         required
+        label={t("date")}
       />
       <input type="hidden" name="endDate" value={date} />
     </div>

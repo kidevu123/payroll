@@ -86,8 +86,8 @@ export default async function MissedPunchFixPage({
   }
 
   return (
-    <main className="px-4 py-6 space-y-4">
-      <Button asChild variant="ghost" size="sm">
+    <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/home">
           <ArrowLeft className="h-4 w-4" /> {t("back")}
         </Link>

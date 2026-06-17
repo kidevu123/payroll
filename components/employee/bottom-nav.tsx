@@ -49,8 +49,9 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
               <Link
                 href={href}
                 data-tour={tour}
+                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] transition-colors",
+                  "relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 py-2 text-[11px] transition-colors",
                   active ? "text-brand-700 font-medium" : "text-text-subtle hover:text-text",
                 )}
               >

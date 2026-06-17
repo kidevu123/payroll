@@ -116,7 +116,76 @@ function useDrawerState(pathname: string) {
     };
   }, [open]);
 
+  // Escape closes the drawer from anywhere while it's open.
+  React.useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return { open, setOpen };
+}
+
+/**
+ * Trap Tab focus inside the drawer panel and restore focus to the trigger
+ * on close. Keeps keyboard + screen-reader users from tabbing into the
+ * page content behind the modal scrim. (Escape-to-close is handled by
+ * useDrawerState so it works regardless of where focus currently sits.)
+ */
+function useFocusTrap(active: boolean) {
+  const panelRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!active) return;
+    const panel: HTMLElement | null = panelRef.current;
+    if (!panel) return;
+    const panelEl: HTMLElement = panel;
+
+    const restoreTo =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    const focusables = () =>
+      Array.from(
+        panelEl.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+
+    // Move focus into the panel on open.
+    const first = focusables()[0];
+    first?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const firstEl = items[0]!;
+      const lastEl = items[items.length - 1]!;
+      const activeEl = document.activeElement;
+      if (e.shiftKey) {
+        if (activeEl === firstEl || !panelEl.contains(activeEl)) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else if (activeEl === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    }
+
+    panelEl.addEventListener("keydown", onKeyDown);
+    return () => {
+      panelEl.removeEventListener("keydown", onKeyDown);
+      restoreTo?.focus();
+    };
+  }, [active]);
+
+  return panelRef;
 }
 
 function MobileDrawer({
@@ -133,19 +202,24 @@ function MobileDrawer({
   onClose: () => void;
 }) {
   const tNav = useTranslations("nav");
+  const panelRef = useFocusTrap(true);
 
   return (
     <div
       className="lg:hidden fixed inset-0 z-[80] flex"
       role="dialog"
       aria-modal="true"
+      aria-label={tNav("openNavigation")}
     >
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50 motion-safe:animate-in motion-safe:fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
-      <aside className="relative flex h-dvh w-[min(20rem,calc(100vw-1rem))] flex-col border-r border-border bg-surface shadow-xl">
+      <aside
+        ref={panelRef as React.RefObject<HTMLElement>}
+        className="relative flex h-dvh w-[min(20rem,calc(100vw-1rem))] flex-col border-r border-border bg-surface shadow-xl"
+      >
         <div className="flex items-center justify-between border-b border-border px-5 pb-4 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
           <Wordmark name="Milo" logoPath={company.logoPath} size="md" showName={false} />
           <button
@@ -247,6 +321,8 @@ export function MobileQuickNav({
   const { sections, quickItems } = useMobileNavData(allowedSurfaces);
   const { open, setOpen } = useDrawerState(pathname);
 
+  const moreActive = open;
+
   return (
     <>
       {open && (
@@ -259,11 +335,24 @@ export function MobileQuickNav({
         />
       )}
 
+      {/*
+        Bottom tab bar — the primary mobile nav surface. Fixed to the bottom
+        edge so the top four destinations live under the thumb, with a "More"
+        tab that opens the full off-canvas drawer. Reserves the home-indicator
+        inset via env(safe-area-inset-bottom) so the bar never sits under the
+        gesture area. The matching content padding lives in the admin layout's
+        <main> so page content never hides behind this bar.
+      */}
       <nav
         aria-label={tNav("openNavigation")}
-        className="lg:hidden fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4rem)] z-40 rounded-2xl border border-border/80 bg-surface/95 p-1.5 shadow-pop backdrop-blur-md"
+        className={cn(
+          "lg:hidden fixed inset-x-0 bottom-0 z-40",
+          "border-t border-border/80 bg-surface/95 backdrop-blur-md",
+          "shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(15_23_42_/_0.12)]",
+          "pb-[env(safe-area-inset-bottom)]",
+        )}
       >
-        <div className="grid auto-cols-fr grid-flow-col items-stretch gap-1">
+        <div className="mx-auto grid max-w-screen-sm auto-cols-fr grid-flow-col items-stretch px-1 py-1">
           {quickItems.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
@@ -272,13 +361,26 @@ export function MobileQuickNav({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight",
+                  "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-colors",
                   active
-                    ? "bg-brand-50 text-brand-800"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text",
+                    ? "text-brand-800"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                {active ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-brand-700"
+                  />
+                ) : null}
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0",
+                    active ? "text-brand-700" : "text-text-subtle/80",
+                  )}
+                  aria-hidden
+                  strokeWidth={active ? 2 : 1.75}
+                />
                 <span className="max-w-full truncate">{tNav(labelKey)}</span>
               </Link>
             );
@@ -286,10 +388,30 @@ export function MobileQuickNav({
           <button
             type="button"
             onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={open}
             aria-label={tNav("openNavigation")}
-            className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight text-text-muted hover:bg-surface-2 hover:text-text"
+            className={cn(
+              "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-colors",
+              moreActive
+                ? "text-brand-800"
+                : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",
+            )}
           >
-            <Menu className="h-4 w-4 shrink-0" aria-hidden />
+            {moreActive ? (
+              <span
+                aria-hidden
+                className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-brand-700"
+              />
+            ) : null}
+            <Menu
+              className={cn(
+                "h-[18px] w-[18px] shrink-0",
+                moreActive ? "text-brand-700" : "text-text-subtle/80",
+              )}
+              aria-hidden
+              strokeWidth={moreActive ? 2 : 1.75}
+            />
             <span>{tNav("menu")}</span>
           </button>
         </div>

@@ -3,10 +3,11 @@
 // missed-punch request without needing a pre-existing alert.
 
 import Link from "next/link";
-import { ArrowLeft, Pencil, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Pencil, CircleCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -63,43 +64,66 @@ export default async function EmployeeDay({
   }
 
   return (
-    <main className="px-4 py-6 space-y-4">
-      <Button asChild variant="ghost" size="sm">
+    <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/me/time">
           <ArrowLeft className="h-4 w-4" /> {t("title")}
         </Link>
       </Button>
-      <h1 className="text-xl font-semibold">{date}</h1>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">
+      <PageHeader
+        density="employee"
+        title={date}
+        meta={
+          <span className="inline-flex items-baseline gap-1">
             <HoursDisplay
               hours={totalMs / MS_PER_HOUR}
               decimals={payRules.hoursDecimalPlaces}
             />{" "}
             {t("hours").toLowerCase()}
-          </CardTitle>
+          </span>
+        }
+      />
+
+      {sp.reported && (
+        <div className="flex items-start gap-2 rounded-card border border-success-200/80 bg-success-50 px-3.5 py-3 text-sm font-medium text-success-700">
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>{tDay("reportSent")}</span>
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {dayPunches.length === 0 ? (
-            <p className="text-sm text-text-muted">{t("noPunches")}</p>
+            <p className="text-sm text-text-muted leading-relaxed">
+              {t("noPunches")}
+            </p>
           ) : (
             dayPunches.map((p) => (
               <div
                 key={p.id}
-                className={`flex items-center justify-between text-sm rounded-input border border-border px-3 py-2 ${
+                className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-input border border-border px-3 py-2.5 text-sm ${
                   p.voidedAt ? "opacity-50 line-through" : ""
                 }`}
               >
-                <span>
-                  <span className="text-text-muted">{t("in")}: </span>
-                  <span className="font-mono">{fmtTime(p.clockIn, company.timezone, dateLocale)}</span>
-                  <span className="text-text-muted ml-3">{t("out")}: </span>
-                  <span className="font-mono">{fmtTime(p.clockOut, company.timezone, dateLocale)}</span>
+                <span className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+                  <span>
+                    <span className="text-text-muted">{t("in")}: </span>
+                    <span className="font-mono tabular-nums">
+                      {fmtTime(p.clockIn, company.timezone, dateLocale)}
+                    </span>
+                  </span>
+                  <span>
+                    <span className="text-text-muted">{t("out")}: </span>
+                    <span className="font-mono tabular-nums">
+                      {fmtTime(p.clockOut, company.timezone, dateLocale)}
+                    </span>
+                  </span>
                 </span>
                 {p.editedAt ? (
-                  <span className="flex items-center gap-1 text-xs text-text-muted">
+                  <span className="flex items-center gap-1 text-xs text-text-muted shrink-0">
                     <Pencil className="h-3 w-3" /> {t("edited")}
                   </span>
                 ) : null}
@@ -109,16 +133,7 @@ export default async function EmployeeDay({
         </CardContent>
       </Card>
 
-      {sp.reported && (
-        <div className="rounded-card border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" /> {tDay("reportSent")}
-        </div>
-      )}
-
-      <ReportFixForm
-        date={date}
-        mode={reportMode}
-      />
+      <ReportFixForm date={date} mode={reportMode} />
     </main>
   );
 }

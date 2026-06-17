@@ -147,10 +147,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
           />
-          <main className="flex-1 min-w-0 px-3 pb-10 pt-[calc(8.75rem+env(safe-area-inset-top))] sm:px-4 sm:pb-10 sm:pt-[calc(9rem+env(safe-area-inset-top))] lg:p-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
+          {/*
+            Mobile spacing math:
+              top    = fixed Topbar (3.5rem) + notch inset. The poll status
+                       bar, when shown, applies its own top offset so it sits
+                       just below the topbar without double-counting here.
+              bottom = fixed bottom tab bar (~3.5rem) + home-indicator inset,
+                       so page content never hides behind the bottom nav.
+            On lg the sidebar + sticky topbar take over and neither fixed
+            mobile bar renders, so we drop to the plain desktop padding.
+          */}
+          <main className="flex-1 min-w-0 px-3 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-4 lg:p-8 lg:pt-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
             {children}
           </main>
-          <AppFooter timezone={company?.timezone ?? "America/New_York"} />
+          {/*
+            On mobile the footer sits above the fixed bottom tab bar, so give
+            it matching bottom clearance (bar height + home-indicator inset).
+            Desktop has no bottom bar, so the inset collapses to 0 there.
+          */}
+          <AppFooter
+            timezone={company?.timezone ?? "America/New_York"}
+            className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
+          />
         </PollStatusProvider>
       </div>
       <FeedbackLauncher />
