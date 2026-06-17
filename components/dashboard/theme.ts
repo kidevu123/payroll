@@ -19,6 +19,12 @@ export const DASH = {
   border: "var(--dash-border)",
   borderStrong: "var(--dash-border-strong)",
 
+  // Chrome surfaces (sidebar / topbar / search field / hover state)
+  sidebar: "var(--dash-sidebar)",
+  topbar: "var(--dash-topbar)",
+  search: "var(--dash-search)",
+  hover: "var(--dash-hover)",
+
   // Text
   text: "var(--dash-text)",
   textMuted: "var(--dash-text-muted)",

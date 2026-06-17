@@ -148,6 +148,10 @@
   --dash-amber: #d97706;
   --dash-chart-grid: rgba(17, 17, 40, 0.06);
   --dash-chart-axis: #8e8ea3;
+  --dash-sidebar: rgba(255, 255, 255, 0.82);
+  --dash-topbar: rgba(255, 255, 255, 0.9);
+  --dash-search: rgba(17, 17, 40, 0.04);
+  --dash-hover: rgba(17, 17, 40, 0.05);
 }
 
 /*
@@ -233,6 +237,10 @@
     --dash-amber: #fbbf24;
     --dash-chart-grid: rgba(255, 255, 255, 0.06);
     --dash-chart-axis: #6e6e85;
+    --dash-sidebar: rgba(13, 13, 20, 0.72);
+    --dash-topbar: rgba(13, 13, 20, 0.9);
+    --dash-search: rgba(255, 255, 255, 0.04);
+    --dash-hover: rgba(255, 255, 255, 0.05);
     --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5),
       0 6px 16px -4px rgb(0 0 0 / 0.6);
     --shadow-card-strong: 0 1px 2px 0 rgb(0 0 0 / 0.6),

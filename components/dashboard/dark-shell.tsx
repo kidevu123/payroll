@@ -144,7 +144,7 @@ export function DashboardDarkShell({
 
   return (
     <div
-      className="dark min-h-dvh"
+      className="min-h-dvh"
       style={{
         background: `radial-gradient(1100px 620px at 78% -8%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
         color: DASH.text,
@@ -157,7 +157,7 @@ export function DashboardDarkShell({
         style={{
           height: "calc(3.5rem + env(safe-area-inset-top))",
           paddingTop: "env(safe-area-inset-top)",
-          background: "rgba(13,13,20,0.9)",
+          background: DASH.topbar,
           borderBottom: `1px solid ${DASH.border}`,
           backdropFilter: "blur(12px)",
         }}
@@ -189,7 +189,7 @@ export function DashboardDarkShell({
       <aside
         className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 flex-col h-dvh"
         style={{
-          background: "rgba(13,13,20,0.72)",
+          background: DASH.sidebar,
           borderRight: `1px solid ${DASH.border}`,
           backdropFilter: "blur(12px)",
         }}
@@ -221,6 +221,7 @@ export function DashboardDarkShell({
           <span className="text-[17px] font-bold tracking-tight" style={{ color: DASH.text }}>
             {company.name}
           </span>
+          <ThemeToggle className="ml-auto" />
         </div>
 
         {/* Search */}
@@ -230,7 +231,7 @@ export function DashboardDarkShell({
             onClick={() => setPaletteOpen(true)}
             className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-[13px] transition-colors"
             style={{
-              background: "rgba(255,255,255,0.04)",
+              background: DASH.search,
               border: `1px solid ${DASH.border}`,
               color: DASH.textMuted,
             }}
@@ -239,7 +240,7 @@ export function DashboardDarkShell({
             <span className="flex-1 text-left">{tNav("search")}</span>
             <kbd
               className="rounded-md px-1.5 py-0.5 font-mono text-[10px]"
-              style={{ background: "rgba(255,255,255,0.06)", color: DASH.textFaint }}
+              style={{ background: DASH.hover, color: DASH.textFaint }}
             >
               ⌘K
             </kbd>
@@ -319,21 +320,12 @@ export function DashboardDarkShell({
               />
             </div>
           ) : null}
-          <div className="flex items-center justify-between gap-2 px-2 py-1">
-            <span
-              className="text-[10px] font-semibold uppercase tracking-[0.14em]"
-              style={{ color: DASH.textFaint }}
-            >
-              Appearance
-            </span>
-            <ThemeToggle />
-          </div>
           <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
               className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition-colors"
-              style={{ background: menuOpen ? "rgba(255,255,255,0.05)" : "transparent" }}
+              style={{ background: menuOpen ? DASH.hover : "transparent" }}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
             >

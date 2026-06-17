@@ -25,6 +25,10 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  // Local screenshot/preview runs: skip telemetry + pg-boss + the chromium
+  // reaper, which would otherwise kill the Playwright browser used to verify
+  // the UI. Set MILO_PREVIEW=1 only for local verification, never in prod.
+  if (process.env.MILO_PREVIEW) return;
 
   // Hydrate BUILD_GIT_SHA from /app/.git-sha if the env var isn't set.
   // The Dockerfile's build stage stamps the SHA into that file; making
