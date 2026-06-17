@@ -340,7 +340,7 @@ export function DashboardDarkShell({
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
       <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6 sm:py-7">{children}</div>
+        <div className="mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-6 sm:py-5">{children}</div>
       </main>
 
       <CommandPalette

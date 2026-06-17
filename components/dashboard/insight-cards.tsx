@@ -48,7 +48,7 @@ function relativeAge(iso: string | null): string {
 
 export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
   return (
-    <DashCard className="flex flex-col gap-4">
+    <DashCard className="flex h-full flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Eyebrow>Pay spend trend</Eyebrow>

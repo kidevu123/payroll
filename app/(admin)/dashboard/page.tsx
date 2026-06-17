@@ -200,8 +200,9 @@ export default async function DashboardPage() {
 
   return (
     // The dark shell (layout) owns the canvas background + container; the page
-    // just lays out its content sections.
-    <div className="space-y-5">
+    // just lays out its content sections. Tight vertical rhythm so the whole
+    // dashboard reads as one composed screen (matches the reference density).
+    <div className="space-y-3.5">
       <GreetingHeader
         name={firstName}
         hour={hour}
@@ -211,22 +212,24 @@ export default async function DashboardPage() {
         quickActionLabel={quickActionLabel}
       />
 
-      {/* TOP ROW — cadence cards */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* TOP ROW — cadence cards (equal height) */}
+      <section className="grid items-stretch gap-3.5 md:grid-cols-2 xl:grid-cols-3">
         {metrics.cadences.map((card) => (
           <CadenceCard key={card.scheduleId} card={card} />
         ))}
       </section>
 
-      {/* SECOND ROW — trend + mini stats + sync + health */}
-      <section className="grid gap-4 lg:grid-cols-12">
+      {/* SECOND ROW — trend + mini stats + sync + health, all equal height */}
+      <section className="grid items-stretch gap-3.5 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <TrendCard trend={metrics.trend} />
         </div>
-        <div className="grid grid-cols-2 content-start gap-4 lg:col-span-4">
-          <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
-          <ExceptionsCard count={metrics.exceptions} />
-          <div className="col-span-2">
+        <div className="flex flex-col gap-3.5 lg:col-span-4">
+          <div className="grid grid-cols-2 gap-3.5">
+            <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
+            <ExceptionsCard count={metrics.exceptions} />
+          </div>
+          <div className="flex-1">
             <SyncCard sync={metrics.sync} />
           </div>
         </div>
@@ -238,8 +241,8 @@ export default async function DashboardPage() {
       {/* Automate-more banner + two real stat cards */}
       <AutomationBanner automation={metrics.automation} />
 
-      {/* THIRD ROW — pending / recent / today */}
-      <section className="grid gap-4 lg:grid-cols-3">
+      {/* THIRD ROW — pending / recent / today (equal height) */}
+      <section className="grid items-stretch gap-3.5 lg:grid-cols-3">
         <PendingRequestsCard items={pendingItems} />
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />
@@ -248,7 +251,7 @@ export default async function DashboardPage() {
       {/* BOTTOM — full-width KPI bar */}
       <KpiBar kpis={metrics.kpis} />
 
-      <div className="pt-1 text-center text-[11px]" style={{ color: DASH.textFaint }}>
+      <div className="pt-0.5 text-center text-[11px]" style={{ color: DASH.textFaint }}>
         <Link href="/reports" style={{ color: DASH.textMuted }}>
           View full reports →
         </Link>

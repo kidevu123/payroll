@@ -17,7 +17,7 @@ export function DashCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl p-4 sm:p-5",
+        "relative rounded-2xl p-4",
         "transition-colors duration-200",
         className,
       )}
@@ -25,8 +25,8 @@ export function DashCard({
         background: DASH.surface,
         border: `1px solid ${DASH.border}`,
         boxShadow: glow
-          ? "0 0 0 1px rgba(139,92,246,0.10), 0 18px 50px -20px rgba(139,92,246,0.35)"
-          : "0 12px 40px -24px rgba(0,0,0,0.7)",
+          ? "0 0 0 1px rgba(139,92,246,0.12), 0 18px 50px -22px rgba(139,92,246,0.30)"
+          : "0 10px 34px -24px rgba(0,0,0,0.7)",
       }}
       {...rest}
     >

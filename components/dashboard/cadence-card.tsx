@@ -101,7 +101,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   const Icon = KIND_ICON[card.periodKind] ?? CalendarRange;
 
   return (
-    <DashCard glow={step.primary} className="flex flex-col gap-4">
+    <DashCard glow={step.primary} className="flex h-full flex-col gap-3.5">
       {/* Header: icon + uppercase cadence name + range, status badge */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
