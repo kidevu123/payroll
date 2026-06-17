@@ -360,16 +360,16 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
   ];
 
   return (
-    <DashCard className="grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
+    <DashCard className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map((t) => {
         const Icon = t.icon;
         return (
-          <div key={t.label} className="flex items-center gap-3">
+          <div key={t.label} className="flex items-center gap-2.5">
             <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${DASH.border}` }}
             >
-              <Icon className="h-[18px] w-[18px]" style={{ color: t.accent }} />
+              <Icon className="h-[17px] w-[17px]" style={{ color: t.accent }} />
             </span>
             <div className="min-w-0">
               <div
