@@ -39,11 +39,11 @@ function SparkTooltip({
       style={{
         background: CHART.tooltipBg,
         border: `1px solid ${CHART.tooltipBorder}`,
-        color: "#f4f4f8",
+        color: "var(--dash-text)",
       }}
     >
       <div className="font-medium tabular-nums">{formatMoney(point.cents)}</div>
-      <div style={{ color: "#a1a1b5" }}>{point.label}</div>
+      <div style={{ color: "var(--dash-text-muted)" }}>{point.label}</div>
     </div>
   );
 }
@@ -56,7 +56,7 @@ export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props
       <div className={`relative w-full ${className}`} aria-hidden>
         <span
           className="absolute inset-x-0 bottom-1/2 h-px"
-          style={{ background: "rgba(255,255,255,0.08)" }}
+          style={{ background: "var(--dash-border)" }}
         />
       </div>
     );
@@ -95,7 +95,7 @@ export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props
             activeDot={{
               r: 3,
               fill: CHART.violetBright,
-              stroke: "#0b0b12",
+              stroke: "var(--dash-bg)",
               strokeWidth: 1.5,
             }}
             isAnimationActive={false}

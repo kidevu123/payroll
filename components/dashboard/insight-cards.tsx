@@ -99,7 +99,7 @@ function MiniStat({
         <Eyebrow>{eyebrow}</Eyebrow>
         <span
           className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${DASH.border}` }}
+          style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
         >
           <Icon className="h-4 w-4" style={{ color: accent }} />
         </span>
@@ -373,7 +373,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
           <div key={t.label} className="flex items-center gap-2.5">
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${DASH.border}` }}
+              style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
             >
               <Icon className="h-[17px] w-[17px]" style={{ color: t.accent }} />
             </span>

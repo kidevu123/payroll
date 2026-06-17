@@ -49,7 +49,7 @@ export function HealthGauge({ score }: Props) {
             tick={false}
           />
           <RadialBar
-            background={{ fill: "rgba(255,255,255,0.06)" }}
+            background={{ fill: "var(--dash-hover)" }}
             dataKey="value"
             cornerRadius={6}
             angleAxisId={0}

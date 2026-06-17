@@ -44,10 +44,10 @@ function TrendTooltip({
       style={{
         background: CHART.tooltipBg,
         border: `1px solid ${CHART.tooltipBorder}`,
-        color: "#f4f4f8",
+        color: "var(--dash-text)",
       }}
     >
-      <div className="mb-0.5" style={{ color: "#a1a1b5" }}>
+      <div className="mb-0.5" style={{ color: "var(--dash-text-muted)" }}>
         {point.month}
       </div>
       <div className="text-sm font-semibold tabular-nums">
@@ -75,7 +75,7 @@ function TrendDot(props: {
         cy={cy}
         r={2.5}
         fill={CHART.violetBright}
-        stroke="#0b0b12"
+        stroke="var(--dash-bg)"
         strokeWidth={1}
       />
     );
@@ -90,7 +90,7 @@ function TrendDot(props: {
   return (
     <g>
       <circle cx={cx} cy={cy} r={9} fill={CHART.violetBright} fillOpacity={0.16} />
-      <circle cx={cx} cy={cy} r={4} fill={CHART.violetBright} stroke="#0b0b12" strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={4} fill={CHART.violetBright} stroke="var(--dash-bg)" strokeWidth={2} />
       <g transform={`translate(${boxX}, ${boxY})`}>
         <rect
           width={boxW}
@@ -103,7 +103,7 @@ function TrendDot(props: {
           x={boxW / 2}
           y={boxH / 2 + 4}
           textAnchor="middle"
-          fill="#f4f4f8"
+          fill="var(--dash-text)"
           fontSize={11}
           fontWeight={600}
         >
@@ -201,7 +201,7 @@ export function SpendTrendChart({ data }: Props) {
             activeDot={{
               r: 5,
               fill: CHART.violetBright,
-              stroke: "#0b0b12",
+              stroke: "var(--dash-bg)",
               strokeWidth: 2,
             }}
             isAnimationActive={false}

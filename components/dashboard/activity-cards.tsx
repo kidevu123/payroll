@@ -105,7 +105,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
                   href="/requests"
                   className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 transition-colors"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
+                    background: "var(--dash-search)",
                     border: `1px solid ${DASH.border}`,
                   }}
                 >
@@ -173,7 +173,7 @@ function runTone(state: string): { color: string; bg: string } {
   return (
     RUN_STATE_TONE[state] ?? {
       color: DASH.textMuted,
-      bg: "rgba(255,255,255,0.06)",
+      bg: "var(--dash-hover)",
     }
   );
 }
@@ -203,7 +203,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
       {empty ? (
         <div
           className="flex flex-1 items-center gap-2 rounded-xl px-3 py-4 text-sm"
-          style={{ background: "rgba(255,255,255,0.04)", color: DASH.textMuted }}
+          style={{ background: "var(--dash-search)", color: DASH.textMuted }}
         >
           <CalendarClock className="h-4 w-4" aria-hidden="true" /> No runs yet.
         </div>
@@ -217,7 +217,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
                   href={r.href}
                   className="flex items-center justify-between gap-3 rounded-xl px-3 py-2"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
+                    background: "var(--dash-search)",
                     border: `1px solid ${DASH.border}`,
                   }}
                 >

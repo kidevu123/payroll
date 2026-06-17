@@ -72,7 +72,7 @@ function badgeStyle(badge: string): { color: string; bg: string } {
     case "Paid":
       return { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" };
     default:
-      return { color: DASH.textMuted, bg: "rgba(255,255,255,0.06)" };
+      return { color: DASH.textMuted, bg: "var(--dash-hover)" };
   }
 }
 
@@ -210,7 +210,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
                 }
               : {
                   color: DASH.text,
-                  background: "rgba(255,255,255,0.06)",
+                  background: "var(--dash-hover)",
                   border: `1px solid ${DASH.border}`,
                 }
           }
