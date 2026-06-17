@@ -5,7 +5,12 @@
 // The full state machine (review/approve/publish) is wired in Phase 3.
 
 import { logger } from "@/lib/telemetry";
-import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
+import {
+  ensureNextPeriod,
+  ensurePeriodForSchedule,
+  getCurrentPeriod,
+} from "@/lib/db/queries/pay-periods";
+import type { PayPeriod } from "@/lib/db/schema";
 import { createRun } from "@/lib/db/queries/payroll-runs";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
@@ -24,18 +29,24 @@ export async function handlePayrollRunTick(boss: {
   }
   const company = await getSetting("company");
   const today = todayInTimezone(company.timezone);
-  await ensureNextPeriod(today);
-  const period = await getCurrentPeriod(today);
+  // The default tick fires on the weekly cron, so it runs the WEEKLY cadence.
+  // Use that schedule's own tagged period (and tag the run with it) so the run
+  // never mixes in semi-monthly/monthly employees and never creates an orphan
+  // untagged period. Falls back to the generic current period only when no
+  // weekly schedule is configured.
+  const schedules = await listSchedules({ includeInactive: false });
+  const weekly = schedules.find((s) => s.periodKind === "WEEKLY") ?? null;
+  let period: PayPeriod | null;
+  if (weekly) {
+    period = await ensurePeriodForSchedule(weekly.id, today, null);
+  } else {
+    await ensureNextPeriod(today);
+    period = await getCurrentPeriod(today);
+  }
   if (!period) {
     logger.warn("payroll.run.tick: no current period after ensure; skipping");
     return;
   }
-  // The default tick fires on the weekly cron, so attach the WEEKLY pay
-  // schedule to its run when one exists. Without this, weekly runs would
-  // include semi-monthly employees too. Per-schedule crons are a future
-  // refinement; this keeps the immediate cohort correct.
-  const schedules = await listSchedules({ includeInactive: false });
-  const weekly = schedules.find((s) => s.periodKind === "WEEKLY") ?? null;
   const run = await createRun(period.id, new Date(), null, {
     payScheduleId: weekly?.id ?? null,
   });
