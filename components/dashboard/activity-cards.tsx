@@ -287,7 +287,7 @@ function Bucket({
   if (count === 0) return null;
   return (
     <section>
-      <div className="mb-1.5 flex items-center justify-between">
+      <div className="mb-1 flex items-center justify-between">
         <span
           className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
           style={{ color: accent }}
@@ -340,7 +340,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
                 className="flex items-center gap-2 text-[12px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={24} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={20} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0" style={{ color: DASH.rose }}>No punch</span>
               </li>
@@ -364,7 +364,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
                 className="flex items-center gap-2 text-[12px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={24} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={20} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0" style={{ color: DASH.violetBright }}>
                   {TYPE_LABEL[e.type] ?? e.type}
@@ -385,7 +385,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
                 className="flex items-center gap-2 text-[12px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={24} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={20} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0 font-mono tabular-nums" style={{ color: DASH.emerald }}>
                   {e.firstPunchAt}

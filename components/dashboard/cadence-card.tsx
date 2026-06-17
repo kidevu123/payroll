@@ -104,7 +104,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   return (
     <DashCard
       glow={step.primary}
-      className="flex h-full flex-col gap-2.5 overflow-hidden"
+      className="flex h-full flex-col gap-2 overflow-hidden"
     >
       {/* Big flowing sparkline that bleeds to the top + right edges, behind
           the content — matches the reference's prominent wave. */}
@@ -112,7 +112,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <div
           aria-hidden
           className="pointer-events-none absolute"
-          style={{ top: "2.5rem", right: "-0.5rem", bottom: "3.25rem", width: "64%" }}
+          style={{ top: "2.5rem", right: "-0.5rem", bottom: "2.85rem", width: "64%" }}
         >
           <CadenceSparkline
             data={card.spark}
@@ -178,7 +178,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           )}
         </div>
         <div
-          className="mt-2 flex items-center gap-3 text-[11px]"
+          className="mt-1.5 flex items-center gap-3 text-[11px]"
           style={{ color: DASH.textMuted }}
         >
           <span className="inline-flex items-center gap-1">
@@ -200,7 +200,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {
