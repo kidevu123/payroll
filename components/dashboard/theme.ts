@@ -1,41 +1,46 @@
-// Self-contained dark palette for the showcase dashboard ONLY.
+// Dashboard palette — now theme-aware via CSS variables.
 //
-// The rest of the app is light. These tokens live here (not in
-// app/globals.css) so the dashboard renders as its own dark canvas without
-// touching global theme values or enabling app-wide dark mode. Components
-// reference these via Tailwind arbitrary values (bg-[var(--...)] / explicit
-// hex) scoped under the dashboard's dark container.
+// These constants resolve to `var(--dash-*)` custom properties defined in
+// app/globals.css. The DARK values (under `.dark`) match the original
+// self-contained dark canvas exactly; the LIGHT values give the dashboard a
+// clean light surface (the #58 aesthetic) when the theme toggle is set to
+// light. Because every dashboard component references these constants (never
+// raw hex), the whole surface flips light/dark with zero component edits.
+//
+// Inline styles (`style={{ background: DASH.surface }}`) and recharts string
+// props (`stroke={CHART.violet}`) both accept `var(--x)` — it resolves in the
+// CSS cascade and in SVG attributes.
 
 export const DASH = {
   // Surfaces
-  bg: "#0b0b12", // deep near-black canvas
-  surface: "#16161f", // card surface
-  surfaceRaised: "#1c1c28", // hovered / nested surface
-  border: "rgba(255,255,255,0.08)", // hairline 1px border
-  borderStrong: "rgba(255,255,255,0.14)",
+  bg: "var(--dash-bg)",
+  surface: "var(--dash-surface)",
+  surfaceRaised: "var(--dash-surface-raised)",
+  border: "var(--dash-border)",
+  borderStrong: "var(--dash-border-strong)",
 
-  // Text (all ≥ 4.5:1 on #0b0b12 / #16161f)
-  text: "#f4f4f8",
-  textMuted: "#a1a1b5",
-  textFaint: "#6e6e85",
+  // Text
+  text: "var(--dash-text)",
+  textMuted: "var(--dash-text-muted)",
+  textFaint: "var(--dash-text-faint)",
 
   // Accents
-  violet: "#8b5cf6",
-  violetBright: "#a78bfa",
-  indigo: "#6366f1",
-  emerald: "#34d399",
-  emeraldDim: "#10b981",
-  rose: "#fb7185",
-  amber: "#fbbf24",
+  violet: "var(--dash-violet)",
+  violetBright: "var(--dash-violet-bright)",
+  indigo: "var(--dash-indigo)",
+  emerald: "var(--dash-emerald)",
+  emeraldDim: "var(--dash-emerald-dim)",
+  rose: "var(--dash-rose)",
+  amber: "var(--dash-amber)",
 } as const;
 
-/** Chart-specific hex (recharts wants plain strings, not CSS vars). */
+/** Chart-specific colors. recharts accepts `var(--x)` in stroke/fill/stop. */
 export const CHART = {
   violet: DASH.violet,
   violetBright: DASH.violetBright,
   emerald: DASH.emerald,
-  grid: "rgba(255,255,255,0.06)",
-  axis: "#6e6e85",
-  tooltipBg: "#1c1c28",
-  tooltipBorder: "rgba(255,255,255,0.14)",
+  grid: "var(--dash-chart-grid)",
+  axis: "var(--dash-chart-axis)",
+  tooltipBg: "var(--dash-surface-raised)",
+  tooltipBorder: "var(--dash-border-strong)",
 } as const;

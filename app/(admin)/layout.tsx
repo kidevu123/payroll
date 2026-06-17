@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth-guards";
 import {
@@ -56,6 +56,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? hdrs.get("x-invoke-path") ?? "";
+  // Theme is a per-user preference persisted in the `milo-theme` cookie.
+  // Default is dark (the showcase canvas); light renders the #58 aesthetic.
+  // The class is applied to the admin root so the toggle is scoped to the
+  // app chrome and never darkens the auth/login pages.
+  const themeCookie = (await cookies()).get("milo-theme")?.value;
+  const themeClass = themeCookie === "light" ? "" : "dark";
   // Every admin route now renders the cohesive dark shell (not just the
   // dashboard). Typed as boolean so the light-shell fallback below stays
   // valid code; it is no longer reached.
@@ -167,7 +173,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }).format(new Date());
     return (
       <PollStatusProvider>
-        <div className="dark">
+        <div id="admin-root" className={themeClass}>
           <DashboardDarkShell
             company={companyForBrand}
             user={{

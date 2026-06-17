@@ -34,6 +34,7 @@ import { CommandPalette, type CommandTarget } from "@/components/admin/command-p
 import { SignOutButton } from "@/components/admin/sign-out-button";
 import { cn } from "@/lib/utils";
 import { DASH } from "./theme";
+import { ThemeToggle } from "./theme-toggle";
 
 type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
@@ -318,6 +319,15 @@ export function DashboardDarkShell({
               />
             </div>
           ) : null}
+          <div className="flex items-center justify-between gap-2 px-2 py-1">
+            <span
+              className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{ color: DASH.textFaint }}
+            >
+              Appearance
+            </span>
+            <ThemeToggle />
+          </div>
           <div className="relative" ref={menuRef}>
             <button
               type="button"
