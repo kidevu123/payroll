@@ -266,7 +266,7 @@ function PollStatusBarView({
             )}
           </div>
           {(ui.phase === "running" || ui.phase === "queued") && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/70">
+            <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
               <div className="h-full w-full animate-pulse rounded-full bg-brand-600" />
             </div>
           )}

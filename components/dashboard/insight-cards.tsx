@@ -1,7 +1,6 @@
 // Second-row + KPI presentational cards for the dark dashboard. Pure
 // presentational; all data pre-shaped by computeDashboardMetrics.
 
-import Link from "next/link";
 import {
   Activity,
   ArrowRight,
@@ -20,6 +19,7 @@ import { SpendTrendChart } from "./charts/spend-trend-chart";
 import { SyncSparkline } from "./charts/sync-sparkline";
 import { HealthGauge } from "./charts/health-gauge";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
+import { DashboardPollButton } from "./dashboard-poll-button";
 import { DASH } from "./theme";
 import type {
   DashboardMetrics,
@@ -286,14 +286,7 @@ export function AutomationBanner({
             </div>
           </div>
         </div>
-        <Link
-          href="/settings/ngteco"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
-          style={{ color: "#0b0b12", background: DASH.violetBright }}
-        >
-          Poll now
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </Link>
+        <DashboardPollButton />
       </DashCard>
 
       <div className="grid grid-cols-2 gap-4 lg:w-72">
