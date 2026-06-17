@@ -147,6 +147,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
       : null;
     const tAuth = await getTranslations("auth");
+    // Build/version footer — preserves the SHA + server-time marker the light
+    // shell shows, computed server-side so the time is the server's clock.
+    const shaFull = process.env.NEXT_PUBLIC_GIT_SHA ?? "";
+    const sha = shaFull ? shaFull.slice(0, 7) : "dev";
+    const tz = company?.timezone ?? "America/New_York";
+    const serverTime = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    }).format(new Date());
     return (
       <PollStatusProvider>
         <DashboardDarkShell
@@ -161,6 +176,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           unreadCount={unread}
           commandTargets={commandTargets}
           signOutLabel={tAuth("signOut")}
+          footer={{ sha, shaFull, serverTime }}
         >
           {children}
         </DashboardDarkShell>

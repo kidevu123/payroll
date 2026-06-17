@@ -6,7 +6,6 @@
 // values. All charts are client components fed serializable props from this
 // RSC page.
 
-import Link from "next/link";
 import { GreetingHeader } from "@/components/dashboard/greeting-header";
 import { CadenceCard } from "@/components/dashboard/cadence-card";
 import {
@@ -26,7 +25,6 @@ import {
   type RecentRunItem,
   type TodayBuckets,
 } from "@/components/dashboard/activity-cards";
-import { DASH } from "@/components/dashboard/theme";
 import { computeDashboardMetrics } from "@/lib/payroll/dashboard-metrics";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listTodayPunches } from "@/lib/db/queries/punches";
@@ -100,6 +98,12 @@ export default async function DashboardPage() {
   }
   const approvedOffEmpIds = new Set(approvedOffToday.map((r) => r.employeeId));
 
+  // Avatar URL only when the employee actually has a photo (else null →
+  // initials fallback, never a broken image).
+  const photoUrlFor = (emp: { id: string; photoPath: string | null }): string | null =>
+    emp.photoPath ? `/api/employees/${emp.id}/photo?v=${emp.id.slice(0, 8)}` : null;
+  const empById = new Map(employees.map((e) => [e.id, e]));
+
   const todayBuckets: TodayBuckets = {
     punched: employees
       .filter((e) => punchedEmpIds.has(e.id))
@@ -107,32 +111,43 @@ export default async function DashboardPage() {
         id: e.id,
         name: e.displayName,
         firstPunchAt: formatTimeShort(firstPunchByEmp.get(e.id)!, company.timezone),
+        photoUrl: photoUrlFor(e),
       })),
     approvedOut: employees
       .filter((e) => !punchedEmpIds.has(e.id) && approvedOffEmpIds.has(e.id))
       .map((e) => {
         const req = approvedOffToday.find((r) => r.employeeId === e.id);
-        return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID" };
+        return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID", photoUrl: photoUrlFor(e) };
       }),
     noPunch: employees
       .filter((e) => !punchedEmpIds.has(e.id) && !approvedOffEmpIds.has(e.id))
-      .map((e) => ({ id: e.id, name: e.displayName })),
+      .map((e) => ({ id: e.id, name: e.displayName, photoUrl: photoUrlFor(e) })),
     label: shortDateLabel(today),
   };
 
-  // ── Pending request items ─────────────────────────────────────────────────
+  // ── Pending request items (with requester name + avatar) ──────────────────
+  const empMeta = (
+    employeeId: string,
+  ): { employeeName: string; photoUrl: string | null } => {
+    const emp = empById.get(employeeId);
+    return emp
+      ? { employeeName: emp.displayName, photoUrl: photoUrlFor(emp) }
+      : { employeeName: "Employee", photoUrl: null };
+  };
   const pendingItems: PendingItem[] = [
     ...pendingMissed.map((r) => ({
       id: r.id,
       kind: "MISSED_PUNCH" as const,
-      title: `Missed punch · ${r.date}`,
-      subtitle: r.reason,
+      ...empMeta(r.employeeId),
+      title: "Missed punch",
+      subtitle: r.date,
     })),
     ...pendingTimeOff.map((r) => ({
       id: r.id,
       kind: "TIME_OFF" as const,
-      title: `Time off · ${r.startDate} – ${r.endDate}`,
-      subtitle: r.reason ?? r.type.toLowerCase(),
+      ...empMeta(r.employeeId),
+      title: "Time off request",
+      subtitle: `${r.startDate} – ${r.endDate}`,
     })),
   ];
 
@@ -250,12 +265,6 @@ export default async function DashboardPage() {
 
       {/* BOTTOM — full-width KPI bar */}
       <KpiBar kpis={metrics.kpis} />
-
-      <div className="pt-0.5 text-center text-[11px]" style={{ color: DASH.textFaint }}>
-        <Link href="/reports" style={{ color: DASH.textMuted }}>
-          View full reports →
-        </Link>
-      </div>
     </div>
   );
 }

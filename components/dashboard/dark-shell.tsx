@@ -91,6 +91,7 @@ export function DashboardDarkShell({
   unreadCount,
   commandTargets,
   signOutLabel,
+  footer,
   children,
 }: {
   company: { name: string; logoPath: string | null };
@@ -99,6 +100,8 @@ export function DashboardDarkShell({
   unreadCount: number;
   commandTargets: CommandTarget[];
   signOutLabel: string;
+  /** Build/version info for the footer line (SHA + server time). */
+  footer: { sha: string; shaFull: string; serverTime: string };
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -340,7 +343,28 @@ export function DashboardDarkShell({
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
       <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-6 sm:py-5">{children}</div>
+        <div className="mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-6 sm:py-5">
+          {children}
+          <footer
+            className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-3 text-[11px]"
+            style={{ color: DASH.textFaint }}
+          >
+            <a
+              href={`https://github.com/kidevu123/payroll/commit/${footer.shaFull}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono hover:underline"
+              style={{ color: DASH.textMuted }}
+              title="View commit on GitHub"
+            >
+              {footer.sha}
+            </a>
+            <span aria-hidden="true">·</span>
+            <span className="font-mono">Server time {footer.serverTime}</span>
+            <span aria-hidden="true">·</span>
+            <span>Made by your haute tech team</span>
+          </footer>
+        </div>
       </main>
 
       <CommandPalette
