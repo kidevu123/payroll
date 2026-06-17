@@ -293,6 +293,12 @@ export async function pollNowAction(): Promise<PollNowResult> {
           "A poll is already running. Watch the status bar at the top — it can take several minutes while NGTeco loads.",
       };
     }
+    // No poll is legitimately in flight, so any live headless Chrome is an
+    // orphan from a prior scrape whose pg-boss job expired while Playwright
+    // kept running. Kill it before starting so this poll begins clean — two
+    // scrapers fighting over Chrome is what hangs polls for 15–20 min.
+    const { killAllChromium } = await import("@/lib/ngteco/chromium-reaper");
+    await killAllChromium();
     const { getBoss } = await import("@/lib/jobs");
     const boss = await getBoss();
     const jobId = await boss.send(
