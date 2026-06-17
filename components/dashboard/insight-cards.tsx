@@ -287,11 +287,11 @@ export function AutomationBanner({
           </div>
         </div>
         <Link
-          href="/settings/automation"
+          href="/settings/ngteco"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
           style={{ color: "#0b0b12", background: DASH.violetBright }}
         >
-          Set up automation
+          Poll now
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
       </DashCard>

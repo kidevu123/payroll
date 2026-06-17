@@ -2,6 +2,7 @@
 
 import {
   Area,
+  CartesianGrid,
   ComposedChart,
   Line,
   ResponsiveContainer,
@@ -12,6 +13,14 @@ import {
 import { formatMoney } from "@/lib/utils";
 import { CHART } from "../theme";
 import type { TrendPoint } from "@/lib/payroll/dashboard-metrics";
+
+/** "$227.7K" / "$1.24M" compact label for the pinned end point. */
+function compactLabel(cents: number): string {
+  const d = cents / 100;
+  if (d >= 1_000_000) return `$${(d / 1_000_000).toFixed(2)}M`;
+  if (d >= 1_000) return `$${(d / 1_000).toFixed(1)}K`;
+  return `$${Math.round(d)}`;
+}
 
 type Props = {
   data: TrendPoint[];
@@ -48,27 +57,57 @@ function TrendTooltip({
   );
 }
 
-/** Highlighted, glowing dot on the final data point only. */
-function LastDot(props: {
+/** A dot at every point; the final point gets a glow + pinned value label. */
+function TrendDot(props: {
   cx?: number | undefined;
   cy?: number | undefined;
   index?: number | undefined;
+  value?: number | undefined;
   dataLength: number;
 }) {
-  const { cx, cy, index, dataLength } = props;
+  const { cx, cy, index, value, dataLength } = props;
   if (cx === undefined || cy === undefined) return null;
-  if (index !== dataLength - 1) return null;
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={8} fill={CHART.violetBright} fillOpacity={0.18} />
+  const isLast = index === dataLength - 1;
+  if (!isLast) {
+    return (
       <circle
         cx={cx}
         cy={cy}
-        r={4}
+        r={2.5}
         fill={CHART.violetBright}
         stroke="#0b0b12"
-        strokeWidth={2}
+        strokeWidth={1}
       />
+    );
+  }
+  const label = value !== undefined ? compactLabel(value) : "";
+  const boxW = 52;
+  const boxH = 22;
+  const boxX = cx - boxW - 2; // pin to the left of the dot so it never clips
+  const boxY = cy - boxH - 10;
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={9} fill={CHART.violetBright} fillOpacity={0.16} />
+      <circle cx={cx} cy={cy} r={4} fill={CHART.violetBright} stroke="#0b0b12" strokeWidth={2} />
+      <g transform={`translate(${boxX}, ${boxY})`}>
+        <rect
+          width={boxW}
+          height={boxH}
+          rx={6}
+          fill={CHART.tooltipBg}
+          stroke={CHART.tooltipBorder}
+        />
+        <text
+          x={boxW / 2}
+          y={boxH / 2 + 4}
+          textAnchor="middle"
+          fill="#f4f4f8"
+          fontSize={11}
+          fontWeight={600}
+        >
+          {label}
+        </text>
+      </g>
     </g>
   );
 }
@@ -105,6 +144,11 @@ export function SpendTrendChart({ data }: Props) {
               </feMerge>
             </filter>
           </defs>
+          <CartesianGrid
+            vertical={false}
+            stroke={CHART.grid}
+            strokeDasharray="4 5"
+          />
           <XAxis
             dataKey="month"
             tickLine={false}
@@ -143,11 +187,12 @@ export function SpendTrendChart({ data }: Props) {
             strokeWidth={2.5}
             filter="url(#trendGlow)"
             dot={(p) => (
-              <LastDot
+              <TrendDot
                 key={`dot-${p.index}`}
                 cx={p.cx}
                 cy={p.cy}
                 index={p.index}
+                value={p.value}
                 dataLength={data.length}
               />
             )}

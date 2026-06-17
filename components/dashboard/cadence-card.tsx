@@ -99,11 +99,31 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   const step = resolveNextStep(card);
   const badge = badgeStyle(step.badge);
   const Icon = KIND_ICON[card.periodKind] ?? CalendarRange;
+  const hasSpark = card.spark.length >= 2;
 
   return (
-    <DashCard glow={step.primary} className="flex h-full flex-col gap-2.5">
+    <DashCard
+      glow={step.primary}
+      className="flex h-full flex-col gap-2.5 overflow-hidden"
+    >
+      {/* Big flowing sparkline that bleeds to the top + right edges, behind
+          the content — matches the reference's prominent wave. */}
+      {hasSpark ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute"
+          style={{ top: "2.5rem", right: "-0.5rem", bottom: "3.25rem", width: "64%" }}
+        >
+          <CadenceSparkline
+            data={card.spark}
+            gradientId={`spark-${card.scheduleId}`}
+            className="h-full"
+          />
+        </div>
+      ) : null}
+
       {/* Header: icon + uppercase cadence name + range, status badge */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl"
@@ -136,48 +156,48 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         </span>
       </div>
 
-      {/* Hero figure (left) + glowing sparkline (right) */}
-      <div className="grid grid-cols-[minmax(0,1fr)_42%] items-center gap-2">
-        <div className="min-w-0">
-          <Eyebrow>Total pay period</Eyebrow>
-          <div
-            className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
-            style={{ color: DASH.text }}
-          >
-            {formatMoney(card.totalCents)}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Delta pct={card.deltaPct} />
-            {card.priorRangeLabel ? (
-              <span className="text-[11px]" style={{ color: DASH.textFaint }}>
-                vs {card.priorRangeLabel}
-              </span>
-            ) : null}
-          </div>
-          <div
-            className="mt-2 flex items-center gap-3 text-[11px]"
-            style={{ color: DASH.textMuted }}
-          >
-            <span className="inline-flex items-center gap-1">
-              <Users className="h-3 w-3" aria-hidden="true" />
-              {card.employeeCount} emp
-            </span>
-            <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
-            <span className="inline-flex items-center gap-1 tabular-nums">
-              <Clock4 className="h-3 w-3" aria-hidden="true" />
-              {formatHoursMinutes(card.hours)}
-            </span>
-          </div>
+      {/* Hero figure — sits above the background sparkline. */}
+      <div className="relative z-10 min-w-0">
+        <Eyebrow>Total pay period</Eyebrow>
+        <div
+          className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+          style={{ color: DASH.text }}
+        >
+          {formatMoney(card.totalCents)}
         </div>
-        <CadenceSparkline
-          data={card.spark}
-          gradientId={`spark-${card.scheduleId}`}
-          className="h-16"
-        />
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Delta pct={card.deltaPct} />
+          {card.priorRangeLabel ? (
+            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+              vs {card.priorRangeLabel}
+            </span>
+          ) : (
+            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+              building history
+            </span>
+          )}
+        </div>
+        <div
+          className="mt-2 flex items-center gap-3 text-[11px]"
+          style={{ color: DASH.textMuted }}
+        >
+          <span className="inline-flex items-center gap-1">
+            <Users className="h-3 w-3" aria-hidden="true" />
+            {card.employeeCount} emp
+          </span>
+          <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <Clock4 className="h-3 w-3" aria-hidden="true" />
+            {formatHoursMinutes(card.hours)}
+          </span>
+        </div>
       </div>
 
+      <div className="flex-1" />
+
+
       {/* Footer: full-width action + alert pill */}
-      <div className="flex items-center gap-2.5">
+      <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-colors"
