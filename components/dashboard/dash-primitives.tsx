@@ -17,7 +17,7 @@ export function DashCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl p-4",
+        "relative rounded-2xl p-3.5",
         "transition-colors duration-200",
         className,
       )}

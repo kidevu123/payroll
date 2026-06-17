@@ -54,7 +54,7 @@ export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
           <Eyebrow>Pay spend trend</Eyebrow>
           <div className="mt-1.5 flex items-end gap-2.5">
             <span
-              className="text-[2.25rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+              className="text-[1.8rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
               style={{ color: DASH.text }}
             >
               {compactMoney(trend.ytdCents)}
@@ -103,7 +103,7 @@ function MiniStat({
       </div>
       <div>
         <div
-          className="text-[1.75rem] font-bold leading-none tabular-nums"
+          className="text-[1.5rem] font-bold leading-none tabular-nums"
           style={{ color: DASH.text }}
         >
           {value}
@@ -379,7 +379,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
                 {t.label}
               </div>
               <div
-                className="text-xl font-bold leading-tight tabular-nums"
+                className="text-lg font-bold leading-tight tabular-nums"
                 style={{ color: DASH.text }}
               >
                 {t.value}

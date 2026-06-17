@@ -101,7 +101,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   const Icon = KIND_ICON[card.periodKind] ?? CalendarRange;
 
   return (
-    <DashCard glow={step.primary} className="flex h-full flex-col gap-3.5">
+    <DashCard glow={step.primary} className="flex h-full flex-col gap-2.5">
       {/* Header: icon + uppercase cadence name + range, status badge */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -141,7 +141,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <div className="min-w-0">
           <Eyebrow>Total pay period</Eyebrow>
           <div
-            className="mt-1.5 text-[1.9rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+            className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
             style={{ color: DASH.text }}
           >
             {formatMoney(card.totalCents)}
@@ -172,7 +172,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <CadenceSparkline
           data={card.spark}
           gradientId={`spark-${card.scheduleId}`}
-          className="h-20"
+          className="h-16"
         />
       </div>
 

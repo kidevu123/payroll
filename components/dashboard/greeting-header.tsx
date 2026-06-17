@@ -50,13 +50,13 @@ export function GreetingHeader({
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
         <h1
-          className="flex items-center gap-2.5 text-[1.9rem] font-bold leading-tight tracking-[-0.02em] sm:text-[2.25rem]"
+          className="flex items-center gap-2.5 text-[1.55rem] font-bold leading-tight tracking-[-0.02em] sm:text-[1.85rem]"
           style={{ color: DASH.text }}
         >
           {word}, {name}
           <Icon className="h-6 w-6" style={{ color: DASH.amber }} aria-hidden="true" />
         </h1>
-        <p className="mt-1 text-sm" style={{ color: DASH.textMuted }}>
+        <p className="mt-1 text-[13px]" style={{ color: DASH.textMuted }}>
           Here&rsquo;s what&rsquo;s happening with your payroll today.
         </p>
       </div>

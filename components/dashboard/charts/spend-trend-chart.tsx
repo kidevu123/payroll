@@ -77,7 +77,7 @@ export function SpendTrendChart({ data }: Props) {
   if (data.length < 2) {
     return (
       <div
-        className="flex h-40 flex-1 items-center justify-center rounded-lg text-sm"
+        className="flex h-28 flex-1 items-center justify-center rounded-lg text-sm"
         style={{ color: "#6e6e85", border: `1px dashed ${CHART.grid}` }}
       >
         Not enough monthly history to chart yet
@@ -86,7 +86,7 @@ export function SpendTrendChart({ data }: Props) {
   }
 
   return (
-    <div className="h-40 w-full flex-1 sm:h-44">
+    <div className="h-28 w-full flex-1 sm:h-32">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={data}

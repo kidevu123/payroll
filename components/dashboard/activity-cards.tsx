@@ -314,7 +314,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
     buckets.punched.length;
   const MAX = 4;
   return (
-    <DashCard className="flex h-full flex-col gap-4">
+    <DashCard className="flex h-full flex-col gap-3">
       <div className="flex items-center justify-between">
         <Eyebrow>Today</Eyebrow>
         <span className="text-[11px]" style={{ color: DASH.textFaint }}>
@@ -327,7 +327,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
           No attendance data yet today.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Bucket
             icon={UserX}
             label="Not punched in"

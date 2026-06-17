@@ -217,7 +217,7 @@ export default async function DashboardPage() {
     // The dark shell (layout) owns the canvas background + container; the page
     // just lays out its content sections. Tight vertical rhythm so the whole
     // dashboard reads as one composed screen (matches the reference density).
-    <div className="space-y-3.5">
+    <div className="space-y-3">
       <GreetingHeader
         name={firstName}
         hour={hour}
@@ -228,19 +228,19 @@ export default async function DashboardPage() {
       />
 
       {/* TOP ROW — cadence cards (equal height) */}
-      <section className="grid items-stretch gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
         {metrics.cadences.map((card) => (
           <CadenceCard key={card.scheduleId} card={card} />
         ))}
       </section>
 
       {/* SECOND ROW — trend + mini stats + sync + health, all equal height */}
-      <section className="grid items-stretch gap-3.5 lg:grid-cols-12">
+      <section className="grid items-stretch gap-3 lg:grid-cols-12">
         <div className="lg:col-span-5">
           <TrendCard trend={metrics.trend} />
         </div>
-        <div className="flex flex-col gap-3.5 lg:col-span-4">
-          <div className="grid grid-cols-2 gap-3.5">
+        <div className="flex flex-col gap-3 lg:col-span-4">
+          <div className="grid grid-cols-2 gap-3">
             <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
             <ExceptionsCard count={metrics.exceptions} />
           </div>
@@ -257,7 +257,7 @@ export default async function DashboardPage() {
       <AutomationBanner automation={metrics.automation} />
 
       {/* THIRD ROW — pending / recent / today (equal height) */}
-      <section className="grid items-stretch gap-3.5 lg:grid-cols-3">
+      <section className="grid items-stretch gap-3 lg:grid-cols-3">
         <PendingRequestsCard items={pendingItems} />
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />

@@ -338,16 +338,12 @@ export function DashboardDarkShell({
               </div>
             ) : null}
           </div>
-        </div>
-      </aside>
-
-      {/* ── Canvas ──────────────────────────────────────────────── */}
-      <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 py-4 sm:px-6 sm:py-5">
-          {children}
-          <footer
-            className="mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-3 text-[11px]"
+          {/* Version marker — always visible, kept out of the content column so
+              the dashboard still fits one screen. */}
+          <div
+            className="flex items-center justify-center gap-1.5 pt-0.5 text-[10px]"
             style={{ color: DASH.textFaint }}
+            title={`Server time ${footer.serverTime} · Made by your haute tech team`}
           >
             <a
               href={`https://github.com/kidevu123/payroll/commit/${footer.shaFull}`}
@@ -355,15 +351,19 @@ export function DashboardDarkShell({
               rel="noopener noreferrer"
               className="font-mono hover:underline"
               style={{ color: DASH.textMuted }}
-              title="View commit on GitHub"
             >
               {footer.sha}
             </a>
             <span aria-hidden="true">·</span>
-            <span className="font-mono">Server time {footer.serverTime}</span>
-            <span aria-hidden="true">·</span>
-            <span>Made by your haute tech team</span>
-          </footer>
+            <span className="font-mono">{footer.serverTime}</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* ── Canvas ──────────────────────────────────────────────── */}
+      <main className="lg:pl-64 min-h-dvh">
+        <div className="mx-auto w-full max-w-[1500px] px-4 py-3 sm:px-6 sm:py-4">
+          {children}
         </div>
       </main>
 
