@@ -94,7 +94,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
         </div>
       ) : (
         <ul className="space-y-1">
-          {items.slice(0, 3).map((r) => {
+          {items.slice(0, 2).map((r) => {
             const tone =
               r.kind === "MISSED_PUNCH"
                 ? { color: DASH.rose, bg: "rgba(251,113,133,0.14)", label: "Missed punch" }
@@ -209,7 +209,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
         </div>
       ) : (
         <ul className="space-y-1">
-          {items.slice(0, 3).map((r) => {
+          {items.slice(0, 2).map((r) => {
             const tone = runTone(r.state);
             return (
               <li key={r.id}>
@@ -287,7 +287,7 @@ function Bucket({
   if (count === 0) return null;
   return (
     <section>
-      <div className="mb-1 flex items-center justify-between">
+      <div className="mb-0.5 flex items-center justify-between">
         <span
           className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
           style={{ color: accent }}
@@ -327,7 +327,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
           No attendance data yet today.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           <Bucket
             icon={UserX}
             label="Not punched in"
@@ -337,10 +337,10 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.noPunch.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[12px]"
+                className="flex items-center gap-2 text-[11.5px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={16} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0" style={{ color: DASH.rose }}>No punch</span>
               </li>
@@ -361,10 +361,10 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.approvedOut.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[12px]"
+                className="flex items-center gap-2 text-[11.5px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={16} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0" style={{ color: DASH.violetBright }}>
                   {TYPE_LABEL[e.type] ?? e.type}
@@ -382,10 +382,10 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.punched.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[12px]"
+                className="flex items-center gap-2 text-[11.5px]"
                 style={{ color: DASH.text }}
               >
-                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={16} />
+                <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
                 <span className="shrink-0 font-mono tabular-nums" style={{ color: DASH.emerald }}>
                   {e.firstPunchAt}

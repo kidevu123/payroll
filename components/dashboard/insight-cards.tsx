@@ -91,7 +91,7 @@ function MiniStat({
   sub?: React.ReactNode;
 }) {
   return (
-    <DashCard className="flex h-full flex-col justify-between gap-2">
+    <DashCard className="flex h-full flex-col gap-1.5">
       <div className="flex items-start justify-between">
         <Eyebrow>{eyebrow}</Eyebrow>
         <span
@@ -103,12 +103,12 @@ function MiniStat({
       </div>
       <div>
         <div
-          className="text-[1.3rem] font-bold leading-none tabular-nums"
+          className="text-[1.15rem] font-bold leading-none tabular-nums"
           style={{ color: DASH.text }}
         >
           {value}
         </div>
-        {sub ? <div className="mt-1.5">{sub}</div> : null}
+        {sub ? <div className="mt-1">{sub}</div> : null}
       </div>
     </DashCard>
   );
@@ -182,7 +182,7 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
         ? "Stale"
         : "Unknown";
   return (
-    <DashCard className="flex h-full flex-col justify-between gap-2">
+    <DashCard className="flex h-full flex-col gap-1.5">
       <div className="flex items-start justify-between">
         <Eyebrow>NGTeco sync</Eyebrow>
         <span
@@ -249,9 +249,6 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
           ))}
         </ul>
       </div>
-      <div className="text-[11px]" style={{ color: DASH.textFaint }}>
-        {caption}
-      </div>
     </DashCard>
   );
 }
@@ -269,7 +266,7 @@ export function AutomationBanner({
       >
         <div className="flex items-center gap-3">
           <span
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
               background: "rgba(139,92,246,0.16)",
               border: `1px solid ${DASH.borderStrong}`,

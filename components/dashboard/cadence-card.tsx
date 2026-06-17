@@ -112,7 +112,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <div
           aria-hidden
           className="pointer-events-none absolute"
-          style={{ top: "2.5rem", right: "-0.5rem", bottom: "2.85rem", width: "64%" }}
+          style={{ top: "2.1rem", right: "-0.5rem", bottom: "2.4rem", width: "64%" }}
         >
           <CadenceSparkline
             data={card.spark}
@@ -160,12 +160,12 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 min-w-0">
         <Eyebrow>Total pay period</Eyebrow>
         <div
-          className="mt-1.5 text-[1.5rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+          className="mt-1 text-[1.2rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
           style={{ color: DASH.text }}
         >
           {formatMoney(card.totalCents)}
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <Delta pct={card.deltaPct} />
           {card.priorRangeLabel ? (
             <span className="text-[11px]" style={{ color: DASH.textFaint }}>
@@ -178,7 +178,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           )}
         </div>
         <div
-          className="mt-1.5 flex items-center gap-3 text-[11px]"
+          className="mt-1 flex items-center gap-3 text-[11px]"
           style={{ color: DASH.textMuted }}
         >
           <span className="inline-flex items-center gap-1">
@@ -200,7 +200,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {
