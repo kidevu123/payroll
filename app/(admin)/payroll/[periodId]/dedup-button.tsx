@@ -50,7 +50,7 @@ export function DedupPunchesButton({
           {details.map((cluster) => (
             <details
               key={`${cluster.employeeId}-${cluster.keepPunchId}`}
-              className="rounded-input border border-amber-200 bg-white/65 px-3 py-2"
+              className="rounded-input border border-warn-300 bg-surface-2 px-3 py-2"
             >
               <summary className="cursor-pointer text-xs font-medium text-amber-950">
                 {cluster.employeeName} · {cluster.localDate} ·{" "}

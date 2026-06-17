@@ -141,7 +141,7 @@
   these tokens now only apply when <html class="dark"> is set, so the polished
   light theme always shows until a real, audited dark theme + toggle ships.
 */
-:root.dark {
+.dark {
     color-scheme: dark;
     --color-page: #09090b;
     --color-surface: #18181b;
@@ -275,7 +275,7 @@ td.num,
   background-color: var(--color-page);
 }
 
-:root.dark {
+.dark {
   .shell-admin {
     background-image: linear-gradient(
       180deg,

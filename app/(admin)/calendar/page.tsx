@@ -70,7 +70,7 @@ function eachDayBetween(startIso: string, endIso: string): string[] {
 const TYPE_COLORS: Record<string, string> = {
   PERSONAL: "bg-emerald-100 text-emerald-800 border-emerald-300",
   SICK: "bg-amber-100 text-amber-800 border-amber-300",
-  UNPAID: "bg-slate-100 text-slate-800 border-slate-300",
+  UNPAID: "bg-surface-2 text-text-muted border-border",
   OTHER: "bg-violet-100 text-violet-800 border-violet-300",
   // Distinct from time-off bars — heads-up only, no payroll impact.
   // Soft blue says "informational" without competing with the

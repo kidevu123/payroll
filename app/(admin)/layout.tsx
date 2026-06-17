@@ -56,7 +56,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? hdrs.get("x-invoke-path") ?? "";
-  const isDashboardRoute = pathname === "/dashboard" || pathname === "/";
+  // Every admin route now renders the cohesive dark shell (not just the
+  // dashboard). Typed as boolean so the light-shell fallback below stays
+  // valid code; it is no longer reached.
+  const isDashboardRoute: boolean = true;
   if (session.user.role !== "OWNER") {
     if (pathname) {
       // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
@@ -164,23 +167,33 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }).format(new Date());
     return (
       <PollStatusProvider>
-        <DashboardDarkShell
-          company={companyForBrand}
-          user={{
-            name: displayName,
-            role: roleLabel,
-            email: session.user.email,
-            avatarUrl,
-          }}
-          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-          unreadCount={unread}
-          commandTargets={commandTargets}
-          signOutLabel={tAuth("signOut")}
-          footer={{ sha, shaFull, serverTime }}
-        >
-          {children}
-        </DashboardDarkShell>
-        <FeedbackLauncher />
+        <div className="dark">
+          <DashboardDarkShell
+            company={companyForBrand}
+            user={{
+              name: displayName,
+              role: roleLabel,
+              email: session.user.email,
+              avatarUrl,
+            }}
+            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+            unreadCount={unread}
+            commandTargets={commandTargets}
+            signOutLabel={tAuth("signOut")}
+            footer={{ sha, shaFull, serverTime }}
+          >
+            {/* NGTeco poll progress — shown on every admin page. */}
+            <PollStatusBar />
+            {children}
+          </DashboardDarkShell>
+          {/* Mobile navigation (the dark sidebar is desktop-only). */}
+          <MobileQuickNav
+            company={companyForBrand}
+            currentLocale={locale}
+            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          />
+          <FeedbackLauncher />
+        </div>
       </PollStatusProvider>
     );
   }

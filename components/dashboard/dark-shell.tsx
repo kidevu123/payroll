@@ -143,7 +143,7 @@ export function DashboardDarkShell({
 
   return (
     <div
-      className="min-h-dvh"
+      className="dark min-h-dvh"
       style={{
         background: `radial-gradient(1100px 620px at 78% -8%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
         color: DASH.text,
@@ -362,7 +362,7 @@ export function DashboardDarkShell({
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
       <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto w-full max-w-[1500px] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:py-4 lg:pt-4 lg:pb-4">
           {children}
         </div>
       </main>
