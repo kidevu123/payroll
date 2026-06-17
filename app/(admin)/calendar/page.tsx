@@ -5,7 +5,7 @@
 // when" + "what's waiting on me". Birthdays render as pink chips.
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Cake } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cake, Users } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -239,6 +239,27 @@ export default async function CalendarPage({
   const next = new Date(monthEnd.getTime() + 1 * MS_PER_DAY);
 
   const pendingTotal = pendingMissedPunches.length + pendingTimeOff.length;
+
+  // ── Month overview (drives the rail's stat cards) ──────────────────────
+  // Real metrics derived from the data already fetched. There is no
+  // "department" concept in the schema, so the fourth tile is "People off"
+  // (distinct employees with approved time-off this month) instead.
+  const activeEmployees = employees.filter((e) => e.status === "ACTIVE");
+  const headcount = Math.max(1, activeEmployees.length);
+  const approvedCount = approved.length;
+  const peopleOffSet = new Set<string>(approved.map((r) => r.employeeId));
+  const outByDay = new Map<string, Set<string>>();
+  for (const r of approved) {
+    for (const day of eachDayBetween(r.startDate, r.endDate)) {
+      if (day < startIso || day > endIso) continue;
+      const s = outByDay.get(day) ?? new Set<string>();
+      s.add(r.employeeId);
+      outByDay.set(day, s);
+    }
+  }
+  let maxOut = 0;
+  for (const s of outByDay.values()) maxOut = Math.max(maxOut, s.size);
+  const coveragePct = Math.round((1 - maxOut / headcount) * 100);
 
   // Totals tab — compact YTD list. Computed only when the tab is open
   // so the calendar tab pays no DB cost. listApprovedTimeOffInRange-
@@ -479,6 +500,19 @@ export default async function CalendarPage({
             mobile. Empty-state collapses entirely when nothing's
             pending — calendar gets the full width. */}
         <aside className="lg:sticky lg:top-4 lg:self-start space-y-3">
+          {/* Month overview — four stat tiles (matches the #58 rail). */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">{monthName} overview</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <OverviewStat tone="emerald" value={approvedCount} label="Approved" sub="Time-off requests" />
+              <OverviewStat tone="amber" value={pendingTimeOff.length} label="Pending" sub="Awaiting approval" />
+              <OverviewStat tone="violet" value={peopleOffSet.size} label="People off" sub="This month" />
+              <OverviewStat tone="indigo" value={`${coveragePct}%`} label="Coverage" sub="Across all shifts" />
+            </CardContent>
+          </Card>
+
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold tracking-tight">
               Pending {pendingTotal > 0 && (
@@ -591,6 +625,31 @@ export default async function CalendarPage({
               )}
             </>
           )}
+
+          {/* Need coverage? — quick jump to the attendance board to fill
+              open shifts (matches the #58 rail). */}
+          <Card>
+            <CardContent className="flex items-center justify-between gap-3 py-4">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">Need coverage?</div>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Find available team members for open shifts.
+                </p>
+                <Link
+                  href="/time"
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline"
+                >
+                  Find coverage <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              <span
+                aria-hidden="true"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-700"
+              >
+                <Users className="h-5 w-5" />
+              </span>
+            </CardContent>
+          </Card>
         </aside>
       </div>
       )}
@@ -687,5 +746,43 @@ function Legend({ label, className }: { label: string; className: string }) {
     <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] ${className}`}>
       {label}
     </span>
+  );
+}
+
+// Overview stat tile for the calendar rail. Uses the dash palette tokens
+// (defined light + dark in globals.css) so each tile stays a distinct,
+// correctly-tinted color in BOTH themes — unlike brand-50, which is
+// deliberately pale in dark mode. color-mix over transparent gives a soft
+// tint that works on both the white (light) and near-black (dark) card.
+const OVERVIEW_TONE: Record<string, string> = {
+  emerald: "var(--dash-emerald)",
+  amber: "var(--dash-amber)",
+  violet: "var(--dash-violet)",
+  indigo: "var(--dash-indigo)",
+};
+
+function OverviewStat({
+  tone,
+  value,
+  label,
+  sub,
+}: {
+  tone: "emerald" | "amber" | "violet" | "indigo";
+  value: string | number;
+  label: string;
+  sub: string;
+}) {
+  const c = OVERVIEW_TONE[tone];
+  return (
+    <div
+      className="rounded-input p-3"
+      style={{ background: `color-mix(in srgb, ${c} 14%, transparent)` }}
+    >
+      <div className="text-2xl font-bold leading-none tabular-nums" style={{ color: c }}>
+        {value}
+      </div>
+      <div className="mt-1.5 text-xs font-semibold text-text">{label}</div>
+      <div className="text-[11px] text-text-muted">{sub}</div>
+    </div>
   );
 }
