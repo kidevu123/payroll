@@ -149,6 +149,41 @@ export function DashboardDarkShell({
         color: DASH.text,
       }}
     >
+      {/* ── Mobile top bar (branding) — the desktop sidebar is hidden on
+          small screens; the bottom tab bar (MobileQuickNav) carries nav. */}
+      <div
+        className="lg:hidden fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 px-4"
+        style={{
+          height: "calc(3.5rem + env(safe-area-inset-top))",
+          paddingTop: "env(safe-area-inset-top)",
+          background: "rgba(13,13,20,0.9)",
+          borderBottom: `1px solid ${DASH.border}`,
+          backdropFilter: "blur(12px)",
+        }}
+      >
+        {company.logoPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={company.logoPath}
+            alt={company.name}
+            width={26}
+            height={26}
+            className="h-6 w-6 rounded-lg object-contain"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="flex h-6 w-6 items-center justify-center rounded-md text-[13px] font-black"
+            style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+          >
+            {company.name.slice(0, 1).toLowerCase()}
+          </span>
+        )}
+        <span className="text-[15px] font-bold tracking-tight" style={{ color: DASH.text }}>
+          {company.name}
+        </span>
+      </div>
+
       {/* ── Sidebar ─────────────────────────────────────────────── */}
       <aside
         className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 flex-col h-dvh"
