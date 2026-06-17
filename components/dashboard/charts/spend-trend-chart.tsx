@@ -84,7 +84,9 @@ function TrendDot(props: {
   const boxW = 52;
   const boxH = 22;
   const boxX = cx - boxW - 2; // pin to the left of the dot so it never clips
-  const boxY = cy - boxH - 10;
+  // Clamp so a high end-value doesn't push the label off the top of a short
+  // chart; drop it just below the dot if there isn't room above.
+  const boxY = cy - boxH - 10 < 2 ? cy + 8 : cy - boxH - 10;
   return (
     <g>
       <circle cx={cx} cy={cy} r={9} fill={CHART.violetBright} fillOpacity={0.16} />
