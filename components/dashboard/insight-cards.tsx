@@ -91,7 +91,7 @@ function MiniStat({
   sub?: React.ReactNode;
 }) {
   return (
-    <DashCard className="flex h-full flex-col justify-between gap-3">
+    <DashCard className="flex h-full flex-col justify-between gap-2">
       <div className="flex items-start justify-between">
         <Eyebrow>{eyebrow}</Eyebrow>
         <span
@@ -103,7 +103,7 @@ function MiniStat({
       </div>
       <div>
         <div
-          className="text-[1.5rem] font-bold leading-none tabular-nums"
+          className="text-[1.3rem] font-bold leading-none tabular-nums"
           style={{ color: DASH.text }}
         >
           {value}
@@ -182,7 +182,7 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
         ? "Stale"
         : "Unknown";
   return (
-    <DashCard className="flex h-full flex-col justify-between gap-3">
+    <DashCard className="flex h-full flex-col justify-between gap-2">
       <div className="flex items-start justify-between">
         <Eyebrow>NGTeco sync</Eyebrow>
         <span
@@ -224,11 +224,11 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
             {word}
           </div>
         </div>
-        <ul className="space-y-1.5">
+        <ul className="space-y-1">
           {health.checklist.map((item: HealthChecklistItem) => (
             <li
               key={item.key}
-              className="flex items-center gap-2 text-[12px]"
+              className="flex items-center gap-2 text-[11px]"
               style={{ color: item.ok ? DASH.textMuted : DASH.textFaint }}
             >
               {item.ok ? (
@@ -265,7 +265,7 @@ export function AutomationBanner({
     <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
       <DashCard
         glow
-        className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center"
+        className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center"
       >
         <div className="flex items-center gap-3">
           <span

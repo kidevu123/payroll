@@ -104,7 +104,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   return (
     <DashCard
       glow={step.primary}
-      className="flex h-full flex-col gap-2 overflow-hidden"
+      className="flex h-full flex-col gap-1 overflow-hidden"
     >
       {/* Big flowing sparkline that bleeds to the top + right edges, behind
           the content — matches the reference's prominent wave. */}
@@ -126,7 +126,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span
-            className="flex h-9 w-9 items-center justify-center rounded-xl"
+            className="flex h-8 w-8 items-center justify-center rounded-xl"
             style={{
               background: "rgba(139,92,246,0.14)",
               border: `1px solid ${DASH.border}`,
@@ -160,7 +160,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 min-w-0">
         <Eyebrow>Total pay period</Eyebrow>
         <div
-          className="mt-1.5 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+          className="mt-1.5 text-[1.5rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
           style={{ color: DASH.text }}
         >
           {formatMoney(card.totalCents)}
@@ -200,7 +200,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1.5 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {

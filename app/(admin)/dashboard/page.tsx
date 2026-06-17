@@ -15,7 +15,6 @@ import {
   SyncCard,
   HealthCard,
   AutomationBanner,
-  KpiBar,
 } from "@/components/dashboard/insight-cards";
 import {
   PendingRequestsCard,
@@ -262,9 +261,6 @@ export default async function DashboardPage() {
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />
       </section>
-
-      {/* BOTTOM — full-width KPI bar */}
-      <KpiBar kpis={metrics.kpis} />
     </div>
   );
 }

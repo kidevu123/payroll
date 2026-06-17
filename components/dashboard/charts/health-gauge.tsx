@@ -23,7 +23,7 @@ export function HealthGauge({ score }: Props) {
   const data = [{ name: "score", value: score, fill: color }];
 
   return (
-    <div className="relative h-24 w-full">
+    <div className="relative h-20 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
           data={data}

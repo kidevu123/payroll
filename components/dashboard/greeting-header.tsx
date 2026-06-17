@@ -50,7 +50,7 @@ export function GreetingHeader({
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
         <h1
-          className="flex items-center gap-2.5 text-[1.55rem] font-bold leading-tight tracking-[-0.02em] sm:text-[1.85rem]"
+          className="flex items-center gap-2.5 text-[1.4rem] font-bold leading-tight tracking-[-0.02em] sm:text-[1.6rem]"
           style={{ color: DASH.text }}
         >
           {word}, {name}
