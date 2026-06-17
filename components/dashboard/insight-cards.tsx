@@ -14,6 +14,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
 import { SpendTrendChart } from "./charts/spend-trend-chart";
 import { SyncSparkline } from "./charts/sync-sparkline";
@@ -83,14 +84,16 @@ function MiniStat({
   icon: Icon,
   accent,
   sub,
+  href,
 }: {
   eyebrow: string;
   value: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   accent: string;
   sub?: React.ReactNode;
+  href?: string;
 }) {
-  return (
+  const card = (
     <DashCard className="flex h-full flex-col gap-1.5">
       <div className="flex items-start justify-between">
         <Eyebrow>{eyebrow}</Eyebrow>
@@ -112,6 +115,17 @@ function MiniStat({
       </div>
     </DashCard>
   );
+
+  if (!href) return card;
+
+  return (
+    <Link
+      href={href}
+      className="block h-full rounded-2xl transition duration-150 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+    >
+      {card}
+    </Link>
+  );
 }
 
 export function HeadcountCard({
@@ -127,6 +141,7 @@ export function HeadcountCard({
       value={String(count)}
       icon={Users}
       accent={DASH.violetBright}
+      href="/employees"
       sub={
         <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: DASH.textFaint }}>
           Active employees
@@ -153,6 +168,7 @@ export function ExceptionsCard({ count }: { count: number }) {
       value={String(count)}
       icon={clear ? CheckCircle2 : TriangleAlert}
       accent={clear ? DASH.emerald : DASH.amber}
+      href="/hall-monitor"
       sub={
         <span
           className="inline-flex items-center gap-1 text-[11px]"

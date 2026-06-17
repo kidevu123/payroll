@@ -23,15 +23,15 @@ export function HealthGauge({ score }: Props) {
   const data = [{ name: "score", value: score, fill: color }];
 
   return (
-    <div className="relative h-16 w-full">
+    <div className="relative h-[4.5rem] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadialBarChart
           data={data}
           startAngle={220}
           endAngle={-40}
-          innerRadius="72%"
+          innerRadius="80%"
           outerRadius="100%"
-          barSize={10}
+          barSize={8}
         >
           <defs>
             <filter id="gaugeGlow" x="-30%" y="-30%" width="160%" height="160%">
@@ -60,12 +60,12 @@ export function HealthGauge({ score }: Props) {
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span
-          className="text-3xl font-bold tabular-nums leading-none"
+          className="text-2xl font-bold tabular-nums leading-none"
           style={{ color }}
         >
           {score}
         </span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-wider" style={{ color: "#6e6e85" }}>
+        <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wider" style={{ color: "#6e6e85" }}>
           / 100
         </span>
       </div>

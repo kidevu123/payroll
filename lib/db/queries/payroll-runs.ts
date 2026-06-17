@@ -126,10 +126,15 @@ export async function listReports(
   limit = 100,
   /**
    * Filter by pay-schedule kind. WEEKLY / SEMI_MONTHLY / MONTHLY map to
-   * paySchedules.periodKind. Pass `null` (default) to return everything
-   * including legacy runs with no schedule attached.
+   * paySchedules.periodKind directly. "SALARIED" has no period_kind of its
+   * own (the enum only covers WEEKLY/BIWEEKLY/SEMI_MONTHLY/MONTHLY), so it
+   * matches runs whose schedule name does NOT read as a recurring cadence
+   * (or has no schedule attached) — the same classification the Reports
+   * overview donut uses in lib/reports/reports-overview.ts (cadenceOf).
+   * Pass `null` (default) to return everything including legacy runs with
+   * no schedule attached.
    */
-  scheduleKind: "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null = null,
+  scheduleKind: "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | "SALARIED" | null = null,
 ): Promise<ReportRow[]> {
   const baseQuery = db
     .select({
@@ -169,9 +174,28 @@ export async function listReports(
     .leftJoin(paySchedules, eq(payrollRuns.payScheduleId, paySchedules.id))
     .leftJoin(users, eq(payrollRuns.approvedById, users.id));
   // Sort by the actual period the run pays out, newest first.
-  const filtered = scheduleKind
-    ? baseQuery.where(eq(paySchedules.periodKind, scheduleKind))
-    : baseQuery;
+  // WEEKLY/SEMI_MONTHLY/MONTHLY filter on the schedule's period_kind enum.
+  // "SALARIED" is synthetic: it has no period_kind, so match it the way the
+  // Reports overview donut classifies cadence (reports-overview.ts → cadenceOf)
+  // — a run is salaried when its schedule name does NOT read as a recurring
+  // cadence (no semi/twice/bi-month/week/month), or has no schedule at all.
+  // Keeping the two in lock-step is what makes the Salaried tab show exactly
+  // the runs the donut counts as Salaried.
+  let filtered;
+  if (scheduleKind === "SALARIED") {
+    const name = sql`LOWER(COALESCE(${paySchedules.name}, ''))`;
+    filtered = baseQuery.where(
+      sql`${name} NOT LIKE '%semi%'
+        AND ${name} NOT LIKE '%twice%'
+        AND ${name} NOT LIKE '%bi-month%'
+        AND ${name} NOT LIKE '%week%'
+        AND ${name} NOT LIKE '%month%'`,
+    );
+  } else if (scheduleKind) {
+    filtered = baseQuery.where(eq(paySchedules.periodKind, scheduleKind));
+  } else {
+    filtered = baseQuery;
+  }
   const rows = await filtered
     .orderBy(desc(payPeriods.endDate), desc(payrollRuns.createdAt))
     .limit(limit);

@@ -67,17 +67,11 @@ import {
 } from "./actions";
 import { markPaidAction } from "../payroll/actions";
 
-/** Cadence → accent color tied to the same family the SchedulePill uses,
- *  so weekly vs semi-monthly vs monthly is scannable down the left edge
- *  of the statement. A thin colored rail, not a fill — premium, not loud. */
+/** Cadence accent rail. A single, quiet brand-tinted edge so the row reads
+ *  as part of one cohesive statement — the cadence itself is spelled out by
+ *  the SchedulePill, so the rail no longer needs to carry color meaning. */
 function cadenceAccent(name: string | null | undefined): string {
-  if (!name) return "bg-border-strong";
-  const n = name.toLowerCase();
-  if (n.includes("semi")) return "bg-purple-400";
-  if (n.includes("bi") || n.includes("two-week")) return "bg-teal-400";
-  if (n.includes("month") && !n.includes("semi")) return "bg-amber-400";
-  if (n.includes("week")) return "bg-blue-400";
-  return "bg-border-strong";
+  return name ? "bg-brand-700" : "bg-border-strong";
 }
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -513,14 +507,14 @@ function PeriodLine({
               <span className="font-mono tabular-nums text-xl font-semibold tracking-tight text-text">
                 <MoneyDisplay cents={net} />
               </span>
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-[10px] leading-tight tabular-nums">
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 font-mono text-[10px] leading-tight tabular-nums">
                 {gross > 0 && gross !== net && (
-                  <span className="font-mono text-text-subtle">
+                  <span className="text-text-subtle">
                     gross <MoneyDisplay cents={gross} monospace={false} />
                   </span>
                 )}
                 {group.docNetPayCents > 0 && (
-                  <span className="font-mono text-emerald-700">
+                  <span className="text-success-700">
                     +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
                   </span>
                 )}
@@ -566,7 +560,7 @@ function PeriodLine({
 
       {/* Pay-from-drawer dialog (inline, period-level) */}
       {canManageReports && payOpen && periodState === "LOCKED" && (
-        <div className="mt-3 rounded-input border border-amber-200/70 bg-amber-50/50 px-3 py-3">
+        <div className="mt-3 rounded-input border border-warn-200/70 bg-warn-50/50 px-3 py-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
               <p className="text-[11px] uppercase tracking-wider text-text-subtle">
@@ -625,13 +619,16 @@ function PeriodLine({
                 href={`/payroll/${r.periodId}`}
                 className="flex min-w-0 flex-1 items-baseline gap-1.5 hover:text-brand-700"
               >
-                <span className="font-mono text-[10px] uppercase tracking-wider text-text-subtle">
+                <span className="text-[10px] uppercase tracking-wider text-text-subtle">
                   {r.source.replace(/_/g, " ")}
                 </span>
                 <span className="text-text-subtle">·</span>
-                <span className="font-mono text-xs text-text">{r.id.slice(0, 8)}</span>
+                <span className="font-mono text-xs tabular-nums text-text-muted">
+                  {r.id.slice(0, 8)}
+                </span>
                 <span className="truncate text-[11px] text-text-muted">
-                  {r.createdByDisplay} · {formatDate(r.postedAt)}
+                  {r.createdByDisplay} ·{" "}
+                  <span className="font-mono tabular-nums">{formatDate(r.postedAt)}</span>
                 </span>
               </Link>
               <div className="flex items-center justify-between gap-2 sm:justify-end">
@@ -674,20 +671,20 @@ function PaymentChip({
   if (state !== "PAID") return null;
   if (method === "CASH") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200 bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-800">
         <Banknote className="h-3 w-3" /> Paid from drawer
       </span>
     );
   }
   if (method === "BANK") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-info-200 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+      <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
         <Landmark className="h-3 w-3" /> Paid via bank
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+    <span className="inline-flex items-center gap-1 rounded-chip border border-success-100 bg-success-50 px-2 py-0.5 text-[10px] font-medium text-success-800">
       <CheckCircle2 className="h-3 w-3" /> Paid
     </span>
   );
@@ -696,11 +693,11 @@ function PaymentChip({
 /** Portal visibility chip (per run). */
 function VisibilityChip({ published }: { published: boolean }) {
   return published ? (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-800 ring-1 ring-inset ring-success-100 whitespace-nowrap">
       <CheckCircle2 className="h-2.5 w-2.5" /> Published
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-1.5 py-0.5 text-[10px] font-medium text-warn-800 ring-1 ring-inset ring-warn-200 whitespace-nowrap">
       <CircleDot className="h-2.5 w-2.5" /> Internal
     </span>
   );
@@ -723,7 +720,7 @@ function ZohoBadges({
     <div className="flex items-center gap-1.5">
       {pushedHaute && (
         <span
-          className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-800 ring-1 ring-inset ring-success-100"
           title={`Haute · expense ${pushedHaute.expenseId ?? "—"}`}
         >
           <CheckCircle2 className="h-2.5 w-2.5" /> Haute
@@ -731,7 +728,7 @@ function ZohoBadges({
       )}
       {pushedBoomin && (
         <span
-          className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-800 ring-1 ring-inset ring-success-100"
           title={`Boomin · expense ${pushedBoomin.expenseId ?? "—"}`}
         >
           <CheckCircle2 className="h-2.5 w-2.5" /> Boomin

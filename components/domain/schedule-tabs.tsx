@@ -100,14 +100,21 @@ export function parseScheduleTab(value: string | undefined): ScheduleTab {
 }
 
 /**
- * Drizzle WHERE-fragment helper: maps a tab to the schedule.period_kind
- * predicate the server query needs. Returns null when no filter applies.
+ * Drizzle WHERE-fragment helper: maps a tab to the schedule filter the
+ * server query needs. WEEKLY/SEMI_MONTHLY/MONTHLY map directly to
+ * schedule.period_kind. "salaried" maps to the synthetic "SALARIED"
+ * filter — salaried runs have NO period_kind of their own (the enum only
+ * covers WEEKLY/BIWEEKLY/SEMI_MONTHLY/MONTHLY), so listReports matches
+ * them by schedule name the same way the Reports overview donut does
+ * (name lacks week/semi/month, or no schedule attached). Returns null for
+ * "all", when no filter applies.
  */
 export function scheduleTabToKind(
   tab: ScheduleTab,
-): "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null {
+): "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | "SALARIED" | null {
   if (tab === "weekly") return "WEEKLY";
   if (tab === "semi") return "SEMI_MONTHLY";
   if (tab === "monthly") return "MONTHLY";
+  if (tab === "salaried") return "SALARIED";
   return null;
 }

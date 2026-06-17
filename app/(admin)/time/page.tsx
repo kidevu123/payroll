@@ -389,7 +389,13 @@ export default async function TimePage({
   const today = todayInTimezone(company.timezone);
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
-  const kindFilter = scheduleTabToKind(tab);
+  // Time only filters on punch-bearing cadences. The "SALARIED" synthetic
+  // kind (returned by scheduleTabToKind for the Salaried tab) is handled by
+  // the early return below, so collapse it to null here — salaried staff have
+  // no punches and never reach the period/employee filters that use this.
+  const rawKind = scheduleTabToKind(tab);
+  const kindFilter: "WEEKLY" | "SEMI_MONTHLY" | "MONTHLY" | null =
+    rawKind === "SALARIED" ? null : rawKind;
 
   // Salaried staff don't punch a clock — the Time grid is hourly punches only.
   // Without this guard the Salaried tab falls through (no kind filter) and
