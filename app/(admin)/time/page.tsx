@@ -1,5 +1,17 @@
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CalendarX2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Plus,
+  Sparkles,
+  TimerReset,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
 import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -589,6 +601,79 @@ export default async function TimePage({
     }
   }
 
+  // ── KPI + rail metrics (drives the #57 attendance board) ──────────────
+  const tz = company.timezone;
+  let totalMinutes = 0;
+  const minutesByEmp = new Map<string, number>();
+  for (const p of punchesInRange) {
+    if (!p.clockOut) continue;
+    const mins = (p.clockOut.getTime() - p.clockIn.getTime()) / 60000;
+    if (mins <= 0) continue;
+    totalMinutes += mins;
+    minutesByEmp.set(p.employeeId, (minutesByEmp.get(p.employeeId) ?? 0) + mins);
+  }
+  const fmtHm = (mins: number): string =>
+    `${Math.floor(mins / 60).toLocaleString()}h ${Math.round(mins % 60)}m`;
+  const teamSize = employees.filter((e) => e.status === "ACTIVE").length;
+  const clockedInToday = new Set(
+    punchesInRange
+      .filter((p) => dayOf(p.clockIn, tz) === todayIso)
+      .map((p) => p.employeeId),
+  ).size;
+  const teamPct = teamSize ? Math.round((clockedInToday / teamSize) * 100) : 0;
+  const openNow = punchesInRange.filter(
+    (p) => p.clockOut === null && dayOf(p.clockIn, tz) === todayIso,
+  ).length;
+  // Overtime: minutes beyond 40h per employee across the displayed window.
+  const OT_MIN = 40 * 60;
+  let regularMin = 0;
+  let overtimeMin = 0;
+  for (const m of minutesByEmp.values()) {
+    if (m > OT_MIN) {
+      regularMin += OT_MIN;
+      overtimeMin += m - OT_MIN;
+    } else regularMin += m;
+  }
+  const overtimeRisk = [...minutesByEmp.values()].filter((m) => m >= OT_MIN * 0.875).length;
+  // Unpaired / ambiguous punches across the window (exceptions queue).
+  const unpairedCount = punchesInRange.filter(
+    (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p),
+  ).length;
+  // Today's column snapshot for the summary donut.
+  const todaySummary = { present: 0, incomplete: 0, missing: 0, timeOff: 0, unpaid: 0 };
+  for (const e of employees) {
+    if (e.status !== "ACTIVE") continue;
+    const list = grid.get(e.id)?.get(todayIso) ?? [];
+    const offType = timeOffByDay.get(`${e.id}|${todayIso}`);
+    if (list.length === 0) {
+      if (offType === "UNPAID") todaySummary.unpaid++;
+      else if (offType) todaySummary.timeOff++;
+      else todaySummary.missing++;
+    } else if (
+      list.some(
+        (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p) || isOpenShiftPunch(p),
+      )
+    ) {
+      todaySummary.incomplete++;
+    } else todaySummary.present++;
+  }
+  const summaryTotal =
+    todaySummary.present +
+    todaySummary.incomplete +
+    todaySummary.missing +
+    todaySummary.timeOff +
+    todaySummary.unpaid;
+  // Per-day labor hours for the rail sparkline.
+  const hoursByDay = days.map((d) => {
+    let mins = 0;
+    for (const p of punchesInRange) {
+      if (!p.clockOut) continue;
+      if (dayOf(p.clockIn, tz) !== d) continue;
+      mins += (p.clockOut.getTime() - p.clockIn.getTime()) / 60000;
+    }
+    return Math.round((mins / 60) * 10) / 10;
+  });
+
   const stateBadge = (() => {
     switch (period.state) {
       case "UPCOMING":
@@ -672,11 +757,21 @@ export default async function TimePage({
         </div>
       </div>
 
+      {/* KPI row — five attendance metrics (matches #57). */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <KpiCard icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
+        <KpiCard icon={Users} tone="indigo" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
+        <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
+        <KpiCard icon={CalendarX2} tone="violet" value={openNow} label="Open shifts" sub="In progress now" />
+        <KpiCard icon={TimerReset} tone="rose" value={overtimeRisk} label="Overtime risk" sub={overtimeRisk > 0 ? "Review needed" : "On track"} />
+      </div>
+
       {staleOpenPunchCount > 0 && (
         <BackfillAlert openCountFromPriorDays={staleOpenPunchCount} />
       )}
 
-      <div className="overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
         <table className="min-w-full text-body border-collapse">
           <thead>
             <tr className="border-b border-border/80 bg-surface-2/90">
@@ -802,6 +897,25 @@ export default async function TimePage({
             ))}
           </tbody>
         </table>
+        </div>
+
+        {/* Right rail — today's summary, exceptions, labor, insight (#57). */}
+        <aside className="space-y-3">
+          <TodaySummaryCard summary={todaySummary} total={summaryTotal} />
+          <ExceptionsQueueCard
+            missing={staleOpenPunchCount}
+            unpaired={unpairedCount}
+            openShifts={openNow}
+          />
+          <LaborHoursCard
+            regularMin={regularMin}
+            overtimeMin={overtimeMin}
+            totalMin={totalMinutes}
+            spark={hoursByDay}
+            fmtHm={fmtHm}
+          />
+          <MiloInsightCard overtimeRisk={overtimeRisk} />
+        </aside>
       </div>
     </div>
   );
@@ -919,4 +1033,258 @@ function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string 
     return `${inS} to ${outS}`;
   });
   return lines.join("; ");
+}
+
+// ── #57 attendance-board KPI + rail components ───────────────────────────
+
+const KPI_TONE: Record<string, string> = {
+  emerald: "var(--dash-emerald)",
+  indigo: "var(--dash-indigo)",
+  amber: "var(--dash-amber)",
+  violet: "var(--dash-violet)",
+  rose: "var(--dash-rose)",
+};
+
+function KpiCard({
+  icon: Icon,
+  tone,
+  value,
+  label,
+  sub,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof KPI_TONE;
+  value: string | number;
+  label: string;
+  sub: string;
+}) {
+  const c = KPI_TONE[tone];
+  return (
+    <div className="rounded-card border border-border bg-surface p-3 shadow-card">
+      <span
+        className="flex h-8 w-8 items-center justify-center rounded-lg"
+        style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="mt-2 text-xl font-bold leading-tight tabular-nums tracking-tight text-text">
+        {value}
+      </div>
+      <div className="text-[12px] font-medium text-text-muted">{label}</div>
+      <div className="text-[11px] font-medium" style={{ color: c }}>
+        {sub}
+      </div>
+    </div>
+  );
+}
+
+const SUMMARY_SEGMENTS: { key: string; label: string; color: string }[] = [
+  { key: "present", label: "Present", color: "var(--dash-emerald)" },
+  { key: "incomplete", label: "Incomplete", color: "var(--dash-amber)" },
+  { key: "missing", label: "Missing", color: "var(--dash-rose)" },
+  { key: "timeOff", label: "Time off", color: "var(--dash-indigo)" },
+  { key: "unpaid", label: "Unpaid", color: "var(--dash-text-faint)" },
+];
+
+function TodaySummaryCard({
+  summary,
+  total,
+}: {
+  summary: Record<string, number>;
+  total: number;
+}) {
+  let acc = 0;
+  const stops: string[] = [];
+  for (const s of SUMMARY_SEGMENTS) {
+    const v = summary[s.key] ?? 0;
+    if (total > 0 && v > 0) {
+      const start = (acc / total) * 360;
+      acc += v;
+      const end = (acc / total) * 360;
+      stops.push(`${s.color} ${start}deg ${end}deg`);
+    }
+  }
+  const ring =
+    total > 0
+      ? `conic-gradient(${stops.join(", ")})`
+      : "conic-gradient(var(--dash-border) 0deg 360deg)";
+  return (
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Today&rsquo;s summary</h3>
+        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+          Updated just now
+        </span>
+      </div>
+      <div className="mt-3 flex items-center gap-4">
+        <div
+          className="relative h-[88px] w-[88px] shrink-0 rounded-full"
+          style={{ background: ring }}
+        >
+          <div className="absolute inset-[11px] flex flex-col items-center justify-center rounded-full bg-surface">
+            <span className="text-lg font-bold leading-none tabular-nums">{total}</span>
+            <span className="text-[10px] text-text-muted">Total</span>
+          </div>
+        </div>
+        <ul className="flex-1 space-y-1">
+          {SUMMARY_SEGMENTS.map((s) => (
+            <li key={s.key} className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-text-muted">
+                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                {s.label}
+              </span>
+              <span className="font-semibold tabular-nums">{summary[s.key] ?? 0}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function ExceptionsQueueCard({
+  missing,
+  unpaired,
+  openShifts,
+}: {
+  missing: number;
+  unpaired: number;
+  openShifts: number;
+}) {
+  const total = missing + unpaired + openShifts;
+  const rows = [
+    { label: "Missing punches", value: missing, color: "var(--dash-rose)" },
+    { label: "Unpaired punches", value: unpaired, color: "var(--dash-amber)" },
+    { label: "Open shifts", value: openShifts, color: "var(--dash-violet)" },
+  ];
+  return (
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          Exceptions queue
+          {total > 0 && (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 px-1.5 text-[11px] font-bold text-warn-700">
+              {total}
+            </span>
+          )}
+        </h3>
+        <Link
+          href="/hall-monitor"
+          className="text-[11px] font-medium text-brand-700 hover:underline"
+        >
+          View all
+        </Link>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {rows.map((r) => (
+          <li key={r.label} className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 text-text-muted">
+              <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
+              {r.label}
+            </span>
+            <span className="font-semibold tabular-nums">{r.value}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const w = 132;
+  const h = 30;
+  const pts = data
+    .map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * (h - 2) - 1}`)
+    .join(" ");
+  return (
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <polyline
+        points={pts}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function LaborHoursCard({
+  regularMin,
+  overtimeMin,
+  totalMin,
+  spark,
+  fmtHm,
+}: {
+  regularMin: number;
+  overtimeMin: number;
+  totalMin: number;
+  spark: number[];
+  fmtHm: (mins: number) => string;
+}) {
+  return (
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Labor hours</h3>
+        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+          This pay period
+        </span>
+      </div>
+      <dl className="mt-3 space-y-1.5 text-xs">
+        <div className="flex items-center justify-between">
+          <dt className="text-text-muted">Regular</dt>
+          <dd className="font-semibold tabular-nums">{fmtHm(regularMin)}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt className="text-text-muted">Overtime</dt>
+          <dd className="font-semibold tabular-nums" style={{ color: "var(--dash-amber)" }}>
+            {fmtHm(overtimeMin)}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between border-t border-border pt-1.5">
+          <dt className="font-medium">Total</dt>
+          <dd className="font-bold tabular-nums">{fmtHm(totalMin)}</dd>
+        </div>
+      </dl>
+      <div className="mt-2">
+        <Sparkline data={spark} color="var(--dash-violet)" />
+      </div>
+    </div>
+  );
+}
+
+function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
+  return (
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
+      <div className="flex items-center gap-1.5">
+        <Sparkles className="h-3.5 w-3.5 text-brand-700" />
+        <h3 className="text-sm font-semibold">Milo insight</h3>
+        <span
+          className="rounded px-1 text-[9px] font-bold uppercase tracking-wide"
+          style={{
+            background: "color-mix(in srgb, var(--dash-violet) 18%, transparent)",
+            color: "var(--dash-violet)",
+          }}
+        >
+          Beta
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-text-muted">
+        {overtimeRisk > 0
+          ? `${overtimeRisk} team member${overtimeRisk === 1 ? "" : "s"} approaching overtime this period. Consider adjusting shifts or approving overtime.`
+          : "No overtime risk this period — labor is tracking on plan."}
+      </p>
+      {overtimeRisk > 0 && (
+        <Link
+          href="/time"
+          className="mt-2.5 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2"
+        >
+          Review overtime risk <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </div>
+  );
 }
