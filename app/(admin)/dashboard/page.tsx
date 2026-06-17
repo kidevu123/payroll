@@ -1,50 +1,62 @@
+// Premium dark "wow" dashboard — the showcase screen.
+//
+// Self-contained dark canvas: the rest of the app is light, so this page
+// wraps everything in a deep near-black container with explicit dark surface
+// styling. It does NOT enable global dark mode or touch app/globals.css token
+// values. All charts are client components fed serializable props from this
+// RSC page.
+
 import Link from "next/link";
-import { CalendarDays, CheckCircle2 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { MoneyDisplay } from "@/components/domain/money-display";
-import { StatusPill } from "@/components/domain/status-pill";
-import { SchedulePill } from "@/components/domain/schedule-pill";
-import { StatStrip } from "@/components/domain/stat-strip";
-import { ScheduleCockpit } from "@/components/domain/schedule-cockpit";
-import { computeScheduleCockpit } from "@/lib/payroll/schedule-cockpit";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
-import { AttendancePanel } from "@/components/domain/attendance-panel";
+import { GreetingHeader } from "@/components/dashboard/greeting-header";
+import { CadenceCard } from "@/components/dashboard/cadence-card";
+import {
+  TrendCard,
+  HeadcountCard,
+  ExceptionsCard,
+  SyncCard,
+  HealthCard,
+  AutomationBanner,
+  KpiBar,
+} from "@/components/dashboard/insight-cards";
+import {
+  PendingRequestsCard,
+  RecentRunsCard,
+  TodayCard,
+  type PendingItem,
+  type RecentRunItem,
+  type TodayBuckets,
+} from "@/components/dashboard/activity-cards";
+import { DASH } from "@/components/dashboard/theme";
+import { computeDashboardMetrics } from "@/lib/payroll/dashboard-metrics";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listTodayPunches } from "@/lib/db/queries/punches";
-import { listRates } from "@/lib/db/queries/rate-history";
-import {
-  getCurrentPeriod,
-  getMostRecentPeriod,
-} from "@/lib/db/queries/pay-periods";
 import { listRuns } from "@/lib/db/queries/payroll-runs";
-import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
 import {
   listPendingMissedPunchRequests,
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
 import { listApprovedTimeOffForDate } from "@/lib/db/queries/time-off";
-import { getLastSuccessfulPoll } from "@/lib/db/queries/poll-history";
 import { getSetting } from "@/lib/settings/runtime";
-import { computePay } from "@/lib/payroll/computePay";
+import { requireSession } from "@/lib/auth-guards";
 import { formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { taskPayLineItems } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-function todayInTz(tz: string) {
+function todayInTz(tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
 }
 
-/** "May 22" style label for the attendance panel header. */
+function hourInTz(tz: string): number {
+  const h = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "numeric",
+    hour12: false,
+  }).format(new Date());
+  return Number(h) % 24;
+}
+
 function shortDateLabel(isoDate: string): string {
   const [, m, d] = isoDate.split("-").map(Number) as [number, number, number];
   return new Intl.DateTimeFormat("en-US", {
@@ -55,132 +67,30 @@ function shortDateLabel(isoDate: string): string {
 }
 
 export default async function DashboardPage() {
+  const session = await requireSession();
   const company = await getSetting("company");
   const today = todayInTz(company.timezone);
-
-  const period =
-    (await getCurrentPeriod(today)) ?? (await getMostRecentPeriod());
+  const hour = hourInTz(company.timezone);
 
   const [
+    metrics,
     employees,
-    pendingMissed,
-    pendingTimeOff,
     todayPunches,
     approvedOffToday,
-    lastPoll,
+    pendingMissed,
+    pendingTimeOff,
+    rawRecent,
   ] = await Promise.all([
+    computeDashboardMetrics({ today, sessionEmail: session.user.email ?? null }),
     listEmployees({ status: "ACTIVE" }),
-    listPendingMissedPunchRequests(),
-    listPendingTimeOffRequests(),
     listTodayPunches(today, company.timezone),
     listApprovedTimeOffForDate(today),
-    getLastSuccessfulPoll(),
+    listPendingMissedPunchRequests(),
+    listPendingTimeOffRequests(),
+    listRuns(5),
   ]);
 
-  const pendingTotal = pendingMissed.length + pendingTimeOff.length;
-
-  // Per-schedule cockpit: one box per active schedule (Weekly / Semi-monthly /
-  // Monthly), each with its own period total. Never summed across schedules.
-  const cockpitRows = await computeScheduleCockpit(today);
-
-  // ── Period stats ─────────────────────────────────────────────────────────
-  // Computed whenever a period exists, regardless of run state. This ensures
-  // the PayrollRunCard and StatStrip always show live data on non-Sunday days.
-  let stats:
-    | {
-        hours: number;
-        gross: number;
-        rounded: number;
-        employeeCount: number;
-        unresolvedAlerts: number;
-      }
-    | undefined;
-  if (period) {
-    const [periodPunches, payRules, alerts] = await Promise.all([
-      import("@/lib/db/queries/punches").then((m) =>
-        m.listPunches({ periodId: period.id }),
-      ),
-      getSetting("payRules"),
-      listAlertsForPeriod(period.id, { unresolvedOnly: true }),
-    ]);
-    const tasks = await db
-      .select()
-      .from(taskPayLineItems)
-      .where(eq(taskPayLineItems.periodId, period.id));
-    const { tempWorkerEntries } = await import("@/lib/db/schema");
-    const tempWorkers = await db
-      .select()
-      .from(tempWorkerEntries)
-      .where(eq(tempWorkerEntries.periodId, period.id));
-
-    const punchesByE = new Map<string, typeof periodPunches>();
-    for (const p of periodPunches) {
-      const list = punchesByE.get(p.employeeId) ?? [];
-      list.push(p);
-      punchesByE.set(p.employeeId, list);
-    }
-    const tasksByE = new Map<string, typeof tasks>();
-    for (const t of tasks) {
-      const list = tasksByE.get(t.employeeId) ?? [];
-      list.push(t);
-      tasksByE.set(t.employeeId, list);
-    }
-
-    let totals = { hours: 0, gross: 0, rounded: 0 };
-    let activeWithWork = 0;
-
-    for (const e of employees) {
-      const ePunches = punchesByE.get(e.id) ?? [];
-      const eTasks = tasksByE.get(e.id) ?? [];
-      if (ePunches.length === 0 && eTasks.length === 0) continue;
-      const rates = await listRates(e.id);
-      const result = computePay({
-        punches: ePunches,
-        rateAt: (p) => {
-          const day = (
-            p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn)
-          )
-            .toISOString()
-            .slice(0, 10);
-          for (const r of rates)
-            if (r.effectiveFrom <= day) return r.hourlyRateCents;
-          return e.hourlyRateCents ?? 0;
-        },
-        taskPay: eTasks.map((t) => ({ amountCents: t.amountCents })),
-        rules: {
-          rounding: payRules.rounding,
-          hoursDecimalPlaces: payRules.hoursDecimalPlaces,
-          ...(payRules.overtime.enabled
-            ? {
-                overtime: {
-                  thresholdHours: payRules.overtime.thresholdHours,
-                  multiplier: payRules.overtime.multiplier,
-                },
-              }
-            : {}),
-        },
-      });
-      totals.hours += result.totalHours;
-      totals.gross += result.grossCents;
-      totals.rounded += result.roundedCents;
-      activeWithWork++;
-    }
-
-    for (const tw of tempWorkers) {
-      totals.gross += tw.amountCents;
-      totals.rounded += tw.amountCents;
-      if (tw.hours !== null) totals.hours += Number(tw.hours);
-      activeWithWork += 1;
-    }
-
-    stats = {
-      ...totals,
-      employeeCount: activeWithWork,
-      unresolvedAlerts: alerts.length,
-    };
-  }
-
-  // ── Attendance panel buckets ──────────────────────────────────────────────
+  // ── Attendance buckets (same logic as the prior dashboard) ────────────────
   const punchedEmpIds = new Set(todayPunches.map((p) => p.employeeId));
   const firstPunchByEmp = new Map<string, Date>();
   for (const p of todayPunches) {
@@ -191,40 +101,52 @@ export default async function DashboardPage() {
   }
   const approvedOffEmpIds = new Set(approvedOffToday.map((r) => r.employeeId));
 
-  const punchedList = employees
-    .filter((e) => punchedEmpIds.has(e.id))
-    .map((e) => ({
-      id: e.id,
-      name: e.displayName,
-      firstPunchAt: formatTimeShort(
-        firstPunchByEmp.get(e.id)!,
-        company.timezone,
-      ),
-    }));
+  const todayBuckets: TodayBuckets = {
+    punched: employees
+      .filter((e) => punchedEmpIds.has(e.id))
+      .map((e) => ({
+        id: e.id,
+        name: e.displayName,
+        firstPunchAt: formatTimeShort(firstPunchByEmp.get(e.id)!, company.timezone),
+      })),
+    approvedOut: employees
+      .filter((e) => !punchedEmpIds.has(e.id) && approvedOffEmpIds.has(e.id))
+      .map((e) => {
+        const req = approvedOffToday.find((r) => r.employeeId === e.id);
+        return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID" };
+      }),
+    noPunch: employees
+      .filter((e) => !punchedEmpIds.has(e.id) && !approvedOffEmpIds.has(e.id))
+      .map((e) => ({ id: e.id, name: e.displayName })),
+    label: shortDateLabel(today),
+  };
 
-  const approvedOutList = employees
-    .filter((e) => !punchedEmpIds.has(e.id) && approvedOffEmpIds.has(e.id))
-    .map((e) => {
-      const req = approvedOffToday.find((r) => r.employeeId === e.id);
-      return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID" };
-    });
-
-  const noPunchList = employees
-    .filter((e) => !punchedEmpIds.has(e.id) && !approvedOffEmpIds.has(e.id))
-    .map((e) => ({ id: e.id, name: e.displayName }));
+  // ── Pending request items ─────────────────────────────────────────────────
+  const pendingItems: PendingItem[] = [
+    ...pendingMissed.map((r) => ({
+      id: r.id,
+      kind: "MISSED_PUNCH" as const,
+      title: `Missed punch · ${r.date}`,
+      subtitle: r.reason,
+    })),
+    ...pendingTimeOff.map((r) => ({
+      id: r.id,
+      kind: "TIME_OFF" as const,
+      title: `Time off · ${r.startDate} – ${r.endDate}`,
+      subtitle: r.reason ?? r.type.toLowerCase(),
+    })),
+  ];
 
   // ── Recent runs ───────────────────────────────────────────────────────────
-  const rawRecent = await listRuns(5);
   const periodIds = Array.from(new Set(rawRecent.map((r) => r.periodId)));
   const scheduleIds = Array.from(
     new Set(
-      rawRecent
-        .map((r) => r.payScheduleId)
-        .filter((s): s is string => Boolean(s)),
+      rawRecent.map((r) => r.payScheduleId).filter((s): s is string => Boolean(s)),
     ),
   );
-  const { payPeriods: periodsTable, paySchedules: schedulesTable } =
-    await import("@/lib/db/schema");
+  const { payPeriods: periodsTable, paySchedules: schedulesTable } = await import(
+    "@/lib/db/schema"
+  );
   const { inArray } = await import("drizzle-orm");
   const [periodRows, scheduleRows] = await Promise.all([
     periodIds.length
@@ -239,196 +161,112 @@ export default async function DashboardPage() {
   ]);
   const periodById = new Map(periodRows.map((p) => [p.id, p]));
   const scheduleById = new Map(scheduleRows.map((s) => [s.id, s]));
-  const recentRuns = rawRecent.map((r) => ({
-    ...r,
-    period: periodById.get(r.periodId) ?? null,
-    schedule: r.payScheduleId
+  const recentRuns: RecentRunItem[] = rawRecent.map((r) => {
+    const period = periodById.get(r.periodId) ?? null;
+    const schedule = r.payScheduleId
       ? (scheduleById.get(r.payScheduleId) ?? null)
-      : null,
-  }));
+      : null;
+    return {
+      id: r.id,
+      href: period ? `/payroll/${period.id}` : `/payroll/run/${r.id}`,
+      label: period
+        ? `${period.startDate} – ${period.endDate}`
+        : `Run ${r.id.slice(0, 8)}`,
+      scheduleName: schedule?.name ?? null,
+      amountCents: r.totalAmountCents,
+      state: r.state,
+    };
+  });
+
+  // ── Quick action: point at the most urgent cadence's next step ────────────
+  const urgent =
+    metrics.cadences.find((c) =>
+      ["AWAITING_ADMIN_REVIEW", "AWAITING_EMPLOYEE_FIXES", "APPROVED"].includes(
+        c.runState ?? "",
+      ),
+    ) ?? metrics.cadences.find((c) => c.period && c.period.state !== "PAID");
+  const quickActionHref = urgent?.period
+    ? urgent.runId
+      ? `/payroll/run/${urgent.runId}`
+      : `/payroll/${urgent.period.id}`
+    : "/payroll";
+  const quickActionLabel = urgent ? "Quick action" : "Go to payroll";
 
   return (
-    <div className="space-y-5">
-      {/* Apple-bold header — big bold title, generous top space, calm muted
-          subtitle, and the date as a clean rounded pill. White and airy. */}
-      <header className="pt-3 sm:pt-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0 space-y-3">
-            <h1 className="text-[2.75rem] font-bold leading-[1.05] tracking-[-0.03em] text-text sm:text-[3.25rem]">
-              Dashboard
-            </h1>
-            <p className="max-w-2xl text-body leading-relaxed text-text-muted">
-              Today’s attendance, open period, and items waiting on you.
-            </p>
+    <div
+      className="-mx-4 -my-4 min-h-screen px-4 py-6 sm:-mx-6 sm:-my-6 sm:px-6 sm:py-8"
+      style={{
+        background: `radial-gradient(1200px 600px at 80% -10%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
+        color: DASH.text,
+      }}
+    >
+      <div className="mx-auto max-w-[1400px] space-y-6">
+        <GreetingHeader
+          name={metrics.greetingName}
+          hour={hour}
+          todayLabel={shortDateLabel(today)}
+          quickActionHref={quickActionHref}
+          quickActionLabel={quickActionLabel}
+        />
+
+        {/* TOP ROW — cadence cards */}
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {metrics.cadences.map((card) => (
+            <CadenceCard key={card.scheduleId} card={card} />
+          ))}
+        </section>
+
+        {/* SECOND ROW — trend + mini stats + sync + health */}
+        <section className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-5 xl:col-span-6">
+            <TrendCard trend={metrics.trend} />
           </div>
-          <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-medium text-text-muted shadow-card sm:self-auto">
-            <CalendarDays className="h-4 w-4 text-brand-700" />
-            <span className="tabular-nums">{shortDateLabel(today)}</span>
-          </div>
-        </div>
-      </header>
-
-      <ScheduleCockpit rows={cockpitRows} />
-
-      <StatStrip
-        inToday={punchedList.length}
-        totalActive={employees.length}
-        exceptions={stats?.unresolvedAlerts ?? 0}
-        lastPollAt={lastPoll?.finishedAt ?? null}
-      />
-
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1 space-y-4">
-          {/* One general sync — pulls every punch and files it to the right
-              period automatically. Replaces the old per-period "Run NGTeco
-              import" / single active-period card (the cockpit above covers
-              per-schedule status). */}
-          <div className="rounded-card border border-border bg-surface p-4 shadow-card">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold tracking-tight">
-                  Sync punches from NGTeco
-                </h2>
-                <p className="mt-0.5 text-xs text-text-muted">
-                  Pulls every punch and files it to the right period and
-                  employee automatically — no need to pick a period.
-                </p>
-              </div>
-              <PollPunchesNowButton initialLast={null} />
+          <div className="grid grid-cols-2 gap-4 lg:col-span-4 xl:col-span-3">
+            <HeadcountCard count={metrics.headcount} />
+            <ExceptionsCard count={metrics.exceptions} />
+            <div className="col-span-2">
+              <SyncCard sync={metrics.sync} />
             </div>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle>Pending requests</CardTitle>
-            <CardDescription>
-              {pendingTotal === 0
-                ? "Nothing awaits your review."
-                : `${pendingMissed.length} missed-punch · ${pendingTimeOff.length} time-off`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4 py-3">
-            {pendingTotal === 0 ? (
-              <div className="flex items-center justify-between gap-3 rounded-input border border-success-200 bg-success-50 px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-success-700" />
-                  <span className="text-sm font-medium text-success-900">
-                    All clear
-                  </span>
-                </div>
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="/requests">Open</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {pendingMissed.slice(0, 3).map((r) => (
-                  <Link
-                    key={r.id}
-                    href="/requests"
-                    className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
-                  >
-                    <div className="text-sm font-medium">
-                      Missed punch · {r.date}
-                    </div>
-                    <div className="text-xs text-text-muted truncate">
-                      {r.reason}
-                    </div>
-                  </Link>
-                ))}
-                {pendingTimeOff.slice(0, 3).map((r) => (
-                  <Link
-                    key={r.id}
-                    href="/requests"
-                    className="block rounded-card border border-border bg-surface-2 p-3 hover:bg-surface-3 shadow-sm"
-                  >
-                    <div className="text-sm font-medium">
-                      Time off · {r.startDate} – {r.endDate} (
-                      {r.type.toLowerCase()})
-                    </div>
-                    {r.reason && (
-                      <div className="text-xs text-text-muted truncate">
-                        {r.reason}
-                      </div>
-                    )}
-                  </Link>
-                ))}
-                {pendingTotal > 6 && (
-                  <Button asChild variant="ghost" size="sm" className="mt-2">
-                    <Link href="/requests">View all {pendingTotal}</Link>
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle>Recent runs</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 py-3">
-            {recentRuns.length === 0 ? (
-              <div className="flex items-center gap-2 rounded-input border border-border bg-surface-2 px-3 py-2 text-sm text-text-muted">
-                <CalendarDays className="h-4 w-4" />
-                No runs yet.
-              </div>
-            ) : (
-              <ul className="space-y-1.5 text-sm">
-                {recentRuns.slice(0, 4).map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={
-                        r.period
-                          ? `/payroll/${r.period.id}`
-                          : `/payroll/run/${r.id}`
-                      }
-                      className="flex items-center justify-between gap-3 rounded-input border border-border px-3 py-2 hover:bg-surface-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium truncate">
-                            {r.period
-                              ? `${r.period.startDate} – ${r.period.endDate}`
-                              : `run ${r.id.slice(0, 8)}`}
-                          </span>
-                          <SchedulePill name={r.schedule?.name ?? null} />
-                        </div>
-                        {r.totalAmountCents !== null && (
-                          <div className="text-xs text-text-muted truncate">
-                            <MoneyDisplay
-                              cents={r.totalAmountCents}
-                              monospace={false}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <StatusPill status={r.state as never} />
-                    </Link>
-                  </li>
-                ))}
-                {recentRuns.length > 4 && (
-                  <li>
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href="/payroll">View all runs</Link>
-                    </Button>
-                  </li>
-                )}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+          <div className="lg:col-span-3">
+            <HealthCard health={metrics.health} />
           </div>
+        </section>
+
+        {/* Automate-more banner + two real stat cards */}
+        <AutomationBanner automation={metrics.automation} />
+
+        {/* Sync punches affordance (preserved real action) */}
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
+          style={{ background: DASH.surface, border: `1px solid ${DASH.border}` }}
+        >
+          <div className="min-w-0">
+            <div className="text-sm font-semibold" style={{ color: DASH.text }}>
+              Sync punches from NGTeco
+            </div>
+            <div className="text-[12px]" style={{ color: DASH.textMuted }}>
+              Pulls every punch and files it to the right period and employee
+              automatically.
+            </div>
+          </div>
+          <PollPunchesNowButton initialLast={null} />
         </div>
 
-        <div className="w-full shrink-0 lg:w-72 xl:w-80 lg:sticky lg:top-[calc(5.75rem+env(safe-area-inset-top))] lg:max-h-[calc(100dvh-6.5rem-env(safe-area-inset-top))] lg:overflow-y-auto">
-          <AttendancePanel
-            punched={punchedList}
-            approvedOut={approvedOutList}
-            noPunch={noPunchList}
-            todayLabel={shortDateLabel(today)}
-          />
+        {/* THIRD ROW — pending / recent / today */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <PendingRequestsCard items={pendingItems} />
+          <RecentRunsCard items={recentRuns} />
+          <TodayCard buckets={todayBuckets} />
+        </section>
+
+        {/* BOTTOM — KPI bar */}
+        <KpiBar kpis={metrics.kpis} />
+
+        <div className="pt-2 text-center text-[11px]" style={{ color: DASH.textFaint }}>
+          <Link href="/reports" style={{ color: DASH.textMuted }}>
+            View full reports →
+          </Link>
         </div>
       </div>
     </div>
