@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
+  CalendarClock,
   CheckCircle2,
   Download,
   FileText,
@@ -196,16 +197,12 @@ export function SalariedUploadSlot({
         </ul>
       )}
 
-      {scheduleBadge && (
-        <div className="flex items-center gap-2 text-xs text-text-subtle">
-          <span className="inline-flex items-center rounded-chip bg-surface-2 px-2 py-0.5 font-medium text-text-muted">
+      {scheduleBadge && inferred.kind === "OK" && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1 rounded-chip bg-surface-2 px-2 py-0.5 font-medium text-text-muted ring-1 ring-inset ring-border/70">
             {scheduleBadge}
           </span>
-          <span className="truncate">
-            {inferred.kind === "OK"
-              ? `${inferred.scheduleName} · ${formatRange(inferred.startDate, inferred.endDate)}`
-              : null}
-          </span>
+          <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
         </div>
       )}
 
@@ -288,7 +285,7 @@ export function SalariedUploadSlot({
 
         {/* Period + kind + net controls */}
         <div className="space-y-3">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label htmlFor={`ref-${employeeId}`} className="text-xs text-text-muted">
               Pay period covering
             </Label>
@@ -298,15 +295,33 @@ export function SalariedUploadSlot({
               value={referenceDate}
               onChange={(e) => setReferenceDate(e.target.value)}
             />
-            <p className="text-[10px] leading-tight text-text-subtle">
-              {inferred.kind === "OK"
-                ? formatRange(inferred.startDate, inferred.endDate)
-                : inferred.kind === "NONE"
-                  ? "No schedule — dates will be blank."
+            {/* Resolved coverage. When a schedule is attached this resolves the
+                instant the date changes (defaulted to today), so the owner can
+                drop a PDF and hit Upload — the range is shown filled-in, never
+                "blank". Back-filling an old stub is just changing the date. */}
+            {inferred.kind === "OK" ? (
+              <div className="flex items-center gap-1.5 rounded-input border border-brand-100 bg-brand-50/60 px-2 py-1">
+                <CalendarClock className="h-3 w-3 shrink-0 text-brand-700" aria-hidden="true" />
+                <span className="text-[11px] font-semibold tabular-nums text-brand-700">
+                  {formatRange(inferred.startDate, inferred.endDate)}
+                </span>
+              </div>
+            ) : (
+              <p
+                className={[
+                  "text-[10px] leading-tight",
+                  inferred.kind === "NONE" || inferred.kind === "ERROR"
+                    ? "text-warn-700"
+                    : "text-text-subtle",
+                ].join(" ")}
+              >
+                {inferred.kind === "NONE"
+                  ? "No schedule — set one on the profile, or enter dates manually."
                   : inferred.kind === "PENDING"
-                    ? "Resolving…"
-                    : "Couldn't infer; check schedule."}
-            </p>
+                    ? "Resolving period…"
+                    : "Couldn't infer; check the schedule."}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -409,18 +424,34 @@ function DocRow({ doc }: { doc: DocLite }) {
   const range = formatRange(doc.payPeriodStart, doc.payPeriodEnd);
 
   return (
-    <li className="flex flex-col gap-1 px-3 py-2.5 text-sm">
+    <li className="flex flex-col gap-1 px-3 py-2.5 text-sm transition-colors hover:bg-surface-2/40">
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <FileText className="h-4 w-4 shrink-0 text-text-subtle" />
           <div className="min-w-0">
-            <p className="truncate font-medium text-text">{doc.originalFilename}</p>
-            <p className="flex items-center gap-1.5 text-xs text-text-subtle">
-              <span>{KIND_LABEL[doc.kind]}</span>
-              {range && <span aria-hidden>·</span>}
-              {range && <span>{range}</span>}
+            {/* The pay-period the stub COVERS is the headline — that's the
+                period this paystub is for. The covered range leads in the
+                accent so it reads as the row's identity; kind sits beside it,
+                and the upload date is demoted to a whispered trailing detail. */}
+            <p className="flex items-center gap-1.5">
+              {range ? (
+                <span className="inline-flex items-center gap-1 rounded-chip bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700 ring-1 ring-inset ring-brand-100">
+                  <CalendarClock className="h-3 w-3" />
+                  {range}
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium text-text-subtle">
+                  No period set
+                </span>
+              )}
+              <span className="text-[10px] font-medium uppercase tracking-wide text-text-subtle">
+                {KIND_LABEL[doc.kind]}
+              </span>
+            </p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-subtle">
+              <span className="truncate text-text-muted">{doc.originalFilename}</span>
               <span aria-hidden>·</span>
-              <span>uploaded {doc.uploadedAt.slice(0, 10)}</span>
+              <span className="whitespace-nowrap">uploaded {doc.uploadedAt.slice(0, 10)}</span>
             </p>
           </div>
         </div>

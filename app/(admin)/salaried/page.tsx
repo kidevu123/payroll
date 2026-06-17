@@ -71,14 +71,14 @@ export default async function SalariedPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
           <p className="text-sm text-text-muted">
             Upload W2 / paystub documents for salaried staff. Each employee
             sees their own documents on their Pay tab.
           </p>
         </div>
-        <span className="shrink-0 text-xs text-text-muted tabular-nums">
+        <span className="shrink-0 rounded-chip bg-surface-2 px-2.5 py-1 text-xs font-medium text-text-muted tabular-nums ring-1 ring-inset ring-border/70">
           {salaried.length} {salaried.length === 1 ? "person" : "people"}
         </span>
       </div>
@@ -89,8 +89,11 @@ export default async function SalariedPage() {
             ? scheduleById.get(employee.payScheduleId)
             : null;
           return (
-            <Card key={employee.id} className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 bg-surface-2/30 py-3">
+            <Card
+              key={employee.id}
+              className="overflow-hidden transition-shadow hover:shadow-card-strong"
+            >
+              <CardHeader className="flex flex-row items-center justify-between gap-3 border-b border-border/60 bg-surface-2/40 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar
                     name={employee.displayName}
@@ -103,16 +106,16 @@ export default async function SalariedPage() {
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-text">
+                      <span className="truncate text-[15px] font-semibold tracking-tight text-text">
                         {employee.displayName}
                       </span>
-                      <span className="shrink-0 text-[11px] text-text-subtle tabular-nums">
+                      <span className="shrink-0 rounded-chip bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium text-text-muted tabular-nums">
                         {docs.length} {docs.length === 1 ? "doc" : "docs"}
                       </span>
                     </div>
-                    <div className="mt-0.5 flex items-center gap-2">
+                    <div className="mt-1 flex items-center gap-2">
                       {schedule ? (
-                        <span className="inline-flex items-center gap-1 rounded-chip bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-800">
+                        <span className="inline-flex items-center gap-1 rounded-chip bg-brand-50 px-2 py-0.5 text-[10px] font-medium text-brand-700 ring-1 ring-inset ring-brand-100">
                           <CalendarClock className="h-3 w-3" />
                           {PERIOD_KIND_LABEL[schedule.periodKind] ??
                             schedule.periodKind}
@@ -120,8 +123,9 @@ export default async function SalariedPage() {
                       ) : (
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="text-[10px] font-medium text-warn-700 underline-offset-2 hover:underline"
+                          className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-700 ring-1 ring-inset ring-warn-200 underline-offset-2 hover:underline"
                         >
+                          <CalendarClock className="h-3 w-3" />
                           No schedule — set one
                         </Link>
                       )}

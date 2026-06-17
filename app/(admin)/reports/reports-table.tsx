@@ -67,6 +67,19 @@ import {
 } from "./actions";
 import { markPaidAction } from "../payroll/actions";
 
+/** Cadence → accent color tied to the same family the SchedulePill uses,
+ *  so weekly vs semi-monthly vs monthly is scannable down the left edge
+ *  of the statement. A thin colored rail, not a fill — premium, not loud. */
+function cadenceAccent(name: string | null | undefined): string {
+  if (!name) return "bg-border-strong";
+  const n = name.toLowerCase();
+  if (n.includes("semi")) return "bg-purple-400";
+  if (n.includes("bi") || n.includes("two-week")) return "bg-teal-400";
+  if (n.includes("month") && !n.includes("semi")) return "bg-amber-400";
+  if (n.includes("week")) return "bg-blue-400";
+  return "bg-border-strong";
+}
+
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LONG = [
   "January",
@@ -355,15 +368,21 @@ function MonthCard({
   return (
     <section
       aria-label={month.label}
-      className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card"
+      className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card transition-shadow hover:shadow-card-strong"
     >
-      {/* Quiet month subheader + month NET subtotal */}
-      <header className="flex items-baseline justify-between gap-3 border-b border-border/70 bg-surface-2/40 px-4 py-2.5 sm:px-5">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <h2 className="text-[13px] font-semibold tracking-tight text-text">
+      {/* Refined month header: an accent tick + confident month label on the
+          left, the month NET subtotal as the right-anchored figure. The NET
+          label is whispered (uppercase micro) so the number does the talking. */}
+      <header className="flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span
+            aria-hidden="true"
+            className="h-4 w-1 shrink-0 rounded-full bg-brand-700"
+          />
+          <h2 className="text-sm font-semibold tracking-tight text-text">
             {month.label}
           </h2>
-          <span className="text-[11px] tabular-nums text-text-subtle">
+          <span className="rounded-chip bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
             {month.periods.length}{" "}
             {month.periods.length === 1 ? "period" : "periods"}
             {runCount !== month.periods.length && (
@@ -374,11 +393,11 @@ function MonthCard({
             )}
           </span>
         </div>
-        <div className="flex items-baseline gap-1.5 whitespace-nowrap">
-          <span className="text-[10px] uppercase tracking-wider text-text-subtle">
-            Net
+        <div className="flex flex-col items-end leading-none whitespace-nowrap">
+          <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-text-subtle">
+            Month net
           </span>
-          <span className="font-mono tabular-nums text-sm font-semibold text-text">
+          <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text">
             <MoneyDisplay cents={net} />
           </span>
         </div>
@@ -411,6 +430,7 @@ function PeriodLine({
 }: { group: GroupedReport } & SharedHandlers) {
   const net = periodNet(group);
   const gross = periodGross(group);
+  const accent = cadenceAccent(group.scheduleName);
   const canonicalEnd = canonicalEndForScheduleName(
     group.periodStart,
     group.periodEnd,
@@ -454,78 +474,95 @@ function PeriodLine({
   }
 
   return (
-    <div className="px-4 py-3 transition-colors hover:bg-surface-2/30 sm:px-5">
-      {/* Statement line — reflows to two rows on mobile, one on >=sm */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
-        {/* Left: period range + cadence + payment/status chips */}
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
-          <Link
-            href={`/payroll/${group.periodId}`}
-            className="font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap hover:text-brand-700"
-          >
-            {formatRange(group.periodStart, canonicalEnd)}
-          </Link>
-          <SchedulePill name={group.scheduleName} />
-          <PaymentChip state={periodState} method={periodPaymentMethod} />
-          {!multiRun && soleRun && <VisibilityChip published={soleRun.publishedToPortalAt !== null} />}
-        </div>
+    <div className="group/row relative transition-colors hover:bg-surface-2/40">
+      {/* Cadence accent rail — a thin colored edge so weekly / semi-monthly /
+          monthly read at a glance without parsing the pill. Brightens on hover. */}
+      <span
+        aria-hidden="true"
+        className={`absolute inset-y-0 left-0 w-[3px] ${accent} opacity-70 transition-opacity group-hover/row:opacity-100`}
+      />
 
-        {/* Right: NET amount + trailing actions */}
-        <div className="flex items-center justify-between gap-3 sm:justify-end">
-          <div className="flex flex-col items-start sm:items-end leading-tight">
-            <span className="font-mono tabular-nums text-[15px] font-semibold text-text">
-              <MoneyDisplay cents={net} />
-            </span>
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-0 text-[10px] tabular-nums">
-              {gross > 0 && gross !== net && (
-                <span className="font-mono text-text-muted">
-                  gross <MoneyDisplay cents={gross} monospace={false} />
-                </span>
-              )}
-              {group.docNetPayCents > 0 && (
-                <span className="font-mono text-emerald-700">
-                  +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
-                </span>
-              )}
-              {group.tempLaborCents > 0 && (
-                <span className="text-text-muted">
-                  incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
-                </span>
+      <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
+        {/* Statement line — stacks on mobile, one aligned row on >=sm. The
+            left identity column and the NET hero share a single baseline grid
+            so chips sit centered, never floating after the date. */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-5">
+          {/* Left identity column: period range, then chips on a consistent
+              centered baseline. min-w-0 lets it truncate before the NET. */}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+            <Link
+              href={`/payroll/${group.periodId}`}
+              className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40"
+            >
+              {formatRange(group.periodStart, canonicalEnd)}
+            </Link>
+            <span className="flex flex-wrap items-center gap-1.5">
+              <SchedulePill name={group.scheduleName} />
+              <PaymentChip state={periodState} method={periodPaymentMethod} />
+              {!multiRun && soleRun && (
+                <VisibilityChip published={soleRun.publishedToPortalAt !== null} />
               )}
             </span>
           </div>
 
-          {/* Pay-from-drawer trigger (period-level, LOCKED only) */}
-          {canManageReports && periodState === "LOCKED" && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setPayOpen((v) => !v)}
-              className="h-9 px-2.5 text-[11px] whitespace-nowrap"
-              title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
-            >
-              <Banknote className="h-3.5 w-3.5" /> Pay
-            </Button>
-          )}
+          {/* Right: NET hero + trailing actions. NET is the number that gets
+              paid — large, bold, tabular. Gross + addenda are demoted to a
+              tiny muted line below, clearly subordinate. */}
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <div className="flex flex-col items-start leading-none sm:items-end">
+              <span className="font-mono tabular-nums text-xl font-semibold tracking-tight text-text">
+                <MoneyDisplay cents={net} />
+              </span>
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 text-[10px] leading-tight tabular-nums">
+                {gross > 0 && gross !== net && (
+                  <span className="font-mono text-text-subtle">
+                    gross <MoneyDisplay cents={gross} monospace={false} />
+                  </span>
+                )}
+                {group.docNetPayCents > 0 && (
+                  <span className="font-mono text-emerald-700">
+                    +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
+                  </span>
+                )}
+                {group.tempLaborCents > 0 && (
+                  <span className="text-text-subtle">
+                    incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
+                  </span>
+                )}
+              </span>
+            </div>
 
-          {/* Single-run period: actions live here on the period line */}
-          {!multiRun && soleRun && (
-            <RunActions
-              run={soleRun}
-              busyId={busyId}
-              confirmDelete={confirmDelete}
-              setConfirmDelete={setConfirmDelete}
-              onPush={onPush}
-              onRepush={onRepush}
-              onPublish={onPublish}
-              onDelete={onDelete}
-              haute={haute}
-              boomin={boomin}
-              canManageReports={canManageReports}
-            />
-          )}
+            {/* Pay-from-drawer trigger (period-level, LOCKED only) */}
+            {canManageReports && periodState === "LOCKED" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPayOpen((v) => !v)}
+                className="h-9 px-2.5 text-[11px] whitespace-nowrap"
+                title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+              >
+                <Banknote className="h-3.5 w-3.5" /> Pay
+              </Button>
+            )}
+
+            {/* Single-run period: actions live here on the period line */}
+            {!multiRun && soleRun && (
+              <RunActions
+                run={soleRun}
+                busyId={busyId}
+                confirmDelete={confirmDelete}
+                setConfirmDelete={setConfirmDelete}
+                onPush={onPush}
+                onRepush={onRepush}
+                onPublish={onPublish}
+                onDelete={onDelete}
+                haute={haute}
+                boomin={boomin}
+                canManageReports={canManageReports}
+              />
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Pay-from-drawer dialog (inline, period-level) */}
       {canManageReports && payOpen && periodState === "LOCKED" && (
@@ -621,6 +658,7 @@ function PeriodLine({
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }
