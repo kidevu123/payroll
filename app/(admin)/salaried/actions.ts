@@ -15,6 +15,11 @@ import {
 import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
 import { pushPaystubToZoho } from "@/lib/zoho/push";
 import { listOrgs } from "@/lib/db/queries/zoho";
+import {
+  extractPdfText,
+  suggestNetFromText,
+  type NetSuggestion,
+} from "@/lib/salaried/extract-net";
 
 const idSchema = z.string().uuid();
 
@@ -336,4 +341,42 @@ export async function inferSalariedPeriodAction(
     startDate: bounds.startDate,
     endDate: bounds.endDate,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Best-effort net-pay auto-read. Owner directive: "I don't want to type
+// the net by hand." On file selection the client posts the chosen PDF
+// here; we extract its text layer and ask the on-network Ollama model for
+// the post-tax net, then the client PRE-FILLS the (still editable) net
+// field. Every failure degrades to "enter manually" — this NEVER blocks
+// upload and is purely advisory.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function suggestNetFromPdfAction(
+  formData: FormData,
+): Promise<NetSuggestion> {
+  await requireAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { kind: "NO_MATCH" };
+  }
+  // Text extraction only supports PDFs. Images/XLSX have no text layer
+  // we read here → caller falls back to manual entry.
+  if (file.type !== "application/pdf") {
+    return { kind: "NO_TEXT" };
+  }
+  if (file.size > MAX_BYTES) {
+    return { kind: "ERROR", error: "File too large to read." };
+  }
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const text = await extractPdfText(buf);
+    if (!text) return { kind: "NO_TEXT" };
+    return await suggestNetFromText(text);
+  } catch (err) {
+    return {
+      kind: "ERROR",
+      error: err instanceof Error ? err.message : "Could not read PDF.",
+    };
+  }
 }

@@ -1,9 +1,11 @@
-// Reports landing — newest first, grouped per pay-period card. Each
-// period's runs share a left-edge accent matching the schedule color so
-// Weekly vs Semi-monthly vs Salaried separate at a glance.
+// Reports landing — a calm payroll statement. Periods roll up into
+// month cards (one soft shadow each), with hairline-separated statement
+// lines inside. The cadence filter is a sticky segmented control; the
+// header carries a slim count + YTD-paid summary derived from the rows
+// already fetched.
 
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,12 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listReports } from "@/lib/db/queries/payroll-runs";
+import { listReports, type ReportRow } from "@/lib/db/queries/payroll-runs";
 import { getDrawerBalanceCents } from "@/lib/db/queries/cash-drawer";
 import { db } from "@/lib/db";
 import { zohoOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ReportsTable } from "./reports-table";
+import { MoneyDisplay } from "@/components/domain/money-display";
 import { requireSession } from "@/lib/auth-guards";
 import {
   ScheduleTabs,
@@ -26,6 +29,29 @@ import {
 } from "@/components/domain/schedule-tabs";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * YTD paid total, derived cheaply from the rows already fetched: sum the
+ * NET (run amount + temp labor) of every PAID period whose end date
+ * falls in the current calendar year. Temp labor is per-period, so we
+ * add it once per period rather than once per run.
+ */
+function ytdPaidCents(reports: ReportRow[]): number {
+  const year = new Date().getUTCFullYear();
+  const seenPeriodTemp = new Set<string>();
+  let total = 0;
+  for (const r of reports) {
+    if (r.periodState !== "PAID") continue;
+    const endYear = Number((r.endDate || "").slice(0, 4));
+    if (endYear !== year) continue;
+    total += r.amountCents;
+    if (!seenPeriodTemp.has(r.periodId)) {
+      seenPeriodTemp.add(r.periodId);
+      total += r.tempLaborCents;
+    }
+  }
+  return total;
+}
 
 export default async function ReportsPage({
   searchParams,
@@ -42,25 +68,50 @@ export default async function ReportsPage({
     getDrawerBalanceCents().catch(() => 0),
   ]);
 
+  const ytdPaid = ytdPaidCents(reports);
+  const currentYear = new Date().getUTCFullYear();
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
-          <p className="text-xs text-text-muted">
-            {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first.{" "}
-            <Link
-              href="/reports/time-off"
-              className="text-brand-700 hover:underline"
-            >
-              Year-end time-off tally →
-            </Link>
-          </p>
-        </div>
-        <ScheduleTabs
-          current={tab}
-          basePath="/reports"
-        />
+    <div className="space-y-5">
+      <div className="space-y-1.5">
+        <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+        {/* Slim summary line: count · YTD paid · year-end link */}
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+          <span className="tabular-nums">
+            {reports.length} {reports.length === 1 ? "report" : "reports"}, newest first
+          </span>
+          {ytdPaid > 0 && (
+            <>
+              <span className="text-text-subtle" aria-hidden="true">
+                ·
+              </span>
+              <span className="tabular-nums">
+                <span className="font-medium text-text">
+                  <MoneyDisplay cents={ytdPaid} monospace={false} />
+                </span>{" "}
+                paid in {currentYear}
+              </span>
+            </>
+          )}
+          <span className="text-text-subtle" aria-hidden="true">
+            ·
+          </span>
+          <Link
+            href="/reports/time-off"
+            className="inline-flex items-center gap-1 text-brand-700 hover:underline"
+          >
+            <CalendarRange className="h-3 w-3" aria-hidden="true" /> Year-end time-off tally
+          </Link>
+        </p>
+      </div>
+
+      {/* Sticky calm segmented control. The admin topbar is fixed/sticky
+          at the very top (height 3.5rem + safe-area), so we park the
+          filter just beneath it (z-30 stays under the topbar's z-50 and
+          its popovers). A translucent page backdrop keeps statement
+          lines from bleeding through while scrolling a long history. */}
+      <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-1 bg-page/85 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-page/70 lg:top-[3.5rem]">
+        <ScheduleTabs current={tab} basePath="/reports" />
       </div>
 
       <ReportsTable

@@ -1,18 +1,31 @@
 "use client";
 
-// Reports table — premium redesign.
+// Reports — "Calm Operations Console" redesign.
 //
-// Layout: each pay PERIOD is a self-contained "card row" with a left-edge
-// accent matching the schedule's color (blue=weekly, purple=semi-monthly,
-// teal=biweekly, amber=monthly). Inside the card sits the period summary
-// header and one or more run rows beneath it, separated by hairline
-// dividers. Months are visually segregated by a thin label divider —
-// just enough to chunk a long historical list into scannable groups.
+// Reads like a payroll statement, not a data dump. Structure:
 //
-// Per-row controls: View (eye, primary quick action) + Download PDF stay
-// outside as icon buttons. Everything else (signature print, publish,
-// Haute push, Boomin push, delete) lives behind a single MoreHorizontal
-// overflow menu so the row stays calm even when 7 actions are wired up.
+//   MONTH GROUP (one soft-shadowed surface card per month)
+//     ├─ quiet month subheader  ……  run count + month NET subtotal
+//     ├─ period line ── period range · cadence · paid-via · status ── NET ▸
+//     │     └─ run sub-line(s)  (only when a period has >1 run)
+//     ├─ ─────────── hairline divider ───────────
+//     └─ period line …
+//
+// One soft shadow lives on the month card; rows inside are separated by
+// hairline dividers only. A period with a single run collapses its run
+// detail into the period line (no redundant nesting); multi-run periods
+// expand their runs as indented sub-lines so each run keeps its own
+// actions.
+//
+// Every per-run action is preserved: View (eye) + an overflow menu that
+// carries Download PDF, cut sheet, signature report, open admin report,
+// publish-to-portal, Zoho push/re-push (Haute + Boomin), and delete.
+// Period-level "Pay from cash drawer" and the paid-via chip stay on the
+// period line.
+//
+// Mobile: period lines reflow to two stacked rows (identity on top, the
+// NET + actions beneath) with comfortable 40px tap targets and no
+// horizontal scroll.
 
 import * as React from "react";
 import Link from "next/link";
@@ -86,32 +99,7 @@ function formatDate(d: Date | null | undefined): string {
   return `${MONTH_SHORT[dt.getMonth()]} ${String(dt.getDate()).padStart(2, "0")}, ${dt.getFullYear()}`;
 }
 
-/**
- * Map a schedule name to a left-border accent color + soft tint for the
- * period summary row. Mirrors `SchedulePill` so a period's chip and the
- * row's accent agree at a glance.
- */
-function scheduleAccent(name: string | null | undefined): {
-  border: string;
-  tint: string;
-} {
-  const n = (name ?? "").toLowerCase();
-  if (n.includes("semi")) {
-    return { border: "border-l-purple-500", tint: "bg-purple-50/40" };
-  }
-  if (n.includes("bi") || n.includes("two-week")) {
-    return { border: "border-l-teal-500", tint: "bg-teal-50/40" };
-  }
-  if (n.includes("month") && !n.includes("semi")) {
-    return { border: "border-l-amber-500", tint: "bg-amber-50/40" };
-  }
-  if (n.includes("week")) {
-    return { border: "border-l-blue-500", tint: "bg-blue-50/40" };
-  }
-  return { border: "border-l-border-strong", tint: "bg-surface-2/50" };
-}
-
-/** "May 2026" header for the month-cohort divider. */
+/** "May 2026" header for the month-cohort card. */
 function monthLabel(iso: string): string {
   if (!iso) return "";
   const d = new Date(`${iso}T12:00:00Z`);
@@ -132,6 +120,12 @@ type GroupedReport = {
   tempLaborCents: number;
   docNetPayCents: number;
   runs: ReportRow[];
+};
+
+type MonthGroup = {
+  key: string;
+  label: string;
+  periods: GroupedReport[];
 };
 
 /** Group runs by periodId while preserving the newest-first ordering of
@@ -161,16 +155,43 @@ function groupByPeriod(reports: ReportRow[]): GroupedReport[] {
   return groups;
 }
 
-function sumGroupTotal(g: GroupedReport): number {
+/** Roll periods up into month cohorts, preserving newest-first order. */
+function groupByMonth(periods: GroupedReport[]): MonthGroup[] {
+  const months: MonthGroup[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const p of periods) {
+    const mk = monthKey(p.periodStart);
+    let idx = indexByKey.get(mk);
+    if (idx === undefined) {
+      idx = months.length;
+      indexByKey.set(mk, idx);
+      months.push({ key: mk, label: monthLabel(p.periodStart), periods: [] });
+    }
+    const month = months[idx];
+    if (month) month.periods.push(p);
+  }
+  return months;
+}
+
+/** Period NET = sum of run amounts + temp labor (temp counted once). */
+function periodNet(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.amountCents;
   return total + g.tempLaborCents;
 }
 
-function sumGroupGross(g: GroupedReport): number {
+/** Period GROSS = sum of run gross + temp labor (temp counted once). */
+function periodGross(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.grossPayCents;
   return total + g.tempLaborCents;
+}
+
+/** Month NET subtotal across its periods, from already-fetched rows. */
+function monthNet(m: MonthGroup): number {
+  let total = 0;
+  for (const p of m.periods) total += periodNet(p);
+  return total;
 }
 
 export function ReportsTable({
@@ -272,79 +293,39 @@ export function ReportsTable({
     );
   }
 
-  const groups = groupByPeriod(reports);
+  const months = groupByMonth(groupByPeriod(reports));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {error && (
         <div className="rounded-card border border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
           {error}
         </div>
       )}
 
-      {(() => {
-        // Render groups, injecting a month divider whenever the month
-        // changes. The divider is keyed by month so React reconciles
-        // cleanly when the filter changes.
-        const out: React.ReactNode[] = [];
-        let lastMonth: string | null = null;
-        for (const g of groups) {
-          const mk = monthKey(g.periodStart);
-          if (mk && mk !== lastMonth) {
-            out.push(
-              <div
-                key={`m:${mk}`}
-                className="flex items-center gap-3 pt-2 pb-1 first:pt-0"
-              >
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
-                  {monthLabel(g.periodStart)}
-                </span>
-                <span className="h-px flex-1 bg-border/70" />
-              </div>,
-            );
-            lastMonth = mk;
-          }
-          out.push(
-            <PeriodGroup
-              key={g.periodId}
-              group={g}
-              busyId={busyId}
-              setError={setError}
-              confirmDelete={confirmDelete}
-              setConfirmDelete={setConfirmDelete}
-              onPush={onPush}
-              onRepush={onRepush}
-              onPublish={onPublish}
-              onDelete={onDelete}
-              haute={haute}
-              boomin={boomin}
-              drawerBalanceCents={drawerBalanceCents}
-              canManageReports={canManageReports}
-            />,
-          );
-        }
-        return out;
-      })()}
+      {months.map((m) => (
+        <MonthCard
+          key={m.key}
+          month={m}
+          busyId={busyId}
+          setError={setError}
+          confirmDelete={confirmDelete}
+          setConfirmDelete={setConfirmDelete}
+          onPush={onPush}
+          onRepush={onRepush}
+          onPublish={onPublish}
+          onDelete={onDelete}
+          haute={haute}
+          boomin={boomin}
+          drawerBalanceCents={drawerBalanceCents}
+          canManageReports={canManageReports}
+        />
+      ))}
     </div>
   );
 }
 
-function PeriodGroup({
-  group,
-  busyId,
-  setError,
-  confirmDelete,
-  setConfirmDelete,
-  onPush,
-  onRepush,
-  onPublish,
-  onDelete,
-  haute,
-  boomin,
-  drawerBalanceCents,
-  canManageReports,
-}: {
-  group: GroupedReport;
+type SharedHandlers = {
   busyId: string | null;
   setError: (v: string | null) => void;
   confirmDelete: string | null;
@@ -362,10 +343,74 @@ function PeriodGroup({
   boomin: ZohoOrganization | undefined;
   drawerBalanceCents: number;
   canManageReports: boolean;
-}) {
-  const accent = scheduleAccent(group.scheduleName);
-  const periodTotal = sumGroupTotal(group);
-  const periodGross = sumGroupGross(group);
+};
+
+function MonthCard({
+  month,
+  ...handlers
+}: { month: MonthGroup } & SharedHandlers) {
+  const net = monthNet(month);
+  const runCount = month.periods.reduce((n, p) => n + p.runs.length, 0);
+
+  return (
+    <section
+      aria-label={month.label}
+      className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card"
+    >
+      {/* Quiet month subheader + month NET subtotal */}
+      <header className="flex items-baseline justify-between gap-3 border-b border-border/70 bg-surface-2/40 px-4 py-2.5 sm:px-5">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h2 className="text-[13px] font-semibold tracking-tight text-text">
+            {month.label}
+          </h2>
+          <span className="text-[11px] tabular-nums text-text-subtle">
+            {month.periods.length}{" "}
+            {month.periods.length === 1 ? "period" : "periods"}
+            {runCount !== month.periods.length && (
+              <>
+                {" · "}
+                {runCount} {runCount === 1 ? "run" : "runs"}
+              </>
+            )}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+          <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+            Net
+          </span>
+          <span className="font-mono tabular-nums text-sm font-semibold text-text">
+            <MoneyDisplay cents={net} />
+          </span>
+        </div>
+      </header>
+
+      {/* Period statement lines, hairline-separated */}
+      <div className="divide-y divide-border/60">
+        {month.periods.map((p) => (
+          <PeriodLine key={p.periodId} group={p} {...handlers} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PeriodLine({
+  group,
+  busyId,
+  setError,
+  confirmDelete,
+  setConfirmDelete,
+  onPush,
+  onRepush,
+  onPublish,
+  onDelete,
+  haute,
+  boomin,
+  drawerBalanceCents,
+  canManageReports,
+}: { group: GroupedReport } & SharedHandlers) {
+  const net = periodNet(group);
+  const gross = periodGross(group);
   const canonicalEnd = canonicalEndForScheduleName(
     group.periodStart,
     group.periodEnd,
@@ -373,13 +418,14 @@ function PeriodGroup({
   );
   // All runs in a group share the same period — read state from the
   // first run. Used to switch between "Pay from cash drawer" (LOCKED)
-  // and the static "Paid bank/cash" pill (PAID).
+  // and the static paid-via pill (PAID).
   const periodState = group.runs[0]?.periodState ?? "OPEN";
   const periodPaymentMethod = group.runs[0]?.periodPaymentMethod ?? null;
+  const multiRun = group.runs.length > 1;
+  const soleRun = group.runs.length === 1 ? group.runs[0] : undefined;
+
   const [payOpen, setPayOpen] = React.useState(false);
-  const [payAmount, setPayAmount] = React.useState(
-    () => (periodTotal / 100).toFixed(2),
-  );
+  const [payAmount, setPayAmount] = React.useState(() => (net / 100).toFixed(2));
   const [paying, setPaying] = React.useState(false);
 
   async function payFromDrawer() {
@@ -408,76 +454,82 @@ function PeriodGroup({
   }
 
   return (
-    <div
-      className={`rounded-card border border-border/70 bg-surface shadow-card overflow-hidden border-l-[3px] ${accent.border}`}
-    >
-      {/* Period summary row */}
-      <div className={`flex items-center justify-between gap-4 px-4 py-3 ${accent.tint}`}>
-        <div className="flex items-baseline gap-3 flex-wrap min-w-0">
-          <span className="font-semibold tracking-tight text-base text-text whitespace-nowrap">
+    <div className="px-4 py-3 transition-colors hover:bg-surface-2/30 sm:px-5">
+      {/* Statement line — reflows to two rows on mobile, one on >=sm */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+        {/* Left: period range + cadence + payment/status chips */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <Link
+            href={`/payroll/${group.periodId}`}
+            className="font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap hover:text-brand-700"
+          >
             {formatRange(group.periodStart, canonicalEnd)}
-          </span>
+          </Link>
           <SchedulePill name={group.scheduleName} />
-          <span className="text-[10px] uppercase tracking-wider text-text-subtle">
-            Period total
-          </span>
-          {periodState === "PAID" && periodPaymentMethod === "CASH" && (
-            <span className="inline-flex items-center gap-1 rounded-chip border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-              <Banknote className="h-3 w-3" /> Paid from drawer
-            </span>
-          )}
-          {periodState === "PAID" && periodPaymentMethod === "BANK" && (
-            <span className="inline-flex items-center gap-1 rounded-chip border border-info-200 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-              <Landmark className="h-3 w-3" /> Paid via bank
-            </span>
-          )}
-          {periodState === "PAID" && periodPaymentMethod === null && (
-            <span className="inline-flex items-center gap-1 rounded-chip border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
-              <CheckCircle2 className="h-3 w-3" /> Paid
-            </span>
-          )}
+          <PaymentChip state={periodState} method={periodPaymentMethod} />
+          {!multiRun && soleRun && <VisibilityChip published={soleRun.publishedToPortalAt !== null} />}
         </div>
-        <div className="flex items-center gap-3 text-right whitespace-nowrap">
+
+        {/* Right: NET amount + trailing actions */}
+        <div className="flex items-center justify-between gap-3 sm:justify-end">
+          <div className="flex flex-col items-start sm:items-end leading-tight">
+            <span className="font-mono tabular-nums text-[15px] font-semibold text-text">
+              <MoneyDisplay cents={net} />
+            </span>
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-0 text-[10px] tabular-nums">
+              {gross > 0 && gross !== net && (
+                <span className="font-mono text-text-muted">
+                  gross <MoneyDisplay cents={gross} monospace={false} />
+                </span>
+              )}
+              {group.docNetPayCents > 0 && (
+                <span className="font-mono text-emerald-700">
+                  +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
+                </span>
+              )}
+              {group.tempLaborCents > 0 && (
+                <span className="text-text-muted">
+                  incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Pay-from-drawer trigger (period-level, LOCKED only) */}
           {canManageReports && periodState === "LOCKED" && (
             <Button
               size="sm"
               variant="secondary"
               onClick={() => setPayOpen((v) => !v)}
-              className="h-7 px-2.5 text-[11px]"
+              className="h-9 px-2.5 text-[11px] whitespace-nowrap"
               title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
             >
-              <Banknote className="h-3.5 w-3.5" /> Pay from drawer
+              <Banknote className="h-3.5 w-3.5" /> Pay
             </Button>
           )}
-          <div className="flex flex-col items-end gap-0">
-            <span className="font-mono tabular-nums font-semibold text-text">
-              <MoneyDisplay cents={periodTotal} />
-            </span>
-            {periodGross > 0 && periodGross !== periodTotal && (
-              <span className="text-[10px] text-text-muted tabular-nums font-mono">
-                gross <MoneyDisplay cents={periodGross} monospace={false} />
-              </span>
-            )}
-            {group.docNetPayCents > 0 && (
-              <span className="text-[10px] text-emerald-700 tabular-nums font-mono">
-                +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
-              </span>
-            )}
-            {group.tempLaborCents > 0 && (
-              <span className="text-[10px] text-text-muted">
-                incl. <MoneyDisplay cents={group.tempLaborCents} monospace={false} /> temp
-              </span>
-            )}
-          </div>
+
+          {/* Single-run period: actions live here on the period line */}
+          {!multiRun && soleRun && (
+            <RunActions
+              run={soleRun}
+              busyId={busyId}
+              confirmDelete={confirmDelete}
+              setConfirmDelete={setConfirmDelete}
+              onPush={onPush}
+              onRepush={onRepush}
+              onPublish={onPublish}
+              onDelete={onDelete}
+              haute={haute}
+              boomin={boomin}
+              canManageReports={canManageReports}
+            />
+          )}
         </div>
       </div>
 
-      {/* Pay-from-drawer dialog. Inline (not a modal) to keep the page
-          flow obvious — you see the period total, the drawer balance,
-          and one click commits the cash withdrawal + period mark-paid
-          in the same transaction. */}
+      {/* Pay-from-drawer dialog (inline, period-level) */}
       {canManageReports && payOpen && periodState === "LOCKED" && (
-        <div className="px-4 py-3 border-t border-border/60 bg-amber-50/40">
+        <div className="mt-3 rounded-input border border-amber-200/70 bg-amber-50/50 px-3 py-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
               <p className="text-[11px] uppercase tracking-wider text-text-subtle">
@@ -501,12 +553,7 @@ function PeriodGroup({
                 className="block h-9 w-32 rounded-input border border-border/70 bg-surface px-2.5 text-sm tabular-nums"
               />
             </div>
-            <Button
-              size="sm"
-              onClick={payFromDrawer}
-              disabled={paying}
-              className="h-9"
-            >
+            <Button size="sm" onClick={payFromDrawer} disabled={paying} className="h-9">
               <Banknote className="h-4 w-4" />
               {paying ? "Paying…" : "Pay this period from drawer"}
             </Button>
@@ -520,197 +567,240 @@ function PeriodGroup({
               Cancel
             </Button>
           </div>
-          <p className="text-[11px] text-text-muted mt-2 leading-relaxed">
-            Marks the period <span className="font-semibold">PAID</span>,
-            records a withdrawal on the cash drawer ledger, and links the
-            two so the drawer entry references this period.
+          <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
+            Marks the period <span className="font-semibold">PAID</span>, records
+            a withdrawal on the cash drawer ledger, and links the two so the
+            drawer entry references this period.
           </p>
         </div>
       )}
 
-      {/* Run rows */}
-      <div className="divide-y divide-border/60">
-        {group.runs.map((r) => {
-          const pushedHaute = r.zohoPushes.find((p) => p.orgId === haute?.id);
-          const pushedBoomin = r.zohoPushes.find((p) => p.orgId === boomin?.id);
-          const published = r.publishedToPortalAt !== null;
-          const isLegacy = r.source === "LEGACY_IMPORT";
-
-          return (
-            <div
+      {/* Multi-run period: expand each run as an indented sub-line so every
+          run keeps its own visibility chip, amount, and actions. */}
+      {multiRun && (
+        <ul className="mt-2.5 space-y-px border-l border-border/60 pl-3 sm:ml-1">
+          {group.runs.map((r) => (
+            <li
               key={r.id}
-              className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-2/50 transition-colors"
+              className="flex flex-col gap-2 py-1.5 sm:flex-row sm:items-center sm:gap-3"
             >
-              {/* Run identity (source + short id) */}
               <Link
                 href={`/payroll/${r.periodId}`}
-                className="flex items-baseline gap-1.5 min-w-0 hover:text-brand-700 transition-colors"
+                className="flex min-w-0 flex-1 items-baseline gap-1.5 hover:text-brand-700"
               >
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-subtle">
                   {r.source.replace(/_/g, " ")}
                 </span>
                 <span className="text-text-subtle">·</span>
                 <span className="font-mono text-xs text-text">{r.id.slice(0, 8)}</span>
+                <span className="truncate text-[11px] text-text-muted">
+                  {r.createdByDisplay} · {formatDate(r.postedAt)}
+                </span>
               </Link>
-
-              {/* Created by */}
-              <span className="text-xs text-text-muted truncate max-w-[10rem]">
-                {r.createdByDisplay}
-              </span>
-
-              {/* Posted */}
-              <span className="text-xs text-text-muted whitespace-nowrap">
-                {formatDate(r.postedAt)}
-              </span>
-
-              {/* Push status badges (read-only summary; mutate via menu) */}
-              <div className="flex items-center gap-1.5">
-                {pushedHaute && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                    title={`Haute · expense ${pushedHaute.expenseId ?? "—"}`}
-                  >
-                    <CheckCircle2 className="h-2.5 w-2.5" /> Haute
-                  </span>
-                )}
-                {pushedBoomin && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
-                    title={`Boomin · expense ${pushedBoomin.expenseId ?? "—"}`}
-                  >
-                    <CheckCircle2 className="h-2.5 w-2.5" /> Boomin
-                  </span>
-                )}
-              </div>
-
-              <span className="flex-1" />
-
-              {/* Visibility chip */}
-              {published ? (
-                <span className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
-                  <CheckCircle2 className="h-2.5 w-2.5" /> Published
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-chip bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
-                  <CircleDot className="h-2.5 w-2.5" /> Internal
-                </span>
-              )}
-
-              {/* Run amount */}
-              <div className="text-right whitespace-nowrap min-w-[5.5rem]">
-                <div className="font-mono tabular-nums font-semibold text-sm text-text">
+              <div className="flex items-center justify-between gap-2 sm:justify-end">
+                <ZohoBadges run={r} haute={haute} boomin={boomin} />
+                <VisibilityChip published={r.publishedToPortalAt !== null} />
+                <span className="min-w-[5rem] text-right font-mono tabular-nums text-sm font-semibold text-text">
                   <MoneyDisplay cents={r.amountCents} />
-                </div>
-                {r.tempLaborCents > 0 && (
-                  <div className="text-[10px] font-normal text-text-muted">
-                    + <MoneyDisplay cents={r.tempLaborCents} monospace={false} /> temp
-                  </div>
-                )}
+                </span>
+                <RunActions
+                  run={r}
+                  busyId={busyId}
+                  confirmDelete={confirmDelete}
+                  setConfirmDelete={setConfirmDelete}
+                  onPush={onPush}
+                  onRepush={onRepush}
+                  onPublish={onPublish}
+                  onDelete={onDelete}
+                  haute={haute}
+                  boomin={boomin}
+                  canManageReports={canManageReports}
+                />
               </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
-              {/* Quick actions */}
-              <div className="flex items-center gap-0.5 ml-1">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0"
-                  title="Open admin report"
-                >
-                  <Link href={`/payroll/${r.periodId}`}>
-                    <Eye className="h-4 w-4" />
-                  </Link>
-                </Button>
-                {r.pdfPath ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    title="Download report PDF"
-                  >
-                    <Link
-                      href={`/api/reports/${r.id}/pdf`}
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    disabled
-                    title="No PDF"
-                  >
-                    <Download className="h-4 w-4 opacity-30" />
-                  </Button>
-                )}
+/** Period payment-method chip (PAID) — bank / drawer / generic. */
+function PaymentChip({
+  state,
+  method,
+}: {
+  state: "OPEN" | "LOCKED" | "PAID";
+  method: "BANK" | "CASH" | null;
+}) {
+  if (state !== "PAID") return null;
+  if (method === "CASH") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-chip border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+        <Banknote className="h-3 w-3" /> Paid from drawer
+      </span>
+    );
+  }
+  if (method === "BANK") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-chip border border-info-200 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+        <Landmark className="h-3 w-3" /> Paid via bank
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-chip border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800">
+      <CheckCircle2 className="h-3 w-3" /> Paid
+    </span>
+  );
+}
 
-                {confirmDelete === r.id ? (
-                  <span className="inline-flex items-center gap-0.5 rounded-input border border-danger-200/80 bg-danger-50 pl-2">
-                    <span className="text-[11px] font-medium text-danger-700">
-                      Delete?
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={() => setConfirmDelete(null)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-[11px] text-danger-700 hover:bg-danger-100"
-                      disabled={busyId === `${r.id}:delete`}
-                      onClick={() => onDelete(r.id)}
-                    >
-                      {busyId === `${r.id}:delete` ? "…" : "Confirm"}
-                    </Button>
-                  </span>
-                ) : (
-                  <RowOverflowMenu
-                    runId={r.id}
-                    periodId={r.periodId}
-                    published={published}
-                    isLegacy={isLegacy}
-                    busyId={busyId}
-                    pushedHaute={pushedHaute}
-                    pushedBoomin={pushedBoomin}
-                    hauteOrgId={haute?.id}
-                    boominOrgId={boomin?.id}
-                    onPublish={() => onPublish(r.id)}
-                    onPushHaute={() => onPush(r.id, haute?.id, "Haute")}
-                    onPushBoomin={() => onPush(r.id, boomin?.id, "Boomin")}
-                    onRepushHaute={() =>
-                      onRepush(
-                        r.id,
-                        haute?.id,
-                        "Haute",
-                        pushedHaute?.expenseId ?? null,
-                      )
-                    }
-                    onRepushBoomin={() =>
-                      onRepush(
-                        r.id,
-                        boomin?.id,
-                        "Boomin",
-                        pushedBoomin?.expenseId ?? null,
-                      )
-                    }
-                    onDeleteRequest={() => setConfirmDelete(r.id)}
-                    canManage={canManageReports}
-                  />
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+/** Portal visibility chip (per run). */
+function VisibilityChip({ published }: { published: boolean }) {
+  return published ? (
+    <span className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 whitespace-nowrap">
+      <CheckCircle2 className="h-2.5 w-2.5" /> Published
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-chip bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+      <CircleDot className="h-2.5 w-2.5" /> Internal
+    </span>
+  );
+}
+
+/** Read-only Zoho push summary badges (mutate via the overflow menu). */
+function ZohoBadges({
+  run,
+  haute,
+  boomin,
+}: {
+  run: ReportRow;
+  haute: ZohoOrganization | undefined;
+  boomin: ZohoOrganization | undefined;
+}) {
+  const pushedHaute = run.zohoPushes.find((p) => p.orgId === haute?.id);
+  const pushedBoomin = run.zohoPushes.find((p) => p.orgId === boomin?.id);
+  if (!pushedHaute && !pushedBoomin) return null;
+  return (
+    <div className="flex items-center gap-1.5">
+      {pushedHaute && (
+        <span
+          className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          title={`Haute · expense ${pushedHaute.expenseId ?? "—"}`}
+        >
+          <CheckCircle2 className="h-2.5 w-2.5" /> Haute
+        </span>
+      )}
+      {pushedBoomin && (
+        <span
+          className="inline-flex items-center gap-1 rounded-chip bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200"
+          title={`Boomin · expense ${pushedBoomin.expenseId ?? "—"}`}
+        >
+          <CheckCircle2 className="h-2.5 w-2.5" /> Boomin
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Trailing affordance for a single run: View + overflow menu. Inline
+ *  delete-confirm replaces the menu trigger while pending. */
+function RunActions({
+  run,
+  busyId,
+  confirmDelete,
+  setConfirmDelete,
+  onPush,
+  onRepush,
+  onPublish,
+  onDelete,
+  haute,
+  boomin,
+  canManageReports,
+}: {
+  run: ReportRow;
+  busyId: string | null;
+  confirmDelete: string | null;
+  setConfirmDelete: (v: string | null) => void;
+  onPush: (reportId: string, orgId: string | undefined, label: string) => void;
+  onRepush: (
+    reportId: string,
+    orgId: string | undefined,
+    label: string,
+    expenseId: string | null,
+  ) => void;
+  onPublish: (id: string) => void;
+  onDelete: (id: string) => void;
+  haute: ZohoOrganization | undefined;
+  boomin: ZohoOrganization | undefined;
+  canManageReports: boolean;
+}) {
+  const pushedHaute = run.zohoPushes.find((p) => p.orgId === haute?.id);
+  const pushedBoomin = run.zohoPushes.find((p) => p.orgId === boomin?.id);
+  const published = run.publishedToPortalAt !== null;
+  const isLegacy = run.source === "LEGACY_IMPORT";
+
+  if (confirmDelete === run.id) {
+    return (
+      <span className="inline-flex items-center gap-0.5 rounded-input border border-danger-200/80 bg-danger-50 pl-2">
+        <span className="text-[11px] font-medium text-danger-700">Delete?</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-9 px-2 text-[11px]"
+          onClick={() => setConfirmDelete(null)}
+        >
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-9 px-2 text-[11px] text-danger-700 hover:bg-danger-100"
+          disabled={busyId === `${run.id}:delete`}
+          onClick={() => onDelete(run.id)}
+        >
+          {busyId === `${run.id}:delete` ? "…" : "Confirm"}
+        </Button>
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <Button
+        asChild
+        size="sm"
+        variant="ghost"
+        className="h-9 w-9 p-0"
+        title="Open admin report"
+      >
+        <Link href={`/payroll/${run.periodId}`}>
+          <Eye className="h-4 w-4" />
+        </Link>
+      </Button>
+      <RowOverflowMenu
+        runId={run.id}
+        periodId={run.periodId}
+        published={published}
+        isLegacy={isLegacy}
+        hasPdf={run.pdfPath !== null}
+        busyId={busyId}
+        pushedHaute={pushedHaute}
+        pushedBoomin={pushedBoomin}
+        hauteOrgId={haute?.id}
+        boominOrgId={boomin?.id}
+        onPublish={() => onPublish(run.id)}
+        onPushHaute={() => onPush(run.id, haute?.id, "Haute")}
+        onPushBoomin={() => onPush(run.id, boomin?.id, "Boomin")}
+        onRepushHaute={() =>
+          onRepush(run.id, haute?.id, "Haute", pushedHaute?.expenseId ?? null)
+        }
+        onRepushBoomin={() =>
+          onRepush(run.id, boomin?.id, "Boomin", pushedBoomin?.expenseId ?? null)
+        }
+        onDeleteRequest={() => setConfirmDelete(run.id)}
+        canManage={canManageReports}
+      />
     </div>
   );
 }
@@ -720,6 +810,7 @@ function RowOverflowMenu({
   periodId,
   published,
   isLegacy,
+  hasPdf,
   busyId,
   pushedHaute,
   pushedBoomin,
@@ -737,6 +828,7 @@ function RowOverflowMenu({
   periodId: string;
   published: boolean;
   isLegacy: boolean;
+  hasPdf: boolean;
   busyId: string | null;
   pushedHaute: ReportRow["zohoPushes"][number] | undefined;
   pushedBoomin: ReportRow["zohoPushes"][number] | undefined;
@@ -757,17 +849,23 @@ function RowOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 w-8 p-0"
-          title="More actions"
-        >
+        <Button size="sm" variant="ghost" className="h-9 w-9 p-0" title="More actions">
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[14rem]">
         <DropdownMenuLabel>Documents</DropdownMenuLabel>
+        {hasPdf ? (
+          <DropdownMenuItem asChild>
+            <Link href={`/api/reports/${runId}/pdf`} target="_blank" rel="noopener">
+              <Download className="h-3.5 w-3.5" /> Download report PDF
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <Download className="h-3.5 w-3.5 opacity-40" /> No report PDF
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem asChild>
           <Link
             href={`/api/payroll/${periodId}/payslips-cut-sheet`}
