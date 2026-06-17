@@ -7,7 +7,6 @@
 // RSC page.
 
 import Link from "next/link";
-import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { GreetingHeader } from "@/components/dashboard/greeting-header";
 import { CadenceCard } from "@/components/dashboard/cadence-card";
 import {
@@ -192,82 +191,67 @@ export default async function DashboardPage() {
     : "/payroll";
   const quickActionLabel = urgent ? "Quick action" : "Go to payroll";
 
+  // Greeting name: prefer the linked employee's real display name, fall back
+  // to the email-derived name. First token only ("Nabeel Vira" → "Nabeel").
+  const meEmp = session.user.employeeId
+    ? employees.find((e) => e.id === session.user.employeeId) ?? null
+    : null;
+  const firstName = (meEmp?.displayName ?? metrics.greetingName).split(/\s+/)[0] ?? metrics.greetingName;
+
   return (
-    <div
-      className="-mx-4 -my-4 min-h-screen px-4 py-6 sm:-mx-6 sm:-my-6 sm:px-6 sm:py-8"
-      style={{
-        background: `radial-gradient(1200px 600px at 80% -10%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
-        color: DASH.text,
-      }}
-    >
-      <div className="mx-auto max-w-[1400px] space-y-6">
-        <GreetingHeader
-          name={metrics.greetingName}
-          hour={hour}
-          todayLabel={shortDateLabel(today)}
-          quickActionHref={quickActionHref}
-          quickActionLabel={quickActionLabel}
-        />
+    // The dark shell (layout) owns the canvas background + container; the page
+    // just lays out its content sections.
+    <div className="space-y-5">
+      <GreetingHeader
+        name={firstName}
+        hour={hour}
+        todayLabel={metrics.todayLongLabel ?? shortDateLabel(today)}
+        compareLabel={metrics.trend.compareLabel ?? null}
+        quickActionHref={quickActionHref}
+        quickActionLabel={quickActionLabel}
+      />
 
-        {/* TOP ROW — cadence cards */}
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {metrics.cadences.map((card) => (
-            <CadenceCard key={card.scheduleId} card={card} />
-          ))}
-        </section>
+      {/* TOP ROW — cadence cards */}
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {metrics.cadences.map((card) => (
+          <CadenceCard key={card.scheduleId} card={card} />
+        ))}
+      </section>
 
-        {/* SECOND ROW — trend + mini stats + sync + health */}
-        <section className="grid gap-4 lg:grid-cols-12">
-          <div className="lg:col-span-5 xl:col-span-6">
-            <TrendCard trend={metrics.trend} />
-          </div>
-          <div className="grid grid-cols-2 gap-4 lg:col-span-4 xl:col-span-3">
-            <HeadcountCard count={metrics.headcount} />
-            <ExceptionsCard count={metrics.exceptions} />
-            <div className="col-span-2">
-              <SyncCard sync={metrics.sync} />
-            </div>
-          </div>
-          <div className="lg:col-span-3">
-            <HealthCard health={metrics.health} />
-          </div>
-        </section>
-
-        {/* Automate-more banner + two real stat cards */}
-        <AutomationBanner automation={metrics.automation} />
-
-        {/* Sync punches affordance (preserved real action) */}
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
-          style={{ background: DASH.surface, border: `1px solid ${DASH.border}` }}
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-semibold" style={{ color: DASH.text }}>
-              Sync punches from NGTeco
-            </div>
-            <div className="text-[12px]" style={{ color: DASH.textMuted }}>
-              Pulls every punch and files it to the right period and employee
-              automatically.
-            </div>
-          </div>
-          <PollPunchesNowButton initialLast={null} />
+      {/* SECOND ROW — trend + mini stats + sync + health */}
+      <section className="grid gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <TrendCard trend={metrics.trend} />
         </div>
-
-        {/* THIRD ROW — pending / recent / today */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <PendingRequestsCard items={pendingItems} />
-          <RecentRunsCard items={recentRuns} />
-          <TodayCard buckets={todayBuckets} />
-        </section>
-
-        {/* BOTTOM — KPI bar */}
-        <KpiBar kpis={metrics.kpis} />
-
-        <div className="pt-2 text-center text-[11px]" style={{ color: DASH.textFaint }}>
-          <Link href="/reports" style={{ color: DASH.textMuted }}>
-            View full reports →
-          </Link>
+        <div className="grid grid-cols-2 content-start gap-4 lg:col-span-4">
+          <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
+          <ExceptionsCard count={metrics.exceptions} />
+          <div className="col-span-2">
+            <SyncCard sync={metrics.sync} />
+          </div>
         </div>
+        <div className="lg:col-span-3">
+          <HealthCard health={metrics.health} />
+        </div>
+      </section>
+
+      {/* Automate-more banner + two real stat cards */}
+      <AutomationBanner automation={metrics.automation} />
+
+      {/* THIRD ROW — pending / recent / today */}
+      <section className="grid gap-4 lg:grid-cols-3">
+        <PendingRequestsCard items={pendingItems} />
+        <RecentRunsCard items={recentRuns} />
+        <TodayCard buckets={todayBuckets} />
+      </section>
+
+      {/* BOTTOM — full-width KPI bar */}
+      <KpiBar kpis={metrics.kpis} />
+
+      <div className="pt-1 text-center text-[11px]" style={{ color: DASH.textFaint }}>
+        <Link href="/reports" style={{ color: DASH.textMuted }}>
+          View full reports →
+        </Link>
       </div>
     </div>
   );

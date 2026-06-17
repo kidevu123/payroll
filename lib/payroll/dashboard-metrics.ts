@@ -53,6 +53,9 @@ export type CadenceCard = {
   unresolvedAlerts: number;
   runId: string | null;
   runState: string | null;
+  /** Range label of the prior period the delta compares against, e.g.
+   *  "May 26 – Jun 25"; null when there is no prior period. */
+  priorRangeLabel: string | null;
   /** Recent historical period totals for this cadence (oldest → newest). */
   spark: SparkPoint[];
 };
@@ -80,14 +83,20 @@ export type HealthChecklistItem = {
 
 export type DashboardMetrics = {
   greetingName: string;
+  /** "June 16, 2026" — long date for the greeting header date pill. */
+  todayLongLabel: string;
   cadences: CadenceCard[];
   trend: {
     points: TrendPoint[];
     ytdCents: number;
     /** % change of latest month vs prior month with data; null if <2 months. */
     deltaPct: number | null;
+    /** "Compared to Jun 9 – Jun 15, 2026" — prior 7-day window vs today. */
+    compareLabel: string;
   };
   headcount: number;
+  /** Net change in active headcount vs ~30 days ago; null when unknown. */
+  headcountDelta: number | null;
   exceptions: number;
   sync: {
     state: "STABLE" | "STALE" | "UNKNOWN";
@@ -103,6 +112,8 @@ export type DashboardMetrics = {
     costPerEmployeeCents: number | null;
     runsThisMonth: number;
     activeEmployees: number;
+    /** Estimated spend over the next 4 weeks: YTD run-rate × 4 weeks. */
+    projectedSpendCents: number;
   };
   automation: {
     runsThisMonth: number;
@@ -149,6 +160,32 @@ function shortRange(startIso: string, endIso: string): string {
     }).format(new Date(Date.UTC(2000, m - 1, d)));
   };
   return `${fmt(startIso)} – ${fmt(endIso)}`;
+}
+
+/** "June 16, 2026" from an ISO date string. */
+function longDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+/** ISO date `n` days before the given ISO date (UTC math). */
+function addDaysIso(iso: string, deltaDays: number): string {
+  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
+  const dt = new Date(Date.UTC(y, m - 1, d + deltaDays));
+  return dt.toISOString().slice(0, 10);
+}
+
+/** "Compared to Jun 9 – Jun 15, 2026" — the 7-day window ending yesterday. */
+function priorWeekCompareLabel(todayIso: string): string {
+  const end = addDaysIso(todayIso, -1);
+  const start = addDaysIso(todayIso, -7);
+  const year = end.slice(0, 4);
+  return `Compared to ${shortRange(start, end)}, ${year}`;
 }
 
 /**
@@ -261,7 +298,11 @@ export async function computeDashboardMetrics(args: {
     const history = (totalsBySchedule.get(row.scheduleId) ?? []).filter(
       (h) => h.periodId !== row.period?.id,
     );
-    const priorTotal = history[0]?.roundedCents ?? null;
+    const priorPeriod = history[0] ?? null;
+    const priorTotal = priorPeriod?.roundedCents ?? null;
+    const priorRangeLabel = priorPeriod
+      ? shortRange(priorPeriod.startDate, priorPeriod.endDate)
+      : null;
     const deltaPct =
       priorTotal !== null && row.roundedCents > 0
         ? pctDelta(row.roundedCents, priorTotal)
@@ -293,6 +334,7 @@ export async function computeDashboardMetrics(args: {
       unresolvedAlerts: row.unresolvedAlerts,
       runId: row.runId,
       runState: row.runState,
+      priorRangeLabel,
       spark,
     };
   });
@@ -396,11 +438,30 @@ export async function computeDashboardMetrics(args: {
     headcount > 0 ? Math.round(ytdCents / headcount) : null;
   const openPeriods = openPeriodRows.length;
 
+  // Projected spend (next 4 weeks): YTD run-rate (YTD ÷ weeks elapsed) × 4.
+  // An estimate, clearly labelled as such in the UI.
+  const dayOfYear =
+    Math.floor(
+      (Date.UTC(year, Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10))) -
+        Date.UTC(year, 0, 1)) /
+        86_400_000,
+    ) + 1;
+  const weeksElapsed = Math.max(dayOfYear / 7, 1);
+  const projectedSpendCents = Math.round((ytdCents / weeksElapsed) * 4);
+
   return {
     greetingName,
+    todayLongLabel: longDate(today),
     cadences,
-    trend: { points: trendPoints, ytdCents, deltaPct: trendDelta },
+    trend: {
+      points: trendPoints,
+      ytdCents,
+      deltaPct: trendDelta,
+      compareLabel: priorWeekCompareLabel(today),
+    },
     headcount,
+    // Net headcount change requires a historical snapshot we don't store yet.
+    headcountDelta: null,
     exceptions,
     sync: {
       state: syncState,
@@ -413,6 +474,7 @@ export async function computeDashboardMetrics(args: {
       costPerEmployeeCents,
       runsThisMonth,
       activeEmployees: headcount,
+      projectedSpendCents,
     },
     automation: { runsThisMonth, openPeriods },
   };

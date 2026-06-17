@@ -8,6 +8,8 @@ import {
 } from "@/lib/auth/role-matrix";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
+import { DashboardDarkShell } from "@/components/dashboard/dark-shell";
+import { getTranslations } from "next-intl/server";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
 import { PollStatusBar, PollStatusProvider } from "@/components/admin/poll-status-provider";
@@ -52,9 +54,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // sidebar nav and (b) bounce the user off any surface they don't have
   // access to. Owners always pass.
   const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-pathname") ?? hdrs.get("x-invoke-path") ?? "";
+  const isDashboardRoute = pathname === "/dashboard" || pathname === "/";
   if (session.user.role !== "OWNER") {
-    const h = await headers();
-    const pathname = h.get("x-pathname") ?? h.get("x-invoke-path") ?? "";
     if (pathname) {
       // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
       const allowedRoots = new Set(allowedSurfaces);
@@ -122,6 +125,49 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     href: `/payroll/${p.id}`,
     group: "period",
   }));
+
+  const commandTargets = [...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS];
+
+  // ── Dashboard: render the cohesive full-screen DARK shell ────────────────
+  // The dashboard is the showcase surface; it gets its own dark sidebar +
+  // canvas instead of the light chrome the rest of the admin app uses.
+  if (isDashboardRoute) {
+    const meEmp = session.user.employeeId
+      ? employees.find((e) => e.id === session.user.employeeId) ?? null
+      : null;
+    const friendlyFromEmail = (email: string): string => {
+      const local = email.split("@")[0] ?? email;
+      const first = local.split(/[._-]+/).filter(Boolean)[0] ?? local;
+      return first.charAt(0).toUpperCase() + first.slice(1);
+    };
+    const displayName = meEmp?.displayName ?? friendlyFromEmail(session.user.email);
+    const roleLabel =
+      session.user.role.charAt(0) + session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
+    const avatarUrl = meEmp
+      ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
+      : null;
+    const tAuth = await getTranslations("auth");
+    return (
+      <PollStatusProvider>
+        <DashboardDarkShell
+          company={companyForBrand}
+          user={{
+            name: displayName,
+            role: roleLabel,
+            email: session.user.email,
+            avatarUrl,
+          }}
+          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          unreadCount={unread}
+          commandTargets={commandTargets}
+          signOutLabel={tAuth("signOut")}
+        >
+          {children}
+        </DashboardDarkShell>
+        <FeedbackLauncher />
+      </PollStatusProvider>
+    );
+  }
 
   return (
     <div className="min-h-dvh flex overflow-x-hidden bg-page shell-admin">

@@ -8,8 +8,10 @@ import {
   CheckCircle2,
   RefreshCw,
   Sparkles,
+  TrendingUp,
   TriangleAlert,
   Users,
+  Wallet,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -112,7 +114,13 @@ function MiniStat({
   );
 }
 
-export function HeadcountCard({ count }: { count: number }) {
+export function HeadcountCard({
+  count,
+  delta = null,
+}: {
+  count: number;
+  delta?: number | null;
+}) {
   return (
     <MiniStat
       eyebrow="Headcount"
@@ -120,8 +128,17 @@ export function HeadcountCard({ count }: { count: number }) {
       icon={Users}
       accent={DASH.violetBright}
       sub={
-        <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+        <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: DASH.textFaint }}>
           Active employees
+          {delta !== null && delta !== 0 ? (
+            <span
+              className="font-semibold tabular-nums"
+              style={{ color: delta > 0 ? DASH.emerald : DASH.rose }}
+            >
+              {delta > 0 ? "+" : ""}
+              {delta}
+            </span>
+          ) : null}
         </span>
       }
     />
@@ -188,35 +205,53 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
   );
 }
 
+function healthLabel(score: number): { word: string; caption: string } {
+  if (score >= 90) return { word: "Excellent", caption: "Everything looks great!" };
+  if (score >= 75) return { word: "Good", caption: "Healthy with minor items." };
+  if (score >= 50) return { word: "Fair", caption: "A few things need attention." };
+  return { word: "Needs attention", caption: "Several items to resolve." };
+}
+
 export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
+  const { word, caption } = healthLabel(health.score);
   return (
-    <DashCard glow className="flex flex-col gap-3">
+    <DashCard glow className="flex h-full flex-col gap-3">
       <Eyebrow>Payroll health score</Eyebrow>
-      <HealthGauge score={health.score} />
-      <ul className="space-y-1.5">
-        {health.checklist.map((item: HealthChecklistItem) => (
-          <li
-            key={item.key}
-            className="flex items-center gap-2 text-[12px]"
-            style={{ color: item.ok ? DASH.textMuted : DASH.textFaint }}
-          >
-            {item.ok ? (
-              <CheckCircle2
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: DASH.emerald }}
-                aria-hidden="true"
-              />
-            ) : (
-              <TriangleAlert
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: DASH.amber }}
-                aria-hidden="true"
-              />
-            )}
-            {item.label}
-          </li>
-        ))}
-      </ul>
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+        <div className="flex w-28 flex-col items-center">
+          <HealthGauge score={health.score} />
+          <div className="-mt-1 text-[12px] font-semibold" style={{ color: DASH.emerald }}>
+            {word}
+          </div>
+        </div>
+        <ul className="space-y-1.5">
+          {health.checklist.map((item: HealthChecklistItem) => (
+            <li
+              key={item.key}
+              className="flex items-center gap-2 text-[12px]"
+              style={{ color: item.ok ? DASH.textMuted : DASH.textFaint }}
+            >
+              {item.ok ? (
+                <CheckCircle2
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{ color: DASH.emerald }}
+                  aria-hidden="true"
+                />
+              ) : (
+                <TriangleAlert
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{ color: DASH.amber }}
+                  aria-hidden="true"
+                />
+              )}
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="text-[11px]" style={{ color: DASH.textFaint }}>
+        {caption}
+      </div>
     </DashCard>
   );
 }
@@ -244,10 +279,10 @@ export function AutomationBanner({
           </span>
           <div>
             <div className="text-sm font-semibold" style={{ color: DASH.text }}>
-              Automate more of your week
+              Automate more. Save more time.
             </div>
             <div className="text-[12px]" style={{ color: DASH.textMuted }}>
-              Schedule runs, auto-sync punches, and route approvals on autopilot.
+              Sync punches from NGTeco and auto-apply rules to eliminate manual work.
             </div>
           </div>
         </div>
@@ -283,54 +318,62 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
   const tiles: Array<{
     label: string;
     value: string;
+    sub: string;
     icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
     accent: string;
   }> = [
     {
-      label: "Total spend (YTD)",
+      label: "Total payroll spend (YTD)",
       value: compactMoney(kpis.ytdSpendCents),
+      sub: "This calendar year",
       icon: Activity,
       accent: DASH.violetBright,
     },
-    ...(kpis.costPerEmployeeCents !== null
-      ? [
-          {
-            label: "Cost per employee",
-            value: compactMoney(kpis.costPerEmployeeCents),
-            icon: Users,
-            accent: DASH.emerald,
-          },
-        ]
-      : []),
     {
-      label: "Payroll runs (mo.)",
+      label: "Cost per employee",
+      value: kpis.costPerEmployeeCents !== null ? compactMoney(kpis.costPerEmployeeCents) : "—",
+      sub: "YTD ÷ active headcount",
+      icon: Wallet,
+      accent: DASH.emerald,
+    },
+    {
+      label: "Payroll runs this month",
       value: String(kpis.runsThisMonth),
+      sub: "Approved or published",
       icon: RefreshCw,
       accent: DASH.violetBright,
     },
     {
       label: "Active employees",
       value: String(kpis.activeEmployees),
+      sub: "Currently on payroll",
       icon: Users,
       accent: DASH.emerald,
+    },
+    {
+      label: "Projected spend (next 4 weeks)",
+      value: compactMoney(kpis.projectedSpendCents),
+      sub: "Estimate from YTD run-rate",
+      icon: TrendingUp,
+      accent: DASH.violetBright,
     },
   ];
 
   return (
-    <DashCard className="grid grid-cols-2 gap-x-4 gap-y-5 lg:grid-cols-4">
+    <DashCard className="grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map((t) => {
         const Icon = t.icon;
         return (
           <div key={t.label} className="flex items-center gap-3">
             <span
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "rgba(255,255,255,0.05)", border: `1px solid ${DASH.border}` }}
             >
-              <Icon className="h-4 w-4" style={{ color: t.accent }} />
+              <Icon className="h-[18px] w-[18px]" style={{ color: t.accent }} />
             </span>
             <div className="min-w-0">
               <div
-                className="truncate text-[10px] font-semibold uppercase tracking-[0.12em]"
+                className="truncate text-[10px] font-semibold uppercase tracking-[0.1em]"
                 style={{ color: DASH.textFaint }}
               >
                 {t.label}
@@ -340,6 +383,9 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
                 style={{ color: DASH.text }}
               >
                 {t.value}
+              </div>
+              <div className="truncate text-[10px]" style={{ color: DASH.textFaint }}>
+                {t.sub}
               </div>
             </div>
           </div>

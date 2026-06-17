@@ -15,6 +15,8 @@ type Props = {
   data: SparkPoint[];
   /** Unique id so multiple gradients/filters on one page don't collide. */
   gradientId: string;
+  /** Height utility class for the chart box. Defaults to a compact height. */
+  className?: string;
 };
 
 type TooltipPayload = {
@@ -46,20 +48,22 @@ function SparkTooltip({
   );
 }
 
-export function CadenceSparkline({ data, gradientId }: Props) {
+export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props) {
   if (data.length < 2) {
+    // Graceful flat baseline instead of a hollow bordered box — keeps the
+    // card looking finished when a cadence has no history yet.
     return (
-      <div
-        className="flex h-14 items-center justify-center rounded-md text-[11px]"
-        style={{ color: "#6e6e85", border: `1px dashed ${CHART.grid}` }}
-      >
-        Not enough history yet
+      <div className={`relative w-full ${className}`} aria-hidden>
+        <span
+          className="absolute inset-x-0 bottom-1/2 h-px"
+          style={{ background: "rgba(255,255,255,0.08)" }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="h-14 w-full">
+    <div className={`w-full ${className}`}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }}>
           <defs>

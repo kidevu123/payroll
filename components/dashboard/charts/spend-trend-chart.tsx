@@ -113,8 +113,17 @@ export function SpendTrendChart({ data }: Props) {
             dy={6}
           />
           <YAxis
-            hide
+            tickLine={false}
+            axisLine={false}
+            width={48}
+            tick={{ fill: CHART.axis, fontSize: 10 }}
             domain={[0, (max: number) => max * 1.15]}
+            tickFormatter={(v: number) => {
+              const d = v / 100;
+              if (d >= 1_000_000) return `$${(d / 1_000_000).toFixed(1)}M`;
+              if (d >= 1_000) return `$${Math.round(d / 1_000)}K`;
+              return `$${Math.round(d)}`;
+            }}
           />
           <Tooltip
             content={<TrendTooltip />}

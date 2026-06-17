@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import {
+  AlertCircle,
   ArrowRight,
   CalendarRange,
   Clock4,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import { formatMoney, formatHoursMinutes } from "@/lib/utils";
 import { CadenceSparkline } from "./charts/cadence-sparkline";
-import { DashCard, Delta, Eyebrow, CountChip } from "./dash-primitives";
+import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
 import type { CadenceCard as CadenceData } from "@/lib/payroll/dashboard-metrics";
 
@@ -101,20 +102,23 @@ export function CadenceCard({ card }: { card: CadenceData }) {
 
   return (
     <DashCard glow={step.primary} className="flex flex-col gap-4">
-      {/* Header: icon + label + status badge */}
+      {/* Header: icon + uppercase cadence name + range, status badge */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(139,92,246,0.12)",
+              background: "rgba(139,92,246,0.14)",
               border: `1px solid ${DASH.border}`,
             }}
           >
             <Icon className="h-4 w-4" style={{ color: DASH.violetBright }} />
           </span>
           <div>
-            <div className="text-sm font-semibold" style={{ color: DASH.text }}>
+            <div
+              className="text-[13px] font-bold uppercase tracking-[0.04em]"
+              style={{ color: DASH.text }}
+            >
               {card.scheduleName}
             </div>
             <div className="text-[11px]" style={{ color: DASH.textFaint }}>
@@ -125,54 +129,64 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           </div>
         </div>
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
           style={{ color: badge.color, background: badge.bg }}
         >
           {step.badge}
         </span>
       </div>
 
-      {/* Hero figure + delta */}
-      <div>
-        <Eyebrow>Total pay period</Eyebrow>
-        <div className="mt-1 flex items-end gap-2.5">
-          <span
-            className="text-[2rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+      {/* Hero figure (left) + glowing sparkline (right) */}
+      <div className="grid grid-cols-[minmax(0,1fr)_42%] items-center gap-2">
+        <div className="min-w-0">
+          <Eyebrow>Total pay period</Eyebrow>
+          <div
+            className="mt-1.5 text-[1.9rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
             style={{ color: DASH.text }}
           >
             {formatMoney(card.totalCents)}
-          </span>
-          <Delta pct={card.deltaPct} className="mb-1" />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Delta pct={card.deltaPct} />
+            {card.priorRangeLabel ? (
+              <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+                vs {card.priorRangeLabel}
+              </span>
+            ) : null}
+          </div>
+          <div
+            className="mt-2 flex items-center gap-3 text-[11px]"
+            style={{ color: DASH.textMuted }}
+          >
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3 w-3" aria-hidden="true" />
+              {card.employeeCount} emp
+            </span>
+            <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <Clock4 className="h-3 w-3" aria-hidden="true" />
+              {formatHoursMinutes(card.hours)}
+            </span>
+          </div>
         </div>
-        <div
-          className="mt-2 flex items-center gap-3 text-[11px]"
-          style={{ color: DASH.textMuted }}
-        >
-          <span className="inline-flex items-center gap-1">
-            <Users className="h-3 w-3" aria-hidden="true" />
-            {card.employeeCount} emp
-          </span>
-          <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <Clock4 className="h-3 w-3" aria-hidden="true" />
-            {formatHoursMinutes(card.hours)}
-          </span>
-        </div>
+        <CadenceSparkline
+          data={card.spark}
+          gradientId={`spark-${card.scheduleId}`}
+          className="h-20"
+        />
       </div>
 
-      {/* Sparkline */}
-      <CadenceSparkline data={card.spark} gradientId={`spark-${card.scheduleId}`} />
-
-      {/* Footer: action + alert chip */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Footer: full-width action + alert pill */}
+      <div className="flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {
                   color: "#0b0b12",
-                  background: DASH.violetBright,
+                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                  boxShadow: "0 8px 20px -10px rgba(124,58,237,0.7)",
                 }
               : {
                   color: DASH.text,
@@ -185,9 +199,22 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
         {card.unresolvedAlerts > 0 ? (
-          <CountChip count={card.unresolvedAlerts} tone="warn" label="alerts" />
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-[12px] font-semibold tabular-nums"
+            style={{ color: DASH.rose, background: "rgba(251,113,133,0.12)" }}
+            title={`${card.unresolvedAlerts} unresolved alerts`}
+          >
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            {card.unresolvedAlerts}
+          </span>
         ) : (
-          <CountChip count={0} tone="good" label="clear" />
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-[12px] font-semibold"
+            style={{ color: DASH.emerald, background: "rgba(52,211,153,0.12)" }}
+            title="No alerts"
+          >
+            <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />0
+          </span>
         )}
       </div>
     </DashCard>
