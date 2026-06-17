@@ -25,6 +25,10 @@ const buttonVariants = cva(
         ghost: "text-text hover:bg-surface-2",
         destructive:
           "bg-danger-700 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.14),0_1px_2px_0_rgb(15_23_42_/_0.08)] hover:bg-danger-700/90",
+        // Signature: violet→indigo→blue brand gradient fill with a soft glow.
+        // White text, subtle inner highlight, glow deepens + brightens on hover.
+        gradient:
+          "bg-brand-gradient text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.18),0_2px_6px_-1px_rgb(79_70_229_/_0.30),0_8px_20px_-6px_rgb(124_58_237_/_0.40)] hover:brightness-[1.06] hover:shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.22),0_3px_8px_-1px_rgb(79_70_229_/_0.36),0_12px_28px_-6px_rgb(124_58_237_/_0.50)] focus-visible:ring-brand-700/40",
       },
       size: {
         default: "h-10 px-4",

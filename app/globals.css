@@ -287,6 +287,194 @@ td.num,
   margin-bottom: 0.25rem;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   SIGNATURE DESIGN SYSTEM (Phase 7 bold redesign — additive only)
+
+   A premium-bold fintech layer that sits on top of the existing token set.
+   Nothing here removes or retunes the base tokens above; it ADDS gradients,
+   texture, glow, an elevated shadow tier, and a larger "signature" radius.
+   Money stays the hero, contrast stays legible, motion respects user prefs.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Signature brand gradient — violet → indigo → blue. Confident, premium,
+     reads as the unmistakable Milo accent without fighting the teal tokens. */
+  --gradient-brand: linear-gradient(
+    135deg,
+    #7c3aed 0%,
+    #6d28d9 38%,
+    #4f46e5 72%,
+    #2563eb 100%
+  );
+  /* Softer wash of the same hue family for hero glows. */
+  --gradient-brand-soft: linear-gradient(
+    135deg,
+    #8b5cf6 0%,
+    #6366f1 55%,
+    #3b82f6 100%
+  );
+
+  /* Per-cadence accent gradients. The cockpit applies these as a top bar /
+     corner glow so each schedule reads at a glance by color. */
+  --gradient-weekly: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+  --gradient-semimonthly: linear-gradient(135deg, #7c3aed 0%, #d946ef 100%);
+  --gradient-monthly: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+
+  /* Glow color (per-cadence) used for hover shadows. */
+  --glow-weekly: 37 99 235;
+  --glow-semimonthly: 124 58 237;
+  --glow-monthly: 234 88 12;
+  --glow-brand: 109 40 217;
+
+  /* Signature radius — one notch larger than rounded-card for hero surfaces. */
+  --radius-signature: 1rem;
+
+  /* Elevated "signature" shadow tier — richer than shadow-card, layered. */
+  --shadow-signature: 0 1px 2px 0 rgb(9 9 11 / 0.05),
+    0 8px 24px -8px rgb(9 9 11 / 0.14), 0 2px 8px -4px rgb(9 9 11 / 0.08);
+  --shadow-signature-hover: 0 2px 4px 0 rgb(9 9 11 / 0.06),
+    0 18px 40px -12px rgb(9 9 11 / 0.22), 0 4px 12px -4px rgb(9 9 11 / 0.10);
+}
+
+:root.dark {
+  --shadow-signature: 0 1px 2px 0 rgb(0 0 0 / 0.6),
+    0 12px 32px -8px rgb(0 0 0 / 0.7);
+  --shadow-signature-hover: 0 2px 4px 0 rgb(0 0 0 / 0.7),
+    0 20px 44px -10px rgb(0 0 0 / 0.78);
+}
+
+/* ── Gradient fills ──────────────────────────────────────────────────────── */
+.bg-brand-gradient {
+  background-image: var(--gradient-brand);
+}
+.bg-brand-gradient-soft {
+  background-image: var(--gradient-brand-soft);
+}
+.cadence-weekly {
+  --cadence-gradient: var(--gradient-weekly);
+  --cadence-glow: var(--glow-weekly);
+}
+.cadence-semimonthly {
+  --cadence-gradient: var(--gradient-semimonthly);
+  --cadence-glow: var(--glow-semimonthly);
+}
+.cadence-monthly {
+  --cadence-gradient: var(--gradient-monthly);
+  --cadence-glow: var(--glow-monthly);
+}
+/* Default cadence falls back to the brand gradient. */
+.cadence-default {
+  --cadence-gradient: var(--gradient-brand);
+  --cadence-glow: var(--glow-brand);
+}
+
+/* A thin gradient accent bar — set on a child element to paint the active
+   cadence color. Consumes --cadence-gradient from the parent cadence class. */
+.cadence-bar {
+  background-image: var(--cadence-gradient, var(--gradient-brand));
+}
+/* Tinted gradient text for the cadence label / numerals where wanted. */
+.cadence-text {
+  background-image: var(--cadence-gradient, var(--gradient-brand));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Signature surfaces (radius + shadow) ────────────────────────────────── */
+.rounded-signature {
+  border-radius: var(--radius-signature);
+}
+.shadow-signature {
+  box-shadow: var(--shadow-signature);
+}
+.shadow-signature-hover {
+  box-shadow: var(--shadow-signature-hover);
+}
+
+/* ── Grain / noise texture ───────────────────────────────────────────────── */
+/* Tiny tiled fractal-noise SVG at low opacity. Layer over hero surfaces for
+   a tactile, non-flat finish. Pointer-events: none so it never blocks input. */
+.signature-grain {
+  position: relative;
+  isolation: isolate;
+}
+.signature-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+}
+
+/* ── Soft radial glow band ───────────────────────────────────────────────── */
+/* A premium top-of-page glow in the signature violet/indigo family. Apply to
+   a wrapper; the gradient is a background layer behind its content. */
+.signature-glow {
+  position: relative;
+  isolation: isolate;
+}
+.signature-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto -1px;
+  height: 12rem;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(
+      ellipse 80% 130% at 12% -40%,
+      rgb(124 58 237 / 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 70% 130% at 92% -30%,
+      rgb(37 99 235 / 0.14),
+      transparent 60%
+    );
+}
+:root.dark .signature-glow::before {
+  background-image: radial-gradient(
+      ellipse 80% 130% at 12% -40%,
+      rgb(124 58 237 / 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 70% 130% at 92% -30%,
+      rgb(37 99 235 / 0.22),
+      transparent 60%
+    );
+}
+
+/* ── Signature card lift (hover) ─────────────────────────────────────────── */
+/* Tasteful translate + glow on hover for signature cards. The per-cadence
+   glow color flows in via --cadence-glow. Motion is gated below. */
+.signature-card {
+  transition: transform var(--duration-normal, 300ms)
+      cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow var(--duration-normal, 300ms) cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+@media (hover: hover) {
+  .signature-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-signature-hover),
+      0 16px 36px -12px rgb(var(--cadence-glow, var(--glow-brand)) / 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signature-card {
+    transition: none;
+    will-change: auto;
+  }
+  .signature-card:hover {
+    transform: none;
+  }
+}
+
 /*
   Reduced motion: respect the user's preference. We don't animate much, but
   the page-enter slide and the AWAITING-state pulse should stop entirely.

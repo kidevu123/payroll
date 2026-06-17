@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { PageHeader } from "@/components/ui/page-header";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
 import {
   Card,
@@ -250,11 +249,25 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Dashboard"
-        description="Today’s attendance, open period, and items waiting on you."
-        meta={shortDateLabel(today)}
-      />
+      {/* Signature hero band — soft violet/indigo glow + faint grain behind an
+          oversized confident title. Replaces the plain PageHeader on the
+          dashboard only; the rest of the app keeps the shared PageHeader. */}
+      <header className="signature-glow signature-grain -mx-1 rounded-signature px-1 pb-1 pt-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0 space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-chip border border-border bg-surface/70 px-2.5 py-1 text-[11px] font-medium text-text-muted backdrop-blur-sm">
+              <CalendarDays className="h-3.5 w-3.5 text-brand-700" />
+              <span className="tabular-nums">{shortDateLabel(today)}</span>
+            </div>
+            <h1 className="text-[2.5rem] font-bold leading-[1.05] tracking-tight text-text sm:text-[3rem]">
+              Dashboard
+            </h1>
+            <p className="max-w-2xl text-body leading-relaxed text-text-muted">
+              Today’s attendance, open period, and items waiting on you.
+            </p>
+          </div>
+        </div>
+      </header>
 
       <ScheduleCockpit rows={cockpitRows} />
 
