@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Search, ChevronRight, ChevronDown } from "lucide-react";
+import { Bell, Search, ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SignOutButton } from "./sign-out-button";
 import { CommandPalette, type CommandTarget } from "./command-palette";
@@ -11,41 +11,6 @@ import { MobileNav } from "./mobile-nav";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 import type { Surface } from "@/lib/auth/role-matrix";
-
-const TITLE_KEY_MAP: Record<string, string> = {
-  "/dashboard": "dashboard",
-  "/employees": "employees",
-  "/time": "time",
-  "/payroll": "payroll",
-  "/requests": "requests",
-  "/ngteco": "ngteco",
-  "/reports": "reports",
-  "/hall-monitor": "hallMonitor",
-  "/cash-drawer": "cashDrawer",
-  "/notifications": "notifications",
-  "/audit": "audit",
-  "/settings": "settings",
-};
-
-function titleKeyFor(
-  pathname: string,
-): { titleKey: string | null; rawTitle: string; crumbs: string[] } {
-  const segs = pathname.split("/").filter(Boolean);
-  if (segs.length === 0) return { titleKey: "dashboard", rawTitle: "Dashboard", crumbs: [] };
-  const head = "/" + segs[0];
-  const titleKey = TITLE_KEY_MAP[head] ?? null;
-  const rawTitle = segs[0]!;
-  if (segs.length === 1) return { titleKey, rawTitle, crumbs: [] };
-  // Build human-readable crumbs from the rest. Numeric-ish segments and
-  // UUIDs are turned into a generic "details" label so the breadcrumb stays
-  // legible without dragging the URL into the UI.
-  const rest = segs.slice(1).map((s) => {
-    if (/^[0-9a-f-]{8,}$/i.test(s) || /^\d+$/.test(s)) return null;
-    return s.replace(/-/g, " ");
-  });
-  const crumbs = rest.filter((x): x is string => Boolean(x));
-  return { titleKey, rawTitle, crumbs };
-}
 
 function initialsFor(email: string): string {
   // Email-derived initial(s). For "first.last@domain" → "FL"; otherwise → first letter.
@@ -82,8 +47,6 @@ export function Topbar({
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
   const tAuth = useTranslations("auth");
-  const { titleKey, rawTitle, crumbs } = titleKeyFor(pathname);
-  const title = titleKey ? tNav(titleKey) : rawTitle;
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement | null>(null);
@@ -150,20 +113,8 @@ export function Topbar({
           allowedSurfaces={allowedSurfaces}
           currentLocale={currentLocale}
         />
-        <div className="min-w-0 flex items-center gap-2 shrink">
-          <h1 className="hidden min-[380px]:block text-heading font-semibold tracking-tight antialiased truncate">
-            {title}
-          </h1>
-          {crumbs.map((c, i) => (
-            <span
-              key={`${c}-${i}`}
-              className="hidden sm:inline-flex items-center gap-2 text-xs text-text-muted"
-            >
-              <ChevronRight className="h-3 w-3 text-text-subtle" aria-hidden />
-              <span className="capitalize">{c}</span>
-            </span>
-          ))}
-        </div>
+        {/* Page name lives in the big in-page title (iOS large-title pattern),
+            not here — keeps the bar clean and avoids the duplicate heading. */}
 
         {/* Search — anchored center on wide screens, hidden on small. */}
         <div className="flex-1 hidden md:flex items-center justify-center px-4">
