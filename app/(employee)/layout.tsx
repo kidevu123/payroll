@@ -78,7 +78,7 @@ export default async function EmployeeLayout({
     },
   };
   return (
-    <div className="min-h-dvh pb-[calc(5.5rem+env(safe-area-inset-bottom))] bg-page shell-employee">
+    <div className="dark min-h-dvh pb-[calc(5.5rem+env(safe-area-inset-bottom))] bg-page shell-employee">
       <ServiceWorkerRegister />
       {/* Phone-first shell: max-w-md feels right on a phone, but on
           tablet (sm+) the 448px cap looked cramped — esp. the calendar
