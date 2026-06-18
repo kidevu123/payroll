@@ -24,6 +24,7 @@ import {
   Banknote,
   Megaphone,
   Search,
+  Bell,
   Sparkles,
   ChevronDown,
   LogOut,
@@ -183,6 +184,41 @@ export function DashboardDarkShell({
         <span className="text-[15px] font-bold tracking-tight" style={{ color: DASH.text }}>
           {company.name}
         </span>
+        {/* Right cluster: notifications + avatar (matches the mobile refs). */}
+        <div className="ml-auto flex items-center gap-2">
+          <Link
+            href="/notifications"
+            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+            className="relative flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ color: DASH.textMuted, background: DASH.surfaceRaised }}
+          >
+            <Bell className="h-4 w-4" aria-hidden />
+            {unreadCount > 0 ? (
+              <span
+                className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
+                style={{ background: DASH.violetBright, boxShadow: `0 0 0 2px ${DASH.topbar}` }}
+              />
+            ) : null}
+          </Link>
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
+              style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+            >
+              {initialsOf(user.name)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ── Sidebar ─────────────────────────────────────────────── */}
