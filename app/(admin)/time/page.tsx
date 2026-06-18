@@ -362,6 +362,26 @@ function legendDotClass(state: CellState): string {
   }
 }
 
+// Mobile attendance-list status badge label + dash-palette color per state.
+const MOBILE_STATUS: Record<CellState, { label: string; color: string }> = {
+  complete: { label: "Complete", color: "var(--dash-emerald)" },
+  incomplete: { label: "Unpaired", color: "var(--dash-amber)" },
+  missed: { label: "Missing", color: "var(--dash-rose)" },
+  future: { label: "—", color: "var(--dash-text-faint)" },
+  inactive: { label: "Inactive", color: "var(--dash-text-faint)" },
+  pto: { label: "PTO", color: "var(--dash-indigo)" },
+  sick: { label: "Sick", color: "var(--dash-indigo)" },
+  unpaid: { label: "Unpaid", color: "var(--dash-text-faint)" },
+  other: { label: "Time off", color: "var(--dash-indigo)" },
+};
+
+function timeInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
 function timeOffStateFor(
   type: "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
 ): CellState {
@@ -395,7 +415,7 @@ function timeOffLabel(state: CellState): string {
 export default async function TimePage({
   searchParams,
 }: {
-  searchParams: Promise<{ schedule?: string; period?: string }>;
+  searchParams: Promise<{ schedule?: string; period?: string; day?: string }>;
 }) {
   const company = await getSetting("company");
   const today = todayInTimezone(company.timezone);
@@ -674,6 +694,15 @@ export default async function TimePage({
     return Math.round((mins / 60) * 10) / 10;
   });
 
+  // Mobile day selector — show one day at a time as a vertical list. Default
+  // to today when it's in the window, else the last day. URL-driven (?day=).
+  const selectedDay =
+    sp.day && days.includes(sp.day)
+      ? sp.day
+      : days.includes(today)
+        ? today
+        : (days[days.length - 1] ?? today);
+
   const stateBadge = (() => {
     switch (period.state) {
       case "UPCOMING":
@@ -771,7 +800,139 @@ export default async function TimePage({
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="min-w-0 overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
+        <div className="min-w-0 space-y-3">
+          {/* ── Mobile: day pills + single-day attendance list (#68) ── */}
+          <div className="lg:hidden -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+            {days.map((d) => {
+              const isSel = d === selectedDay;
+              const dt = new Date(`${d}T12:00:00Z`);
+              const dow = new Intl.DateTimeFormat("en-US", {
+                weekday: "short",
+                timeZone: "UTC",
+              }).format(dt);
+              const dom = new Intl.DateTimeFormat("en-US", {
+                month: "numeric",
+                day: "numeric",
+                timeZone: "UTC",
+              }).format(dt);
+              return (
+                <Link
+                  key={d}
+                  href={`/time?${new URLSearchParams({
+                    ...(tab !== "all" ? { schedule: tab } : {}),
+                    ...(period.id ? { period: period.id } : {}),
+                    day: d,
+                  })}`}
+                  className={`flex shrink-0 flex-col items-center rounded-xl border px-3 py-1.5 text-center transition-colors ${
+                    isSel
+                      ? "border-brand-400 bg-brand-50 text-brand-700"
+                      : "border-border bg-surface text-text-muted"
+                  }`}
+                >
+                  <span className="text-[11px] font-semibold uppercase">{dow}</span>
+                  <span className="text-xs font-bold tabular-nums">{dom}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <ul className="lg:hidden space-y-2">
+            {employees.map((e) => {
+              const list = grid.get(e.id)?.get(selectedDay) ?? [];
+              const offType = timeOffByDay.get(`${e.id}|${selectedDay}`);
+              const isFutureDay = selectedDay > today;
+              let state: CellState;
+              if (list.length === 0) {
+                if (offType) state = timeOffStateFor(offType);
+                else if (isFutureDay) state = "future";
+                else state = "missed";
+              } else if (
+                list.some(
+                  (p) =>
+                    isAmbiguousSinglePunch(p) ||
+                    isMissingClockInPunch(p) ||
+                    isOpenShiftPunch(p),
+                )
+              ) {
+                state = "incomplete";
+              } else state = "complete";
+              if (e.status !== "ACTIVE") state = "inactive";
+              const sorted = [...list].sort(
+                (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
+              );
+              const first = sorted[0];
+              const last = sorted[sorted.length - 1];
+              const closedMs = sorted.reduce(
+                (acc, p) =>
+                  p.clockOut ? acc + (p.clockOut.getTime() - p.clockIn.getTime()) : acc,
+                0,
+              );
+              const totalMin = Math.round(closedMs / 60000);
+              const cellPeriodId = resolveTimeCellPeriodId({
+                currentPeriodId: period.id,
+                punches: sorted,
+              });
+              const meta = MOBILE_STATUS[state];
+              const range = first
+                ? `${formatTimeShort(first.clockIn, company.timezone)} – ${
+                    last && last.clockOut
+                      ? formatTimeShort(last.clockOut, company.timezone)
+                      : "—"
+                  }`
+                : "—";
+              const hLabel =
+                totalMin > 0 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : "";
+              const inner = (
+                <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                    style={{
+                      background: "color-mix(in srgb, var(--dash-violet) 16%, transparent)",
+                      color: "var(--dash-violet)",
+                    }}
+                  >
+                    {timeInitials(e.displayName)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-text">
+                      {e.displayName}
+                    </div>
+                    <div className="truncate text-xs tabular-nums text-text-muted">
+                      {range}
+                      {hLabel ? ` · ${hLabel}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    style={{
+                      background: `color-mix(in srgb, ${meta.color} 16%, transparent)`,
+                      color: meta.color,
+                    }}
+                  >
+                    {meta.label}
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-text-subtle" aria-hidden />
+                </div>
+              );
+              return (
+                <li key={e.id}>
+                  {cellPeriodId ? (
+                    <Link
+                      href={`/time/${cellPeriodId}/${selectedDay}/${e.id}?${new URLSearchParams({ returnTo })}`}
+                      className="block"
+                    >
+                      {inner}
+                    </Link>
+                  ) : (
+                    inner
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* ── Desktop: full employee×day grid ── */}
+          <div className="hidden lg:block overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
         <table className="min-w-full text-body border-collapse">
           <thead>
             <tr className="border-b border-border/80 bg-surface-2/90">
@@ -897,6 +1058,7 @@ export default async function TimePage({
             ))}
           </tbody>
         </table>
+        </div>
         </div>
 
         {/* Right rail — today's summary, exceptions, labor, insight (#57). */}
