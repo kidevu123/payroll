@@ -427,7 +427,7 @@ export default async function CalendarPage({
               return (
                 <div
                   key={day}
-                  className={`min-h-24 rounded-card border p-1.5 ${
+                  className={`min-h-16 sm:min-h-24 rounded-card border p-1 sm:p-1.5 ${
                     inMonth ? "bg-surface" : "bg-surface-2/40 opacity-60"
                   } ${
                     isToday ? "ring-2 ring-brand-700" : "border-border"
@@ -461,7 +461,23 @@ export default async function CalendarPage({
                       ))}
                     </div>
                   )}
-                  <div className="mt-1 space-y-1">
+                  {/* Mobile: colored dots per entry (matches #69). Name bars
+                      are too wide for a 7-col phone grid. */}
+                  {stack.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1 sm:hidden">
+                      {stack.slice(0, 4).map((r, i) => (
+                        <span
+                          key={`dot-${day}-${i}`}
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{
+                            background: TYPE_DOT[r.type] ?? TYPE_DOT.OTHER,
+                            opacity: r.pending ? 0.45 : 1,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div className="mt-1 space-y-1 hidden sm:block">
                     {visible.map((r) => (
                       <CalendarEntry
                         key={`${day}-${r.id}`}
@@ -754,6 +770,15 @@ function Legend({ label, className }: { label: string; className: string }) {
 // correctly-tinted color in BOTH themes — unlike brand-50, which is
 // deliberately pale in dark mode. color-mix over transparent gives a soft
 // tint that works on both the white (light) and near-black (dark) card.
+// Mobile dot color per time-off type (matches the #69 dot-grid + legend).
+const TYPE_DOT: Record<string, string> = {
+  PERSONAL: "var(--dash-emerald)",
+  SICK: "var(--dash-amber)",
+  UNPAID: "var(--dash-text-faint)",
+  OTHER: "var(--dash-violet)",
+  SCHEDULE_NOTE: "var(--dash-indigo)",
+};
+
 const OVERVIEW_TONE: Record<string, string> = {
   emerald: "var(--dash-emerald)",
   amber: "var(--dash-amber)",
