@@ -19,11 +19,14 @@ import {
   ChevronRight,
   Wallet,
   AlertTriangle,
+  Clock,
+  CalendarClock,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { WeekStatsCard } from "@/components/employee/week-stats-card";
+import type { ReactNode } from "react";
 import { AlertCard } from "@/components/employee/alert-card";
 import { ConfirmHoursHero } from "@/components/employee/confirm-hours-hero";
 import { MoneyDisplay } from "@/components/domain/money-display";
@@ -112,6 +115,9 @@ export default async function EmployeeHome() {
   // Recent time-off request history for this employee — visible to all
   // classifications (salaried + hourly all submit requests).
   const recentTimeOff = await listRecentForEmployee(employee.id, 5);
+  const pendingTimeOffCount = recentTimeOff.filter(
+    (r) => r.status === "PENDING",
+  ).length;
 
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
@@ -263,12 +269,43 @@ export default async function EmployeeHome() {
       {!isSalaried && <ConfirmHoursHero employeeId={employee.id} />}
 
       {!isSalaried && (
-        <WeekStatsCard
-          hours={stats.hours}
-          projectedCents={stats.projected}
-          daysLeft={stats.daysLeft}
-          decimals={payRules.hoursDecimalPlaces}
-        />
+        <div className="grid grid-cols-2 gap-3">
+          <EmpMetric
+            icon={Clock}
+            tone="violet"
+            label="Hours this period"
+            value={
+              <HoursDisplay
+                hours={stats.hours}
+                decimals={payRules.hoursDecimalPlaces}
+              />
+            }
+            sub={`${stats.daysLeft} ${stats.daysLeft === 1 ? "day" : "days"} left`}
+          />
+          <EmpMetric
+            icon={Wallet}
+            tone="indigo"
+            label="Estimated pay"
+            value={<MoneyDisplay cents={stats.projected} monospace={false} />}
+            sub="Based on current hours"
+          />
+          <EmpMetric
+            icon={CalendarClock}
+            tone="emerald"
+            label="Time off"
+            value={pendingTimeOffCount}
+            sub={
+              pendingTimeOffCount === 1 ? "request pending" : "requests pending"
+            }
+          />
+          <EmpMetric
+            icon={AlertTriangle}
+            tone={alerts.length > 0 ? "rose" : "emerald"}
+            label="Open issues"
+            value={alerts.length}
+            sub={alerts.length > 0 ? "Needs your attention" : "All clear"}
+          />
+        </div>
       )}
 
       {!isSalaried && latestPayslip && (
@@ -501,5 +538,44 @@ export default async function EmployeeHome() {
         </Card>
       )}
     </main>
+  );
+}
+
+// #71 employee-home metric tile. Tinted icon chip + figure + label + sub.
+const EMP_TONE: Record<string, string> = {
+  violet: "var(--dash-violet)",
+  indigo: "var(--dash-indigo)",
+  emerald: "var(--dash-emerald)",
+  rose: "var(--dash-rose)",
+};
+
+function EmpMetric({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  sub,
+}: {
+  icon: LucideIcon;
+  tone: keyof typeof EMP_TONE;
+  label: string;
+  value: ReactNode;
+  sub: string;
+}) {
+  const c = EMP_TONE[tone];
+  return (
+    <Card className="p-4">
+      <span
+        className="flex h-9 w-9 items-center justify-center rounded-lg"
+        style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="mt-2 text-xl font-bold leading-tight tabular-nums tracking-tight text-text">
+        {value}
+      </div>
+      <div className="text-[12px] font-medium text-text-muted">{label}</div>
+      <div className="text-[11px] text-text-subtle">{sub}</div>
+    </Card>
   );
 }
