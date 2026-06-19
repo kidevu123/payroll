@@ -13,7 +13,7 @@ import {
   updateDocAmount,
 } from "@/lib/db/queries/payroll-documents";
 import { periodBoundsForSchedule } from "@/lib/db/queries/pay-periods";
-import { pushPaystubToZoho } from "@/lib/zoho/push";
+import { pushPaystubToZoho, repushPaystubToZoho } from "@/lib/zoho/push";
 import { listOrgs } from "@/lib/db/queries/zoho";
 import {
   extractPdfText,
@@ -208,12 +208,9 @@ export async function setSalariedDocNetAmountAction(
   if (doc.kind !== "PAYSTUB") {
     return { error: "Only paystubs need a net amount for Zoho." };
   }
-  if (doc.zohoExpenseId) {
-    return {
-      error:
-        "This paystub was already pushed to Zoho. Delete the expense in Zoho first, or re-upload a corrected paystub.",
-    };
-  }
+  // Editing the amount of an already-pushed paystub is allowed: the admin
+  // corrects the net here, then uses "Re-push" which deletes the stale Zoho
+  // expense and posts a fresh one with this amount.
   try {
     await updateDocAmount(docId, amountCents, {
       id: session.user.id,
@@ -288,6 +285,30 @@ export async function pushDocToZohoAction(
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : "Push failed.",
+    };
+  }
+}
+
+/**
+ * Re-push a paystub whose net was corrected after it was already in Zoho.
+ * Deletes the stale Zoho expense, then posts a fresh one with the current
+ * amount (same org it was originally pushed to).
+ */
+export async function repushDocToZohoAction(
+  docId: string,
+): Promise<{ error: string } | { ok: true; expenseId: string }> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(docId).success) return { error: "Invalid doc id." };
+  try {
+    const result = await repushPaystubToZoho(docId, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+    revalidatePath("/salaried");
+    return { ok: true, expenseId: result.expenseId };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Re-push failed.",
     };
   }
 }

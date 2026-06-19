@@ -432,6 +432,78 @@ export async function pushPaystubToZoho(
 }
 
 /**
+ * Re-push a salaried paystub doc after its net amount was corrected. Zoho
+ * already holds the now-wrong expense, so: DELETE it in Zoho, clear our
+ * record, then push fresh with the doc's current amount. The corrected
+ * expense lands in the same org the original was pushed to.
+ *
+ * `force: true` skips the Zoho-side DELETE (use when the expense is already
+ * gone in Zoho, or the OAuth token lacks expenses.DELETE) and just posts a
+ * fresh one — the old orphan, if any, must be removed in Zoho manually.
+ */
+export async function repushPaystubToZoho(
+  documentId: string,
+  actor: Actor,
+  options: { force?: boolean } = {},
+): Promise<PushResult & { deletedPriorExpenseId: string | null }> {
+  const [doc] = await db
+    .select()
+    .from(payrollPeriodDocuments)
+    .where(eq(payrollPeriodDocuments.id, documentId));
+  if (!doc) throw new Error("Document not found.");
+  if (doc.deletedAt) throw new Error("Document is deleted.");
+  if (!doc.amountCents || doc.amountCents <= 0) {
+    throw new Error("Set a positive net amount before re-pushing.");
+  }
+  const orgId = doc.zohoOrganizationId;
+  const priorExpenseId = doc.zohoExpenseId;
+  if (!orgId) {
+    throw new Error("This paystub hasn't been pushed to Zoho yet.");
+  }
+  const [org] = await db
+    .select()
+    .from(zohoOrganizations)
+    .where(eq(zohoOrganizations.id, orgId));
+  if (!org) throw new Error("Zoho organization not found.");
+
+  // 1. Delete the prior expense in Zoho (404 = already gone, treated as ok).
+  let deletedPriorExpenseId: string | null = null;
+  if (priorExpenseId && !options.force) {
+    const del = await deleteExpense(org, priorExpenseId);
+    if (!del.ok) {
+      throw new Error(
+        `Couldn't delete the prior Zoho expense ${priorExpenseId}: ${del.message ?? "unknown error"}. If it's already gone in Zoho, use Force re-push to post a fresh one.`,
+      );
+    }
+    deletedPriorExpenseId = priorExpenseId;
+  }
+
+  // 2. Clear our record so pushPaystubToZoho creates a fresh expense.
+  await db
+    .update(payrollPeriodDocuments)
+    .set({ zohoExpenseId: null, zohoOrganizationId: null, zohoPushedAt: null })
+    .where(eq(payrollPeriodDocuments.id, documentId));
+
+  await writeAudit({
+    actorId: actor.id,
+    actorRole: actor.role,
+    action: "payroll_period_document.zoho_push",
+    targetType: "PayrollPeriodDocument",
+    targetId: documentId,
+    after: {
+      repush: true,
+      deletedPriorExpenseId,
+      organizationId: orgId,
+      amountCents: doc.amountCents,
+    },
+  });
+
+  // 3. Push fresh with the corrected amount.
+  const result = await pushPaystubToZoho(documentId, orgId, actor);
+  return { ...result, deletedPriorExpenseId };
+}
+
+/**
  * Re-push a payroll run to Zoho. Existing OK push for (run, org) is
  * resolved atomically:
  *   1. DELETE the orphan expense in Zoho via API (404 = already gone, fine).

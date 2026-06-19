@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CalendarClock,
   CheckCircle2,
+  RotateCcw,
   Download,
   FileText,
   Loader2,
@@ -30,6 +31,7 @@ import {
   inferSalariedPeriodAction,
   listZohoOrgsAction,
   pushDocToZohoAction,
+  repushDocToZohoAction,
   setSalariedDocNetAmountAction,
   suggestNetFromPdfAction,
   uploadSalariedDocAction,
@@ -529,7 +531,9 @@ function DocRow({ doc }: { doc: DocLite }) {
  * (or nothing) and aren't editable here.
  */
 function InlineNet({ doc }: { doc: DocLite }) {
-  const editable = doc.kind === "PAYSTUB" && !doc.zohoExpenseId;
+  // Paystub nets stay editable even after a Zoho push — correcting a mistake
+  // is exactly when you need it. Re-push (in ZohoStatus) resyncs Zoho.
+  const editable = doc.kind === "PAYSTUB";
   const hasAmount = doc.amountCents !== null && doc.amountCents > 0;
 
   const [editing, setEditing] = React.useState(false);
@@ -645,18 +649,61 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
   const needsNet =
     doc.kind === "PAYSTUB" && (doc.amountCents === null || doc.amountCents <= 0);
 
+  async function repush() {
+    setPending(true);
+    setError(null);
+    try {
+      const r = await repushDocToZohoAction(doc.id);
+      if ("error" in r) setError(r.error);
+      else setPushedExpenseId(r.expenseId);
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message ? e.message : "Re-push failed. Please try again.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
   if (pushedExpenseId) {
+    // Pushed: a dropdown to re-push (delete the stale Zoho expense + post a
+    // fresh one with the corrected amount). Use after editing the net.
     return (
-      <span
-        className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10px] font-semibold"
-        style={{
-          background: "color-mix(in srgb, var(--dash-emerald) 16%, transparent)",
-          color: "var(--dash-emerald)",
-        }}
-        title={`Pushed to Zoho: expense ${pushedExpenseId}`}
-      >
-        <CheckCircle2 className="h-3 w-3" /> Zoho
-      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            disabled={pending}
+            className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10px] font-semibold"
+            style={{
+              background: "color-mix(in srgb, var(--dash-emerald) 16%, transparent)",
+              color: "var(--dash-emerald)",
+            }}
+            title={`In Zoho: expense ${pushedExpenseId} — click to re-push`}
+          >
+            {pending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3" />
+            )}{" "}
+            Zoho
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-56">
+          <DropdownMenuLabel>In Zoho · expense {pushedExpenseId}</DropdownMenuLabel>
+          {error ? <p className="px-2 py-1.5 text-xs text-danger-700">{error}</p> : null}
+          <DropdownMenuItem
+            disabled={pending}
+            onSelect={(e) => {
+              e.preventDefault();
+              void repush();
+            }}
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Re-push (replace the Zoho expense)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
