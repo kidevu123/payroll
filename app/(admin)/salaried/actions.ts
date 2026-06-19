@@ -296,14 +296,19 @@ export async function pushDocToZohoAction(
  */
 export async function repushDocToZohoAction(
   docId: string,
+  // Force skips the Zoho-side DELETE (use when the token lacks expenses.DELETE
+  // or the old expense is already gone) and just posts a fresh expense — the
+  // old one, if any, stays in Zoho and must be removed there manually.
+  force = false,
 ): Promise<{ error: string } | { ok: true; expenseId: string }> {
   const session = await requireAdmin();
   if (!idSchema.safeParse(docId).success) return { error: "Invalid doc id." };
   try {
-    const result = await repushPaystubToZoho(docId, {
-      id: session.user.id,
-      role: session.user.role,
-    });
+    const result = await repushPaystubToZoho(
+      docId,
+      { id: session.user.id, role: session.user.role },
+      { force },
+    );
     revalidatePath("/salaried");
     return { ok: true, expenseId: result.expenseId };
   } catch (err) {

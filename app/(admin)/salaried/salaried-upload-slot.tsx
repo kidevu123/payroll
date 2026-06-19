@@ -649,11 +649,11 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
   const needsNet =
     doc.kind === "PAYSTUB" && (doc.amountCents === null || doc.amountCents <= 0);
 
-  async function repush() {
+  async function repush(force = false) {
     setPending(true);
     setError(null);
     try {
-      const r = await repushDocToZohoAction(doc.id);
+      const r = await repushDocToZohoAction(doc.id, force);
       if ("error" in r) setError(r.error);
       else setPushedExpenseId(r.expenseId);
     } catch (e) {
@@ -696,12 +696,26 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
             disabled={pending}
             onSelect={(e) => {
               e.preventDefault();
-              void repush();
+              void repush(false);
             }}
           >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
             Re-push (replace the Zoho expense)
           </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={pending}
+            onSelect={(e) => {
+              e.preventDefault();
+              void repush(true);
+            }}
+          >
+            <PlugZap className="mr-1.5 h-3.5 w-3.5" />
+            Force re-push (post fresh, keep old in Zoho)
+          </DropdownMenuItem>
+          <p className="px-2 pb-1.5 pt-1 text-[10px] leading-tight text-text-subtle">
+            Delete needs the expenses.DELETE scope — reconnect in Settings →
+            Zoho to enable a clean replace.
+          </p>
         </DropdownMenuContent>
       </DropdownMenu>
     );
