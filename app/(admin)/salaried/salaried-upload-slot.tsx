@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import {
   deleteSalariedDocAction,
   inferSalariedPeriodAction,
   listZohoOrgsAction,
@@ -626,7 +633,6 @@ function InlineNet({ doc }: { doc: DocLite }) {
 
 function ZohoStatus({ doc }: { doc: DocLite }) {
   const [orgs, setOrgs] = React.useState<ZohoOrgChoice[] | null>(null);
-  const [picking, setPicking] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pushedExpenseId, setPushedExpenseId] = React.useState<string | null>(
@@ -667,81 +673,91 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
     );
   }
 
+  async function loadOrgs() {
+    setError(null);
+    try {
+      setOrgs(await listZohoOrgsAction());
+    } catch {
+      setOrgs([]);
+      setError("Couldn't load Zoho orgs.");
+    }
+  }
+
+  async function push(orgId: string) {
+    setPending(true);
+    setError(null);
+    try {
+      const r = await pushDocToZohoAction(doc.id, orgId);
+      if ("error" in r) setError(r.error);
+      else setPushedExpenseId(r.expenseId);
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message ? e.message : "Push failed. Please try again.",
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  // Rendered in a Radix DropdownMenu so the org list / errors portal to the
+  // body — the old absolute picker was clipped by overflow-hidden on the
+  // <ul> and <Card>, so with 2+ Zoho orgs the click "did nothing".
   return (
-    <span className="relative">
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={pending}
-        title="Push to Zoho Books as an expense"
-        onClick={async () => {
-          setError(null);
-          try {
-            // Resolve the Zoho orgs once (cached in state thereafter).
-            let available = orgs;
-            if (!available) {
-              available = await listZohoOrgsAction();
-              setOrgs(available);
-            }
-            if (available.length === 0) {
-              setError("No active Zoho org. Connect one in Settings → Zoho first.");
-              return;
-            }
-            // Multiple orgs: open the picker and let the user choose.
-            if (available.length > 1) {
-              setPicking((p) => !p);
-              return;
-            }
-            // Exactly one org: push directly.
-            setPending(true);
-            const r = await pushDocToZohoAction(doc.id, available[0]!.id);
-            setPending(false);
-            if ("error" in r) setError(r.error);
-            else setPushedExpenseId(r.expenseId);
-          } catch (e) {
-            setPending(false);
-            setError(
-              e instanceof Error && e.message
-                ? e.message
-                : "Couldn't reach Zoho. Please try again.",
-            );
-          }
-        }}
-      >
-        {pending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open && orgs === null) void loadOrgs();
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          type="button"
+          disabled={pending}
+          title="Push to Zoho Books as an expense"
+        >
+          {pending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <PlugZap className="h-3.5 w-3.5" />
+          )}{" "}
+          Zoho
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-52">
+        <DropdownMenuLabel>Push paystub to Zoho</DropdownMenuLabel>
+        {error ? (
+          <p className="px-2 py-1.5 text-xs text-danger-700">{error}</p>
+        ) : orgs === null ? (
+          <p className="px-2 py-1.5 text-xs text-text-muted">Loading orgs…</p>
+        ) : orgs.length === 0 ? (
+          <p className="px-2 py-1.5 text-xs text-text-muted">
+            No active Zoho org.{" "}
+            <Link
+              href="/settings/zoho"
+              className="font-medium text-brand-700 underline"
+            >
+              Connect one
+            </Link>
+          </p>
         ) : (
-          <PlugZap className="h-3.5 w-3.5" />
-        )}{" "}
-        Zoho
-      </Button>
-      {picking && orgs && orgs.length > 1 && (
-        <div className="absolute right-0 top-full z-10 mt-1 min-w-40 rounded-card border border-border bg-surface text-xs shadow-card">
-          {orgs.map((o) => (
-            <button
+          orgs.map((o) => (
+            <DropdownMenuItem
               key={o.id}
-              type="button"
-              className="block w-full px-3 py-2 text-left hover:bg-surface-2"
-              onClick={async () => {
-                setPicking(false);
-                setPending(true);
-                setError(null);
-                const r = await pushDocToZohoAction(doc.id, o.id);
-                setPending(false);
-                if ("error" in r) setError(r.error);
-                else setPushedExpenseId(r.expenseId);
+              disabled={pending}
+              onSelect={(e) => {
+                e.preventDefault();
+                void push(o.id);
               }}
             >
-              Push to {o.name}
-            </button>
-          ))}
-        </div>
-      )}
-      {error && (
-        <span className="absolute right-0 top-full mt-1 whitespace-nowrap text-[10px] text-danger-700">
-          {error}
-        </span>
-      )}
-    </span>
+              {pending ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              {o.name}
+            </DropdownMenuItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
