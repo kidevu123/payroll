@@ -69,6 +69,11 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ASSISTANT_MODEL: ${ASSISTANT_MODEL:-}
+      # Central Zoho Integration Service gateway. When both are set, all Zoho
+      # Books expense calls route through it (it holds full-access OAuth tokens
+      # + per-brand config). Unset => Milo talks to Zoho cloud directly.
+      ZOHO_GATEWAY_URL: ${ZOHO_GATEWAY_URL:-}
+      ZOHO_GATEWAY_TOKEN: ${ZOHO_GATEWAY_TOKEN:-}
     volumes:
       - ./data:/data
     ports:

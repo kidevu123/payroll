@@ -466,23 +466,36 @@ export async function repushPaystubToZoho(
     .where(eq(zohoOrganizations.id, orgId));
   if (!org) throw new Error("Zoho organization not found.");
 
-  // 1. Delete the prior expense in Zoho (404 = already gone, treated as ok).
-  let deletedPriorExpenseId: string | null = null;
-  if (priorExpenseId && !options.force) {
-    const del = await deleteExpense(org, priorExpenseId);
-    if (!del.ok) {
-      throw new Error(
-        `Couldn't delete the prior Zoho expense ${priorExpenseId}: ${del.message ?? "unknown error"}. If it's already gone in Zoho, use Force re-push to post a fresh one.`,
-      );
-    }
-    deletedPriorExpenseId = priorExpenseId;
-  }
-
-  // 2. Clear our record so pushPaystubToZoho creates a fresh expense.
+  // Create-first, delete-last: a failed create must never leave the paystub
+  // with no Zoho expense. Clear our record (remembering the old id) so
+  // pushPaystubToZoho posts a fresh expense; restore the link on failure.
   await db
     .update(payrollPeriodDocuments)
     .set({ zohoExpenseId: null, zohoOrganizationId: null, zohoPushedAt: null })
     .where(eq(payrollPeriodDocuments.id, documentId));
+
+  let result: PushResult;
+  try {
+    result = await pushPaystubToZoho(documentId, orgId, actor);
+  } catch (err) {
+    // Restore the prior link so the existing expense isn't orphaned in our DB.
+    await db
+      .update(payrollPeriodDocuments)
+      .set({ zohoExpenseId: priorExpenseId, zohoOrganizationId: orgId })
+      .where(eq(payrollPeriodDocuments.id, documentId));
+    throw err;
+  }
+
+  // New expense is live — now remove the OLD one. Best-effort: the re-push has
+  // already succeeded, so a delete failure must NOT throw (it would wrongly
+  // read as a failed re-push). Record it in the audit instead.
+  let deletedPriorExpenseId: string | null = null;
+  let priorDeleteError: string | null = null;
+  if (priorExpenseId && !options.force) {
+    const del = await deleteExpense(org, priorExpenseId);
+    if (del.ok) deletedPriorExpenseId = priorExpenseId;
+    else priorDeleteError = del.message ?? "unknown error";
+  }
 
   await writeAudit({
     actorId: actor.id,
@@ -492,14 +505,14 @@ export async function repushPaystubToZoho(
     targetId: documentId,
     after: {
       repush: true,
+      newExpenseId: result.expenseId,
       deletedPriorExpenseId,
+      priorDeleteError,
       organizationId: orgId,
       amountCents: doc.amountCents,
     },
   });
 
-  // 3. Push fresh with the corrected amount.
-  const result = await pushPaystubToZoho(documentId, orgId, actor);
   return { ...result, deletedPriorExpenseId };
 }
 

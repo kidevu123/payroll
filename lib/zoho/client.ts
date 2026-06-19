@@ -14,6 +14,12 @@
 
 import { open as openSealed } from "@/lib/crypto/vault";
 import type { ZohoOrganization } from "@/lib/db/schema";
+import {
+  gatewayConfigured,
+  gatewayCreateExpense,
+  gatewayDeleteExpense,
+  gatewayAttachReceipt,
+} from "./gateway";
 
 type CachedToken = { accessToken: string; expiresAt: number };
 const tokenCache = new Map<string, CachedToken>();
@@ -309,6 +315,9 @@ export type CreateExpenseResult = {
 export async function createExpense(
   input: CreateExpenseInput,
 ): Promise<CreateExpenseResult> {
+  // When the central Zoho gateway is configured, route through it (it injects
+  // the brand's account/paid-through config + holds full-access tokens).
+  if (gatewayConfigured()) return gatewayCreateExpense(input);
   const { org, amountCents, reference, date, description } = input;
   const expense = await resolveAccountId(org, {
     id: org.defaultExpenseAccountId,
@@ -395,6 +404,7 @@ export async function deleteExpense(
   org: ZohoOrganization,
   expenseId: string,
 ): Promise<{ ok: boolean; alreadyGone: boolean; message?: string }> {
+  if (gatewayConfigured()) return gatewayDeleteExpense(org, expenseId);
   const resp = await authedFetch(org, `/expenses/${encodeURIComponent(expenseId)}`, {
     method: "DELETE",
   });
@@ -423,6 +433,7 @@ export async function attachReceipt(input: {
   mime: string;
   bytes: Uint8Array;
 }): Promise<void> {
+  if (gatewayConfigured()) return gatewayAttachReceipt(input);
   const { org, expenseId, filename, mime, bytes } = input;
   const token = await getZohoAccessToken(org);
   const url = `${org.apiDomain}/books/v3/expenses/${encodeURIComponent(expenseId)}/receipt?organization_id=${org.organizationId}`;
