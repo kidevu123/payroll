@@ -141,8 +141,9 @@ export async function gatewayAttachReceipt(input: {
 }): Promise<void> {
   const { org, expenseId, filename, mime, bytes } = input;
   const form = new FormData();
-  // Gateway field name is "attachment" (it maps to Zoho's "receipt").
-  form.set("attachment", new Blob([bytes as BlobPart], { type: mime }), filename);
+  // The gateway forwards the multipart field to Zoho under the SAME name, and
+  // Zoho's POST /expenses/{id}/receipt expects the field to be "receipt".
+  form.set("receipt", new Blob([bytes as BlobPart], { type: mime }), filename);
   const resp = await fetch(
     gatewayUrl(`/zoho/expenses/attach_receipt/${encodeURIComponent(expenseId)}`),
     {

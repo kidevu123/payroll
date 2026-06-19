@@ -397,15 +397,23 @@ export async function pushPaystubToZoho(
       doc.payPeriodEnd ??
       doc.uploadedAt.toISOString().slice(0, 10),
   });
-  // Attach the file as the expense receipt. If this fails, the expense
-  // already exists — log + bail; user can re-attach manually in Zoho.
-  await attachReceipt({
-    org,
-    expenseId: expense.expenseId,
-    filename: doc.originalFilename,
-    mime: doc.mime,
-    bytes: new Uint8Array(bytes),
-  });
+  // Attach the file as the expense receipt. If this fails, roll back the
+  // just-created expense so a half-pushed expense (no receipt, not linked in
+  // our DB) can't orphan in Zoho — then surface the attach error.
+  try {
+    await attachReceipt({
+      org,
+      expenseId: expense.expenseId,
+      filename: doc.originalFilename,
+      mime: doc.mime,
+      bytes: new Uint8Array(bytes),
+    });
+  } catch (attachErr) {
+    await deleteExpense(org, expense.expenseId).catch(() => {
+      /* best-effort rollback; surface the original attach error regardless */
+    });
+    throw attachErr;
+  }
 
   await db
     .update(payrollPeriodDocuments)
