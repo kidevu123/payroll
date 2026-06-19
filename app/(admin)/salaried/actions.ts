@@ -248,10 +248,17 @@ export type ZohoOrgChoice = { id: string; name: string };
 
 export async function listZohoOrgsAction(): Promise<ZohoOrgChoice[]> {
   await requireAdmin();
-  const orgs = await listOrgs();
-  return orgs
-    .filter((o) => o.active)
-    .map((o) => ({ id: o.id, name: o.name }));
+  // Never throw to the client — a thrown server action rejects the button's
+  // onClick await and the push silently does nothing. On any failure return
+  // an empty list; the caller surfaces "connect Zoho in Settings".
+  try {
+    const orgs = await listOrgs();
+    return orgs
+      .filter((o) => o.active)
+      .map((o) => ({ id: o.id, name: o.name }));
+  } catch {
+    return [];
+  }
 }
 
 /**

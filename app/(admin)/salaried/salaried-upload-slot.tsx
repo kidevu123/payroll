@@ -300,9 +300,22 @@ export function SalariedUploadSlot({
                 drop a PDF and hit Upload — the range is shown filled-in, never
                 "blank". Back-filling an old stub is just changing the date. */}
             {inferred.kind === "OK" ? (
-              <div className="flex items-center gap-1.5 rounded-input border border-brand-100 bg-brand-50/60 px-2 py-1">
-                <CalendarClock className="h-3 w-3 shrink-0 text-brand-700" aria-hidden="true" />
-                <span className="text-[11px] font-semibold tabular-nums text-brand-700">
+              <div
+                className="flex items-center gap-1.5 rounded-input px-2 py-1"
+                style={{
+                  background: "color-mix(in srgb, var(--dash-violet) 12%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--dash-violet) 26%, transparent)",
+                }}
+              >
+                <CalendarClock
+                  className="h-3 w-3 shrink-0"
+                  style={{ color: "var(--dash-violet)" }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="text-[11px] font-semibold tabular-nums"
+                  style={{ color: "var(--dash-violet)" }}
+                >
                   {formatRange(inferred.startDate, inferred.endDate)}
                 </span>
               </div>
@@ -435,7 +448,13 @@ function DocRow({ doc }: { doc: DocLite }) {
                 and the upload date is demoted to a whispered trailing detail. */}
             <p className="flex items-center gap-1.5">
               {range ? (
-                <span className="inline-flex items-center gap-1 rounded-chip bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-brand-700 ring-1 ring-inset ring-brand-100">
+                <span
+                  className="inline-flex shrink-0 items-center gap-1 rounded-chip px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
+                  style={{
+                    background: "color-mix(in srgb, var(--dash-violet) 15%, transparent)",
+                    color: "var(--dash-violet)",
+                  }}
+                >
                   <CalendarClock className="h-3 w-3" />
                   {range}
                 </span>
@@ -623,7 +642,11 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
   if (pushedExpenseId) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] text-success-700"
+        className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10px] font-semibold"
+        style={{
+          background: "color-mix(in srgb, var(--dash-emerald) 16%, transparent)",
+          color: "var(--dash-emerald)",
+        }}
         title={`Pushed to Zoho: expense ${pushedExpenseId}`}
       >
         <CheckCircle2 className="h-3 w-3" /> Zoho
@@ -653,33 +676,36 @@ function ZohoStatus({ doc }: { doc: DocLite }) {
         title="Push to Zoho Books as an expense"
         onClick={async () => {
           setError(null);
-          if (!orgs) {
-            const list = await listZohoOrgsAction();
-            setOrgs(list);
-            if (list.length === 0) {
-              setError("No active Zoho orgs. Connect one in /settings/zoho first.");
+          try {
+            // Resolve the Zoho orgs once (cached in state thereafter).
+            let available = orgs;
+            if (!available) {
+              available = await listZohoOrgsAction();
+              setOrgs(available);
+            }
+            if (available.length === 0) {
+              setError("No active Zoho org. Connect one in Settings → Zoho first.");
               return;
             }
-            if (list.length === 1) {
-              setPending(true);
-              const r = await pushDocToZohoAction(doc.id, list[0]!.id);
-              setPending(false);
-              if ("error" in r) setError(r.error);
-              else setPushedExpenseId(r.expenseId);
+            // Multiple orgs: open the picker and let the user choose.
+            if (available.length > 1) {
+              setPicking((p) => !p);
               return;
             }
-            setPicking(true);
-            return;
-          }
-          if (orgs.length === 1) {
+            // Exactly one org: push directly.
             setPending(true);
-            const r = await pushDocToZohoAction(doc.id, orgs[0]!.id);
+            const r = await pushDocToZohoAction(doc.id, available[0]!.id);
             setPending(false);
             if ("error" in r) setError(r.error);
             else setPushedExpenseId(r.expenseId);
-            return;
+          } catch (e) {
+            setPending(false);
+            setError(
+              e instanceof Error && e.message
+                ? e.message
+                : "Couldn't reach Zoho. Please try again.",
+            );
           }
-          setPicking((p) => !p);
         }}
       >
         {pending ? (
