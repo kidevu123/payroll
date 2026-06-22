@@ -180,11 +180,13 @@ function groupByMonth(periods: GroupedReport[]): MonthGroup[] {
   return months;
 }
 
-/** Period NET = sum of run amounts + temp labor (temp counted once). */
+/** Period NET = run amounts + temp labor + salaried/W2 paystub net (each
+ *  counted once). Salaried payouts are real payroll, so they belong in the
+ *  period + month total — not just a side note. */
 function periodNet(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.amountCents;
-  return total + g.tempLaborCents;
+  return total + g.tempLaborCents + g.docNetPayCents;
 }
 
 /** Period GROSS = sum of run gross + temp labor (temp counted once). */
@@ -467,6 +469,55 @@ function PeriodLine({
     else setPayOpen(false);
   }
 
+  // Salaried W2 paystub period — a simple statement line (no payroll-run
+  // actions; the documents themselves are managed on the Salaried page).
+  const paystubRun = group.runs.find((r) => r.isSalariedPaystub);
+  if (paystubRun) {
+    const docs = paystubRun.paystubDocs ?? [];
+    return (
+      <div className="group/row relative transition-colors hover:bg-surface-2/40">
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-[3px] bg-brand-700 opacity-70 transition-opacity group-hover/row:opacity-100"
+        />
+        <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-5">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+              <Link
+                href="/salaried"
+                className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
+              >
+                {formatRange(group.periodStart, group.periodEnd)}
+              </Link>
+              <span className="flex flex-wrap items-center gap-1.5">
+                <SchedulePill name="Salaried" />
+                <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+                  <FileText className="h-3 w-3" /> {docs.length}{" "}
+                  {docs.length === 1 ? "paystub" : "paystubs"}
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 sm:justify-end">
+              <div className="flex flex-col items-start leading-none sm:items-end">
+                <span className="font-mono tabular-nums text-xl font-semibold tracking-tight text-text">
+                  <MoneyDisplay cents={net} />
+                </span>
+                <span className="mt-1 font-mono text-[10px] leading-tight tabular-nums text-text-subtle">
+                  W2 net · uploaded paystubs
+                </span>
+              </div>
+              <Button asChild size="sm" variant="ghost" title="Manage paystubs">
+                <Link href="/salaried">
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="group/row relative transition-colors hover:bg-surface-2/40">
       {/* Cadence accent rail — a thin colored edge so weekly / semi-monthly /
@@ -515,7 +566,7 @@ function PeriodLine({
                 )}
                 {group.docNetPayCents > 0 && (
                   <span className="text-success-700">
-                    +<MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
+                    incl. <MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
                   </span>
                 )}
                 {group.tempLaborCents > 0 && (
@@ -684,8 +735,8 @@ function PaymentChip({
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-success-100 bg-success-50 px-2 py-0.5 text-[10px] font-medium text-success-800">
-      <CheckCircle2 className="h-3 w-3" /> Paid
+    <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+      <Landmark className="h-3 w-3" /> Paid from bank account
     </span>
   );
 }

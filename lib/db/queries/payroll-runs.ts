@@ -14,6 +14,7 @@ import {
   payslips,
   paySchedules,
   payrollPeriodDocuments,
+  employees,
   users,
   ingestExceptions,
   zohoOrganizations,
@@ -120,7 +121,105 @@ export type ReportRow = {
   /** When state = PAID, how it was settled. NULL for older periods or
    *  ones that haven't been paid yet. */
   periodPaymentMethod: "BANK" | "CASH" | null;
+  /** True for synthetic rows that represent salaried W2 paystub uploads with
+   *  no payroll run (the Salaried-tab flow). The reports UI renders these as a
+   *  simple "Salaried" period line (View paystub, no run actions). */
+  isSalariedPaystub?: boolean;
+  /** Per-employee paystub breakdown for a salaried-paystub row. */
+  paystubDocs?: Array<{ id: string; employeeName: string; amountCents: number }>;
 };
+
+/**
+ * Salaried W2 paystubs uploaded via the Salaried tab carry a pay period
+ * (pay_period_start/end) but no payroll run and no pay_period row, so they
+ * never appear in listReports. This surfaces them as synthetic report rows —
+ * one per (start,end) pay period — summing every salaried employee's net for
+ * that period. They flow into the reports month-total so monthly payroll
+ * reflects salaried payouts too.
+ */
+export async function listSalariedPaystubReports(
+  limit = 200,
+): Promise<ReportRow[]> {
+  const docs = await db
+    .select({
+      id: payrollPeriodDocuments.id,
+      start: payrollPeriodDocuments.payPeriodStart,
+      end: payrollPeriodDocuments.payPeriodEnd,
+      amountCents: payrollPeriodDocuments.amountCents,
+      uploadedAt: payrollPeriodDocuments.uploadedAt,
+      paymentMethod: payrollPeriodDocuments.zohoExpenseId,
+      employeeName: employees.displayName,
+    })
+    .from(payrollPeriodDocuments)
+    .leftJoin(employees, eq(payrollPeriodDocuments.employeeId, employees.id))
+    .where(
+      and(
+        eq(payrollPeriodDocuments.kind, "PAYSTUB"),
+        isNull(payrollPeriodDocuments.periodId),
+        isNull(payrollPeriodDocuments.deletedAt),
+        sql`${payrollPeriodDocuments.amountCents} IS NOT NULL`,
+        sql`${payrollPeriodDocuments.payPeriodStart} IS NOT NULL`,
+        sql`${payrollPeriodDocuments.payPeriodEnd} IS NOT NULL`,
+      ),
+    )
+    .orderBy(desc(payrollPeriodDocuments.payPeriodEnd));
+
+  // Group by the (start,end) pay period.
+  const byPeriod = new Map<
+    string,
+    {
+      start: string;
+      end: string;
+      total: number;
+      latestUpload: Date;
+      docs: Array<{ id: string; employeeName: string; amountCents: number }>;
+    }
+  >();
+  for (const d of docs) {
+    if (!d.start || !d.end || d.amountCents === null) continue;
+    const key = `${d.start}__${d.end}`;
+    const g = byPeriod.get(key) ?? {
+      start: d.start,
+      end: d.end,
+      total: 0,
+      latestUpload: d.uploadedAt,
+      docs: [],
+    };
+    g.total += d.amountCents;
+    if (d.uploadedAt > g.latestUpload) g.latestUpload = d.uploadedAt;
+    g.docs.push({
+      id: d.id,
+      employeeName: d.employeeName ?? "Salaried employee",
+      amountCents: d.amountCents,
+    });
+    byPeriod.set(key, g);
+  }
+
+  return [...byPeriod.values()]
+    .slice(0, limit)
+    .map((g) => ({
+      id: `salaried-paystub:${g.start}:${g.end}`,
+      periodId: `salaried-paystub:${g.start}:${g.end}`,
+      startDate: g.start,
+      endDate: g.end,
+      source: "AD_HOC" as PayrollRun["source"],
+      state: "PUBLISHED" as PayrollRun["state"],
+      scheduleName: "Salaried",
+      amountCents: g.total,
+      grossPayCents: 0,
+      docNetPayCents: 0,
+      tempLaborCents: 0,
+      createdByDisplay: "Salaried upload",
+      postedAt: g.latestUpload,
+      publishedToPortalAt: null,
+      pdfPath: null,
+      zohoPushes: [],
+      periodState: "PAID" as const,
+      periodPaymentMethod: "BANK" as const,
+      isSalariedPaystub: true,
+      paystubDocs: g.docs,
+    }));
+}
 
 export async function listReports(
   limit = 100,

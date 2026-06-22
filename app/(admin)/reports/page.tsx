@@ -14,7 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { listReports } from "@/lib/db/queries/payroll-runs";
+import {
+  listReports,
+  listSalariedPaystubReports,
+} from "@/lib/db/queries/payroll-runs";
 import { getDrawerBalanceCents } from "@/lib/db/queries/cash-drawer";
 import { getYtd } from "@/lib/reports/ytd";
 import { computeReportsOverview } from "@/lib/reports/reports-overview";
@@ -46,13 +49,25 @@ export default async function ReportsPage({
   // `reports` is filtered by the active tab (drives the period list); the
   // overview is computed over ALL reports + YTD payslips so the KPIs, mix
   // donut and net-pay trend reflect everything, not just the filtered cadence.
-  const [reports, allReports, ytdRows, orgs, drawerBalanceCents] = await Promise.all([
-    listReports(200, kind),
-    listReports(500),
-    getYtd(currentYear),
-    db.select().from(zohoOrganizations).where(eq(zohoOrganizations.active, true)),
-    getDrawerBalanceCents().catch(() => 0),
-  ]);
+  const [reports, allReports, salariedPaystubs, ytdRows, orgs, drawerBalanceCents] =
+    await Promise.all([
+      listReports(200, kind),
+      listReports(500),
+      listSalariedPaystubReports(200),
+      getYtd(currentYear),
+      db.select().from(zohoOrganizations).where(eq(zohoOrganizations.active, true)),
+      getDrawerBalanceCents().catch(() => 0),
+    ]);
+
+  // Salaried W2 paystubs (uploaded with a pay period but no payroll run) are
+  // real payroll — surface them on the "All" and "Salaried" tabs and merge
+  // newest-first so they fall into the correct month group + month total.
+  const showSalaried = tab === "all" || tab === "salaried";
+  const periodRows = showSalaried
+    ? [...reports, ...salariedPaystubs].sort((a, b) =>
+        a.endDate < b.endDate ? 1 : a.endDate > b.endDate ? -1 : 0,
+      )
+    : reports;
 
   const overview = computeReportsOverview(allReports, ytdRows, currentYear);
 
@@ -82,7 +97,7 @@ export default async function ReportsPage({
           </div>
 
           <ReportsTable
-            reports={reports}
+            reports={periodRows}
             zohoOrgs={orgs}
             drawerBalanceCents={drawerBalanceCents}
             canManageReports={session.user.role !== "ACCOUNTANT"}
