@@ -325,30 +325,6 @@ export async function unlockPeriod(
  * `ensureNextPeriod` — the owner doesn't want the system silently
  * creating periods for them anymore.
  */
-export async function getEffectivePeriod(today: string): Promise<PayPeriod | null> {
-  // Period whose [start_date, end_date] covers today.
-  const [containing] = await db
-    .select()
-    .from(payPeriods)
-    .where(
-      and(
-        sql`${payPeriods.startDate} <= ${today}`,
-        sql`${payPeriods.endDate} >= ${today}`,
-      ),
-    )
-    .orderBy(desc(payPeriods.startDate))
-    .limit(1);
-  if (containing) return containing;
-
-  // Fallback: most recent period regardless of date.
-  const [latest] = await db
-    .select()
-    .from(payPeriods)
-    .orderBy(desc(payPeriods.startDate))
-    .limit(1);
-  return latest ?? null;
-}
-
 export async function ensureNextPeriod(
   today: string,
   actor: Actor | null = null,
@@ -586,15 +562,6 @@ export async function ensurePeriodForSchedule(
     );
     return row;
   });
-}
-
-export async function getMostRecentPeriod(): Promise<PayPeriod | null> {
-  const [row] = await db
-    .select()
-    .from(payPeriods)
-    .orderBy(desc(payPeriods.startDate))
-    .limit(1);
-  return row ?? null;
 }
 
 export async function countPeriods(): Promise<number> {

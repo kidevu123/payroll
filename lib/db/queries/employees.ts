@@ -394,18 +394,3 @@ export async function archiveEmployee(
   });
 }
 
-export async function countActiveEmployees(): Promise<number> {
-  const [row] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(employees)
-    .where(eq(employees.status, "ACTIVE"));
-  return row?.n ?? 0;
-}
-
-export async function listRecentlyUpdated(limit = 10): Promise<Employee[]> {
-  return db
-    .select()
-    .from(employees)
-    .orderBy(desc(employees.updatedAt))
-    .limit(limit);
-}

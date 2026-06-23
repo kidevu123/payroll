@@ -38,23 +38,6 @@ export async function listSchedules(
   return rows;
 }
 
-export async function getSchedule(id: string): Promise<PaySchedule | null> {
-  const [row] = await db
-    .select()
-    .from(paySchedules)
-    .where(eq(paySchedules.id, id));
-  return row ?? null;
-}
-
-export async function getScheduleByName(
-  name: string,
-): Promise<PaySchedule | null> {
-  const [row] = await db
-    .select()
-    .from(paySchedules)
-    .where(eq(paySchedules.name, name));
-  return row ?? null;
-}
 
 export async function createSchedule(
   input: Omit<NewPaySchedule, "id" | "createdAt" | "updatedAt">,
@@ -115,13 +98,6 @@ export async function updateSchedule(
   });
 }
 
-export async function deactivateSchedule(
-  id: string,
-  actor: Actor,
-): Promise<void> {
-  await updateSchedule(id, { active: false }, actor);
-}
-
 /**
  * Counts of employees per schedule, used by the Settings tab to show usage.
  */
@@ -141,24 +117,6 @@ export async function countEmployeesPerSchedule(): Promise<
     if (r.scheduleId) out[r.scheduleId] = r.n;
   }
   return out;
-}
-
-/**
- * Active employees on a given schedule. Used by the run-tick job to scope
- * which employees a freshly-created PayrollRun should include.
- */
-export async function listEmployeesOnSchedule(
-  scheduleId: string,
-): Promise<{ id: string; displayName: string }[]> {
-  return db
-    .select({ id: employees.id, displayName: employees.displayName })
-    .from(employees)
-    .where(
-      and(
-        eq(employees.payScheduleId, scheduleId),
-        eq(employees.status, "ACTIVE"),
-      ),
-    );
 }
 
 /**

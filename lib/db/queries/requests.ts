@@ -154,16 +154,6 @@ export async function listPendingMissedPunchRequestsForReview(
   });
 }
 
-export async function listMissedPunchRequestsForEmployee(
-  employeeId: string,
-): Promise<MissedPunchRequest[]> {
-  return db
-    .select()
-    .from(missedPunchRequests)
-    .where(eq(missedPunchRequests.employeeId, employeeId))
-    .orderBy(desc(missedPunchRequests.createdAt));
-}
-
 export async function getMissedPunchRequest(id: string): Promise<MissedPunchRequest | null> {
   const [row] = await db
     .select()
@@ -559,16 +549,6 @@ export async function listPendingTimeOffRequests(): Promise<TimeOffRequest[]> {
     .select()
     .from(timeOffRequests)
     .where(eq(timeOffRequests.status, "PENDING"))
-    .orderBy(desc(timeOffRequests.createdAt));
-}
-
-export async function listTimeOffRequestsForEmployee(
-  employeeId: string,
-): Promise<TimeOffRequest[]> {
-  return db
-    .select()
-    .from(timeOffRequests)
-    .where(eq(timeOffRequests.employeeId, employeeId))
     .orderBy(desc(timeOffRequests.createdAt));
 }
 

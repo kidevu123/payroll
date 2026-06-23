@@ -560,23 +560,6 @@ export async function listExceptions(runId: string): Promise<IngestException[]> 
  * Run for the currently-OPEN period, if any. Returns the most recent run
  * for that period (could be SCHEDULED, INGESTING, AWAITING_*, etc).
  */
-export async function getCurrentRun(): Promise<PayrollRun | null> {
-  const [openPeriod] = await db
-    .select()
-    .from(payPeriods)
-    .where(eq(payPeriods.state, "OPEN"))
-    .orderBy(desc(payPeriods.startDate))
-    .limit(1);
-  if (!openPeriod) return null;
-  const [row] = await db
-    .select()
-    .from(payrollRuns)
-    .where(eq(payrollRuns.periodId, openPeriod.id))
-    .orderBy(desc(payrollRuns.createdAt))
-    .limit(1);
-  return row ?? null;
-}
-
 export async function getRunForPeriod(periodId: string): Promise<PayrollRun | null> {
   const [row] = await db
     .select()
@@ -663,12 +646,3 @@ export async function transitionRun(
   });
 }
 
-/**
- * Convenience for "I am the ingest job, mark this run as ingesting now."
- */
-export async function markIngesting(id: string): Promise<void> {
-  await db
-    .update(payrollRuns)
-    .set({ state: "INGESTING", ingestStartedAt: new Date() })
-    .where(and(eq(payrollRuns.id, id), eq(payrollRuns.state, "SCHEDULED")));
-}

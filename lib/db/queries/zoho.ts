@@ -28,14 +28,6 @@ export async function getOrg(id: string): Promise<ZohoOrganization | null> {
   return row ?? null;
 }
 
-export async function getOrgByName(name: string): Promise<ZohoOrganization | null> {
-  const [row] = await db
-    .select()
-    .from(zohoOrganizations)
-    .where(eq(zohoOrganizations.name, name));
-  return row ?? null;
-}
-
 export type CreateOrgInput = {
   name: string;
   organizationId: string;

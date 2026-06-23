@@ -16,11 +16,6 @@ export async function listShifts(
   return rows.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export async function getShift(id: string): Promise<Shift | null> {
-  const [row] = await db.select().from(shifts).where(eq(shifts.id, id));
-  return row ?? null;
-}
-
 export type CreateShiftInput = {
   name: string;
   colorHex?: string;
