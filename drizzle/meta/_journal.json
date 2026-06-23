@@ -260,6 +260,13 @@
       "when": 1779900000000,
       "tag": "0036_zoho_admin_report_workdrive",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1782241537654,
+      "tag": "0037_cash_drawer_category_and_void",
+      "breakpoints": true
     }
   ]
 }

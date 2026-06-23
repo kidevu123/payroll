@@ -5,9 +5,13 @@
 // sum(WITHDRAWAL), constrained to never go negative.
 
 import Link from "next/link";
-import { Wallet, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart } from "lucide-react";
 import { requireCashDrawerAccess } from "@/lib/auth-guards";
-import { getDrawerBalanceCents, listEntries } from "@/lib/db/queries/cash-drawer";
+import {
+  getDrawerBalanceCents,
+  listEntries,
+  PETTY_CASH_CATEGORY,
+} from "@/lib/db/queries/cash-drawer";
 import {
   Card,
   CardContent,
@@ -16,12 +20,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
-import { DepositForm, WithdrawForm } from "./forms";
+import { DepositForm, WithdrawForm, PettyCashForm, LedgerRowActions } from "./forms";
 
 export const dynamic = "force-dynamic";
 
+const MANAGE_ROLES = new Set(["OWNER", "ADMIN", "PAYROLL_STAFF"]);
+
 export default async function CashDrawerPage() {
-  await requireCashDrawerAccess();
+  const session = await requireCashDrawerAccess();
+  const canManage = MANAGE_ROLES.has(session.user.role);
   const [balanceCents, entries] = await Promise.all([
     getDrawerBalanceCents(),
     listEntries(),
@@ -92,7 +99,7 @@ export default async function CashDrawerPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
@@ -105,6 +112,20 @@ export default async function CashDrawerPage() {
           </CardHeader>
           <CardContent>
             <DepositForm />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <ShoppingCart className="h-4 w-4 text-brand-700" />
+              Petty cash purchase
+            </CardTitle>
+            <CardDescription>
+              Record a purchase paid from the drawer (office supplies, etc.).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PettyCashForm />
           </CardContent>
         </Card>
         <Card>
@@ -138,12 +159,15 @@ export default async function CashDrawerPage() {
                   <th className="text-left px-4 py-2 font-medium">Invoice / Period</th>
                   <th className="text-left px-4 py-2 font-medium">Notes</th>
                   <th className="text-right px-4 py-2 font-medium">Amount</th>
+                  {canManage && (
+                    <th className="text-right px-4 py-2 font-medium">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-text-muted">
+                    <td colSpan={canManage ? 6 : 5} className="px-4 py-6 text-center text-text-muted">
                       No drawer activity yet. Record your first deposit above.
                     </td>
                   </tr>
@@ -156,20 +180,27 @@ export default async function CashDrawerPage() {
                         ).toLocaleString()}
                       </td>
                       <td className="px-4 py-2">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[10px] font-medium tracking-tight ${
-                            entry.kind === "DEPOSIT"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                              : "border-amber-200 bg-amber-50 text-amber-800"
-                          }`}
-                        >
-                          {entry.kind === "DEPOSIT" ? (
-                            <ArrowDownToLine className="h-3 w-3" />
-                          ) : (
-                            <ArrowUpFromLine className="h-3 w-3" />
-                          )}
-                          {entry.kind}
-                        </span>
+                        {entry.category === PETTY_CASH_CATEGORY ? (
+                          <span className="inline-flex items-center gap-1 rounded-chip border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-medium tracking-tight text-brand-700">
+                            <ShoppingCart className="h-3 w-3" />
+                            PETTY CASH
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[10px] font-medium tracking-tight ${
+                              entry.kind === "DEPOSIT"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : "border-amber-200 bg-amber-50 text-amber-800"
+                            }`}
+                          >
+                            {entry.kind === "DEPOSIT" ? (
+                              <ArrowDownToLine className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpFromLine className="h-3 w-3" />
+                            )}
+                            {entry.kind}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-xs">
                         {entry.kind === "DEPOSIT" ? (
@@ -206,6 +237,18 @@ export default async function CashDrawerPage() {
                           monospace={false}
                         />
                       </td>
+                      {canManage && (
+                        <td className="px-4 py-2 text-right">
+                          <LedgerRowActions
+                            entryId={entry.id}
+                            kind={entry.kind}
+                            amountCents={Number(entry.amountCents)}
+                            notes={entry.notes}
+                            invoiceNumber={entry.invoiceNumber}
+                            canEdit={entry.periodId === null}
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

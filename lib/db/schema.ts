@@ -522,6 +522,9 @@ export const cashDrawerEntries = pgTable(
      *  those are tied to a pay period instead. */
     invoiceNumber: text("invoice_number"),
     notes: text("notes"),
+    /** Optional classification. 'PETTY_CASH' marks an accountant-recorded
+     *  petty-cash purchase (a WITHDRAWAL); NULL for payroll/manual entries. */
+    category: text("category"),
     /** Withdrawals link back to the period that consumed them. Null
      *  for deposits and for any historical withdrawal recorded
      *  manually. */
@@ -532,6 +535,11 @@ export const cashDrawerEntries = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /** Soft-delete. The ledger is append-only for payroll integrity, so
+     *  "delete" voids the entry (excluded from balance + hidden) rather than
+     *  removing the row — the audit trail and reconciliation stay intact. */
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidedById: uuid("voided_by_id").references(() => users.id),
   },
   (t) => [
     index("cash_drawer_entries_kind_idx").on(t.kind),
