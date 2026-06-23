@@ -513,11 +513,56 @@ function PeriodLine({
                   W2 net · uploaded paystubs
                 </span>
               </div>
-              <Button asChild size="sm" variant="ghost" title="Manage paystubs">
-                <Link href="/salaried">
-                  <Eye className="h-4 w-4" />
-                </Link>
-              </Button>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 w-9 p-0"
+                  title={docs.length === 1 ? "View paystub" : "Manage paystubs"}
+                >
+                  <Link
+                    href={docs.length === 1 ? `/api/payroll-docs/${docs[0]!.id}` : "/salaried"}
+                    {...(docs.length === 1
+                      ? { target: "_blank", rel: "noopener" }
+                      : {})}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 p-0"
+                      title="Paystub actions"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[14rem]">
+                    <DropdownMenuLabel>Paystubs</DropdownMenuLabel>
+                    {docs.map((d) => (
+                      <DropdownMenuItem key={d.id} asChild>
+                        <Link
+                          href={`/api/payroll-docs/${d.id}`}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> View {d.employeeName}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/salaried">
+                        <FileText className="h-3.5 w-3.5" /> Manage on Salaried page
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
