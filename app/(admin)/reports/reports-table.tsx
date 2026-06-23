@@ -126,6 +126,7 @@ type GroupedReport = {
   scheduleName: string | null;
   tempLaborCents: number;
   docNetPayCents: number;
+  replacedRunNetCents: number;
   runs: ReportRow[];
 };
 
@@ -153,6 +154,7 @@ function groupByPeriod(reports: ReportRow[]): GroupedReport[] {
         scheduleName: r.scheduleName,
         tempLaborCents: r.tempLaborCents,
         docNetPayCents: r.docNetPayCents,
+        replacedRunNetCents: r.replacedRunNetCents,
         runs: [],
       });
     }
@@ -180,20 +182,17 @@ function groupByMonth(periods: GroupedReport[]): MonthGroup[] {
   return months;
 }
 
-/** Period NET = run amounts + temp labor (each counted once).
+/** Period NET = the actual take-home paid.
  *
- *  IMPORTANT: docNetPayCents is NOT added here. A period-attached W2 paystub
- *  belongs to an employee who is ALREADY in the run's payslips — it's that
- *  same person's real take-home (gross $X in the run, net $Y on the paystub),
- *  not an additional payout. Adding it double-counts the employee and makes
- *  the period "net" exceed its gross. The W2 net is shown as an informational
- *  note instead. Genuinely-separate salaried staff (uploaded with no run) come
- *  through as their own synthetic rows (listSalariedPaystubReports), so they
- *  still count toward the month total exactly once. */
+ *  For salaried/W2 employees the run computes pay UNTAXED (≈ gross), but the
+ *  uploaded W2 paystub carries the real net. So we SWAP: subtract the run net
+ *  of employees who have a paystub (replacedRunNetCents) and add the paystub
+ *  net (docNetPayCents). Hourly employees (no paystub) keep their run net, so a
+ *  mixed period stays correct. No double-count, and net never exceeds gross. */
 function periodNet(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.amountCents;
-  return total + g.tempLaborCents;
+  return total - g.replacedRunNetCents + g.docNetPayCents + g.tempLaborCents;
 }
 
 /** Period GROSS = sum of run gross + temp labor (temp counted once). */
@@ -619,9 +618,9 @@ function PeriodLine({
                 {group.docNetPayCents > 0 && (
                   <span
                     className="text-success-700"
-                    title="Real W2 take-home for salaried employees in this run (informational; already part of the run above, not added on top)."
+                    title="This period's net is the real W2 take-home from the uploaded paystub(s), not the run's pre-tax amount."
                   >
-                    W2 net <MoneyDisplay cents={group.docNetPayCents} monospace={false} />
+                    W2 take-home
                   </span>
                 )}
                 {group.tempLaborCents > 0 && (

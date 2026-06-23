@@ -48,6 +48,43 @@ async function sumDocNetByPeriod(
   return new Map(rows.map((r) => [r.periodId!, r.total]));
 }
 
+/**
+ * Per period, sum the run-payslip net (rounded_pay_cents) for employees who
+ * ALSO have a W2 paystub document for that period. The run computes these
+ * salaried employees' pay UNTAXED (≈ gross), but the uploaded paystub carries
+ * the real take-home — so the period NET replaces this run amount with the
+ * paystub net (subtract this, add docNet). Hourly employees (no paystub) keep
+ * their run net untouched, so mixed periods stay correct.
+ */
+async function sumReplacedRunNetByPeriod(
+  periodIds: string[],
+): Promise<Map<string, number>> {
+  if (periodIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      periodId: payrollRuns.periodId,
+      total: sql<number>`COALESCE(SUM(${payslips.roundedPayCents}), 0)::int`,
+    })
+    .from(payslips)
+    .innerJoin(payrollRuns, eq(payslips.payrollRunId, payrollRuns.id))
+    .where(
+      and(
+        inArray(payrollRuns.periodId, periodIds),
+        isNull(payslips.voidedAt),
+        sql`EXISTS (
+          SELECT 1 FROM ${payrollPeriodDocuments} d
+          WHERE d.employee_id = ${payslips.employeeId}
+            AND d.period_id = ${payrollRuns.periodId}
+            AND d.kind = 'PAYSTUB'
+            AND d.deleted_at IS NULL
+            AND d.amount_cents IS NOT NULL
+        )`,
+      ),
+    )
+    .groupBy(payrollRuns.periodId);
+  return new Map(rows.map((r) => [r.periodId!, r.total]));
+}
+
 export type Actor = {
   id: string;
   role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
@@ -106,6 +143,10 @@ export type ReportRow = {
    *  Represents the after-tax net from accountant-prepared paystubs (W2/
    *  salaried employees). Same value on every run sharing a period. */
   docNetPayCents: number;
+  /** Run-payslip net for employees who ALSO have a W2 paystub this period.
+   *  The period NET swaps this (untaxed run amount) out for docNetPayCents (the
+   *  real take-home). Same value on every run sharing a period. */
+  replacedRunNetCents: number;
   /** Sum of (non-deleted) temp_worker_entries for the period. Same value for
    *  every run sharing a period; UI is responsible for displaying once. */
   tempLaborCents: number;
@@ -208,6 +249,7 @@ export async function listSalariedPaystubReports(
       amountCents: g.total,
       grossPayCents: 0,
       docNetPayCents: 0,
+      replacedRunNetCents: 0,
       tempLaborCents: 0,
       createdByDisplay: "Salaried upload",
       postedAt: g.latestUpload,
@@ -343,9 +385,10 @@ export async function listReports(
 
   // Bulk-load temp-labor and document-net totals per period.
   const periodIds = [...new Set(rows.map((r) => r.periodId))];
-  const [tempByPeriod, docNetByPeriod] = await Promise.all([
+  const [tempByPeriod, docNetByPeriod, replacedRunNetByPeriod] = await Promise.all([
     sumTempByPeriod(periodIds),
     sumDocNetByPeriod(periodIds),
+    sumReplacedRunNetByPeriod(periodIds),
   ]);
 
   return rows.map((r) => ({
@@ -367,6 +410,7 @@ export async function listReports(
       r.payslipSum > 0 ? r.payslipSum : r.totalAmount ?? 0,
     grossPayCents: r.grossPaySum ?? 0,
     docNetPayCents: docNetByPeriod.get(r.periodId ?? "") ?? 0,
+    replacedRunNetCents: replacedRunNetByPeriod.get(r.periodId ?? "") ?? 0,
     tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,
     createdByDisplay: r.createdByName ?? r.approverDisplay ?? "system",
     postedAt: r.postedAt ?? r.publishedAt ?? r.approvedAt ?? r.createdAt,
