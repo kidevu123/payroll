@@ -180,13 +180,20 @@ function groupByMonth(periods: GroupedReport[]): MonthGroup[] {
   return months;
 }
 
-/** Period NET = run amounts + temp labor + salaried/W2 paystub net (each
- *  counted once). Salaried payouts are real payroll, so they belong in the
- *  period + month total — not just a side note. */
+/** Period NET = run amounts + temp labor (each counted once).
+ *
+ *  IMPORTANT: docNetPayCents is NOT added here. A period-attached W2 paystub
+ *  belongs to an employee who is ALREADY in the run's payslips — it's that
+ *  same person's real take-home (gross $X in the run, net $Y on the paystub),
+ *  not an additional payout. Adding it double-counts the employee and makes
+ *  the period "net" exceed its gross. The W2 net is shown as an informational
+ *  note instead. Genuinely-separate salaried staff (uploaded with no run) come
+ *  through as their own synthetic rows (listSalariedPaystubReports), so they
+ *  still count toward the month total exactly once. */
 function periodNet(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.amountCents;
-  return total + g.tempLaborCents + g.docNetPayCents;
+  return total + g.tempLaborCents;
 }
 
 /** Period GROSS = sum of run gross + temp labor (temp counted once). */
@@ -565,8 +572,11 @@ function PeriodLine({
                   </span>
                 )}
                 {group.docNetPayCents > 0 && (
-                  <span className="text-success-700">
-                    incl. <MoneyDisplay cents={group.docNetPayCents} monospace={false} /> W2 net
+                  <span
+                    className="text-success-700"
+                    title="Real W2 take-home for salaried employees in this run (informational; already part of the run above, not added on top)."
+                  >
+                    W2 net <MoneyDisplay cents={group.docNetPayCents} monospace={false} />
                   </span>
                 )}
                 {group.tempLaborCents > 0 && (
