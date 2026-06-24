@@ -292,9 +292,9 @@ export async function fetchNgtecoTransactions(
     if (page === 1 && rows.length > 0 && rows[0]) {
       sampleRecordKeys = Object.keys(rows[0]);
       sampleRawValues = {
-        att_date: rows[0].att_date,
-        punch_format_time: rows[0].punch_format_time,
-        timezone: rows[0].timezone,
+        att_date: String(rows[0].att_date ?? ""),
+        punch_format_time: String(rows[0].punch_format_time ?? ""),
+        timezone: String(rows[0].timezone ?? ""),
       };
     }
     for (const r of rows) {
