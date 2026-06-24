@@ -268,14 +268,18 @@ export async function handlePunchPoll(
       ...(maxRows !== undefined ? { maxRows } : {}),
     };
 
-    // ── Browserless API path (NGTECO_USE_API=1) ─────────────────────────────
+    // ── Browserless API path (DEFAULT) ──────────────────────────────────────
     // Call NGTeco's REST API directly (office-api.ngteco.com) instead of driving
-    // the headless browser — no Chromium, no DOM scrape, no pagination-scroll,
-    // no 10-min timeout (the entire class of weekly failures). Falls back to the
-    // browser scrape on ANY API error so enabling this can never make ingestion
-    // worse than the status quo.
+    // the headless browser. This is now the default: it's faster (2s vs ~50s),
+    // can't time out, and — critically — is CORRECT. The browser scraper walked
+    // a virtualized, scrolling grid and misaligned rows, fabricating punches by
+    // stapling one employee's events onto another. The JSON API returns each
+    // punch keyed to its real employee_code, so that whole class of corruption
+    // is impossible. Falls back to the scraper on any API error. Set
+    // NGTECO_FORCE_SCRAPER=1 to force the old path (emergency only).
+    const useApi = !process.env.NGTECO_FORCE_SCRAPER;
     let result: Awaited<ReturnType<typeof scrapeViewAttendance>>;
-    if (process.env.NGTECO_USE_API) {
+    if (useApi) {
       const t0 = Date.now();
       try {
         const { ngtecoApiLogin, fetchNgtecoTransactions } = await import(
