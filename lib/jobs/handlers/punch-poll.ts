@@ -297,6 +297,7 @@ export async function handlePunchPoll(
             mapped: fetched.events.length,
             unparsed: fetched.unparsed,
             sampleRecordKeys: fetched.sampleRecordKeys,
+            sampleRawValues: fetched.sampleRawValues,
             dateRange: `${apiStartDate}..${apiEndDate}`,
           },
           "punch.poll: NGTeco API fetch ok (browserless)",

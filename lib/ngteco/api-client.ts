@@ -162,44 +162,52 @@ export function buildPunchIso(
   let date = (attDate || "").trim();
   let time = (punchTime || "").trim();
 
-  // punch_format_time sometimes carries the full "YYYY-MM-DD HH:mm:ss".
-  if (/^\d{4}-\d{2}-\d{2}[ T]/.test(time)) {
-    const [d, t] = time.split(/[ T]/);
-    if (d) date = d;
-    if (t) time = t;
+  // punch_format_time may carry a full datetime: "2026-06-24 14:50:39",
+  // "2026-06-24T14:50:39", "06/24/2026 02:50:39 PM", etc. Split off date+time.
+  const dt = /^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})[ T](.+)$/.exec(time);
+  if (dt && dt[1] && dt[2]) {
+    date = dt[1];
+    time = dt[2].trim();
   }
+  // att_date may itself be a full ISO timestamp ("2026-06-24T00:00:00..").
+  const dOnly = /^(\d{4}-\d{2}-\d{2})/.exec(date);
+  if (dOnly && dOnly[1]) date = dOnly[1];
 
-  // Normalize date → YYYY-MM-DD.
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+  // Normalize date → YYYY-MM-DD (accept MM/DD/YYYY).
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(date)) {
     const [mm, dd, yyyy] = date.split("/");
-    date = `${yyyy}-${mm}-${dd}`;
+    date = `${yyyy}-${mm!.padStart(2, "0")}-${dd!.padStart(2, "0")}`;
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
 
-  // Normalize time → HH:mm:ss.
-  if (/^\d{1,2}:\d{2}$/.test(time)) time = `${time}:00`;
-  if (/^\d{1,2}:\d{2}:\d{2}$/.test(time)) {
-    const [h, m, s] = time.split(":");
-    time = `${h!.padStart(2, "0")}:${m}:${s}`;
-  } else {
-    return null;
+  // Normalize time → HH:mm:ss, handling optional AM/PM.
+  const ampm = /(am|pm)\s*$/i.exec(time);
+  const bare = time.replace(/\s*(am|pm)\s*$/i, "").trim();
+  const parts = bare.split(":");
+  if (parts.length < 2) return null;
+  let h = parseInt(parts[0]!, 10);
+  const mm = parts[1]!.padStart(2, "0");
+  const ss = (parts[2] ?? "00").padStart(2, "0");
+  if (Number.isNaN(h)) return null;
+  if (ampm) {
+    const isPm = /pm/i.test(ampm[1]!);
+    if (isPm && h < 12) h += 12;
+    if (!isPm && h === 12) h = 0;
   }
+  if (h < 0 || h > 23) return null;
+  time = `${String(h).padStart(2, "0")}:${mm}:${ss}`;
+  if (!/^\d{2}:\d{2}:\d{2}$/.test(time)) return null;
 
-  // Normalize offset → ±HH:mm.
+  // Normalize offset → ±HH:mm (accept "-0400" / "-04:00" / "-4").
   let offset = (tz || "").trim();
-  const m = /^([+-])(\d{2}):?(\d{2})$/.exec(offset);
-  if (m) {
-    offset = `${m[1]}${m[2]}:${m[3]}`;
+  const mo = /^([+-])(\d{1,2}):?(\d{2})?$/.exec(offset);
+  if (mo) {
+    offset = `${mo[1]}${mo[2]!.padStart(2, "0")}:${(mo[3] ?? "00").padStart(2, "0")}`;
   } else {
-    // Unknown/empty tz: fall back to "Z" would be wrong (these are wall-clock
-    // device times). Leave offset out and let the caller's tz handling apply —
-    // but the scraper always had an offset, so default to no-offset ISO which
-    // the importer interprets in the company tz.
     offset = "";
   }
 
   const iso = `${date}T${time}${offset}`;
-  // Validate it parses.
   if (Number.isNaN(Date.parse(offset ? iso : `${iso}Z`))) return null;
   return iso;
 }
@@ -229,8 +237,11 @@ function mapRecord(r: TransactionRecord): RawPunchEvent | null {
 
 export type FetchTransactionsResult = {
   events: RawPunchEvent[];
-  /** Raw field names + a single sample (for one-time format verification). */
+  /** Raw field names (for one-time format verification). */
   sampleRecordKeys: string[];
+  /** The first record's actual date/time/tz values — logged only to debug a
+   *  parse mismatch (the user's own punch data on their own server). */
+  sampleRawValues: { att_date?: string; punch_format_time?: string; timezone?: string };
   total: number;
   unparsed: number;
 };
@@ -248,6 +259,7 @@ export async function fetchNgtecoTransactions(
   let total = 0;
   let unparsed = 0;
   let sampleRecordKeys: string[] = [];
+  let sampleRawValues: FetchTransactionsResult["sampleRawValues"] = {};
 
   do {
     const url = new URL(`${base}/att/api/v1.0/transactions/transaction/`);
@@ -279,6 +291,11 @@ export async function fetchNgtecoTransactions(
     const rows = data?.data ?? [];
     if (page === 1 && rows.length > 0 && rows[0]) {
       sampleRecordKeys = Object.keys(rows[0]);
+      sampleRawValues = {
+        att_date: rows[0].att_date,
+        punch_format_time: rows[0].punch_format_time,
+        timezone: rows[0].timezone,
+      };
     }
     for (const r of rows) {
       const ev = mapRecord(r);
@@ -288,5 +305,5 @@ export async function fetchNgtecoTransactions(
     page++;
   } while (page <= numPages && events.length < maxRecords);
 
-  return { events, sampleRecordKeys, total, unparsed };
+  return { events, sampleRecordKeys, sampleRawValues, total, unparsed };
 }
