@@ -44,35 +44,94 @@ export class NgtecoApiError extends Error {
 
 type LoginResult = { access: string; refresh: string | null };
 
+async function postJson(
+  url: string,
+  token: string | null,
+  body: unknown,
+  method = "POST",
+): Promise<unknown> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const resp = await fetch(url, { method, headers, body: JSON.stringify(body) });
+  const text = await resp.text();
+  if (!resp.ok) {
+    throw new NgtecoApiError(`${method} ${url} → ${resp.status} ${text.slice(0, 200)}`, resp.status);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new NgtecoApiError(`${url}: response was not JSON.`);
+  }
+}
+
+async function getJson(url: string, token: string): Promise<unknown> {
+  const resp = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  const text = await resp.text();
+  if (!resp.ok) {
+    throw new NgtecoApiError(`GET ${url} → ${resp.status} ${text.slice(0, 200)}`, resp.status);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new NgtecoApiError(`${url}: response was not JSON.`);
+  }
+}
+
+/**
+ * Full NGTeco auth flow — mirrors exactly what the portal SPA does, because the
+ * transactions endpoint 500s ("res_cache_cacheemployee does not exist") without
+ * it:
+ *   1. POST /oauth2/api/v1.0/token             → token1 (NOT company-scoped)
+ *   2. GET  /companies/get_default_company/     → company_id
+ *   3. PUT  /companies/switch_company_v2/       → token2 (company-scoped) ← use this
+ * The company-scoped token2 is what every data call must carry.
+ */
 export async function ngtecoApiLogin(
   portalUrl: string,
   username: string,
   password: string,
 ): Promise<LoginResult> {
   const base = ngtecoApiBase(portalUrl);
-  const resp = await fetch(`${base}/oauth2/api/v1.0/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ username, password, verify_code: "", verify: false }),
-  });
-  const text = await resp.text();
-  if (!resp.ok) {
-    throw new NgtecoApiError(
-      `NGTeco login failed: ${resp.status} ${text.slice(0, 200)}`,
-      resp.status,
-    );
+
+  // 1. Initial login token.
+  const loginJson = (await postJson(`${base}/oauth2/api/v1.0/token`, null, {
+    username,
+    password,
+    verify_code: "",
+    verify: false,
+  })) as { data?: { access?: string; refresh?: string } };
+  const token1 = loginJson.data?.access;
+  if (!token1) throw new NgtecoApiError("NGTeco login: no access token in response.");
+
+  // 2. Resolve the default company id.
+  const companyJson = (await getJson(
+    `${base}/auth/api/v1.0/companies/get_default_company/`,
+    token1,
+  )) as { company_id?: string; data?: { company_id?: string } };
+  const companyId = companyJson.company_id ?? companyJson.data?.company_id;
+  if (!companyId) {
+    throw new NgtecoApiError("NGTeco: could not resolve default company_id.");
   }
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new NgtecoApiError("NGTeco login: response was not JSON.");
+
+  // 3. Activate that company → returns a company-scoped token. This is the step
+  //    that builds the per-company employee cache the transactions endpoint
+  //    needs; skipping it is what caused the 500.
+  const switchJson = (await postJson(
+    `${base}/auth/api/v1.0/companies/switch_company_v2/`,
+    token1,
+    { company_id: companyId },
+    "PUT",
+  )) as { data?: { access?: string; refresh?: string } };
+  const token2 = switchJson.data?.access;
+  if (!token2) {
+    throw new NgtecoApiError("NGTeco: switch_company_v2 returned no token.");
   }
-  const data = (json as { data?: { access?: string; refresh?: string } }).data;
-  if (!data?.access) {
-    throw new NgtecoApiError("NGTeco login: no access token in response.");
-  }
-  return { access: data.access, refresh: data.refresh ?? null };
+  return { access: token2, refresh: switchJson.data?.refresh ?? null };
 }
 
 type TransactionRecord = {
