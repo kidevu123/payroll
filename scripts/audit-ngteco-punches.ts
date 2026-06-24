@@ -12,7 +12,7 @@
 
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { punches, employees, payPeriods } from "@/lib/db/schema";
+import { punches, employees, payPeriods, employeeRateHistory } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { open as openSealed } from "@/lib/crypto/vault";
 import { writeAudit } from "@/lib/db/audit";
@@ -32,6 +32,7 @@ async function main() {
   // `--apply` flips this from a report into a guarded soft-void. `days` is the
   // first non-flag positional arg.
   const apply = process.argv.includes("--apply");
+  const impact = process.argv.includes("--impact");
   const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   const days = Math.max(1, Math.min(120, Number(positional[0] ?? 21)));
   const ngteco = await getSetting("ngteco").catch(() => null);
@@ -73,7 +74,10 @@ async function main() {
 
   // Build real instant set per normalized employee ref. Round to the minute
   // to absorb any second-level formatting drift between the scraper and API.
+  // Also keep the raw ms list per ref so --impact can reconstruct the genuine
+  // shift behind a partially-fabricated punch.
   const realByRef = new Map<string, Set<number>>();
+  const realMsByRef = new Map<string, number[]>();
   for (const ev of fetched.events) {
     const ref = normalizeRef(ev.personId);
     const ms = Date.parse(ev.punchAt);
@@ -81,7 +85,10 @@ async function main() {
     const minute = Math.floor(ms / 60000);
     if (!realByRef.has(ref)) realByRef.set(ref, new Set());
     realByRef.get(ref)!.add(minute);
+    if (!realMsByRef.has(ref)) realMsByRef.set(ref, []);
+    realMsByRef.get(ref)!.push(ms);
   }
+  for (const list of realMsByRef.values()) list.sort((a, b) => a - b);
 
   // 2. Pull Milo NGTECO_AUTO punches in the same window.
   const startUtc = new Date(`${start}T00:00:00Z`);
@@ -109,8 +116,11 @@ async function main() {
   // 3. Flag punches whose in/out instant isn't in the real set for that ref.
   const fabricated: Array<{
     id: string;
+    employeeId: string | null;
     name: string;
     ref: string | null;
+    inMs: number;
+    outMs: number | null;
     inIso: string;
     outIso: string | null;
     badIn: boolean;
@@ -132,8 +142,11 @@ async function main() {
     if (!inReal || !outReal) {
       fabricated.push({
         id: r.id,
+        employeeId: r.employeeId ?? null,
         name: r.name ?? "(unknown)",
         ref: r.ref,
+        inMs: r.clockIn.getTime(),
+        outMs: r.clockOut?.getTime() ?? null,
         inIso: r.clockIn.toISOString(),
         outIso: r.clockOut?.toISOString() ?? null,
         badIn: !inReal,
@@ -159,6 +172,86 @@ async function main() {
     const bad = [f.badIn ? "IN" : "", f.badOut ? "OUT" : ""].filter(Boolean).join("+");
     console.log(`  ${f.id} | ${f.name} | ${f.inIso} | ${f.outIso ?? "(open)"} | ${bad}`);
   }
+  // ── IMPACT: dollar value of each fabricated punch ─────────────────────────
+  if (impact) {
+    const HOUR_MS = 3_600_000;
+    // Effective hourly rate per employee on a given date (rate history row with
+    // the latest effective_from <= date), falling back to the denormalized cache.
+    const rateRows = await db
+      .select({
+        employeeId: employeeRateHistory.employeeId,
+        rate: employeeRateHistory.hourlyRateCents,
+        from: employeeRateHistory.effectiveFrom,
+      })
+      .from(employeeRateHistory);
+    const cacheRows = await db
+      .select({ id: employees.id, rate: employees.hourlyRateCents })
+      .from(employees);
+    const cacheById = new Map(cacheRows.map((r) => [r.id, r.rate ?? null]));
+    function rateFor(empId: string | null, onMs: number): number | null {
+      if (!empId) return null;
+      const day = new Date(onMs).toISOString().slice(0, 10);
+      let best: { from: string; rate: number } | null = null;
+      for (const rr of rateRows) {
+        if (rr.employeeId !== empId) continue;
+        const from = String(rr.from);
+        if (from <= day && (!best || from > best.from)) best = { from, rate: rr.rate };
+      }
+      return best?.rate ?? cacheById.get(empId) ?? null;
+    }
+
+    // For a partial punch, the genuine shift uses the real event closest to the
+    // trustworthy boundary; overpay = recorded hours − genuine hours.
+    function overpayHours(f: (typeof fabricated)[number]): number {
+      if (f.outMs === null) return 0; // open punch — no paid duration to value
+      const recorded = (f.outMs - f.inMs) / HOUR_MS;
+      if (f.badIn && f.badOut) return recorded; // wholly phantom shift
+      const real = (f.ref && realMsByRef.get(normalizeRef(f.ref))) || [];
+      if (f.badIn) {
+        // Real clock-out, fake clock-in: genuine clock-in = latest real event
+        // strictly before the recorded clock-out.
+        const candidates = real.filter((ms) => ms < f.outMs! - 60_000);
+        if (candidates.length === 0) return recorded;
+        const genuineIn = Math.max(...candidates);
+        return Math.max(0, (genuineIn - f.inMs) / HOUR_MS);
+      }
+      // badOut: real clock-in, fake clock-out: genuine clock-out = earliest real
+      // event strictly after the recorded clock-in.
+      const candidates = real.filter((ms) => ms > f.inMs + 60_000);
+      if (candidates.length === 0) return recorded;
+      const genuineOut = Math.min(...candidates);
+      return Math.max(0, (f.outMs - genuineOut) / HOUR_MS);
+    }
+
+    console.log("");
+    console.log("Overpay impact (estimate, valued at rate in effect on punch date):");
+    console.log("emp | date | recorded | overpay hrs | rate | overpay $ | period");
+    const totalByEmp = new Map<string, { hrs: number; cents: number }>();
+    let grandCents = 0;
+    for (const f of fabricated) {
+      const hrs = overpayHours(f);
+      const rate = rateFor(f.employeeId, f.inMs);
+      const cents = rate != null ? Math.round(hrs * rate) : 0;
+      grandCents += cents;
+      const agg = totalByEmp.get(f.name) ?? { hrs: 0, cents: 0 };
+      totalByEmp.set(f.name, { hrs: agg.hrs + hrs, cents: agg.cents + cents });
+      const recHrs = f.outMs ? ((f.outMs - f.inMs) / HOUR_MS).toFixed(2) : "open";
+      const rateStr = rate != null ? `$${(rate / 100).toFixed(2)}/h` : "(no rate)";
+      console.log(
+        `  ${f.name} | ${f.inIso.slice(0, 10)} | ${recHrs}h | ${hrs.toFixed(2)}h | ${rateStr} | $${(cents / 100).toFixed(2)} | ${f.periodState}`,
+      );
+    }
+    console.log("");
+    console.log("Per-employee overpay total:");
+    for (const [name, t] of [...totalByEmp.entries()].sort((a, b) => b[1].cents - a[1].cents)) {
+      console.log(`  ${name}: ${t.hrs.toFixed(2)}h  =  $${(t.cents / 100).toFixed(2)}`);
+    }
+    console.log("");
+    console.log(`GRAND TOTAL estimated overpay: $${(grandCents / 100).toFixed(2)}`);
+    console.log("(read-only — no changes made)");
+    process.exit(0);
+  }
+
   if (!apply) {
     console.log("");
     console.log("(read-only — nothing deleted; re-run with --apply to void)");
