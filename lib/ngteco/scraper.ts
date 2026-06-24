@@ -1448,15 +1448,19 @@ export async function scrapeViewAttendance(
     throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
   };
 
-  const dumpApiCapture = () => {
+  const dumpApiCapture = async (): Promise<void> => {
     if (!process.env.MILO_CAPTURE_API) return;
     try {
-      if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
-      const { writeFileSync } = require("node:fs") as typeof import("node:fs");
-      writeFileSync(
-        join(failureDir, "api-capture.json"),
-        JSON.stringify(apiCapture, null, 2),
-      );
+      const { writeFileSync, mkdirSync: mkdir, existsSync: exists } =
+        await import(/* webpackIgnore: true */ "node:fs");
+      // Stable path (not runId-specific) so it's trivial to find afterward,
+      // plus the per-run failure dir.
+      const stableDir = join(STORAGE_ROOT, "ngteco");
+      if (!exists(stableDir)) mkdir(stableDir, { recursive: true });
+      if (!exists(failureDir)) mkdir(failureDir, { recursive: true });
+      const payload = JSON.stringify(apiCapture, null, 2);
+      writeFileSync(join(stableDir, "api-capture.json"), payload);
+      writeFileSync(join(failureDir, "api-capture.json"), payload);
     } catch {
       /* best-effort */
     }
@@ -1501,7 +1505,7 @@ export async function scrapeViewAttendance(
 
     // By now the SPA has fetched the punch data from its JSON API — dump the
     // captured XHR calls so we can build a direct (browserless) API client.
-    dumpApiCapture();
+    await dumpApiCapture();
 
     const discoveredCols = await discoverViewPunchColumns(page);
     const idSels = prependFieldSelector(
