@@ -1388,15 +1388,21 @@ export async function scrapeViewAttendance(
         if (rt !== "xhr" && rt !== "fetch") return;
         const ct = resp.headers()["content-type"] ?? "";
         const reqHeaders = req.headers();
+        // Record the FULL request header set so we can see context headers
+        // (company/tenant/timezone). Secret-bearing headers have their VALUE
+        // redacted; everything else keeps its value (header names + non-secret
+        // values like a company id are not secrets).
         const authMechanism: Record<string, string> = {};
         for (const k of Object.keys(reqHeaders)) {
-          if (/authorization|token|cookie|^x-.*auth|^x-.*token/i.test(k)) {
-            const val = reqHeaders[k] ?? "";
+          const val = reqHeaders[k] ?? "";
+          if (/authorization|token|cookie|secret|password|^x-csrf/i.test(k)) {
             authMechanism[k] = /^bearer /i.test(val)
               ? "Bearer <redacted>"
               : val
                 ? "<present, redacted>"
                 : "<empty>";
+          } else {
+            authMechanism[k] = val.slice(0, 80);
           }
         }
         // Request params (date range / pagination) are not secrets — but redact
