@@ -33,6 +33,8 @@ async function main() {
   // first non-flag positional arg.
   const apply = process.argv.includes("--apply");
   const impact = process.argv.includes("--impact");
+  const debugArg = process.argv.find((a) => a.startsWith("--debug="));
+  const debugName = debugArg ? debugArg.slice("--debug=".length).toLowerCase() : null;
   const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   const days = Math.max(1, Math.min(120, Number(positional[0] ?? 21)));
   const ngteco = await getSetting("ngteco").catch(() => null);
@@ -112,6 +114,47 @@ async function main() {
         gte(punches.clockIn, startUtc),
       ),
     );
+
+  // ── DEBUG: dump Milo punches vs raw API events for a named employee ───────
+  if (debugName) {
+    const fmt = (ms: number) =>
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }).format(new Date(ms));
+    const matches = rows.filter((r) => (r.name ?? "").toLowerCase().includes(debugName));
+    const refs = new Set(matches.map((r) => (r.ref ? normalizeRef(r.ref) : "")));
+    console.log("");
+    console.log(`DEBUG for "${debugName}" — local time (${tz}):`);
+    console.log(`  matched employees: ${[...new Set(matches.map((r) => r.name))].join(", ")}`);
+    console.log(`  ngteco refs: ${[...refs].join(", ")}`);
+    console.log("");
+    console.log("  MILO punches (source=NGTECO_AUTO, in window):");
+    for (const r of matches.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime())) {
+      console.log(
+        `    IN ${fmt(r.clockIn.getTime())}  OUT ${r.clockOut ? fmt(r.clockOut.getTime()) : "(open)"}  [${r.periodState}]`,
+      );
+    }
+    console.log("");
+    console.log("  RAW NGTeco API events for these refs (what the API actually returned):");
+    const apiForRef = fetched.events
+      .filter((e) => refs.has(normalizeRef(e.personId)))
+      .sort((a, b) => Date.parse(a.punchAt) - Date.parse(b.punchAt));
+    if (apiForRef.length === 0) console.log("    (none — API returned nothing for these refs)");
+    for (const e of apiForRef) {
+      console.log(
+        `    code=${e.personId}  ${fmt(Date.parse(e.punchAt))}  raw[date=${e.rawDate} time=${e.rawTime} tz=${e.rawTz}] verify=${e.verifyType} src=${e.source}`,
+      );
+    }
+    console.log("");
+    console.log("(read-only diagnostic)");
+    process.exit(0);
+  }
 
   // 3. Flag punches whose in/out instant isn't in the real set for that ref.
   const fabricated: Array<{
