@@ -1361,6 +1361,26 @@ export async function scrapeViewAttendance(
   // preview) so we can replace the browser scrape with a direct JSON API call.
   const apiCapture: Array<Record<string, unknown>> = [];
   if (process.env.MILO_CAPTURE_API) {
+    // CREDENTIAL-SAFE capture: we record the API *mechanism* and *schema*, never
+    // secret values or PII. Auth headers → name + style ("Bearer", "cookie")
+    // with the token/cookie value REDACTED. Response bodies → JSON shape (keys +
+    // value types) with secret-named fields redacted and NO actual values. This
+    // is enough to build a direct API client; the real token is fetched at run
+    // time from login, never persisted.
+    const summarizeShape = (v: unknown, depth = 0): unknown => {
+      if (depth > 3) return typeof v;
+      if (Array.isArray(v)) return v.length ? [summarizeShape(v[0], depth + 1)] : [];
+      if (v && typeof v === "object") {
+        const o: Record<string, unknown> = {};
+        for (const k of Object.keys(v as Record<string, unknown>).slice(0, 40)) {
+          o[k] = /token|password|secret|cookie|jwt|auth|session/i.test(k)
+            ? "<redacted>"
+            : summarizeShape((v as Record<string, unknown>)[k], depth + 1);
+        }
+        return o;
+      }
+      return typeof v; // value TYPE only, never the value
+    };
     page.on("response", async (resp) => {
       try {
         const req = resp.request();
@@ -1368,20 +1388,41 @@ export async function scrapeViewAttendance(
         if (rt !== "xhr" && rt !== "fetch") return;
         const ct = resp.headers()["content-type"] ?? "";
         const reqHeaders = req.headers();
-        const authBits: Record<string, string> = {};
+        const authMechanism: Record<string, string> = {};
         for (const k of Object.keys(reqHeaders)) {
-          if (/authorization|token|cookie|^x-/i.test(k)) authBits[k] = reqHeaders[k]!.slice(0, 80);
+          if (/authorization|token|cookie|^x-.*auth|^x-.*token/i.test(k)) {
+            const val = reqHeaders[k] ?? "";
+            authMechanism[k] = /^bearer /i.test(val)
+              ? "Bearer <redacted>"
+              : val
+                ? "<present, redacted>"
+                : "<empty>";
+          }
         }
-        let bodyPreview = "";
-        if (ct.includes("json")) bodyPreview = (await resp.text().catch(() => "")).slice(0, 1500);
+        // Request params (date range / pagination) are not secrets — but redact
+        // any token-looking field just in case.
+        let reqParams = (req.postData() ?? "").slice(0, 400);
+        reqParams = reqParams.replace(
+          /("?(?:token|password|secret|jwt|auth)"?\s*[:=]\s*)"?[^",&}]+/gi,
+          "$1<redacted>",
+        );
+        let responseShape: unknown = null;
+        if (ct.includes("json")) {
+          const txt = await resp.text().catch(() => "");
+          try {
+            responseShape = summarizeShape(JSON.parse(txt));
+          } catch {
+            responseShape = "<non-json>";
+          }
+        }
         apiCapture.push({
           method: req.method(),
           url: resp.url(),
           status: resp.status(),
           contentType: ct,
-          postData: (req.postData() ?? "").slice(0, 500),
-          authHeaders: authBits,
-          bodyPreview,
+          requestParams: reqParams,
+          authMechanism,
+          responseShape,
         });
       } catch {
         /* best-effort capture */
