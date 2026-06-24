@@ -77,6 +77,9 @@ services:
       # One-time NGTeco API discovery flag (default off). When "1", a poll
       # records the portal's XHR/fetch calls to /data/failures/<runId>/.
       MILO_CAPTURE_API: ${MILO_CAPTURE_API:-}
+      # Browserless NGTeco ingestion. When "1", polls call NGTeco's REST API
+      # directly (no headless browser); falls back to the scraper on API error.
+      NGTECO_USE_API: ${NGTECO_USE_API:-}
     volumes:
       - ./data:/data
     ports:

@@ -246,15 +246,67 @@ export async function handlePunchPoll(
   }
   const maxRows = maxRowsForDaysBack(daysBack);
 
+  const tz = company?.timezone ?? "America/New_York";
+  const apiStartDate = startOfDayIso(tz, daysBack).slice(0, 10);
+  const apiEndDate = startOfDayIso(tz, 0).slice(0, 10);
+
   try {
-    const result = await scrapeViewAttendance({
+    const scraperArgs = {
       portalUrl: ngteco.portalUrl,
       username,
       password,
       headless: ngteco.headless,
       runId,
       ...(maxRows !== undefined ? { maxRows } : {}),
-    });
+    };
+
+    // ── Browserless API path (NGTECO_USE_API=1) ─────────────────────────────
+    // Call NGTeco's REST API directly (office-api.ngteco.com) instead of driving
+    // the headless browser — no Chromium, no DOM scrape, no pagination-scroll,
+    // no 10-min timeout (the entire class of weekly failures). Falls back to the
+    // browser scrape on ANY API error so enabling this can never make ingestion
+    // worse than the status quo.
+    let result: Awaited<ReturnType<typeof scrapeViewAttendance>>;
+    if (process.env.NGTECO_USE_API) {
+      const t0 = Date.now();
+      try {
+        const { ngtecoApiLogin, fetchNgtecoTransactions } = await import(
+          "@/lib/ngteco/api-client"
+        );
+        const { access } = await ngtecoApiLogin(
+          ngteco.portalUrl,
+          username,
+          password,
+        );
+        const fetched = await fetchNgtecoTransactions(ngteco.portalUrl, access, {
+          startDate: apiStartDate,
+          endDate: apiEndDate,
+        });
+        logger.info(
+          {
+            runId,
+            total: fetched.total,
+            mapped: fetched.events.length,
+            unparsed: fetched.unparsed,
+            sampleRecordKeys: fetched.sampleRecordKeys,
+            dateRange: `${apiStartDate}..${apiEndDate}`,
+          },
+          "punch.poll: NGTeco API fetch ok (browserless)",
+        );
+        result = { events: fetched.events, durationMs: Date.now() - t0 };
+      } catch (apiErr) {
+        logger.warn(
+          {
+            runId,
+            err: apiErr instanceof Error ? apiErr.message : String(apiErr),
+          },
+          "punch.poll: API path failed — falling back to browser scrape",
+        );
+        result = await scrapeViewAttendance(scraperArgs);
+      }
+    } else {
+      result = await scrapeViewAttendance(scraperArgs);
+    }
     logger.info(
       { runId, events: result.events.length, durationMs: result.durationMs },
       "punch.poll: scrape ok",
