@@ -235,49 +235,47 @@ function PollStatusBarView({
           ? Loader2
           : Activity;
 
+  // Accent color per state, pulled from the dashboard palette so the bar reads
+  // as part of the (dark) dashboard — and flips correctly in light mode too.
+  // These CSS vars are defined globally, so no cross-module import is needed.
+  const accent =
+    ui.progress === "success"
+      ? "var(--dash-emerald)"
+      : ui.progress === "error"
+        ? "var(--dash-rose)"
+        : "var(--dash-violet)";
+  const spinning = ui.phase === "running" || ui.phase === "queued";
+
   return (
     <div
       role="status"
       aria-live="polite"
-      className={cn(
-        "border-b px-3 py-2 sm:px-4 mt-[calc(3.5rem+env(safe-area-inset-top))] lg:mt-0",
-        ui.progress === "success" &&
-          "border-emerald-200 bg-emerald-50 text-emerald-950",
-        ui.progress === "error" && "border-red-200 bg-red-50 text-red-950",
-        ui.progress === "indeterminate" &&
-          "border-brand-200 bg-brand-50 text-brand-950",
-      )}
+      className="border-b border-border bg-surface px-3 py-2 text-text sm:px-4 mt-[calc(3.5rem+env(safe-area-inset-top))] lg:mt-0"
+      style={{
+        // Subtle state-tinted wash over the dark surface + a colored left edge.
+        background: `linear-gradient(90deg, color-mix(in srgb, ${accent} 14%, transparent), color-mix(in srgb, ${accent} 5%, transparent))`,
+        borderLeft: `3px solid ${accent}`,
+      }}
     >
       <div className="mx-auto flex max-w-screen-2xl items-start gap-3">
         <Icon
-          className={cn(
-            "mt-0.5 h-4 w-4 shrink-0",
-            (ui.phase === "running" || ui.phase === "queued") && "animate-spin",
-            ui.progress === "success" && "text-emerald-700",
-            ui.progress === "error" && "text-red-700",
-            ui.progress === "indeterminate" && "text-brand-700",
-          )}
+          className={cn("mt-0.5 h-4 w-4 shrink-0", spinning && "animate-spin")}
+          style={{ color: accent }}
         />
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-sm font-medium">{ui.title}</p>
-            {ui.detail && (
-              <p className="text-xs opacity-90">{ui.detail}</p>
-            )}
+            <p className="text-sm font-semibold text-text">{ui.title}</p>
+            {ui.detail && <p className="text-xs text-text-muted">{ui.detail}</p>}
           </div>
-          {(ui.phase === "running" || ui.phase === "queued") && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-              <div className="h-full w-full animate-pulse rounded-full bg-brand-600" />
-            </div>
-          )}
-          {ui.progress === "success" && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-emerald-200/80">
-              <div className="h-full w-full rounded-full bg-emerald-600" />
-            </div>
-          )}
-          {ui.progress === "error" && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-red-200/80">
-              <div className="h-full w-full rounded-full bg-red-600" />
+          {(spinning || ui.progress === "success" || ui.progress === "error") && (
+            <div
+              className="h-1.5 overflow-hidden rounded-full"
+              style={{ background: "color-mix(in srgb, var(--dash-text-faint) 25%, transparent)" }}
+            >
+              <div
+                className={cn("h-full rounded-full", spinning ? "w-full animate-pulse" : "w-full")}
+                style={{ background: accent }}
+              />
             </div>
           )}
         </div>
@@ -286,7 +284,8 @@ function PollStatusBarView({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 shrink-0 gap-1.5 px-2 text-red-700 hover:bg-red-100 hover:text-red-800"
+            className="h-7 shrink-0 gap-1.5 px-2"
+            style={{ color: "var(--dash-rose)" }}
             onClick={onCancel}
             aria-label="Stop the running poll and kill its browser"
           >
@@ -298,7 +297,7 @@ function PollStatusBarView({
           type="button"
           size="sm"
           variant="ghost"
-          className="h-7 shrink-0 px-2"
+          className="h-7 shrink-0 px-2 text-text-muted hover:text-text"
           onClick={onDismiss}
           aria-label="Dismiss poll status"
         >
