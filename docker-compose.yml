@@ -74,6 +74,9 @@ services:
       # + per-brand config). Unset => Milo talks to Zoho cloud directly.
       ZOHO_GATEWAY_URL: ${ZOHO_GATEWAY_URL:-}
       ZOHO_GATEWAY_TOKEN: ${ZOHO_GATEWAY_TOKEN:-}
+      # One-time NGTeco API discovery flag (default off). When "1", a poll
+      # records the portal's XHR/fetch calls to /data/failures/<runId>/.
+      MILO_CAPTURE_API: ${MILO_CAPTURE_API:-}
     volumes:
       - ./data:/data
     ports:

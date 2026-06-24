@@ -1353,6 +1353,42 @@ export async function scrapeViewAttendance(
   const page = await ctx.newPage();
   page.setDefaultTimeout(20_000);
 
+  // ── One-time API discovery (MILO_CAPTURE_API=1) ──────────────────────────
+  // The portal is a Vue/Element-Plus SPA: it fetches punch data as JSON from a
+  // backend API, then renders the table. Scraping that rendered table is the
+  // fragile, timeout-prone path. When this flag is set we record every XHR/
+  // fetch the page makes (URL, method, status, request auth headers, response
+  // preview) so we can replace the browser scrape with a direct JSON API call.
+  const apiCapture: Array<Record<string, unknown>> = [];
+  if (process.env.MILO_CAPTURE_API) {
+    page.on("response", async (resp) => {
+      try {
+        const req = resp.request();
+        const rt = req.resourceType();
+        if (rt !== "xhr" && rt !== "fetch") return;
+        const ct = resp.headers()["content-type"] ?? "";
+        const reqHeaders = req.headers();
+        const authBits: Record<string, string> = {};
+        for (const k of Object.keys(reqHeaders)) {
+          if (/authorization|token|cookie|^x-/i.test(k)) authBits[k] = reqHeaders[k]!.slice(0, 80);
+        }
+        let bodyPreview = "";
+        if (ct.includes("json")) bodyPreview = (await resp.text().catch(() => "")).slice(0, 1500);
+        apiCapture.push({
+          method: req.method(),
+          url: resp.url(),
+          status: resp.status(),
+          contentType: ct,
+          postData: (req.postData() ?? "").slice(0, 500),
+          authHeaders: authBits,
+          bodyPreview,
+        });
+      } catch {
+        /* best-effort capture */
+      }
+    });
+  }
+
   const captureFailure = async (reason: string): Promise<never> => {
     if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
     const screenshotPath = join(failureDir, "page.png");
@@ -1369,6 +1405,20 @@ export async function scrapeViewAttendance(
     }
     await ctx.close();
     throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
+  };
+
+  const dumpApiCapture = () => {
+    if (!process.env.MILO_CAPTURE_API) return;
+    try {
+      if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
+      const { writeFileSync } = require("node:fs") as typeof import("node:fs");
+      writeFileSync(
+        join(failureDir, "api-capture.json"),
+        JSON.stringify(apiCapture, null, 2),
+      );
+    } catch {
+      /* best-effort */
+    }
   };
 
   try {
@@ -1407,6 +1457,10 @@ export async function scrapeViewAttendance(
       /* table is empty or never hydrated — proceed; we'll either return
          0 events legitimately or log a failure with the screenshot. */
     }
+
+    // By now the SPA has fetched the punch data from its JSON API — dump the
+    // captured XHR calls so we can build a direct (browserless) API client.
+    dumpApiCapture();
 
     const discoveredCols = await discoverViewPunchColumns(page);
     const idSels = prependFieldSelector(
