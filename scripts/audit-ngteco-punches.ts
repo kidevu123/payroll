@@ -10,11 +10,12 @@
 //   node ./node_modules/tsx/dist/cli.mjs scripts/audit-ngteco-punches.ts [days]
 //   (days = lookback window, default 21)
 
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { punches, employees } from "@/lib/db/schema";
+import { punches, employees, payPeriods } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { open as openSealed } from "@/lib/crypto/vault";
+import { writeAudit } from "@/lib/db/audit";
 import { ngtecoApiLogin, fetchNgtecoTransactions } from "@/lib/ngteco/api-client";
 
 function normalizeRef(s: string): string {
@@ -28,7 +29,11 @@ function isEnvelope(v: unknown): v is { ciphertext: string; iv: string } {
 }
 
 async function main() {
-  const days = Math.max(1, Math.min(120, Number(process.argv[2] ?? 21)));
+  // `--apply` flips this from a report into a guarded soft-void. `days` is the
+  // first non-flag positional arg.
+  const apply = process.argv.includes("--apply");
+  const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+  const days = Math.max(1, Math.min(120, Number(positional[0] ?? 21)));
   const ngteco = await getSetting("ngteco").catch(() => null);
   if (
     !ngteco ||
@@ -88,9 +93,11 @@ async function main() {
       name: employees.displayName,
       clockIn: punches.clockIn,
       clockOut: punches.clockOut,
+      periodState: payPeriods.state,
     })
     .from(punches)
     .leftJoin(employees, eq(punches.employeeId, employees.id))
+    .leftJoin(payPeriods, eq(punches.periodId, payPeriods.id))
     .where(
       and(
         eq(punches.source, "NGTECO_AUTO"),
@@ -108,6 +115,7 @@ async function main() {
     outIso: string | null;
     badIn: boolean;
     badOut: boolean;
+    periodState: string | null;
   }> = [];
 
   for (const r of rows) {
@@ -130,6 +138,7 @@ async function main() {
         outIso: r.clockOut?.toISOString() ?? null,
         badIn: !inReal,
         badOut: !outReal,
+        periodState: r.periodState ?? null,
       });
     }
   }
@@ -150,8 +159,60 @@ async function main() {
     const bad = [f.badIn ? "IN" : "", f.badOut ? "OUT" : ""].filter(Boolean).join("+");
     console.log(`  ${f.id} | ${f.name} | ${f.inIso} | ${f.outIso ?? "(open)"} | ${bad}`);
   }
+  if (!apply) {
+    console.log("");
+    console.log("(read-only — nothing deleted; re-run with --apply to void)");
+    process.exit(0);
+  }
+
+  // ── APPLY: guarded soft-void ──────────────────────────────────────────────
+  // Only touch flagged rows. Skip anything in a LOCKED/PAID period (voiding a
+  // finalized run could desync paid payroll) — report those for manual review.
   console.log("");
-  console.log("(read-only — nothing deleted)");
+  console.log("--apply: voiding flagged punches (skipping LOCKED/PAID periods)…");
+  let voided = 0;
+  const skippedLocked: typeof fabricated = [];
+  for (const f of fabricated) {
+    if (f.periodState === "LOCKED" || f.periodState === "PAID") {
+      skippedLocked.push(f);
+      continue;
+    }
+    await db.transaction(async (tx) => {
+      const res = await tx
+        .update(punches)
+        .set({ voidedAt: new Date() })
+        .where(and(eq(punches.id, f.id), isNull(punches.voidedAt)))
+        .returning({ id: punches.id });
+      if (res.length === 0) return; // already voided concurrently
+      await writeAudit(
+        {
+          actorId: null,
+          actorRole: null,
+          action: "punch.void.fabricated",
+          targetType: "punch",
+          targetId: f.id,
+          before: { clockIn: f.inIso, clockOut: f.outIso, source: "NGTECO_AUTO" },
+          after: {
+            voided: true,
+            reason: "No matching NGTeco API event (scraper grid-misalignment artifact)",
+            badIn: f.badIn,
+            badOut: f.badOut,
+          },
+        },
+        tx,
+      );
+      voided++;
+    });
+  }
+  console.log(`Voided ${voided} fabricated punch(es).`);
+  if (skippedLocked.length > 0) {
+    console.log(`Skipped ${skippedLocked.length} in LOCKED/PAID periods (need manual review):`);
+    for (const f of skippedLocked) {
+      console.log(`  ${f.id} | ${f.name} | ${f.inIso} | ${f.periodState}`);
+    }
+  }
+  console.log("");
+  console.log("Done. Genuine punches will re-import on the next API poll.");
   process.exit(0);
 }
 
