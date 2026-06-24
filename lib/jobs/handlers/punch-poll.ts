@@ -248,7 +248,15 @@ export async function handlePunchPoll(
 
   const tz = company?.timezone ?? "America/New_York";
   const apiStartDate = startOfDayIso(tz, daysBack).slice(0, 10);
-  const apiEndDate = startOfDayIso(tz, 0).slice(0, 10);
+  // NGTeco's date_range end is exclusive, so today..today returns nothing. End
+  // on TOMORROW so the current day is always inside the window; the downstream
+  // windowStartIso filter still trims to the exact target days.
+  const apiEndDate = (() => {
+    const todayStr = startOfDayIso(tz, 0).slice(0, 10);
+    const d = new Date(`${todayStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
 
   try {
     const scraperArgs = {
