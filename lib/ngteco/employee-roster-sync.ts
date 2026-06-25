@@ -39,9 +39,12 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
 }
 
 function normalizeRef(s: string): string {
-  const t = s.trim();
-  if (/^\d+$/.test(t)) return String(Number(t));
-  return t;
+  if (!s) return "";
+  if (s.startsWith("TEMP_")) return s;
+  // Exact identifier match. Leading zeros are significant: "01" (Erica) and
+  // "0001" (the owner) are different people. The old numeric-parse collapsed
+  // them, so the roster linked and de-duped the wrong employees.
+  return s.trim().toUpperCase();
 }
 
 const emailSchema = z.string().email();

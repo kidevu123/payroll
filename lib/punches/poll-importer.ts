@@ -50,11 +50,15 @@ export type PollImportSummary = {
   chainsMerged: number;
 };
 
-function normalizeRef(s: string): string {
+export function normalizeRef(s: string): string {
   if (!s) return "";
   if (s.startsWith("TEMP_")) return s;
-  const numeric = Number(s.replace(/^0+/, "") || "0");
-  return Number.isFinite(numeric) ? String(Math.trunc(numeric)) : s;
+  // NGTeco person codes are DISTINCT identifiers — "01" (Erica) and "0001"
+  // (the owner) are different people. The old logic stripped leading zeros and
+  // numeric-parsed, collapsing both onto one employee and cross-attributing
+  // every punch. Match the EXACT code (trim + uppercase only); leading zeros
+  // are significant.
+  return s.trim().toUpperCase();
 }
 
 function dayKey(iso: string, tz: string): string {
