@@ -88,7 +88,7 @@ export function AuditRowDiff({
         </span>
         <span className="w-24 shrink-0 truncate text-text-muted">{ip ?? "—"}</span>
         {changed.length > 0 ? (
-          <span className="rounded bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5">
+          <span className="rounded bg-warning-50 text-warning-800 border border-warning-200 px-1.5 py-0.5">
             {changed.length} change{changed.length === 1 ? "" : "s"}
           </span>
         ) : null}

@@ -62,12 +62,12 @@ export function LoginOnlyForm() {
   if (created) {
     return (
       <div className="space-y-4 rounded-card border border-border bg-surface p-5">
-        <div className="rounded-card border border-amber-300 bg-amber-50/60 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wider text-amber-800">
+        <div className="rounded-card border border-warning-200 bg-warning-50/60 p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-warning-800">
             Temporary password for {created.email} — share once
           </p>
           <div className="mt-1 flex items-center gap-2">
-            <code className="flex-1 rounded-input bg-amber-100/70 px-3 py-2 font-mono text-sm">
+            <code className="flex-1 rounded-input bg-warning-100/70 px-3 py-2 font-mono text-sm">
               {created.tempPassword}
             </code>
             <Button
@@ -79,7 +79,7 @@ export function LoginOnlyForm() {
               <Copy className="h-4 w-4" /> Copy
             </Button>
           </div>
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-xs text-warning-800">
             They&rsquo;ll be forced to change it on first sign-in.
           </p>
         </div>
@@ -154,7 +154,7 @@ export function LoginOnlyForm() {
           </p>
         </div>
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button asChild variant="ghost" type="button">
           <Link href="/employees/new">Back</Link>

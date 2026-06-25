@@ -90,14 +90,14 @@ export function TestPushButton({ disabled }: { disabled?: boolean }) {
         <div
           className={`flex items-start gap-2 rounded-input border px-3 py-2 text-xs ${
             result.ok
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-              : "border-amber-200 bg-amber-50 text-amber-900"
+              ? "border-success-200 bg-success-50 text-success-900"
+              : "border-warning-200 bg-warning-50 text-warning-900"
           }`}
         >
           {result.ok ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-700" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-success-700" />
           ) : (
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning-700" />
           )}
           <span>{result.message}</span>
         </div>

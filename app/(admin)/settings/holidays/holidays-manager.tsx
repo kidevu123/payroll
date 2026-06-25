@@ -67,7 +67,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
                     setPending(false);
                     if (result?.error) setError(result.error);
                   }}
-                  className="text-red-700"
+                  className="text-danger-700"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -76,7 +76,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
           </ul>
         )}
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-danger-700">{error}</p>}
     </div>
   );
 }

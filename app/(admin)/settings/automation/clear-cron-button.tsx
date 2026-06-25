@@ -90,7 +90,7 @@ export function ClearCronButton({ disabledReason }: { disabledReason?: string })
             placeholder="wipe cron"
             autoFocus
           />
-          {error && <p className="text-xs text-red-700">{error}</p>}
+          {error && <p className="text-xs text-danger-700">{error}</p>}
           <div className="flex items-center gap-2">
             <Button
               type="submit"

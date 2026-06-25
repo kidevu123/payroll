@@ -68,14 +68,15 @@ function eachDayBetween(startIso: string, endIso: string): string[] {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  PERSONAL: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  SICK: "bg-amber-100 text-amber-800 border-amber-300",
+  PERSONAL: "bg-success-100 text-success-800 border-success-200",
+  SICK: "bg-warning-100 text-warning-800 border-warning-200",
   UNPAID: "bg-surface-2 text-text-muted border-border",
-  OTHER: "bg-violet-100 text-violet-800 border-violet-300",
+  OTHER:
+    "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/40",
   // Distinct from time-off bars — heads-up only, no payroll impact.
   // Soft blue says "informational" without competing with the
   // amber/emerald/violet bars that count toward time-off totals.
-  SCHEDULE_NOTE: "bg-sky-50 text-sky-800 border-sky-300",
+  SCHEDULE_NOTE: "bg-info-50 text-info-800 border-info-200",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -388,7 +389,10 @@ export default async function CalendarPage({
             <Legend label="Unpaid" className={TYPE_COLORS.UNPAID!} />
             <Legend label="Other" className={TYPE_COLORS.OTHER!} />
             <Legend label="Note" className={TYPE_COLORS.SCHEDULE_NOTE!} />
-            <Legend label="Birthday" className="bg-pink-100 text-pink-800 border-pink-300" />
+            <Legend
+              label="Birthday"
+              className="bg-pink-100 text-pink-800 border-pink-300 dark:bg-pink-500/15 dark:text-pink-300 dark:border-pink-500/40"
+            />
             <span className="text-text-muted">
               · Faded = pending approval
             </span>
@@ -453,7 +457,7 @@ export default async function CalendarPage({
                       {cell.birthdays.map((b, i) => (
                         <div
                           key={`bday-${day}-${i}`}
-                          className="truncate rounded border border-pink-300 bg-pink-50 px-1.5 py-0.5 text-[11px] leading-tight text-pink-800"
+                          className="truncate rounded border border-pink-300 bg-pink-50 px-1.5 py-0.5 text-[11px] leading-tight text-pink-800 dark:border-pink-500/40 dark:bg-pink-500/15 dark:text-pink-300"
                           title={`${b.name} — birthday`}
                         >
                           {b.name}
@@ -532,7 +536,7 @@ export default async function CalendarPage({
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold tracking-tight">
               Pending {pendingTotal > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[11px] font-medium text-amber-900">
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-medium text-warning-900">
                   {pendingTotal}
                 </span>
               )}
@@ -553,7 +557,7 @@ export default async function CalendarPage({
             <>
               {pendingMissedPunches.length > 0 && (
                 <div className="rounded-card border border-border bg-surface p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-medium text-amber-800">
+                  <div className="flex items-center gap-2 text-xs font-medium text-warning-800">
                     <MessageSquareWarning className="h-3.5 w-3.5" />
                     Missed punches ({pendingMissedPunches.length})
                   </div>
@@ -590,7 +594,7 @@ export default async function CalendarPage({
 
               {pendingTimeOff.length > 0 && (
                 <div className="rounded-card border border-border bg-surface p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-medium text-sky-800">
+                  <div className="flex items-center gap-2 text-xs font-medium text-info-800">
                     <Plane className="h-3.5 w-3.5" />
                     Time off ({pendingTimeOff.length})
                   </div>

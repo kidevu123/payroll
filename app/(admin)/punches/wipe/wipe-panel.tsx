@@ -96,7 +96,7 @@ export function WipePunchesPanel() {
       </div>
 
       {error && (
-        <p className="text-sm text-red-700 rounded-input bg-red-100 px-3 py-2">
+        <p className="text-sm text-danger-700 rounded-input bg-danger-100 px-3 py-2">
           {error}
         </p>
       )}

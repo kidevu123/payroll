@@ -103,4 +103,53 @@ export function registerPeriodTools(server: McpServer, actor: Actor): void {
       }
     },
   );
+
+  server.registerTool(
+    "payroll_unmark_paid",
+    {
+      title: "Unmark pay period paid",
+      description:
+        "Demote a PAID period back to LOCKED so documents can be uploaded or removed.",
+      inputSchema: {
+        periodId: z.string().uuid(),
+        reason: z.string().min(1).max(500),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ periodId, reason }) => {
+      try {
+        const { unmarkPaid } = await import("@/lib/db/queries/pay-periods");
+        const period = await unmarkPaid(periodId, reason, actor);
+        return toolJson({ ok: true, period });
+      } catch (err) {
+        return toolError(err instanceof Error ? err.message : String(err));
+      }
+    },
+  );
+
+  server.registerTool(
+    "payroll_mark_paid",
+    {
+      title: "Mark pay period paid",
+      description: "Mark a LOCKED pay period as PAID after payroll is complete.",
+      inputSchema: {
+        periodId: z.string().uuid(),
+        paymentMethod: z.enum(["BANK", "CASH"]).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true },
+    },
+    async ({ periodId, paymentMethod }) => {
+      try {
+        const { markPaid } = await import("@/lib/db/queries/pay-periods");
+        const period = await markPaid(
+          periodId,
+          actor,
+          paymentMethod ? { paymentMethod } : {},
+        );
+        return toolJson({ ok: true, period });
+      } catch (err) {
+        return toolError(err instanceof Error ? err.message : String(err));
+      }
+    },
+  );
 }

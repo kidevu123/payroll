@@ -154,7 +154,7 @@ export default async function NewEmployeePage({
             ? "Paid externally — upload their paystub on a cadence from the Salaried tab."
             : "Hourly rate becomes the first row in the rate-history timeline."}
           {prefillNgtecoRef && (
-            <span className="mt-1 block text-xs text-amber-700">
+            <span className="mt-1 block text-xs text-warning-700">
               Prefilled from a CSV upload — confirm name and fill the rate.
             </span>
           )}

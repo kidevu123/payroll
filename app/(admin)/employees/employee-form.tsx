@@ -343,11 +343,11 @@ export function EmployeeForm(props: Props) {
         // Salaried implies W2 upload — no checkbox needed. Hidden field
         // ensures the action receives "1" so the period detail's W2 slot
         // appears unconditionally for salaried staff.
-        <div className="rounded-card border border-purple-200 bg-purple-50/40 p-3 text-sm">
-          <span className="font-medium text-purple-900">
+        <div className="rounded-card border border-purple-200 bg-purple-50/40 p-3 text-sm dark:border-purple-500/40 dark:bg-purple-500/10">
+          <span className="font-medium text-purple-900 dark:text-purple-200">
             W2 / paystub upload is enabled
           </span>
-          <span className="block text-xs text-purple-800">
+          <span className="block text-xs text-purple-800 dark:text-purple-300">
             Salaried staff are paid externally. Upload their W2 or paystub
             from the Salaried tab; the employee sees it on their Pay tab.
           </span>
@@ -381,11 +381,11 @@ export function EmployeeForm(props: Props) {
         <input type="hidden" name="requiresW2Upload" value="0" />
       )}
       {scheduleWarning && (
-        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-card px-3 py-2">
+        <p className="text-sm text-warning-800 bg-warning-50 border border-warning-200 rounded-card px-3 py-2">
           {scheduleWarning}
         </p>
       )}
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button asChild variant="ghost" type="button">
           <Link href={e ? `/employees/${e.id}` : "/employees"}>Cancel</Link>

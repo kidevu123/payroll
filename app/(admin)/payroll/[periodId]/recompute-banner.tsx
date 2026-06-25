@@ -60,7 +60,7 @@ export function RecomputeBanner({
   if (done) {
     const totalRecovered = done.delta.reduce((s, d) => s + d.deltaCents, 0);
     return (
-      <div className="rounded-card border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+      <div className="rounded-card border border-success-200 bg-success-50 p-4 text-sm text-success-900">
         <div className="flex items-center gap-2 font-medium">
           <CheckCircle2 className="h-4 w-4" />
           Recomputed {done.ok} payslip{done.ok === 1 ? "" : "s"}.
@@ -81,9 +81,9 @@ export function RecomputeBanner({
   }
 
   return (
-    <div className="rounded-card border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+    <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning-700" />
         <div className="flex-1 min-w-0">
           <p className="font-medium">
             {drifts.length} payslip{drifts.length === 1 ? "" : "s"} on this
@@ -101,14 +101,14 @@ export function RecomputeBanner({
               <li key={i}>
                 {d.employeeName}: stored {d.storedHours.toFixed(2)}h vs
                 live {d.liveHours.toFixed(2)}h{" "}
-                <span className="text-amber-700">
+                <span className="text-warning-700">
                   ({d.storedHours - d.liveHours > 0 ? "+" : ""}
                   {(d.storedHours - d.liveHours).toFixed(2)}h)
                 </span>
               </li>
             ))}
             {drifts.length > 8 && (
-              <li className="text-amber-700">
+              <li className="text-warning-700">
                 …{drifts.length - 8} more
               </li>
             )}
@@ -128,7 +128,7 @@ export function RecomputeBanner({
         </Button>
       </div>
       {error && (
-        <p className="mt-2 text-xs text-red-700">{error}</p>
+        <p className="mt-2 text-xs text-danger-700">{error}</p>
       )}
     </div>
   );

@@ -3,7 +3,7 @@
 // 44px minimum comfortable tap target on a phone. These wrappers bump the
 // touch surface, give textarea/select the same focus ring as Input, and
 // render inline errors with a Lucide icon in the danger palette (no raw
-// text-red-700, no emoji).
+// text-danger-700, no emoji).
 //
 // Pure presentational. No data logic. Safe to use in any employee form.
 

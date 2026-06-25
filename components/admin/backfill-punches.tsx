@@ -93,7 +93,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
       </div>
 
       {result && "error" in result && (
-        <div className="flex items-start gap-2 rounded-card border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+        <div className="flex items-start gap-2 rounded-card border border-danger-200 bg-danger-50 p-2 text-xs text-danger-800">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{result.error}</span>
         </div>

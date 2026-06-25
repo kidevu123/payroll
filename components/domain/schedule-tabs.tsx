@@ -23,7 +23,11 @@ const LABELS: Record<ScheduleTab, string> = {
 // links. Each active tint is desaturated (50/100 instead of 600) so
 // the chip doesn't shout.
 const ACTIVE_TONE: Record<ScheduleTab, string> = {
-  all: "bg-text text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]",
+  // text-surface (not text-white): bg-text is near-white in dark mode, so
+  // white text on it was invisible. text-surface inverts cleanly in both
+  // themes — dark text on the light pill (dark mode), white text on the dark
+  // pill (light mode).
+  all: "bg-text text-surface shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]",
   weekly:
     "bg-blue-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   semi:

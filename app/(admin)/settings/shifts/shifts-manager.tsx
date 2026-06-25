@@ -151,7 +151,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
           </ul>
         )}
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-danger-700">{error}</p>}
       </div>
     </div>
   );

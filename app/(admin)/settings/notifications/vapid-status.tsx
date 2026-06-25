@@ -37,12 +37,12 @@ export function VapidStatus({
         <CardTitle className="text-base flex items-center gap-2">
           {configured ? (
             <>
-              <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+              <CheckCircle2 className="h-4 w-4 text-success-700" />
               VAPID is configured
             </>
           ) : (
             <>
-              <AlertTriangle className="h-4 w-4 text-amber-700" />
+              <AlertTriangle className="h-4 w-4 text-warning-700" />
               VAPID setup required
             </>
           )}
@@ -152,7 +152,7 @@ function CodeRow({
       >
         {copied ? (
           <>
-            <Check className="h-3 w-3 text-emerald-700" /> Copied
+            <Check className="h-3 w-3 text-success-700" /> Copied
           </>
         ) : (
           <>

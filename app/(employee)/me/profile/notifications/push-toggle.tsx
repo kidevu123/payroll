@@ -123,8 +123,8 @@ export function PushToggle({ alreadySubscribed }: { alreadySubscribed: boolean }
   return (
     <div className="space-y-2">
       {needsHomeScreen && !subscribed && (
-        <div className="flex items-start gap-2 rounded-input border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-700" />
+        <div className="flex items-start gap-2 rounded-input border border-warning-200 bg-warning-50 p-3 text-xs text-warning-900">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning-700" />
           <div className="space-y-1">
             <p className="font-medium">{t("addToHomeScreen")}</p>
             <p>
@@ -151,7 +151,7 @@ export function PushToggle({ alreadySubscribed }: { alreadySubscribed: boolean }
           {pending ? t("enabling") : t("enablePush")}
         </Button>
       )}
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
     </div>
   );
 }

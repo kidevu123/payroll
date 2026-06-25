@@ -61,7 +61,7 @@ export async function MissedPunchReviewSummary({
         className={cn(
           "tabular-nums font-mono",
           highlight
-            ? "font-semibold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded"
+            ? "font-semibold text-warning-900 bg-warning-100 px-1.5 py-0.5 rounded"
             : time
               ? "text-text font-medium"
               : "text-text-muted",
@@ -99,8 +99,8 @@ export async function MissedPunchReviewSummary({
       ) : null}
 
       {showProposed ? (
-        <div className="rounded-input border border-amber-200 bg-amber-50/60 px-2 py-1.5 space-y-0.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-amber-900">
+        <div className="rounded-input border border-warning-200 bg-warning-50/60 px-2 py-1.5 space-y-0.5">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-warning-900">
             {t("employeeProposes")}
           </p>
           {ctx.proposedClockIn !== null &&
@@ -128,7 +128,7 @@ export async function MissedPunchReviewSummary({
         <span
           className={cn(
             highlightProposed("out", ctx) && ctx.onFileClockOut === null
-              ? "text-amber-900"
+              ? "text-warning-900"
               : "text-text",
           )}
         >
@@ -136,7 +136,7 @@ export async function MissedPunchReviewSummary({
         </span>
       </p>
 
-      <p className="text-[10px] text-amber-900/90 leading-snug">{approveHint}</p>
+      <p className="text-[10px] text-warning-900/90 leading-snug">{approveHint}</p>
     </div>
   );
 }

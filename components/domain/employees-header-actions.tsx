@@ -95,7 +95,7 @@ export function EmployeesPageHeader({
           className={cn(
             "rounded-input border px-3 py-2 text-sm",
             feedback.tone === "error"
-              ? "border-red-200 bg-red-50 text-red-800"
+              ? "border-danger-200 bg-danger-50 text-danger-800"
               : "border-border bg-surface-2 text-text-muted",
           )}
         >

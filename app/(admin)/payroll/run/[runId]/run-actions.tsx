@@ -33,9 +33,9 @@ export function RunActions({
 
   if (state === "PUBLISHED") {
     return (
-      <div className="rounded-card border-2 border-emerald-200 bg-emerald-50/40 p-4 flex items-center gap-3">
-        <CircleCheck className="h-5 w-5 text-emerald-700" />
-        <span className="text-sm text-emerald-800">
+      <div className="rounded-card border-2 border-success-200 bg-success-50/40 p-4 flex items-center gap-3">
+        <CircleCheck className="h-5 w-5 text-success-700" />
+        <span className="text-sm text-success-800">
           Run published. Payslips delivered.
         </span>
       </div>
@@ -63,7 +63,7 @@ export function RunActions({
               </Button>
             </div>
             {unresolvedAlerts > 0 && (
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-warning-700">
                 {unresolvedAlerts} unresolved alert{unresolvedAlerts === 1 ? "" : "s"}.
                 Resolve them or accept that they&apos;ll be in the audit trail.
               </p>
@@ -98,7 +98,7 @@ export function RunActions({
             <p className="text-xs text-text-muted mt-1 mb-3">
               Confirm to generate PDFs, persist payslips, and notify recipients.
             </p>
-            {error && <p className="text-sm text-red-700 mb-2">{error}</p>}
+            {error && <p className="text-sm text-danger-700 mb-2">{error}</p>}
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={pending}>
                 {pending ? "Publishing…" : "Confirm publish"}
@@ -119,8 +119,8 @@ export function RunActions({
 
   if (state === "AWAITING_EMPLOYEE_FIXES") {
     return (
-      <div className="rounded-card border border-amber-200 bg-amber-50/40 p-4 flex items-center justify-between gap-3">
-        <span className="text-sm text-amber-900">
+      <div className="rounded-card border border-warning-200 bg-warning-50/40 p-4 flex items-center justify-between gap-3">
+        <span className="text-sm text-warning-900">
           Waiting on {unresolvedAlerts} fix{unresolvedAlerts === 1 ? "" : "es"}.
           You can advance to review now and the missing data shows up as
           alerts in the run.
@@ -145,8 +145,8 @@ export function RunActions({
 
   if (state === "INGEST_FAILED" || state === "FAILED") {
     return (
-      <div className="rounded-card border-2 border-red-200 bg-red-50/40 p-4 flex items-center justify-between gap-3">
-        <span className="text-sm text-red-800">
+      <div className="rounded-card border-2 border-danger-200 bg-danger-50/40 p-4 flex items-center justify-between gap-3">
+        <span className="text-sm text-danger-800">
           Run {state.toLowerCase()}. Retry ingest to try again.
         </span>
         <form

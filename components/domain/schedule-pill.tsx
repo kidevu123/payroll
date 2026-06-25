@@ -20,27 +20,29 @@ function variantOf(name: string | null | undefined): Variant {
 
 const STYLES: Record<Variant, { bg: string; text: string; ring: string; label: string }> = {
   weekly: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    ring: "ring-blue-200",
+    // info/warning are flipping semantic tokens; purple/teal have none, so
+    // they carry explicit dark: variants. All read correctly on dark now.
+    bg: "bg-info-50",
+    text: "text-info-700",
+    ring: "ring-info-200",
     label: "Weekly",
   },
   semiMonthly: {
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    ring: "ring-purple-200",
+    bg: "bg-purple-50 dark:bg-purple-500/15",
+    text: "text-purple-700 dark:text-purple-300",
+    ring: "ring-purple-200 dark:ring-purple-500/40",
     label: "Semi-monthly",
   },
   biWeekly: {
-    bg: "bg-teal-50",
-    text: "text-teal-700",
-    ring: "ring-teal-200",
+    bg: "bg-teal-50 dark:bg-teal-500/15",
+    text: "text-teal-700 dark:text-teal-300",
+    ring: "ring-teal-200 dark:ring-teal-500/40",
     label: "Bi-weekly",
   },
   monthly: {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    ring: "ring-amber-200",
+    bg: "bg-warning-50",
+    text: "text-warning-700",
+    ring: "ring-warning-200",
     label: "Monthly",
   },
   other: {

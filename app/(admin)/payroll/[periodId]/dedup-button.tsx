@@ -28,15 +28,15 @@ export function DedupPunchesButton({
   if (clusters === 0 && !result) return null;
 
   return (
-    <div className="rounded-card border border-amber-200 bg-amber-50 p-3 text-sm space-y-2">
+    <div className="rounded-card border border-warning-200 bg-warning-50 p-3 text-sm space-y-2">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-700" />
         <div className="flex-1">
-          <p className="font-medium text-amber-900">
+          <p className="font-medium text-warning-900">
             {clusters} duplicate punch cluster
             {clusters === 1 ? "" : "s"} detected in this period.
           </p>
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-warning-800">
             Same employee, same in/out minute. Most likely caused by the
             realtime poll and CSV import both inserting the same physical
             shift. Merging keeps the row with the longest closed duration
@@ -52,14 +52,14 @@ export function DedupPunchesButton({
               key={`${cluster.employeeId}-${cluster.keepPunchId}`}
               className="rounded-input border border-warn-300 bg-surface-2 px-3 py-2"
             >
-              <summary className="cursor-pointer text-xs font-medium text-amber-950">
+              <summary className="cursor-pointer text-xs font-medium text-warning-900">
                 {cluster.employeeName} · {cluster.localDate} ·{" "}
                 {cluster.localTimeRange} · keep {shortId(cluster.keepPunchId)}, void{" "}
                 {cluster.voidPunchIds.map(shortId).join(", ")}
               </summary>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full min-w-[540px] text-left text-xs">
-                  <thead className="text-amber-900/80">
+                  <thead className="text-warning-900/80">
                     <tr>
                       <th className="py-1 pr-3 font-medium">Action</th>
                       <th className="py-1 pr-3 font-medium">Punch ID</th>
@@ -70,7 +70,7 @@ export function DedupPunchesButton({
                   </thead>
                   <tbody>
                     {cluster.rows.map((row) => (
-                      <tr key={row.id} className="border-t border-amber-100">
+                      <tr key={row.id} className="border-t border-warning-100">
                         <td className="py-1.5 pr-3 font-medium">
                           {row.willKeep ? "Keep" : "Void"}
                         </td>
@@ -90,7 +90,7 @@ export function DedupPunchesButton({
         </div>
       ) : null}
       {result && (
-        <div className="flex items-start gap-2 text-xs text-emerald-800">
+        <div className="flex items-start gap-2 text-xs text-success-800">
           <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
           <span>
             Voided {result.voided} duplicate
@@ -101,7 +101,7 @@ export function DedupPunchesButton({
         </div>
       )}
       {error && (
-        <p className="text-xs text-red-700">{error}</p>
+        <p className="text-xs text-danger-700">{error}</p>
       )}
       <Button
         size="sm"

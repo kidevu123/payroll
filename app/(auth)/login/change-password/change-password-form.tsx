@@ -45,7 +45,7 @@ export function ChangePasswordForm() {
         />
       </div>
       {error && (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-danger-700" role="alert">
           {error}
         </p>
       )}

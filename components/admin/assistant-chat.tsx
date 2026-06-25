@@ -167,13 +167,13 @@ export function AssistantChat({ configured }: { configured: boolean }) {
                     <li key={item.name}>
                       <span
                         className={cn(
-                          item.mutates && "text-amber-800",
+                          item.mutates && "text-warning-800",
                         )}
                       >
                         {item.description}
                       </span>
                       {item.mutates && (
-                        <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-700">
+                        <span className="ml-1 text-[10px] uppercase tracking-wide text-warning-700">
                           writes
                         </span>
                       )}

@@ -159,7 +159,7 @@ export function PunchEditor({
                 {fixTarget ? "Add a separate punch" : "Add manual punch"}
               </h2>
               {fixTarget ? (
-                <p className="text-xs text-amber-800 bg-amber-50/80 border border-amber-200/80 rounded-input px-2 py-1.5">
+                <p className="text-xs text-warning-700 bg-warning-50 border border-warning-200 rounded-input px-2 py-1.5">
                   Use this only for a second in/out pair the same day — not to
                   close the open shift above.
                 </p>
@@ -241,7 +241,7 @@ function FixPunchForm({
         setPending(false);
         if (result?.error) setError(result.error);
       }}
-      className="space-y-3 rounded-card border-2 border-amber-300/80 bg-amber-50/50 p-4"
+      className="space-y-3 rounded-card border-2 border-warning-200 bg-warning-50 p-4"
     >
       {ambiguous ? (
         <>
@@ -265,7 +265,7 @@ function FixPunchForm({
               left?
             </legend>
             <div className="flex flex-wrap gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700">
                 <input
                   type="radio"
                   name="onFileRole"
@@ -276,7 +276,7 @@ function FixPunchForm({
                 />
                 Clock in
               </label>
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-input border border-border bg-surface px-3 py-2 text-sm has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700">
                 <input
                   type="radio"
                   name="onFileRole"
@@ -392,7 +392,7 @@ function FixPunchForm({
         <Label>Reason (required)</Label>
         <Input name="reason" required minLength={1} maxLength={500} />
       </div>
-      {error && <p className="text-red-700 text-sm">{error}</p>}
+      {error && <p className="text-danger-700 text-sm">{error}</p>}
       <Button type="submit" disabled={pending}>
         {pending
           ? "Saving…"
@@ -467,7 +467,7 @@ function CreateForm({
         <Label htmlFor="notes">Notes</Label>
         <Input id="notes" name="notes" maxLength={500} />
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Add punch"}
@@ -537,11 +537,11 @@ function EditablePunch({
           if (result?.error) setError(result.error);
           else setVoidOpen(false);
         }}
-        className="space-y-2 rounded-card border border-red-200 bg-red-50/40 p-3 text-sm"
+        className="space-y-2 rounded-card border border-danger-200 bg-danger-50/40 p-3 text-sm"
       >
         <p className="font-medium">Void this punch?</p>
         <Input name="reason" required minLength={1} maxLength={500} placeholder="Reason for void" />
-        {error && <p className="text-red-700">{error}</p>}
+        {error && <p className="text-danger-700">{error}</p>}
         <div className="flex items-center gap-2">
           <Button type="submit" variant="destructive" size="sm" disabled={pending}>
             Confirm void
@@ -593,7 +593,7 @@ function EditablePunch({
         <Label>Notes</Label>
         <Input name="notes" maxLength={500} defaultValue={punch.notes ?? ""} />
       </div>
-      {error && <p className="text-red-700">{error}</p>}
+      {error && <p className="text-danger-700">{error}</p>}
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={pending}>
           Save

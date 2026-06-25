@@ -198,7 +198,7 @@ function EmployeeDocSlot({
               record-keeping only.
             </span>
             {error && (
-              <span className="text-xs text-red-700">{error}</span>
+              <span className="text-xs text-danger-700">{error}</span>
             )}
           </div>
         </form>
@@ -226,7 +226,7 @@ function DocRow({
         </span>
         {doc.amountCents !== null && (
           <span
-            className="text-xs font-medium text-emerald-700 shrink-0"
+            className="text-xs font-medium text-success-700 shrink-0"
             title="Net pay (post-tax) — pushed to Zoho when this is the latest paystub for the period."
           >
             · ${(doc.amountCents / 100).toFixed(2)} net
@@ -234,7 +234,7 @@ function DocRow({
         )}
         {doc.kind === "PAYSTUB" && doc.amountCents === null && (
           <span
-            className="text-xs font-medium text-amber-700 shrink-0"
+            className="text-xs font-medium text-warning-700 shrink-0"
             title="Net amount missing — re-upload with net amount filled in, or this paystub will push $0 to Zoho."
           >
             · net amount missing
@@ -274,7 +274,7 @@ function DocRow({
         )}
       </div>
       {error && (
-        <span className="text-xs text-red-700 sm:ml-auto">{error}</span>
+        <span className="text-xs text-danger-700 sm:ml-auto">{error}</span>
       )}
     </li>
   );

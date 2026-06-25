@@ -105,24 +105,24 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
       </form>
 
       {tempPassword && (
-        <div className="rounded-card border border-amber-300 bg-amber-50/60 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wider text-amber-800">
+        <div className="rounded-card border border-warning-200 bg-warning-50/60 p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-warning-800">
             Temporary password for {tempPassword.label} — share once
           </p>
           <div className="mt-1 flex items-center gap-2">
-            <code className="flex-1 rounded-input bg-amber-100/70 px-3 py-2 font-mono text-sm">
+            <code className="flex-1 rounded-input bg-warning-100/70 px-3 py-2 font-mono text-sm">
               {tempPassword.value}
             </code>
             <Button size="sm" variant="ghost" onClick={() => copy(tempPassword.value)}>
               <Copy className="h-4 w-4" /> Copy
             </Button>
           </div>
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-xs text-warning-800">
             They&rsquo;ll be forced to change it on first sign-in.
           </p>
         </div>
       )}
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
 
       <div className="rounded-card border border-border bg-surface overflow-x-auto">
         <table className="min-w-full text-sm">
@@ -147,7 +147,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                   <td className="px-4 py-2.5 align-middle">
                     <div className="font-medium">{s.email}</div>
                     {s.mustChangePassword && (
-                      <span className="inline-block mt-0.5 rounded-input bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                      <span className="inline-block mt-0.5 rounded-input bg-warning-50 px-1.5 py-0.5 text-[10px] text-warning-700">
                         Must change password
                       </span>
                     )}
@@ -183,11 +183,11 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                   </td>
                   <td className="px-4 py-2.5 align-middle">
                     {s.disabled ? (
-                      <span className="rounded-input bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
+                      <span className="rounded-input bg-warning-50 px-1.5 py-0.5 text-xs text-warning-700">
                         Disabled
                       </span>
                     ) : (
-                      <span className="rounded-input bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-700">
+                      <span className="rounded-input bg-success-50 px-1.5 py-0.5 text-xs text-success-700">
                         Active
                       </span>
                     )}

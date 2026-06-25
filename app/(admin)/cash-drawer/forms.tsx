@@ -73,8 +73,8 @@ export function DepositForm() {
         <Input id="dep-notes" name="notes" type="text" disabled={pending} />
       </div>
       <div className="flex items-center justify-between gap-2">
-        {error && <p className="text-xs text-red-700">{error}</p>}
-        {ok && <p className="text-xs text-emerald-700">Deposit recorded.</p>}
+        {error && <p className="text-xs text-danger-700">{error}</p>}
+        {ok && <p className="text-xs text-success-700">Deposit recorded.</p>}
         <Button type="submit" disabled={pending} className="ml-auto">
           {pending ? "Recording…" : "Record deposit"}
         </Button>
@@ -124,8 +124,8 @@ export function WithdrawForm() {
         <Input id="wd-notes" name="notes" type="text" disabled={pending} />
       </div>
       <div className="flex items-center justify-between gap-2">
-        {error && <p className="text-xs text-red-700">{error}</p>}
-        {ok && <p className="text-xs text-emerald-700">Withdrawal recorded.</p>}
+        {error && <p className="text-xs text-danger-700">{error}</p>}
+        {ok && <p className="text-xs text-success-700">Withdrawal recorded.</p>}
         <Button
           type="submit"
           variant="secondary"
@@ -199,8 +199,8 @@ export function PettyCashForm() {
         />
       </div>
       <div className="flex items-center justify-between gap-2">
-        {error && <p className="text-xs text-red-700">{error}</p>}
-        {ok && <p className="text-xs text-emerald-700">Purchase recorded.</p>}
+        {error && <p className="text-xs text-danger-700">{error}</p>}
+        {ok && <p className="text-xs text-success-700">Purchase recorded.</p>}
         <Button
           type="submit"
           variant="secondary"

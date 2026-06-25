@@ -36,13 +36,13 @@ export function RecomputePayslipsButton({
         {pending ? "Recomputing…" : "Recompute all payslips"}
       </Button>
       {result && (
-        <span className="text-xs text-emerald-700">
+        <span className="text-xs text-success-700">
           Recomputed {result.recomputed}
           {result.skipped > 0 ? ` · ${result.skipped} skipped` : ""}.
           Refresh to see updated numbers.
         </span>
       )}
-      {error && <span className="text-xs text-red-700">{error}</span>}
+      {error && <span className="text-xs text-danger-700">{error}</span>}
     </div>
   );
 }

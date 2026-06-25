@@ -59,7 +59,7 @@ export function WipeEmptyPeriodsPanel() {
           {pending ? "Cleaning…" : "Wipe empty open periods"}
         </Button>
         {error && (
-          <p className="mt-2 text-xs text-red-700">
+          <p className="mt-2 text-xs text-danger-700">
             <AlertTriangle className="inline h-3 w-3 mr-1" />
             {error}
           </p>

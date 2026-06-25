@@ -178,7 +178,7 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
               />
             </div>
           </div>
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
           <div className="flex items-center justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Saving…" : "Save"}

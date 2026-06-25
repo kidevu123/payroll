@@ -128,7 +128,7 @@ function issueLabel(row: {
   if (row.hoursDrift) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-amber-700"
+        className="inline-flex items-center gap-1 text-warning-700"
         title={`Stored hours (${row.storedHours?.toFixed(2)}h) don't match live punch hours (${row.liveHours?.toFixed(2)}h). Open employee row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
       >
         <AlertTriangle className="h-3 w-3" aria-hidden />
@@ -601,7 +601,7 @@ export default async function PeriodReviewPage({
                 Payslip acknowledgements
               </h2>
               <p className="text-xs text-text-muted tabular-nums">
-                <span className="font-semibold text-emerald-700">
+                <span className="font-semibold text-success-700">
                   {ackd.length}
                 </span>{" "}
                 /{" "}
@@ -614,8 +614,8 @@ export default async function PeriodReviewPage({
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 text-xs">
-              <div className="rounded-input border border-emerald-200/60 bg-emerald-50/40 p-2">
-                <p className="font-semibold text-emerald-800 mb-1">
+              <div className="rounded-input border border-success-200/60 bg-success-50/40 p-2">
+                <p className="font-semibold text-success-800 mb-1">
                   Acknowledged ({ackd.length})
                 </p>
                 <p className="text-text-muted leading-relaxed">
@@ -627,8 +627,8 @@ export default async function PeriodReviewPage({
                         .join(", ")}
                 </p>
               </div>
-              <div className="rounded-input border border-amber-200/60 bg-amber-50/40 p-2">
-                <p className="font-semibold text-amber-800 mb-1">
+              <div className="rounded-input border border-warning-200/60 bg-warning-50/40 p-2">
+                <p className="font-semibold text-warning-800 mb-1">
                   Pending ({pending.length})
                 </p>
                 <p className="text-text-muted leading-relaxed">
@@ -640,8 +640,8 @@ export default async function PeriodReviewPage({
                         .join(", ")}
                 </p>
               </div>
-              <div className="rounded-input border border-red-200/60 bg-red-50/40 p-2">
-                <p className="font-semibold text-red-800 mb-1">
+              <div className="rounded-input border border-danger-200/60 bg-danger-50/40 p-2">
+                <p className="font-semibold text-danger-800 mb-1">
                   Disputed ({disputed.length})
                 </p>
                 <p className="text-text-muted leading-relaxed">
@@ -1135,7 +1135,7 @@ function PunchSubTable({
                       ) : isStaleOpen && canEdit ? (
                         <Link
                           href={`/time/${periodId}/${day}/${employeeId}?${new URLSearchParams({ returnTo: `/payroll/${periodId}` })}`}
-                          className="text-amber-700 underline underline-offset-2 hover:text-amber-900"
+                          className="text-warning-700 underline underline-offset-2 hover:text-warning-900"
                         >
                           missing — fix
                         </Link>

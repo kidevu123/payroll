@@ -96,11 +96,11 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-text">{o.name}</span>
                           {hasRefreshToken ? (
-                            <span className="inline-flex items-center gap-1 rounded-input bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            <span className="inline-flex items-center gap-1 rounded-input bg-success-50 px-2 py-0.5 text-xs font-medium text-success-700">
                               <CheckCircle2 className="h-3 w-3" /> Connected
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-input bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            <span className="inline-flex items-center gap-1 rounded-input bg-warning-50 px-2 py-0.5 text-xs font-medium text-warning-700">
                               <AlertTriangle className="h-3 w-3" /> Not connected
                             </span>
                           )}
@@ -121,7 +121,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                           </div>
                         )}
                         {o.workdriveAdminReportBackupEnabled && (
-                          <div className="text-xs text-emerald-700">
+                          <div className="text-xs text-success-700">
                             Admin report backup: WorkDrive folder{" "}
                             <span className="font-mono">
                               {o.workdriveAdminReportFolderId ?? "missing"}
@@ -178,7 +178,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                             setPending(null);
                             if (result?.error) setError(result.error);
                           }}
-                          className="text-red-700"
+                          className="text-danger-700"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -191,7 +191,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
           </ul>
         )}
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-danger-700">{error}</p>}
       </div>
     </div>
   );
@@ -282,11 +282,11 @@ function OrgForm({
         <Label htmlFor={`ven-${org?.id ?? "new"}`}>Vendor name (optional, unused)</Label>
         <Input id={`ven-${org?.id ?? "new"}`} name="defaultVendorName" defaultValue={org?.defaultVendorName ?? ""} />
       </div>
-      <div className="space-y-1 sm:col-span-2 rounded-card border border-emerald-200 bg-emerald-50/60 p-3">
-        <p className="text-xs font-semibold text-emerald-900">
+      <div className="space-y-1 sm:col-span-2 rounded-card border border-success-200 bg-success-50/60 p-3">
+        <p className="text-xs font-semibold text-success-900">
           Zoho WorkDrive admin report backup
         </p>
-        <p className="mt-1 text-xs text-emerald-800">
+        <p className="mt-1 text-xs text-success-800">
           Paste the WorkDrive folder ID from the folder URL. Reconnect this
           Zoho org after saving so OAuth grants the WorkDrive upload scope.
         </p>

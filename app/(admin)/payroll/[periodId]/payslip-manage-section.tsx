@@ -105,7 +105,7 @@ function PayslipRow({ row }: { row: Row }) {
         <td className="py-2 px-3 text-xs text-text-muted">
           {isVoided ? (
             <>
-              <span className="rounded-input bg-red-50 text-red-700 px-1.5 py-0.5">
+              <span className="rounded-input bg-danger-50 text-danger-700 px-1.5 py-0.5">
                 Voided
               </span>{" "}
               {row.payslip.voidReason && (
@@ -189,7 +189,7 @@ function PayslipRow({ row }: { row: Row }) {
                 if (r?.error) setError(r.error);
                 else setConfirming(false);
               }}
-              className="rounded-card border border-amber-300 bg-amber-50/40 p-3 space-y-2"
+              className="rounded-card border border-warning-200 bg-warning-50/40 p-3 space-y-2"
             >
               <p className="text-xs font-medium">
                 Remove {row.employee.displayName} from this run? Reason will
@@ -202,7 +202,7 @@ function PayslipRow({ row }: { row: Row }) {
                 maxLength={500}
                 placeholder="e.g. Juan is on the semi-monthly schedule, not weekly"
               />
-              {error && <p className="text-xs text-red-700">{error}</p>}
+              {error && <p className="text-xs text-danger-700">{error}</p>}
               <div className="flex items-center gap-2">
                 <Button type="submit" size="sm" disabled={pending}>
                   {pending ? "Removing…" : "Confirm remove"}

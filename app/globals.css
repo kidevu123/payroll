@@ -2,6 +2,16 @@
 @import "tailwindcss";
 
 /*
+  Class-based dark variant. Dark mode is opt-in via <html class="dark"> (see
+  the .dark block below), NOT prefers-color-scheme, so `dark:` utilities must
+  key off the class — otherwise they'd fire on OS dark mode while the tokens
+  (which are class-gated) stayed light. Use `dark:` only for accent colors that
+  have no semantic token (e.g. raw purple/teal chips); prefer the flipping
+  semantic tokens (success/danger/info/warning) everywhere else.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
   Design tokens for Phase 6.5 visual quality pass.
 
   EVERYTHING the UI cares about lives in @theme so Tailwind v4 emits proper
@@ -125,6 +135,18 @@
   --color-info-700: #1d4ed8;
   --color-info-800: #1e40af;
   --color-info-900: #1e3a8a;
+  /* Warning (amber) — the "review this week / sync gap" family. Light values
+     here; the .dark block flips them to a dark-amber surface with light text,
+     exactly like success/danger/info, so bg-warning-50 + text-warning-700
+     reads correctly in both themes instead of washing out as raw amber-50. */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
 
   /* ── Dashboard canvas (theme-aware) — LIGHT values ─────────────────────
      The dashboard reads these via components/dashboard/theme.ts (DASH/CHART).
@@ -216,6 +238,15 @@
     --color-info-700: #93c5fd;
     --color-info-800: #bfdbfe;
     --color-info-900: #dbeafe;
+    /* Warning (amber) — dark surface, light-amber text/icon (mirrors danger). */
+    --color-warning-50: #2a1a02;
+    --color-warning-100: #422f06;
+    --color-warning-200: #5c4310;
+    --color-warning-500: #fbbf24;
+    --color-warning-600: #fcd34d;
+    --color-warning-700: #fcd34d;
+    --color-warning-800: #fde68a;
+    --color-warning-900: #fef3c7;
 
     /* ── Dashboard canvas (theme-aware) — DARK values ──────────────────
        These match the original self-contained dark canvas hex exactly, so

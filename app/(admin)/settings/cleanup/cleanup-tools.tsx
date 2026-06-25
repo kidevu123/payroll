@@ -130,7 +130,7 @@ export function CleanupTools() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-input border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-input border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
           {error}
         </div>
       )}
@@ -161,7 +161,7 @@ export function CleanupTools() {
           {pending === "tag-legacy" ? "Running…" : "Tag legacy periods"}
         </Button>
         {tagResult && (
-          <div className="rounded-input border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+          <div className="rounded-input border border-success-200 bg-success-50 p-3 text-xs text-success-900">
             <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
             Tagged {tagResult.weekly} weekly + {tagResult.semiMonthly}{" "}
             semi-monthly periods.
@@ -201,8 +201,8 @@ export function CleanupTools() {
           {pending === "backfill" ? "Running…" : "Backfill now"}
         </Button>
         {backfillResult && (
-          <div className="rounded-input border border-emerald-200 bg-emerald-50 p-3 text-xs">
-            <p className="font-medium text-emerald-900">
+          <div className="rounded-input border border-success-200 bg-success-50 p-3 text-xs">
+            <p className="font-medium text-success-900">
               {backfillResult.fixed.length === 0
                 ? "Nothing to fix — all PUBLISHED runs have a stored total."
                 : `Fixed ${backfillResult.fixed.length} run${
@@ -210,7 +210,7 @@ export function CleanupTools() {
                   }.`}
             </p>
             {backfillResult.fixed.length > 0 && (
-              <ul className="mt-2 space-y-0.5 text-emerald-900">
+              <ul className="mt-2 space-y-0.5 text-success-900">
                 {backfillResult.fixed.map((r) => (
                   <li key={r.runId}>
                     <code className="font-mono">{r.runId.slice(0, 8)}</code>:{" "}
@@ -264,8 +264,8 @@ export function CleanupTools() {
           <div
             className={`rounded-input border p-3 text-xs ${
               orphans.length > 0
-                ? "border-amber-200 bg-amber-50 text-amber-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                ? "border-warning-200 bg-warning-50 text-warning-900"
+                : "border-success-200 bg-success-50 text-success-900"
             }`}
           >
             {orphans.length === 0 ? (
@@ -293,7 +293,7 @@ export function CleanupTools() {
           </div>
         )}
         {orphanDeleted && orphanDeleted.length > 0 && (
-          <div className="rounded-input border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+          <div className="rounded-input border border-success-200 bg-success-50 p-3 text-xs text-success-900">
             <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
             Deleted {orphanDeleted.length} period
             {orphanDeleted.length === 1 ? "" : "s"}.
@@ -305,7 +305,7 @@ export function CleanupTools() {
       <section className="rounded-card border border-border bg-surface-2 p-4 space-y-3">
         <div>
           <h2 className="text-heading font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-700" />
+            <AlertTriangle className="h-4 w-4 text-warning-700" />
             Overlapping pay periods
           </h2>
           <p className="mt-1 text-xs text-text-muted">
@@ -345,8 +345,8 @@ export function CleanupTools() {
           <div
             className={`rounded-input border p-3 text-xs ${
               mergeAllResult.errors.length > 0
-                ? "border-amber-200 bg-amber-50 text-amber-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                ? "border-warning-200 bg-warning-50 text-warning-900"
+                : "border-success-200 bg-success-50 text-success-900"
             }`}
           >
             <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
@@ -370,8 +370,8 @@ export function CleanupTools() {
           <div
             className={`rounded-input border p-3 text-xs ${
               overlaps.length > 0
-                ? "border-amber-200 bg-amber-50 text-amber-900"
-                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                ? "border-warning-200 bg-warning-50 text-warning-900"
+                : "border-success-200 bg-success-50 text-success-900"
             }`}
           >
             {overlaps.length === 0 ? (
@@ -474,7 +474,7 @@ function OverlapPairRow({
 
   if (done) {
     return (
-      <li className="border-b border-emerald-300/50 pb-2 text-emerald-900">
+      <li className="border-b border-success-200/50 pb-2 text-success-900">
         <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
         {done}
       </li>
@@ -482,7 +482,7 @@ function OverlapPairRow({
   }
 
   return (
-    <li className="border-b border-amber-300/50 pb-2 space-y-1">
+    <li className="border-b border-warning-200/50 pb-2 space-y-1">
       <PairSide
         side={pair.a}
         payslips={pair.aPayslips}
@@ -498,7 +498,7 @@ function OverlapPairRow({
         pending={pending}
       />
       {error && (
-        <p className="text-red-700">{error}</p>
+        <p className="text-danger-700">{error}</p>
       )}
     </li>
   );
@@ -549,11 +549,11 @@ function PairSide({
           <code className="font-mono">{side.id.slice(0, 8)}</code>:{" "}
           {side.startDate} → {side.endDate} · {side.state} · {payslips} payslips
           {suggested && (
-            <span className="ml-2 rounded-input bg-amber-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-amber-900">
+            <span className="ml-2 rounded-input bg-warning-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-warning-900">
               suggested
             </span>
           )}
-          <span className="ml-1 text-amber-700">{expanded ? "▼" : "▶"}</span>
+          <span className="ml-1 text-warning-700">{expanded ? "▼" : "▶"}</span>
         </button>
         <Button
           size="sm"
@@ -565,7 +565,7 @@ function PairSide({
         </Button>
       </div>
       {expanded && (
-        <div className="ml-4 rounded-input bg-amber-100 px-2 py-1.5 text-[11px] text-amber-900">
+        <div className="ml-4 rounded-input bg-warning-100 px-2 py-1.5 text-[11px] text-warning-900">
           {loading && <span>Loading…</span>}
           {!loading && employees && employees.length === 0 && (
             <span>No payslips on this period.</span>

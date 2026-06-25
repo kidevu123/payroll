@@ -40,7 +40,7 @@ export function MissedPunchActions({ requestId }: { requestId: string }) {
         <Button type="button" size="sm" variant="ghost" onClick={() => setMode("idle")}>
           Cancel
         </Button>
-        {error && <span className="text-xs text-red-700">{error}</span>}
+        {error && <span className="text-xs text-danger-700">{error}</span>}
       </form>
     );
   }
@@ -70,7 +70,7 @@ export function MissedPunchActions({ requestId }: { requestId: string }) {
         <Button type="button" size="sm" variant="ghost" onClick={() => setMode("idle")}>
           Cancel
         </Button>
-        {error && <span className="text-xs text-red-700">{error}</span>}
+        {error && <span className="text-xs text-danger-700">{error}</span>}
       </form>
     );
   }
@@ -134,7 +134,7 @@ export function TimeOffActions({
         <Button type="button" size="sm" variant="ghost" onClick={() => setMode("idle")}>
           Cancel
         </Button>
-        {error && <span className="text-xs text-red-700">{error}</span>}
+        {error && <span className="text-xs text-danger-700">{error}</span>}
       </form>
     );
   }
@@ -147,7 +147,7 @@ export function TimeOffActions({
       <Button size="sm" variant="ghost" onClick={() => setMode("rejecting")}>
         <CircleX className="h-4 w-4" /> Reject
       </Button>
-      {error && <span className="text-xs text-red-700">{error}</span>}
+      {error && <span className="text-xs text-danger-700">{error}</span>}
     </div>
   );
 }
@@ -197,7 +197,7 @@ export function CancelTimeOffActionButton({
       >
         <CircleX className="h-4 w-4" /> {pending ? "Cancelling…" : "Cancel"}
       </Button>
-      {error && <span className="text-xs text-red-700">{error}</span>}
+      {error && <span className="text-xs text-danger-700">{error}</span>}
     </div>
   );
 }

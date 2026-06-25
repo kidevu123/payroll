@@ -235,7 +235,7 @@ export function ComposeAnnouncementForm({
           </div>
         )}
 
-        <div className="rounded-input border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+        <div className="rounded-input border border-success-200 bg-success-50 px-3 py-2 text-xs text-success-900">
           {previewing
             ? "Counting…"
             : count === null
@@ -246,7 +246,7 @@ export function ComposeAnnouncementForm({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-danger-700">{error}</p>}
       <div className="flex items-center justify-end gap-2">
         <Button type="submit" disabled={pending || (count ?? 0) === 0}>
           {pending ? (

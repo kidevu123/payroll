@@ -74,7 +74,7 @@ export default async function CashDrawerPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ArrowDownToLine className="h-4 w-4 text-emerald-700" />
+              <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Deposits (lifetime)
             </CardTitle>
           </CardHeader>
@@ -87,7 +87,7 @@ export default async function CashDrawerPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ArrowUpFromLine className="h-4 w-4 text-amber-700" />
+              <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Withdrawals (lifetime)
             </CardTitle>
           </CardHeader>
@@ -103,7 +103,7 @@ export default async function CashDrawerPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ArrowDownToLine className="h-4 w-4 text-emerald-700" />
+              <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Add cash to the drawer
             </CardTitle>
             <CardDescription>
@@ -131,7 +131,7 @@ export default async function CashDrawerPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
-              <ArrowUpFromLine className="h-4 w-4 text-amber-700" />
+              <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Manual withdrawal
             </CardTitle>
             <CardDescription>
@@ -189,8 +189,8 @@ export default async function CashDrawerPage() {
                           <span
                             className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[10px] font-medium tracking-tight ${
                               entry.kind === "DEPOSIT"
-                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                : "border-amber-200 bg-amber-50 text-amber-800"
+                                ? "border-success-200 bg-success-50 text-success-800"
+                                : "border-warning-200 bg-warning-50 text-warning-800"
                             }`}
                           >
                             {entry.kind === "DEPOSIT" ? (
@@ -227,8 +227,8 @@ export default async function CashDrawerPage() {
                       <td
                         className={`px-4 py-2 text-right tabular-nums font-semibold ${
                           entry.kind === "DEPOSIT"
-                            ? "text-emerald-700"
-                            : "text-amber-700"
+                            ? "text-success-700"
+                            : "text-warning-700"
                         }`}
                       >
                         {entry.kind === "WITHDRAWAL" ? "-" : ""}

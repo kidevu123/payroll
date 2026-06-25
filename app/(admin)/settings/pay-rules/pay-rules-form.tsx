@@ -107,8 +107,8 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
             </div>
           </fieldset>
 
-          {error && <p className="text-sm text-red-700">{error}</p>}
-          {saved && <p className="text-sm text-emerald-700">Saved.</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
+          {saved && <p className="text-sm text-success-700">Saved.</p>}
           <div className="flex justify-end">
             <Button type="submit" disabled={pending}>
               {pending ? "Saving…" : "Save"}

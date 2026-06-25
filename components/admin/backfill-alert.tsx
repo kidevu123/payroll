@@ -40,14 +40,14 @@ export function BackfillAlert({
   if (result) {
     if ("error" in result) {
       return (
-        <div className="flex items-start gap-2 rounded-card border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <div className="flex items-start gap-2 rounded-card border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>Backfill failed: {result.error}</span>
         </div>
       );
     }
     return (
-      <div className="flex items-start gap-2 rounded-card border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+      <div className="flex items-start gap-2 rounded-card border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-800">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Backfill queued. You can leave this page; it will keep running in the
@@ -58,7 +58,7 @@ export function BackfillAlert({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-card border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+    <div className="flex flex-wrap items-center gap-3 rounded-card border border-warning-200 bg-warning-50 px-3 py-2 text-sm text-warning-700">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span className="flex-1 min-w-[200px]">
         {openCountFromPriorDays} open shift

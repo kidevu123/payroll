@@ -102,7 +102,7 @@ export function TempWorkersSection({
               <Input id="notes" name="notes" maxLength={1000} />
             </div>
             {error && (
-              <p className="sm:col-span-2 lg:col-span-4 text-sm text-red-700">{error}</p>
+              <p className="sm:col-span-2 lg:col-span-4 text-sm text-danger-700">{error}</p>
             )}
             <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-2">
               <Button type="submit" disabled={pending}>
@@ -197,7 +197,7 @@ function TempWorkerRow({
       </tr>
       {error && (
         <tr>
-          <td colSpan={5} className="px-3 pb-2 text-xs text-red-700">
+          <td colSpan={5} className="px-3 pb-2 text-xs text-danger-700">
             {error}
           </td>
         </tr>

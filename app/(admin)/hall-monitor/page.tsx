@@ -23,13 +23,13 @@ export const dynamic = "force-dynamic";
 
 const SEVERITY_STYLES = {
   ok: "border-success-200 bg-success-50/80",
-  warn: "border-amber-200 bg-amber-50/80",
+  warn: "border-warning-200 bg-warning-50/80",
   fail: "border-danger-200 bg-danger-50/80",
 } as const;
 
 const SEVERITY_BADGE = {
   ok: "bg-success-100 text-success-900",
-  warn: "bg-amber-100 text-amber-900",
+  warn: "bg-warning-100 text-warning-900",
   fail: "bg-danger-100 text-danger-900",
 } as const;
 

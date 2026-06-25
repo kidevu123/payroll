@@ -100,13 +100,13 @@ export function PdfRebuildButton() {
         </span>
       </div>
       {result && "error" in result && result.error && (
-        <div className="rounded-input border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+        <div className="rounded-input border border-danger-200 bg-danger-50 p-3 text-xs text-danger-700">
           <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
           {result.error}
         </div>
       )}
       {result && "result" in result && result.result && (
-        <div className="rounded-input border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900 space-y-1">
+        <div className="rounded-input border border-success-200 bg-success-50 p-3 text-xs text-success-900 space-y-1">
           <p className="font-medium">
             <CheckCircle2 className="inline h-3.5 w-3.5 mr-1" />
             Rebuilt {result.result.periodsProcessed} period
@@ -120,8 +120,8 @@ export function PdfRebuildButton() {
             <li>{result.result.tempWorkersWritten} temp workers written</li>
           </ul>
           {result.result.unmatchedEmployees.length > 0 && (
-            <div className="mt-2 border-t border-emerald-200 pt-2">
-              <p className="font-medium text-amber-700">
+            <div className="mt-2 border-t border-success-200 pt-2">
+              <p className="font-medium text-warning-700">
                 {result.result.unmatchedEmployees.length} unmatched employees
                 (no Employee row by personId or name):
               </p>
@@ -137,7 +137,7 @@ export function PdfRebuildButton() {
                   </li>
                 )}
               </ul>
-              <p className="mt-1 text-amber-700">
+              <p className="mt-1 text-warning-700">
                 Add these as employees with matching legacy_id, then re-run.
               </p>
             </div>

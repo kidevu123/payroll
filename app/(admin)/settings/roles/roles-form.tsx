@@ -88,7 +88,7 @@ export function RolesMatrixForm({
                 <th key={r.role} className="text-center px-4 py-3 font-medium whitespace-nowrap">
                   {r.label}
                   {r.isOverride && (
-                    <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-700">
+                    <span className="ml-2 text-[10px] uppercase tracking-wider text-warning-700">
                       custom
                     </span>
                   )}
@@ -149,8 +149,8 @@ export function RolesMatrixForm({
           <span
             className={
               message.kind === "ok"
-                ? "text-sm text-emerald-700"
-                : "text-sm text-red-700"
+                ? "text-sm text-success-700"
+                : "text-sm text-danger-700"
             }
           >
             {message.text}

@@ -19,7 +19,7 @@ export function PublishPeriodButton({
 
   if (published) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-input bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
+      <span className="inline-flex items-center gap-1.5 rounded-input bg-success-50 px-3 py-1.5 text-sm font-medium text-success-700">
         <Eye className="h-4 w-4" /> Visible to employees
       </span>
     );
@@ -42,7 +42,7 @@ export function PublishPeriodButton({
       >
         <EyeOff className="h-4 w-4" /> {pending ? "Publishing..." : "Publish"}
       </Button>
-      {error && <span className="text-xs text-red-700">{error}</span>}
+      {error && <span className="text-xs text-danger-700">{error}</span>}
     </div>
   );
 }

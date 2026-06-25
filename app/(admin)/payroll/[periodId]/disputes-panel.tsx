@@ -26,8 +26,8 @@ export function DisputesPanel({ disputes }: { disputes: DisputeRow[] }) {
   if (open.length === 0) return null;
 
   return (
-    <div className="rounded-card border border-amber-300 bg-amber-50 p-3 space-y-2">
-      <div className="flex items-center gap-2 font-medium text-amber-900">
+    <div className="rounded-card border border-warning-200 bg-warning-50 p-3 space-y-2">
+      <div className="flex items-center gap-2 font-medium text-warning-900">
         <AlertTriangle className="h-4 w-4" />
         <span>
           {open.length} payslip{open.length === 1 ? "" : "s"} reported as a
@@ -38,7 +38,7 @@ export function DisputesPanel({ disputes }: { disputes: DisputeRow[] }) {
         {open.map((d) => (
           <li
             key={d.payslipId}
-            className="rounded-input border border-amber-200 bg-surface p-2.5 text-xs space-y-1"
+            className="rounded-input border border-warning-200 bg-surface p-2.5 text-xs space-y-1"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 space-y-0.5">
@@ -72,7 +72,7 @@ export function DisputesPanel({ disputes }: { disputes: DisputeRow[] }) {
           </li>
         ))}
       </ul>
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-danger-700">{error}</p>}
     </div>
   );
 }

@@ -111,7 +111,7 @@ export function ManualPunchForm({
       </div>
 
       {error && (
-        <p className="text-sm text-red-700 rounded-input bg-red-50 px-3 py-2">
+        <p className="text-sm text-danger-700 rounded-input bg-danger-50 px-3 py-2">
           {error}
         </p>
       )}

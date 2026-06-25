@@ -242,8 +242,8 @@ export function CronPicker({
       <div
         className={`rounded-input border px-3 py-2 text-xs ${
           valid
-            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-            : "border-amber-300 bg-amber-50 text-amber-800"
+            ? "border-success-200 bg-success-50 text-success-800"
+            : "border-warning-200 bg-warning-50 text-warning-800"
         }`}
       >
         <span className="block font-medium">

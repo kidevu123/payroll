@@ -210,7 +210,7 @@ export default async function PunchesAdmin({
                   className={
                     "hover:bg-surface-2/30 " +
                     (p.voidedAt ? "opacity-50 line-through " : "") +
-                    (outOfPeriod ? "bg-amber-50/40 " : "")
+                    (outOfPeriod ? "bg-warning-50/40 " : "")
                   }
                 >
                   <td className="px-3 py-2">
@@ -245,7 +245,7 @@ export default async function PunchesAdmin({
                       "—"
                     )}
                     {outOfPeriod && (
-                      <div className="text-[10px] text-amber-700 font-medium">
+                      <div className="text-[10px] text-warning-700 font-medium">
                         Out of period
                       </div>
                     )}

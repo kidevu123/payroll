@@ -37,7 +37,7 @@ export function SetupChecklist({
   }
 
   return (
-    <Card className="border-amber-200/60 bg-amber-50/30">
+    <Card className="border-warning-200/60 bg-warning-50/30">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           Zoho self-client setup
@@ -59,15 +59,15 @@ export function SetupChecklist({
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {!appUrlConfigured && (
-          <div className="flex items-start gap-2 rounded-card border border-red-300 bg-red-50 p-3 text-red-800">
+          <div className="flex items-start gap-2 rounded-card border border-danger-200 bg-danger-50 p-3 text-danger-800">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-medium">APP_URL is not set.</p>
               <p className="text-xs">
                 The redirect URI below was guessed from the request host,
                 which may not match what you register in Zoho. Set{" "}
-                <code className="rounded bg-red-100 px-1">APP_URL</code>{" "}
-                in <code className="rounded bg-red-100 px-1">/etc/payroll/.env</code>{" "}
+                <code className="rounded bg-danger-100 px-1">APP_URL</code>{" "}
+                in <code className="rounded bg-danger-100 px-1">/etc/payroll/.env</code>{" "}
                 on the LXC and restart the app.
               </p>
             </div>
@@ -166,7 +166,7 @@ function Field({
         <Button size="sm" variant="secondary" onClick={onCopy}>
           {copied ? (
             <>
-              <Check className="h-3 w-3 text-emerald-700" /> Copied
+              <Check className="h-3 w-3 text-success-700" /> Copied
             </>
           ) : (
             <>

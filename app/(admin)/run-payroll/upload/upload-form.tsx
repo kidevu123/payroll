@@ -246,15 +246,15 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
           </div>
 
           {overlaps.length > 0 && (
-            <div className="rounded-card border border-amber-300 bg-amber-50 p-3 text-sm">
+            <div className="rounded-card border border-warning-200 bg-warning-50 p-3 text-sm">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-700 shrink-0" />
+                <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-700 shrink-0" />
                 <div className="space-y-2">
-                  <p className="font-medium text-amber-800">
+                  <p className="font-medium text-warning-800">
                     A run already exists for this date range. Importing again
                     will create a second run alongside it.
                   </p>
-                  <ul className="text-xs text-amber-800 space-y-0.5">
+                  <ul className="text-xs text-warning-800 space-y-0.5">
                     {overlaps.slice(0, 5).map((o) => (
                       <li key={o.runId}>
                         • {o.startDate} – {o.endDate} · <span className="font-mono">{o.source}</span> · {o.state}
@@ -267,7 +267,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       <li>+ {overlaps.length - 5} more</li>
                     )}
                   </ul>
-                  <label className="flex items-center gap-2 text-amber-900">
+                  <label className="flex items-center gap-2 text-warning-900">
                     <input
                       type="checkbox"
                       checked={confirmedOverlap}
@@ -284,7 +284,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
             <input type="hidden" name="confirmDuplicate" value="1" />
           )}
 
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
 
           {preview && (
             <div className="rounded-card border border-border bg-surface-2/40 p-3 space-y-2">
@@ -360,7 +360,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                 ))}
               </ul>
               {preview.parseErrors > 0 && (
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-warning-700">
                   {preview.parseErrors} CSV row
                   {preview.parseErrors === 1 ? "" : "s"} couldn&apos;t be
                   parsed. They&apos;ll be logged as ingest exceptions on the
@@ -542,11 +542,11 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
           )}
 
           {success && (
-            <div className="rounded-card border border-emerald-200 bg-emerald-50 p-3 text-sm">
+            <div className="rounded-card border border-success-200 bg-success-50 p-3 text-sm">
               <div className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-700" />
                 <div className="space-y-2">
-                  <p className="font-medium text-emerald-800">
+                  <p className="font-medium text-success-800">
                     Import complete.{" "}
                     {success.summary.punchesImported > 0
                       ? `Added ${success.summary.punchesImported} new punch${success.summary.punchesImported === 1 ? "" : "es"}.`
@@ -554,7 +554,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                         ? `Moved ${success.summary.punchesMoved} existing punch${success.summary.punchesMoved === 1 ? "" : "es"} into this period.`
                         : "No new punches were added."}
                   </p>
-                  <ul className="space-y-0.5 text-xs text-emerald-900">
+                  <ul className="space-y-0.5 text-xs text-success-900">
                     {success.summary.punchesMoved > 0 && (
                       <li>
                         • {success.summary.punchesMoved} punch
@@ -611,7 +611,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                   </ul>
                   {success.summary.punchesImported === 0 &&
                     success.summary.duplicates > 0 && (
-                      <p className="text-xs text-emerald-900">
+                      <p className="text-xs text-success-900">
                         Every punch in this CSV was already imported (likely by
                         the NGTeco scrape). The run was created but contains
                         no new data; you can cancel it from the detail page.
@@ -745,12 +745,12 @@ function PreviewRow({
           <p className="font-medium truncate flex items-center gap-2 flex-wrap">
             <span className="truncate">{row.displayName}</span>
             {row.unmatched && !open && (
-              <span className="rounded-input bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-800">
+              <span className="rounded-input bg-warning-100 px-1.5 py-0.5 text-[10px] text-warning-800">
                 No match (ref: {row.ngtecoRef})
               </span>
             )}
             {row.payType === "SALARIED" && (
-              <span className="rounded-input bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-800">
+              <span className="rounded-input bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-800 dark:bg-purple-500/15 dark:text-purple-300">
                 Salaried — paystub upload only
               </span>
             )}
@@ -776,8 +776,8 @@ function PreviewRow({
       </div>
 
       {open && row.unmatched && (
-        <div className="mt-2 ml-7 rounded-card border border-amber-200/80 bg-amber-50/60 p-3 space-y-2">
-          <p className="text-[11px] uppercase tracking-wider text-amber-700 font-medium">
+        <div className="mt-2 ml-7 rounded-card border border-warning-200/80 bg-warning-50/60 p-3 space-y-2">
+          <p className="text-[11px] uppercase tracking-wider text-warning-700 font-medium">
             New employee · ref {row.ngtecoRef}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

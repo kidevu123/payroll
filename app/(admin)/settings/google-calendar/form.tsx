@@ -42,20 +42,20 @@ export function GoogleCalendarForm({
       <Card
         className={
           connected
-            ? "border-emerald-200 bg-emerald-50/40"
-            : "border-amber-200 bg-amber-50/40"
+            ? "border-success-200 bg-success-50/40"
+            : "border-warning-200 bg-warning-50/40"
         }
       >
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             {connected ? (
               <>
-                <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                <CheckCircle2 className="h-4 w-4 text-success-700" />
                 Connected as {settings.connectedEmail}
               </>
             ) : (
               <>
-                <AlertTriangle className="h-4 w-4 text-amber-700" />
+                <AlertTriangle className="h-4 w-4 text-warning-700" />
                 Not connected yet
               </>
             )}
@@ -157,9 +157,9 @@ export function GoogleCalendarForm({
               </p>
             )}
 
-            {error && <p className="text-sm text-red-700">{error}</p>}
+            {error && <p className="text-sm text-danger-700">{error}</p>}
             {saved && (
-              <p className="text-sm text-emerald-700">Saved.</p>
+              <p className="text-sm text-success-700">Saved.</p>
             )}
 
             <div className="flex items-center gap-2 flex-wrap">

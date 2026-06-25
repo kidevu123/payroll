@@ -83,7 +83,7 @@ export function PollPunchesNowButton({
                   ? "text-brand-700 font-medium"
                   : last.ok
                     ? ""
-                    : "text-red-700"
+                    : "text-danger-700"
               }
             >
               {lastLabel}
@@ -100,7 +100,7 @@ export function PollPunchesNowButton({
             {!inProgress && !last.ok && last.errorMessage && (
               <>
                 {" · "}
-                <span className="text-red-700">{last.errorMessage}</span>
+                <span className="text-danger-700">{last.errorMessage}</span>
               </>
             )}
           </span>
@@ -108,7 +108,7 @@ export function PollPunchesNowButton({
       </div>
 
       {result && "error" in result && (
-        <div className="flex items-start gap-2 rounded-card border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+        <div className="flex items-start gap-2 rounded-card border border-danger-200 bg-danger-50 p-2 text-xs text-danger-800">
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{result.error}</span>
         </div>

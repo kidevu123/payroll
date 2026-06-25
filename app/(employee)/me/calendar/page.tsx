@@ -11,11 +11,12 @@ import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 
 const TYPE_COLORS: Record<string, string> = {
-  PTO: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  PERSONAL: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  SICK: "bg-amber-50 text-amber-800 border-amber-200",
-  UNPAID: "bg-slate-100 text-slate-700 border-slate-300",
-  OTHER: "bg-violet-50 text-violet-700 border-violet-200",
+  PTO: "bg-success-50 text-success-700 border-success-200",
+  PERSONAL: "bg-success-50 text-success-700 border-success-200",
+  SICK: "bg-warning-50 text-warning-800 border-warning-200",
+  UNPAID: "bg-surface-2 text-text-muted border-border",
+  OTHER:
+    "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/40",
 };
 
 function fmtMonthYear(d: Date, locale: string): string {

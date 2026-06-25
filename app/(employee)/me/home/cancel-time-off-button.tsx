@@ -23,7 +23,7 @@ export function CancelTimeOffButton({
     <div className="inline-flex items-center gap-1.5">
       {error && (
         <span
-          className="text-[10px] text-red-700 truncate max-w-[140px]"
+          className="text-[10px] text-danger-700 truncate max-w-[140px]"
           title={error}
         >
           {error}
@@ -48,7 +48,7 @@ export function CancelTimeOffButton({
           }
         }}
         title="Cancel this request"
-        className="inline-flex items-center justify-center h-6 w-6 rounded-md border border-border/70 bg-surface text-text-muted hover:text-red-700 hover:border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+        className="inline-flex items-center justify-center h-6 w-6 rounded-md border border-border/70 bg-surface text-text-muted hover:text-danger-700 hover:border-danger-200 hover:bg-danger-50 transition-colors disabled:opacity-50"
       >
         <X className="h-3 w-3" />
       </button>

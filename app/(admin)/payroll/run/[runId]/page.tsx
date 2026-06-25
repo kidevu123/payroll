@@ -271,13 +271,13 @@ export default async function RunReviewPage({
                 {tempWorkers.map((tw) => (
                   <div
                     key={tw.id}
-                    className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2.5 text-sm bg-amber-50/30"
+                    className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2.5 text-sm bg-warning-50/30"
                     title={tw.description ?? ""}
                   >
-                    <span className="text-amber-700 text-xs">★</span>
+                    <span className="text-warning-700 text-xs">★</span>
                     <div className="min-w-0">
                       <span className="font-medium truncate">{tw.workerName}</span>
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700">
+                      <span className="ml-2 text-[10px] uppercase tracking-wide text-warning-700">
                         Temp
                       </span>
                       {tw.description && (
@@ -331,7 +331,7 @@ export default async function RunReviewPage({
             <CardHeader>
               <summary className="cursor-pointer list-none">
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-700" />
+                  <AlertTriangle className="h-4 w-4 text-warning-700" />
                   Skipped rows ({exceptions.length})
                   <span className="ml-auto text-xs text-text-muted font-normal">
                     Click to expand

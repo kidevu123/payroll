@@ -74,7 +74,7 @@ export function LockButtons({
               placeholder="Reason (audited)"
               className="h-8 text-xs"
             />
-            {error && <p className="text-[11px] text-red-700">{error}</p>}
+            {error && <p className="text-[11px] text-danger-700">{error}</p>}
             <div className="flex items-center justify-end gap-1.5">
               <Button
                 size="sm"
@@ -202,7 +202,7 @@ export function LockButtons({
           <Unlock className="h-4 w-4" /> Unlock
         </Button>
       </div>
-      {error && <p className="text-xs text-red-700">{error}</p>}
+      {error && <p className="text-xs text-danger-700">{error}</p>}
 
       {unlockOpen && (
         <form

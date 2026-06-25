@@ -98,7 +98,7 @@ export function PhotoUpload({
           PNG, JPEG, WebP or GIF · max 5 MB
         </p>
         {error && (
-          <p className="inline-flex items-center gap-1.5 text-[11px] text-red-700">
+          <p className="inline-flex items-center gap-1.5 text-[11px] text-danger-700">
             <AlertCircle className="h-3 w-3" />
             {error}
           </p>

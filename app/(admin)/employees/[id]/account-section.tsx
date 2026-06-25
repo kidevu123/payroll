@@ -98,7 +98,7 @@ export function AccountSection({
           {tempPassword && (
             <TempPasswordCallout value={tempPassword} onCopy={handleCopy} />
           )}
-          {error && <p className="text-sm text-red-700">{error}</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
         </CardContent>
       </Card>
     );
@@ -110,9 +110,9 @@ export function AccountSection({
         <CardTitle>Account</CardTitle>
         <CardDescription>
           {user.email}
-          {user.disabledAt && <span className="ml-2 rounded-input bg-amber-50 px-2 py-0.5 text-xs text-amber-700">Disabled</span>}
+          {user.disabledAt && <span className="ml-2 rounded-input bg-warning-50 px-2 py-0.5 text-xs text-warning-700">Disabled</span>}
           {user.mustChangePassword && (
-            <span className="ml-2 rounded-input bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+            <span className="ml-2 rounded-input bg-warning-50 px-2 py-0.5 text-xs text-warning-700">
               Must change password
             </span>
           )}
@@ -253,7 +253,7 @@ export function AccountSection({
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-danger-700">{error}</p>}
       </CardContent>
     </Card>
   );
@@ -267,19 +267,19 @@ function TempPasswordCallout({
   onCopy: (v: string) => void;
 }) {
   return (
-    <div className="rounded-card border border-amber-300 bg-amber-50/60 p-4 shadow-sm">
-      <p className="text-xs uppercase tracking-wider text-amber-800">
+    <div className="rounded-card border border-warning-200 bg-warning-50/60 p-4 shadow-sm">
+      <p className="text-xs uppercase tracking-wider text-warning-800">
         Temporary password — share once, copy now
       </p>
       <div className="mt-1 flex items-center gap-2">
-        <code className="flex-1 rounded-input bg-amber-100/70 px-3 py-2 font-mono text-sm">
+        <code className="flex-1 rounded-input bg-warning-100/70 px-3 py-2 font-mono text-sm">
           {value}
         </code>
         <Button size="sm" variant="ghost" onClick={() => onCopy(value)}>
           <Copy className="h-4 w-4" /> Copy
         </Button>
       </div>
-      <p className="mt-1 text-xs text-amber-800">
+      <p className="mt-1 text-xs text-warning-800">
         The user will be forced to change it on first sign-in.
       </p>
     </div>
