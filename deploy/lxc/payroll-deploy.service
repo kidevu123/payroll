@@ -5,6 +5,12 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
+# A full `docker compose --build` (next build + typecheck) runs 2-3 minutes.
+# Without this, the unit inherits DefaultTimeoutStartSec (90s) and systemd
+# SIGTERMs the build mid-typecheck — which is exactly what silently bricked
+# auto-deploy for days. Bound it generously (30 min) rather than `infinity`
+# so a genuinely hung build still gets reaped instead of orphaning.
+TimeoutStartSec=1800
 # These are filled in by the install.sh override.conf:
 Environment=PAYROLL_DIR=/opt/payroll
 Environment=PAYROLL_BRANCH=rebuild/foundation
