@@ -6,25 +6,17 @@
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employees, punches, users } from "@/lib/db/schema";
+import { employees, punches } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { voidPunch } from "@/lib/db/queries/punches";
+import { getSystemOwnerActor } from "@/lib/db/queries/system-actor";
 
-async function systemActor() {
-  const [row] = await db
-    .select({ id: users.id, role: users.role })
-    .from(users)
-    .where(eq(users.role, "OWNER"))
-    .limit(1);
-  if (!row) throw new Error("no OWNER user for repair audit");
-  return { id: row.id, role: row.role as "OWNER" };
-}
 
 async function main() {
   const sinceArg = process.argv.find((a) => a.startsWith("--since="));
   const since = sinceArg?.split("=")[1] ?? "2026-06-01";
   const dryRun = process.argv.includes("--dry-run");
-  const actor = dryRun ? null : await systemActor();
+  const actor = dryRun ? null : await getSystemOwnerActor();
 
   const company = await getSetting("company");
   const dayFmt = new Intl.DateTimeFormat("en-CA", {

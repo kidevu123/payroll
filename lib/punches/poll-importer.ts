@@ -20,6 +20,7 @@ import { employees, punches, payPeriods } from "@/lib/db/schema";
 import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
+import { normalizeRef } from "@/lib/ngteco/normalize-ref";
 import { localMidnightUtc } from "@/lib/utils";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
@@ -50,16 +51,9 @@ export type PollImportSummary = {
   chainsMerged: number;
 };
 
-export function normalizeRef(s: string): string {
-  if (!s) return "";
-  if (s.startsWith("TEMP_")) return s;
-  // NGTeco person codes are DISTINCT identifiers — "01" (Erica) and "0001"
-  // (the owner) are different people. The old logic stripped leading zeros and
-  // numeric-parsed, collapsing both onto one employee and cross-attributing
-  // every punch. Match the EXACT code (trim + uppercase only); leading zeros
-  // are significant.
-  return s.trim().toUpperCase();
-}
+// Re-exported (imported above for local use) so existing importers and the
+// test that reference it via "./poll-importer" keep working.
+export { normalizeRef };
 
 function dayKey(iso: string, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));

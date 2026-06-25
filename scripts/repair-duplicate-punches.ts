@@ -5,24 +5,16 @@
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { employees, punches, users } from "@/lib/db/schema";
+import { employees, punches } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { voidPunch } from "@/lib/db/queries/punches";
+import { getSystemOwnerActor } from "@/lib/db/queries/system-actor";
 import {
   minuteClusterKey,
   rankShiftsBySurvivor,
   shiftsAreNearDuplicates,
 } from "@/lib/punches/near-duplicate-shift";
 
-async function systemActor() {
-  const [row] = await db
-    .select({ id: users.id, role: users.role })
-    .from(users)
-    .where(eq(users.role, "OWNER"))
-    .limit(1);
-  if (!row) throw new Error("repair-duplicate-punches: no OWNER user");
-  return { id: row.id, role: row.role as "OWNER" };
-}
 
 async function main() {
   const sinceArg = process.argv.find((a) => a.startsWith("--since="));
@@ -32,7 +24,7 @@ async function main() {
   const dayFmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: company.timezone,
   });
-  const actor = dryRun ? null : await systemActor();
+  const actor = dryRun ? null : await getSystemOwnerActor();
 
   const rows = await db
     .select({

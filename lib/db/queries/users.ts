@@ -66,16 +66,6 @@ export async function recordSuccessfulLogin(userId: string): Promise<void> {
     .where(eq(users.id, userId));
 }
 
-export async function recordFailedLogin(email: string): Promise<void> {
-  // Soft increment — if user doesn't exist, the loginAttempts table catches it.
-  await db
-    .update(users)
-    .set({
-      failedLoginCount: sql`${users.failedLoginCount} + 1`,
-    })
-    .where(eq(users.email, email));
-}
-
 export async function findUserByEmployeeId(
   employeeId: string,
 ): Promise<User | null> {

@@ -1353,88 +1353,8 @@ export async function scrapeViewAttendance(
   const page = await ctx.newPage();
   page.setDefaultTimeout(20_000);
 
-  // ── One-time API discovery (MILO_CAPTURE_API=1) ──────────────────────────
-  // The portal is a Vue/Element-Plus SPA: it fetches punch data as JSON from a
-  // backend API, then renders the table. Scraping that rendered table is the
-  // fragile, timeout-prone path. When this flag is set we record every XHR/
-  // fetch the page makes (URL, method, status, request auth headers, response
-  // preview) so we can replace the browser scrape with a direct JSON API call.
-  const apiCapture: Array<Record<string, unknown>> = [];
-  if (process.env.MILO_CAPTURE_API) {
-    // CREDENTIAL-SAFE capture: we record the API *mechanism* and *schema*, never
-    // secret values or PII. Auth headers → name + style ("Bearer", "cookie")
-    // with the token/cookie value REDACTED. Response bodies → JSON shape (keys +
-    // value types) with secret-named fields redacted and NO actual values. This
-    // is enough to build a direct API client; the real token is fetched at run
-    // time from login, never persisted.
-    const summarizeShape = (v: unknown, depth = 0): unknown => {
-      if (depth > 3) return typeof v;
-      if (Array.isArray(v)) return v.length ? [summarizeShape(v[0], depth + 1)] : [];
-      if (v && typeof v === "object") {
-        const o: Record<string, unknown> = {};
-        for (const k of Object.keys(v as Record<string, unknown>).slice(0, 40)) {
-          o[k] = /token|password|secret|cookie|jwt|auth|session/i.test(k)
-            ? "<redacted>"
-            : summarizeShape((v as Record<string, unknown>)[k], depth + 1);
-        }
-        return o;
-      }
-      return typeof v; // value TYPE only, never the value
-    };
-    page.on("response", async (resp) => {
-      try {
-        const req = resp.request();
-        const rt = req.resourceType();
-        if (rt !== "xhr" && rt !== "fetch") return;
-        const ct = resp.headers()["content-type"] ?? "";
-        const reqHeaders = req.headers();
-        // Record the FULL request header set so we can see context headers
-        // (company/tenant/timezone). Secret-bearing headers have their VALUE
-        // redacted; everything else keeps its value (header names + non-secret
-        // values like a company id are not secrets).
-        const authMechanism: Record<string, string> = {};
-        for (const k of Object.keys(reqHeaders)) {
-          const val = reqHeaders[k] ?? "";
-          if (/authorization|token|cookie|secret|password|^x-csrf/i.test(k)) {
-            authMechanism[k] = /^bearer /i.test(val)
-              ? "Bearer <redacted>"
-              : val
-                ? "<present, redacted>"
-                : "<empty>";
-          } else {
-            authMechanism[k] = val.slice(0, 80);
-          }
-        }
-        // Request params (date range / pagination) are not secrets — but redact
-        // any token-looking field just in case.
-        let reqParams = (req.postData() ?? "").slice(0, 400);
-        reqParams = reqParams.replace(
-          /("?(?:token|password|secret|jwt|auth)"?\s*[:=]\s*)"?[^",&}]+/gi,
-          "$1<redacted>",
-        );
-        let responseShape: unknown = null;
-        if (ct.includes("json")) {
-          const txt = await resp.text().catch(() => "");
-          try {
-            responseShape = summarizeShape(JSON.parse(txt));
-          } catch {
-            responseShape = "<non-json>";
-          }
-        }
-        apiCapture.push({
-          method: req.method(),
-          url: resp.url(),
-          status: resp.status(),
-          contentType: ct,
-          requestParams: reqParams,
-          authMechanism,
-          responseShape,
-        });
-      } catch {
-        /* best-effort capture */
-      }
-    });
-  }
+  // (Removed: one-time MILO_CAPTURE_API discovery probe — its job was
+  // done; the browserless client now lives in lib/ngteco/api-client.ts.)
 
   const captureFailure = async (reason: string): Promise<never> => {
     if (!existsSync(failureDir)) mkdirSync(failureDir, { recursive: true });
@@ -1454,23 +1374,6 @@ export async function scrapeViewAttendance(
     throw new ScrapeFailure(reason, { screenshotPath, htmlPath });
   };
 
-  const dumpApiCapture = async (): Promise<void> => {
-    if (!process.env.MILO_CAPTURE_API) return;
-    try {
-      const { writeFileSync, mkdirSync: mkdir, existsSync: exists } =
-        await import(/* webpackIgnore: true */ "node:fs");
-      // Stable path (not runId-specific) so it's trivial to find afterward,
-      // plus the per-run failure dir.
-      const stableDir = join(STORAGE_ROOT, "ngteco");
-      if (!exists(stableDir)) mkdir(stableDir, { recursive: true });
-      if (!exists(failureDir)) mkdir(failureDir, { recursive: true });
-      const payload = JSON.stringify(apiCapture, null, 2);
-      writeFileSync(join(stableDir, "api-capture.json"), payload);
-      writeFileSync(join(failureDir, "api-capture.json"), payload);
-    } catch {
-      /* best-effort */
-    }
-  };
 
   try {
     await prepareNgtecoPage(page, ctx, input, sel);
@@ -1511,7 +1414,6 @@ export async function scrapeViewAttendance(
 
     // By now the SPA has fetched the punch data from its JSON API — dump the
     // captured XHR calls so we can build a direct (browserless) API client.
-    await dumpApiCapture();
 
     const discoveredCols = await discoverViewPunchColumns(page);
     const idSels = prependFieldSelector(

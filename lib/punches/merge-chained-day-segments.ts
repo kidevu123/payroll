@@ -4,8 +4,9 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { punches, users } from "@/lib/db/schema";
+import { punches } from "@/lib/db/schema";
 import { editPunch, voidPunch } from "@/lib/db/queries/punches";
+import { getSystemOwnerActor } from "@/lib/db/queries/system-actor";
 import { localDayBoundsForPollImport } from "./poll-importer";
 import { DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { rankShiftsBySurvivor } from "./near-duplicate-shift";
@@ -64,16 +65,6 @@ export function mergedChainedShiftBounds(chain: DayRow[]): {
   return { clockIn: survivor.clockIn, clockOut };
 }
 
-async function systemActor() {
-  const [row] = await db
-    .select({ id: users.id, role: users.role })
-    .from(users)
-    .where(eq(users.role, "OWNER"))
-    .limit(1);
-  if (!row) throw new Error("merge-chained-day-segments: no OWNER user");
-  return { id: row.id, role: row.role as "OWNER" };
-}
-
 /**
  * Collapse chained micro-segments for one employee-day. Idempotent.
  * Returns number of punch rows voided after merging.
@@ -103,7 +94,7 @@ export async function mergeChainedDaySegments(
   const chains = findChainedSegmentGroups(rows);
   if (chains.length === 0) return 0;
 
-  const actor = await systemActor();
+  const actor = await getSystemOwnerActor();
   let voided = 0;
 
   for (const chain of chains) {

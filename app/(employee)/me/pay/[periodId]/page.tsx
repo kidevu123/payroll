@@ -26,7 +26,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
-import { PayslipPdfActions } from "@/components/employee/payslip-pdf-actions";
+import { PayslipPdfActions } from "@/components/domain/payslip-pdf-actions";
 import { PrintPageButton } from "@/components/employee/print-page-button";
 
 const MS_PER_HOUR = 60 * 60 * 1000;

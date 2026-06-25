@@ -3,24 +3,15 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { punches, users } from "@/lib/db/schema";
+import { punches } from "@/lib/db/schema";
 import { voidPunch } from "@/lib/db/queries/punches";
+import { getSystemOwnerActor } from "@/lib/db/queries/system-actor";
 import { localDayBoundsForPollImport } from "./poll-importer";
 import {
   minuteClusterKey,
   rankShiftsBySurvivor,
   shiftsAreNearDuplicates,
 } from "./near-duplicate-shift";
-
-async function systemActor() {
-  const [row] = await db
-    .select({ id: users.id, role: users.role })
-    .from(users)
-    .where(eq(users.role, "OWNER"))
-    .limit(1);
-  if (!row) throw new Error("auto-merge-day-duplicates: no OWNER user");
-  return { id: row.id, role: row.role as "OWNER" };
-}
 
 type DayRow = {
   id: string;
@@ -87,7 +78,7 @@ export async function autoMergeDuplicatePunchesForDay(
   const clusters = clusterRows(rows);
   if (clusters.length === 0) return 0;
 
-  const actor = await systemActor();
+  const actor = await getSystemOwnerActor();
   let voided = 0;
   const voidedIds = new Set<string>();
 

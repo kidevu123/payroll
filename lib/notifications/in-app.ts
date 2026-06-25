@@ -47,24 +47,3 @@ export async function dispatchInApp(entries: DispatchEntry[]): Promise<number> {
   await db.insert(notifications).values(rows);
   return rows.length;
 }
-
-export async function unreadCount(userId: string): Promise<number> {
-  const [row] = await db
-    .select({ n: count() })
-    .from(notifications)
-    .where(
-      and(
-        eq(notifications.recipientId, userId),
-        isNull(notifications.readAt),
-        isNull(notifications.dismissedAt),
-      ),
-    );
-  return Number(row?.n ?? 0);
-}
-
-export async function markRead(userId: string): Promise<void> {
-  await db
-    .update(notifications)
-    .set({ readAt: new Date() })
-    .where(eq(notifications.recipientId, userId));
-}

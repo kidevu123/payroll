@@ -74,12 +74,10 @@ services:
       # + per-brand config). Unset => Milo talks to Zoho cloud directly.
       ZOHO_GATEWAY_URL: ${ZOHO_GATEWAY_URL:-}
       ZOHO_GATEWAY_TOKEN: ${ZOHO_GATEWAY_TOKEN:-}
-      # One-time NGTeco API discovery flag (default off). When "1", a poll
-      # records the portal's XHR/fetch calls to /data/failures/<runId>/.
-      MILO_CAPTURE_API: ${MILO_CAPTURE_API:-}
-      # Browserless NGTeco ingestion. When "1", polls call NGTeco's REST API
-      # directly (no headless browser); falls back to the scraper on API error.
-      NGTECO_USE_API: ${NGTECO_USE_API:-}
+      # NGTeco ingestion: polls call the browserless REST API by default (fast,
+      # can't time out). Set to "1" to force the legacy headless-browser scraper
+      # instead — emergency fallback only.
+      NGTECO_FORCE_SCRAPER: ${NGTECO_FORCE_SCRAPER:-}
     volumes:
       - ./data:/data
     ports:

@@ -9,12 +9,6 @@ import { z } from "zod";
 
 const DOLLAR_REGEX = /^\d+(\.\d{1,2})?$/;
 
-/** Required dollar amount (e.g. "1685.00") → integer cents. */
-export const dollarsToCents = z
-  .string()
-  .regex(DOLLAR_REGEX, "Enter a positive number with up to 2 decimal places (e.g. 1685.00)")
-  .transform((s) => Math.round(Number(s) * 100));
-
 /** Optional dollar amount — empty/whitespace → null. */
 export const optionalDollarsToCents = z
   .union([

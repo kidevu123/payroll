@@ -22,6 +22,7 @@ import {
   type RawEmployeeRosterRow,
 } from "./scraper";
 import { sanitizeNgtecoPersonName } from "./person-name";
+import { normalizeRef } from "./normalize-ref";
 
 export const NGTECO_IMPORT_NOTE_PREFIX = "NGTECO_IMPORT:";
 export const NGTECO_SETUP_IGNORED_TAG = "setup_ignored";
@@ -38,14 +39,6 @@ function isEnvelope(value: unknown): value is { ciphertext: string; iv: string }
   );
 }
 
-function normalizeRef(s: string): string {
-  if (!s) return "";
-  if (s.startsWith("TEMP_")) return s;
-  // Exact identifier match. Leading zeros are significant: "01" (Erica) and
-  // "0001" (the owner) are different people. The old numeric-parse collapsed
-  // them, so the roster linked and de-duped the wrong employees.
-  return s.trim().toUpperCase();
-}
 
 const emailSchema = z.string().email();
 
