@@ -76,6 +76,24 @@ function addDaysIso(dayIso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * A punch the importer matched by hash must be left exactly as-is when a human
+ * has deliberately acted on it — deleted it (`voidedAt`) or corrected its times
+ * (`editedAt`). The NGTeco scrape is no longer authoritative for such rows.
+ *
+ * Both `voidPunch` and `editPunch` stamp `editedAt`; the importer's own
+ * recycling/repair updates never do. So a non-null `voidedAt` or `editedAt` is
+ * a reliable "an operator decided this" marker. This is the guard against the
+ * "I delete or fix a punch, hit poll, and it reverts" bug — historically the
+ * importer un-voided matched rows and rewrote their clock times on every poll.
+ */
+export function isAdminTouchedPunch(row: {
+  voidedAt: Date | null;
+  editedAt: Date | null;
+}): boolean {
+  return row.voidedAt !== null || row.editedAt !== null;
+}
+
 export async function importPunchPoll(
   events: RawPunchEvent[],
   options: { timezone: string },
@@ -215,6 +233,11 @@ export async function importPunchPoll(
           id: punches.id,
           clockOut: punches.clockOut,
           voidedAt: punches.voidedAt,
+          // editedAt is set by voidPunch/editPunch (admin delete or manual
+          // time correction) and is NEVER set by this importer's own
+          // recycling/repair updates. So a non-null editedAt is a reliable
+          // "a human deliberately decided this — don't touch it" marker.
+          editedAt: punches.editedAt,
         })
         .from(punches)
         .where(eq(punches.ngtecoRecordHash, hash));
@@ -270,7 +293,12 @@ export async function importPunchPoll(
         );
         if (matched) {
           existing = [
-            { id: matched.id, clockOut: matched.clockOut, voidedAt: null },
+            {
+              id: matched.id,
+              clockOut: matched.clockOut,
+              voidedAt: null,
+              editedAt: null,
+            },
           ];
           await db
             .update(punches)
@@ -321,6 +349,7 @@ export async function importPunchPoll(
               id: legacy.id,
               clockOut: legacy.clockOut,
               voidedAt: null,
+              editedAt: null,
             },
           ];
           await db
@@ -388,6 +417,7 @@ export async function importPunchPoll(
               id: repairTarget.id,
               clockOut: repairTarget.clockOut,
               voidedAt: null,
+              editedAt: null,
             },
           ];
           await db
@@ -436,6 +466,7 @@ export async function importPunchPoll(
               id: nearDup.id,
               clockOut: nearDup.clockOut,
               voidedAt: null,
+              editedAt: null,
             },
           ];
           await db
@@ -447,26 +478,34 @@ export async function importPunchPoll(
 
       if (existing.length > 0) {
         const row = existing[0]!;
-        const recyclingVoided = row.voidedAt !== null;
-        const resolvedClockOut =
-          paired.kind === "ambiguous" ? null : clockOut;
-        const clockOutChanged =
-          (row.clockOut === null && resolvedClockOut !== null) ||
-          (row.clockOut !== null && resolvedClockOut === null) ||
-          (row.clockOut !== null &&
-            resolvedClockOut !== null &&
-            row.clockOut.getTime() !== resolvedClockOut.getTime());
-        if (recyclingVoided || clockOutChanged) {
-          await db
-            .update(punches)
-            .set({
-              ...(paired.kind !== "outOnly" ? { clockIn } : {}),
-              clockOut: resolvedClockOut,
-              notes: note,
-              ...(recyclingVoided ? { voidedAt: null } : {}),
-            })
-            .where(eq(punches.id, row.id));
-          summary.pairsUpdated++;
+        // Respect deliberate human decisions. A punch an admin deleted
+        // (voidedAt set) or whose times an admin corrected (editedAt set) is
+        // authoritative — the scrape must NEVER resurrect a deleted punch or
+        // overwrite corrected times back to the raw clock values. This is the
+        // "I delete/fix a punch, hit poll, and it reverts" bug: the importer
+        // used to un-void matched rows (voidedAt: null) and rewrite clockIn/
+        // clockOut on every poll. We now leave admin-touched rows untouched.
+        const adminTouched = isAdminTouchedPunch(row);
+        if (!adminTouched) {
+          const resolvedClockOut =
+            paired.kind === "ambiguous" ? null : clockOut;
+          const clockOutChanged =
+            (row.clockOut === null && resolvedClockOut !== null) ||
+            (row.clockOut !== null && resolvedClockOut === null) ||
+            (row.clockOut !== null &&
+              resolvedClockOut !== null &&
+              row.clockOut.getTime() !== resolvedClockOut.getTime());
+          if (clockOutChanged) {
+            await db
+              .update(punches)
+              .set({
+                ...(paired.kind !== "outOnly" ? { clockIn } : {}),
+                clockOut: resolvedClockOut,
+                notes: note,
+              })
+              .where(eq(punches.id, row.id));
+            summary.pairsUpdated++;
+          }
         }
       } else {
         // The unique index on ngteco_record_hash is PARTIAL (only when

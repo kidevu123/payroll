@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { localDayBoundsForPollImport } from "./poll-importer";
+import {
+  localDayBoundsForPollImport,
+  isAdminTouchedPunch,
+} from "./poll-importer";
+
+describe("isAdminTouchedPunch (poll must not revert admin changes)", () => {
+  it("treats a deleted punch as admin-touched so the poll can't resurrect it", () => {
+    expect(
+      isAdminTouchedPunch({ voidedAt: new Date(), editedAt: new Date() }),
+    ).toBe(true);
+  });
+
+  it("treats an edited punch as admin-touched so the poll can't overwrite its times", () => {
+    expect(isAdminTouchedPunch({ voidedAt: null, editedAt: new Date() })).toBe(
+      true,
+    );
+  });
+
+  it("leaves an untouched auto-imported punch open to normal poll updates", () => {
+    expect(isAdminTouchedPunch({ voidedAt: null, editedAt: null })).toBe(false);
+  });
+});
 
 describe("localDayBoundsForPollImport", () => {
   it("uses company-local midnight bounds, not UTC-midnight bounds", () => {
