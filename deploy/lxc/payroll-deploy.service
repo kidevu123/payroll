@@ -30,15 +30,16 @@ ExecStart=/bin/bash -c '\
   export BUILD_GIT_SHA="$after"; \
   export BUILD_GIT_BRANCH="$PAYROLL_BRANCH"; \
   running=$(/usr/bin/docker compose exec -T app cat /app/.git-sha 2>/dev/null | tr -d "[:space:]" || true); \
+  /usr/bin/docker ps -aq --filter status=exited --filter status=created --filter label=com.docker.compose.project=payroll | xargs -r /usr/bin/docker rm -f >/dev/null 2>&1 || true; \
   if [ "$before" != "$after" ]; then \
     echo "deploying $before -> $after"; \
-    /usr/bin/docker compose up -d --build; \
+    /usr/bin/docker compose up -d --build --remove-orphans; \
   elif [ -n "$running" ] && [ "$running" != "$after" ]; then \
     echo "container drift detected (running=$running, head=$after) — rebuilding"; \
-    /usr/bin/docker compose up -d --build; \
+    /usr/bin/docker compose up -d --build --remove-orphans; \
   else \
     echo "no changes ($after); ensuring services are up"; \
-    /usr/bin/docker compose up -d; \
+    /usr/bin/docker compose up -d --remove-orphans; \
   fi'
 
 [Install]
