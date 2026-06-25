@@ -1,35 +1,18 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, extname } from "node:path";
-import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import type { Actor } from "@/lib/db/queries/employees";
 import { createDoc } from "@/lib/db/queries/payroll-documents";
+import {
+  PAYROLL_DOC_MAX_BYTES as MAX_BYTES,
+  writePaystubFile,
+} from "@/lib/documents/paystub-storage";
 import { toolError, toolJson } from "../util.js";
-
-const PAYROLL_DOC_ROOT =
-  process.env.PAYROLL_DOC_ROOT ?? "/data/uploads/payroll-docs";
-const MAX_BYTES = 10 * 1024 * 1024;
 
 const kindSchema = z.enum(["W2", "PAYSTUB", "OTHER"]);
 
-function mimeToExt(mime: string): string {
-  switch (mime) {
-    case "application/pdf":
-      return ".pdf";
-    case "image/png":
-      return ".png";
-    case "image/jpeg":
-      return ".jpg";
-    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-      return ".xlsx";
-    default:
-      return "";
-  }
-}
 
 export function registerSalariedDocTools(
   server: McpServer,
@@ -99,12 +82,12 @@ export function registerSalariedDocTools(
           return toolError("payPeriodEnd cannot be before payPeriodStart.");
         }
 
-        const dir = join(PAYROLL_DOC_ROOT, "_salaried", input.employeeId);
-        await mkdir(dir, { recursive: true });
-        const ext = extname(input.originalFilename) || mimeToExt(input.mime);
-        const stored = `${randomUUID()}${ext}`;
-        const filePath = join(dir, stored);
-        await writeFile(filePath, buf, { mode: 0o640 });
+        const filePath = await writePaystubFile({
+          segments: ["_salaried", input.employeeId],
+          originalFilename: input.originalFilename,
+          mime: input.mime,
+          buf,
+        });
 
         const row = await createDoc(
           {

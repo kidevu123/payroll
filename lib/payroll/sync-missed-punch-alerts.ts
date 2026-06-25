@@ -24,13 +24,14 @@ import {
 } from "@/lib/payroll/detect-exceptions";
 import { dispatch } from "@/lib/notifications/router";
 import { logger } from "@/lib/telemetry";
+import { companyDayIso } from "@/lib/time/company-day";
 
 function issueLabel(issue: string): string {
   return issue.toLowerCase().replaceAll("_", " ");
 }
 
 function dayInTimezone(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 /** Drop same-day alerts until the local end-of-day window (7pm). */

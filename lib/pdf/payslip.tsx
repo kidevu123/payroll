@@ -25,6 +25,7 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import type { PayslipDocInput } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 // Avoid network font fetches — register the Helvetica/Courier built-ins only.
 Font.registerHyphenationCallback((w) => [w]);
@@ -155,13 +156,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function money(cents: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
 function hrs(h: number, decimals: number): string {
   return h.toFixed(decimals);
 }
@@ -188,7 +182,7 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
       data.employee.hourlyRateCents !== null &&
       data.employee.hourlyRateCents !== undefined
     ) {
-      parts.push(`Rate: ${money(data.employee.hourlyRateCents, data.company.locale)}`);
+      parts.push(`Rate: ${formatMoney(data.employee.hourlyRateCents, data.company.locale)}`);
     }
     parts.push(`Shift: ${data.employee.shiftName ?? "Unassigned"}`);
     return parts.join(" | ");
@@ -224,7 +218,7 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
               {hrs(d.hours, data.rules.hoursDecimalPlaces)}
             </Text>
             <Text style={styles.cPay}>
-              {money(d.cents, data.company.locale)}
+              {formatMoney(d.cents, data.company.locale)}
             </Text>
           </View>
         ))}
@@ -240,7 +234,7 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
             <View key={i} style={styles.taskRow}>
               <Text style={styles.taskDesc}>{t.description}</Text>
               <Text style={styles.taskAmt}>
-                {money(t.amountCents, data.company.locale)}
+                {formatMoney(t.amountCents, data.company.locale)}
               </Text>
             </View>
           ))}
@@ -251,13 +245,13 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
         <View style={styles.totalLine}>
           <Text style={styles.totalLabel}>Total:</Text>
           <Text style={styles.totalValue}>
-            {money(data.totals.grossCents, data.company.locale)}
+            {formatMoney(data.totals.grossCents, data.company.locale)}
           </Text>
         </View>
         <View style={styles.totalLine}>
           <Text style={styles.totalLabel}>Rounded Pay:</Text>
           <Text style={[styles.totalValue, { color: brand }]}>
-            {money(data.totals.roundedCents, data.company.locale)}
+            {formatMoney(data.totals.roundedCents, data.company.locale)}
           </Text>
         </View>
       </View>

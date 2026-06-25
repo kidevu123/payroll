@@ -10,6 +10,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { EmployeePayslipBatchInput } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 const PAGE_PADDING = 14;
 const GRID_COLUMNS = 4;
@@ -165,13 +166,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function money(cents: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
 function formatDateMDY(iso: string): string {
   const [y, m, d] = iso.split("-");
   if (!y || !m || !d) return iso;
@@ -192,7 +186,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
   const empMeta = [
     data.employee.legacyId ? `ID: ${data.employee.legacyId}` : null,
     data.employee.hourlyRateCents != null
-      ? `Rate: ${money(data.employee.hourlyRateCents, data.company.locale)}`
+      ? `Rate: ${formatMoney(data.employee.hourlyRateCents, data.company.locale)}`
       : null,
     data.employee.shiftName ? `Shift: ${data.employee.shiftName}` : null,
   ]
@@ -261,7 +255,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
                             {d.hours.toFixed(data.rules.hoursDecimalPlaces)}
                           </Text>
                           <Text style={styles.cPay}>
-                            {money(d.cents, data.company.locale)}
+                            {formatMoney(d.cents, data.company.locale)}
                           </Text>
                         </View>
                       ))}
@@ -274,7 +268,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
                         <Text
                           style={[styles.cPay, { width: "45%", marginLeft: "auto" }]}
                         >
-                          {money(t.amountCents, data.company.locale)}
+                          {formatMoney(t.amountCents, data.company.locale)}
                         </Text>
                       </View>
                     ))}
@@ -283,7 +277,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
                       <View style={styles.totalLine}>
                         <Text style={styles.totalLabel}>
                           {period.totals.hours.toFixed(2)} h · gross{" "}
-                          {money(period.totals.grossCents, data.company.locale)}
+                          {formatMoney(period.totals.grossCents, data.company.locale)}
                         </Text>
                       </View>
                       <View style={styles.totalLine}>
@@ -294,7 +288,7 @@ export function PayslipBatchSheet({ data }: { data: EmployeePayslipBatchInput })
                             { color: data.company.brandColorHex },
                           ]}
                         >
-                          {money(period.totals.roundedCents, data.company.locale)}
+                          {formatMoney(period.totals.roundedCents, data.company.locale)}
                         </Text>
                       </View>
                     </View>

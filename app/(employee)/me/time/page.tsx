@@ -17,6 +17,7 @@ import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
+import { companyDayIso } from "@/lib/time/company-day";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -24,7 +25,7 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 // Stable ISO-style date key (YYYY-MM-DD) — locale-independent, used for
 // grouping/filtering. Keep en-CA so the format never shifts.
 function dayKey(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 function fmtTime(d: Date | null, tz: string, locale: string): string {

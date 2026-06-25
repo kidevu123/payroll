@@ -58,6 +58,7 @@ import {
   payslipPdfHref,
 } from "@/components/domain/payslip-pdf-actions";
 import { backupAdminReportToZohoAction } from "../actions";
+import { companyDayIso } from "@/lib/time/company-day";
 import { requireSession } from "@/lib/auth-guards";
 import {
   buildCashDenominationSummary,
@@ -1081,7 +1082,7 @@ function PunchSubTable({
   const byDay = new Map<string, typeof punches>();
   for (const p of punches) {
     const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    const day = companyDayIso(d, tz);
     const list = byDay.get(day) ?? [];
     list.push(p);
     byDay.set(day, list);

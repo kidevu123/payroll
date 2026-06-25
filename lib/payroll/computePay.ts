@@ -17,6 +17,7 @@
 //     pushes total hours over the line, so byDay[].isOvertime marks the
 //     first OT-affected day onward.
 
+import { companyDayIso } from "@/lib/time/company-day";
 import {
   type RoundingRule,
   roundCents,
@@ -82,7 +83,7 @@ function dayKey(d: Date, timezone: string | undefined): string {
   // ET punch lands on the wrong day in production unless the caller passes
   // the company timezone).
   if (timezone) {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(d);
+    return companyDayIso(d, timezone);
   }
   const y = d.getUTCFullYear();
   const m = `${d.getUTCMonth() + 1}`.padStart(2, "0");

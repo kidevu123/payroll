@@ -1,3 +1,4 @@
+import { companyDayIso } from "@/lib/time/company-day";
 // Missed-punch detection per spec §6.2. Pure function: takes employees,
 // punches, holidays, time-off, and a period; returns the alerts that should
 // be created. The caller persists them.
@@ -84,7 +85,7 @@ function formatDay(d: Date): string {
 }
 
 function dayInTimezone(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 function hourInTimezone(d: Date, tz: string): number {

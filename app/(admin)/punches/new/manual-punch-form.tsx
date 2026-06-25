@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { addManualPunchAction } from "../actions";
+import { companyDayIso } from "@/lib/time/company-day";
 
 type EmployeeLite = {
   id: string;
@@ -26,7 +27,7 @@ export function ManualPunchForm({
   // Default the date + times to "now" in company tz so the form isn't
   // empty. Admins almost always edit a recent or current punch.
   const now = new Date();
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(now);
+  const today = companyDayIso(now, timezone);
   const defaultIn = `${today}T08:00`;
   const defaultOut = `${today}T17:00`;
 

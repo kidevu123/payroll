@@ -15,6 +15,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
 import { buildEmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
+import { companyDayIso } from "@/lib/time/company-day";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -49,7 +50,7 @@ export default async function EmployeeDay({
   const punches = await listPunches({ employeeId: session.user.employeeId });
   const dayPunches = punches.filter(
     (p) =>
-      new Intl.DateTimeFormat("en-CA", { timeZone: company.timezone }).format(p.clockIn) === date,
+      companyDayIso(p.clockIn, company.timezone) === date,
   );
   const reportMode = buildEmployeeReportFixMode({
     date,

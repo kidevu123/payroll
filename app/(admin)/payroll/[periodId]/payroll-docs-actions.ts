@@ -7,6 +7,10 @@ import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { employees, payPeriods } from "@/lib/db/schema";
 import { createDoc, deleteDoc, getDoc } from "@/lib/db/queries/payroll-documents";
+import {
+  PAYROLL_DOC_MAX_BYTES as MAX_BYTES,
+  writePaystubFile,
+} from "@/lib/documents/paystub-storage";
 
 const idSchema = z.string().uuid();
 
@@ -16,10 +20,6 @@ const ACCEPT_MIME = new Set([
   "image/jpeg",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
-
-const PAYROLL_DOC_ROOT =
-  process.env.PAYROLL_DOC_ROOT ?? "/data/uploads/payroll-docs";
-const MAX_BYTES = 10 * 1024 * 1024;
 
 const kindSchema = z.enum(["W2", "PAYSTUB", "OTHER"]);
 
@@ -97,20 +97,14 @@ export async function uploadPayrollDocAction(
     .where(eq(employees.id, employeeId));
   if (!employee) return { error: "Employee not found." };
 
-  // Persist to disk under PAYROLL_DOC_ROOT/<periodId>/<employeeId>/<filename>.
-  // Filename is randomized to avoid collisions; original_filename is stored
-  // in the DB for download.
-  const { mkdir, writeFile } = await import("fs/promises");
-  const { join, extname } = await import("path");
-  const { randomUUID } = await import("crypto");
-
-  const dir = join(PAYROLL_DOC_ROOT, periodId, employeeId);
-  await mkdir(dir, { recursive: true });
-  const ext = extname(file.name) || mimeToExt(file.type);
-  const stored = `${randomUUID()}${ext}`;
-  const filePath = join(dir, stored);
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buf, { mode: 0o640 });
+  // Persist under PAYROLL_DOC_ROOT/<periodId>/<employeeId> via the shared writer
+  // (randomized filename, 0o640). original_filename is stored in the DB.
+  const filePath = await writePaystubFile({
+    segments: [periodId, employeeId],
+    originalFilename: file.name,
+    mime: file.type,
+    buf: Buffer.from(await file.arrayBuffer()),
+  });
 
   try {
     await createDoc(
@@ -175,19 +169,4 @@ export async function deletePayrollDocAction(
   revalidatePath(`/payroll/${doc.periodId}`);
   revalidatePath("/me/pay");
   return { ok: true };
-}
-
-function mimeToExt(mime: string): string {
-  switch (mime) {
-    case "application/pdf":
-      return ".pdf";
-    case "image/png":
-      return ".png";
-    case "image/jpeg":
-      return ".jpg";
-    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-      return ".xlsx";
-    default:
-      return "";
-  }
 }

@@ -14,6 +14,7 @@ import {
   type NewPayslip,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import { companyDayIso } from "@/lib/time/company-day";
 
 export type Actor = {
   id: string;
@@ -369,9 +370,7 @@ export async function recomputePayslip(
         // Compare in company tz, not UTC, so a late-night ET punch doesn't
         // pick up a next-day rate change retroactively.
         const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-        const day = new Intl.DateTimeFormat("en-CA", {
-          timeZone: company.timezone,
-        }).format(d);
+        const day = companyDayIso(d, company.timezone);
         for (const r of rates) {
           if (r.effectiveFrom <= day) return r.hourlyRateCents;
         }

@@ -10,6 +10,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 const PAGE_PADDING = 14;
 
@@ -170,13 +171,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function money(cents: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
 function formatDateMDY(iso: string): string {
   const [y, m, d] = iso.split("-");
   if (!y || !m || !d) return iso;
@@ -192,7 +186,7 @@ function rateLine(
     `Pay Period: ${data.period.startDate} to ${data.period.endDate}`,
   );
   if (emp.hourlyRateCents != null) {
-    parts.push(`Hourly Rate: ${money(emp.hourlyRateCents, data.company.locale)}`);
+    parts.push(`Hourly Rate: ${formatMoney(emp.hourlyRateCents, data.company.locale)}`);
   }
   return parts.join("    ");
 }
@@ -261,7 +255,7 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                         {d.hours.toFixed(data.rules.hoursDecimalPlaces)}
                       </Text>
                       <Text style={styles.cPay}>
-                        {money(d.cents, data.company.locale)}
+                        {formatMoney(d.cents, data.company.locale)}
                       </Text>
                     </View>
                   ))}
@@ -278,7 +272,7 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                             { width: "45%", marginLeft: "auto" },
                           ]}
                         >
-                          {money(t.amountCents, data.company.locale)}
+                          {formatMoney(t.amountCents, data.company.locale)}
                         </Text>
                       </View>
                     ))
@@ -288,7 +282,7 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                   <View style={styles.totalLine}>
                     <Text style={styles.totalLabel}>
                       Total Hours: {e.totals.hours.toFixed(2)} · gross{" "}
-                      {money(e.totals.grossCents, data.company.locale)}
+                      {formatMoney(e.totals.grossCents, data.company.locale)}
                     </Text>
                     <Text style={styles.totalValue} />
                   </View>
@@ -300,7 +294,7 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                         { color: data.company.brandColorHex },
                       ]}
                     >
-                      {money(e.totals.roundedCents, data.company.locale)}
+                      {formatMoney(e.totals.roundedCents, data.company.locale)}
                     </Text>
                   </View>
                 </View>

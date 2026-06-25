@@ -9,6 +9,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { SignatureReportInput } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 const styles = StyleSheet.create({
   page: {
@@ -86,10 +87,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function fmtMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-}
-
 export function SignatureReport({ data }: { data: SignatureReportInput }) {
   // Group rows by shift, preserving the order the rows arrive in.
   const shifts = new Map<string, typeof data.rows>();
@@ -148,7 +145,7 @@ export function SignatureReport({ data }: { data: SignatureReportInput }) {
                   <Text style={styles.cName}>{rows.length} {rows.length === 1 ? "person" : "people"}</Text>
                   <Text style={styles.cId} />
                   <Text style={styles.cHours}>{hSum.toFixed(2)}</Text>
-                  <Text style={styles.cPay}>{fmtMoney(cSum)}</Text>
+                  <Text style={styles.cPay}>{formatMoney(cSum)}</Text>
                   <Text style={styles.cSig} />
                   <Text style={styles.cDate} />
                 </View>
@@ -158,7 +155,7 @@ export function SignatureReport({ data }: { data: SignatureReportInput }) {
                     <Text style={styles.cName}>{r.employeeName}</Text>
                     <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
                     <Text style={styles.cHours}>{r.hours.toFixed(2)}</Text>
-                    <Text style={styles.cPay}>{fmtMoney(r.roundedCents)}</Text>
+                    <Text style={styles.cPay}>{formatMoney(r.roundedCents)}</Text>
                     <Text style={styles.cSig} />
                     <Text style={styles.cDate} />
                   </View>
@@ -171,7 +168,7 @@ export function SignatureReport({ data }: { data: SignatureReportInput }) {
             <Text style={styles.cName} />
             <Text style={styles.cId} />
             <Text style={styles.cHours}>{grandHours.toFixed(2)}</Text>
-            <Text style={styles.cPay}>{fmtMoney(grandCents)}</Text>
+            <Text style={styles.cPay}>{formatMoney(grandCents)}</Text>
             <Text style={styles.cSig} />
             <Text style={styles.cDate} />
           </View>

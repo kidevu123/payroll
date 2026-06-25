@@ -36,6 +36,7 @@ import { formatHoursMinutes, formatTimeShort, localMidnightUtc } from "@/lib/uti
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
+import { companyDayIso } from "@/lib/time/company-day";
 
 function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T12:00:00Z`);
@@ -60,7 +61,7 @@ function eachDay(startIso: string, endIso: string): string[] {
 }
 
 function dayOf(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 type PeriodView = {

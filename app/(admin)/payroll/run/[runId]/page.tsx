@@ -32,6 +32,7 @@ import { taskPayLineItems } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { AlertTriangle } from "lucide-react";
 import { RunActions } from "./run-actions";
+import { companyDayIso } from "@/lib/time/company-day";
 
 export default async function RunReviewPage({
   params,
@@ -113,7 +114,7 @@ export default async function RunReviewPage({
           // Resolve the punch's calendar day in company tz, not UTC, so a
           // late-evening ET punch doesn't pick up a next-day rate change.
           const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-          const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+          const day = companyDayIso(d, tz);
           for (const r of rates) if (r.effectiveFrom <= day) return r.hourlyRateCents;
           return e.hourlyRateCents ?? 0;
         },
@@ -431,7 +432,7 @@ function RunPunchTable({
   const byDay = new Map<string, typeof punches>();
   for (const p of punches) {
     const d = p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn);
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+    const day = companyDayIso(d, tz);
     const list = byDay.get(day) ?? [];
     list.push(p);
     byDay.set(day, list);

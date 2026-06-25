@@ -14,6 +14,7 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
+import { formatMoney } from "@/lib/utils";
 
 const PAGE_PADDING = 16;
 
@@ -265,13 +266,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function money(cents: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
-
 function moneyWhole(cents: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -355,7 +349,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
             <Text style={styles.summaryBandTitle}>Payroll summary</Text>
             <Text style={styles.summaryBandTotal}>
               GRAND TOTAL: {hrs(grandHours, data.rules.hoursDecimalPlaces)} hrs ·{" "}
-              {money(grandGrossCents, data.company.locale)} · Rounded{" "}
+              {formatMoney(grandGrossCents, data.company.locale)} · Rounded{" "}
               {moneyWhole(grandRoundedCents, data.company.locale)}
             </Text>
           </View>
@@ -377,7 +371,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                       {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
                     </Text>
                     <Text style={styles.cPay}>
-                      {money(r.totals.grossCents, data.company.locale)}
+                      {formatMoney(r.totals.grossCents, data.company.locale)}
                     </Text>
                     <Text style={styles.cRounded}>
                       {moneyWhole(r.totals.roundedCents, data.company.locale)}
@@ -413,7 +407,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                 </View>
                 <Text style={styles.blockMeta}>
                   {e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
-                    ? `${money(e.hourlyRateCents, data.company.locale)}/hr`
+                    ? `${formatMoney(e.hourlyRateCents, data.company.locale)}/hr`
                     : ""}
                 </Text>
 
@@ -449,7 +443,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
                             {hrs(d.hours, data.rules.hoursDecimalPlaces)}
                           </Text>
                           <Text style={styles.bcPay}>
-                            {money(d.cents, data.company.locale)}
+                            {formatMoney(d.cents, data.company.locale)}
                           </Text>
                         </>
                       )}
@@ -459,10 +453,10 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
 
                 <View style={styles.blockTotalsRow}>
                   <Text style={styles.blockTotalLabel}>
-                    {money(e.totals.grossCents, data.company.locale)}
+                    {formatMoney(e.totals.grossCents, data.company.locale)}
                   </Text>
                   <Text style={{ fontFamily: "Helvetica-Bold", color: brand }}>
-                    {money(e.totals.roundedCents, data.company.locale)}
+                    {formatMoney(e.totals.roundedCents, data.company.locale)}
                   </Text>
                 </View>
 

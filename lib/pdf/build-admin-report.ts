@@ -20,9 +20,10 @@ import { canonicalEndForSchedule } from "@/lib/payroll/period-boundaries";
 import { paySchedules } from "@/lib/db/schema";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 import type { AdminReportInput } from "./types";
+import { companyDayIso } from "@/lib/time/company-day";
 
 function tzDayKey(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

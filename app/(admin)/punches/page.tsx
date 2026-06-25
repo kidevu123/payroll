@@ -16,6 +16,7 @@ import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { getSetting } from "@/lib/settings/runtime";
+import { companyDayIso } from "@/lib/time/company-day";
 
 type SearchParams = Promise<{
   employeeId?: string;
@@ -38,7 +39,7 @@ function fmt(d: Date | null, tz: string): string {
 }
 
 function dayKey(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 export default async function PunchesAdmin({

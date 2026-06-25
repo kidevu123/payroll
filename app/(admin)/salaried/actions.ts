@@ -20,6 +20,10 @@ import {
   suggestNetFromText,
   type NetSuggestion,
 } from "@/lib/salaried/extract-net";
+import {
+  PAYROLL_DOC_MAX_BYTES as MAX_BYTES,
+  writePaystubFile,
+} from "@/lib/documents/paystub-storage";
 
 const idSchema = z.string().uuid();
 
@@ -29,9 +33,6 @@ const ACCEPT_MIME = new Set([
   "image/jpeg",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ]);
-const PAYROLL_DOC_ROOT =
-  process.env.PAYROLL_DOC_ROOT ?? "/data/uploads/payroll-docs";
-const MAX_BYTES = 10 * 1024 * 1024;
 
 const kindSchema = z.enum(["W2", "PAYSTUB", "OTHER"]);
 
@@ -120,20 +121,15 @@ export async function uploadSalariedDocAction(
     };
   }
 
-  // Persist to disk under PAYROLL_DOC_ROOT/_salaried/<employeeId>/<filename>.
+  // Persist under PAYROLL_DOC_ROOT/_salaried/<employeeId> via the shared writer.
   // The "_salaried" segment makes it obvious in `find` listings that these
   // aren't tied to a period (vs the period-bound docs at <periodId>/...).
-  const { mkdir, writeFile } = await import("fs/promises");
-  const { join, extname } = await import("path");
-  const { randomUUID } = await import("crypto");
-
-  const dir = join(PAYROLL_DOC_ROOT, "_salaried", employeeId);
-  await mkdir(dir, { recursive: true });
-  const ext = extname(file.name) || mimeToExt(file.type);
-  const stored = `${randomUUID()}${ext}`;
-  const filePath = join(dir, stored);
-  const buf = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buf, { mode: 0o640 });
+  const filePath = await writePaystubFile({
+    segments: ["_salaried", employeeId],
+    originalFilename: file.name,
+    mime: file.type,
+    buf: Buffer.from(await file.arrayBuffer()),
+  });
 
   try {
     await createDoc(
@@ -226,20 +222,6 @@ export async function setSalariedDocNetAmountAction(
   return { ok: true };
 }
 
-function mimeToExt(mime: string): string {
-  switch (mime) {
-    case "application/pdf":
-      return ".pdf";
-    case "image/png":
-      return ".png";
-    case "image/jpeg":
-      return ".jpg";
-    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-      return ".xlsx";
-    default:
-      return "";
-  }
-}
 
 export type ZohoOrgChoice = { id: string; name: string };
 

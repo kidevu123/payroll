@@ -152,3 +152,31 @@ sudo systemctl restart payroll-deploy.service
 - NGTeco import artifacts → `/data/ngteco/{profile,failures}/`
 - Generated payslip PDFs → `/data/payslips/<period-start>/`
 - Daily backups → `/data/backups/`
+
+## Break-glass repair scripts
+
+`scripts/repair-*.ts` are **manual, fleet-wide data-repair tools** — not part of
+normal operation. The same reconciliation logic (`reconcileOrphanDayPairs`,
+`mergeChainedDaySegments`, `autoMergeDuplicatePunchesForDay`) already runs
+automatically after **every** NGTeco poll, so new punches self-heal. These
+scripts exist only to back-fill **historical** rows that predate a given fix.
+Most accept `--dry-run` (no writes) and audit every change.
+
+Run inside the app container:
+
+```
+ssh root@192.168.1.190 -t 'pct exec 120 -- bash -lc "cd /opt/payroll && docker compose exec -T app node ./node_modules/tsx/dist/cli.mjs scripts/<script>.ts --dry-run"'
+```
+
+| Script | What it fixes |
+|--------|----------------|
+| `repair-orphan-day-pairs.ts` | Merges same-day ambiguous single punches into complete shifts |
+| `repair-chained-day-segments.ts` | Collapses chained NGTeco micro-segments into one shift per day |
+| `repair-duplicate-punches.ts` | Voids duplicate punch rows (same shift landed twice) |
+| `repair-overlap-request-punches.ts` | Voids "From request …" punches that duplicate punches already on file |
+| `repair-punch-periods.ts` | Re-stamps punches onto the correct pay period for the employee's schedule + day |
+| `repair-payslip-pdfs.ts` | Regenerates payslip PDF files for rows missing `pdf_path` |
+
+`import-employees.ts` / `import-legacy.ts` are one-time onboarding/migration
+importers; `import-legacy.ts` is intentionally NOT in the container CMD (it once
+resurrected deleted periods) — run it manually only with owner direction.

@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import type { Actor } from "./employees";
+import { companyDayIso } from "@/lib/time/company-day";
 
 /**
  * Refuse any punch mutation on a PAID period. Admins must "Unmark paid"
@@ -155,9 +156,7 @@ export async function createPunch(
   const { getSetting } = await import("@/lib/settings/runtime");
   const { resolvePeriodIdForEmployeeDay } = await import("./pay-periods");
   const company = await getSetting("company");
-  const dayIso = new Intl.DateTimeFormat("en-CA", {
-    timeZone: company.timezone,
-  }).format(input.clockIn);
+  const dayIso = companyDayIso(input.clockIn, company.timezone);
   const periodId =
     (await resolvePeriodIdForEmployeeDay(input.employeeId, dayIso)) ??
     input.periodId;
@@ -213,9 +212,7 @@ export async function editPunch(
     const nextIn = patch.clockIn ?? before.clockIn;
     const nextOut =
       patch.clockOut !== undefined ? patch.clockOut : before.clockOut;
-    const dayIso = new Intl.DateTimeFormat("en-CA", {
-      timeZone: company.timezone,
-    }).format(nextIn);
+    const dayIso = companyDayIso(nextIn, company.timezone);
     const periodId =
       (await resolvePeriodIdForEmployeeDay(before.employeeId, dayIso)) ??
       before.periodId;

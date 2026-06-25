@@ -11,9 +11,10 @@ import { computePay } from "@/lib/payroll/computePay";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import type { EmployeePayslipBatchInput } from "@/lib/pdf/types";
+import { companyDayIso } from "@/lib/time/company-day";
 
 function tzDayKey(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  return companyDayIso(d, tz);
 }
 
 function tzTimeOfDay(d: Date, tz: string): string {
