@@ -9,11 +9,12 @@
 //
 //   node ./node_modules/tsx/dist/cli.mjs scripts/ngteco-ref-check.ts [days]
 
-import { isNotNull } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { open as openSealed } from "@/lib/crypto/vault";
+import { writeAudit } from "@/lib/db/audit";
 import { ngtecoApiLogin, fetchNgtecoTransactions } from "@/lib/ngteco/api-client";
 
 // The CURRENT (buggy) normalization, reproduced so we can show the collision.
@@ -129,8 +130,50 @@ async function main() {
       console.log(`  ${name}: code "${code}" — ${matches.length} Milo employees share this name (ambiguous)`);
     }
   }
+  if (!process.argv.includes("--apply")) {
+    console.log("");
+    console.log("(read-only — re-run with --apply to correct stored refs)");
+    process.exit(0);
+  }
+
+  // ── APPLY: correct stored refs to the exact NGTeco code ───────────────────
+  // Only for UNIQUE name matches whose stored ref differs from the exact code.
+  // Exact codes are unique, so no ngteco_employee_ref index conflict is
+  // possible. Each change is audited.
   console.log("");
-  console.log("(read-only — nothing changed)");
+  console.log("--apply: correcting stored refs to exact NGTeco codes…");
+  let changed = 0;
+  for (const [code, name] of [...roster.entries()].sort()) {
+    const matches = emps.filter((e) => sanitize(e.name) === sanitize(name));
+    if (matches.length !== 1) continue;
+    const m = matches[0]!;
+    if (m.ref === code) continue;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(employees)
+        .set({ ngtecoEmployeeRef: code })
+        .where(eq(employees.id, m.id));
+      await writeAudit(
+        {
+          actorId: null,
+          actorRole: null,
+          action: "employee.ngteco_ref.correct",
+          targetType: "Employee",
+          targetId: m.id,
+          before: { ngtecoEmployeeRef: m.ref },
+          after: {
+            ngtecoEmployeeRef: code,
+            reason: "leading-zero code collision repair (exact NGTeco code)",
+          },
+        },
+        tx,
+      );
+    });
+    console.log(`  ${m.name}: "${m.ref}" -> "${code}"`);
+    changed++;
+  }
+  console.log("");
+  console.log(`Done. Corrected ${changed} ref(s).`);
   process.exit(0);
 }
 
