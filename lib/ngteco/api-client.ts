@@ -19,6 +19,7 @@
 // so the entire downstream pairing / dedupe / import pipeline is unchanged.
 
 import type { RawPunchEvent } from "./scraper";
+import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 /** Derive the API host from the configured portal URL. The SPA lives at
  *  office.ngteco.com; its backend API is office-api.ngteco.com. */
@@ -148,16 +149,25 @@ type TransactionRecord = {
 };
 
 /**
- * Build an ISO-8601 instant (with offset) from the API's date/time/tz fields.
- * Defensive about formats since the capture only revealed types, not values:
+ * Build an ISO-8601 instant from the API's date/time/tz fields.
+ *
+ * NGTeco sends LOCAL wall-clock time plus its own offset (`ngtecoOffset`, e.g.
+ * "-04:00"). When that offset is present we use it directly. When it's missing
+ * or unparseable we resolve the wall-clock against `companyTz` (an IANA zone
+ * like "America/New_York") which is DST-correct — we do NOT assume UTC and do
+ * NOT hardcode an offset. The clock is never UTC; treating a zone-less string
+ * as UTC was the latent ~4-5h error this guards against.
+ *
+ * Formats handled defensively:
  *   att_date: "2026-06-24" or "06/24/2026"
  *   punch_format_time: "17:15:02" or "17:15" or "2026-06-24 17:15:02"
- *   timezone: "-04:00" or "-0400" or "UTC-4"
+ *   ngtecoOffset: "-04:00" or "-0400" or "" (missing)
  */
 export function buildPunchIso(
   attDate: string,
   punchTime: string,
-  tz: string,
+  ngtecoOffset: string,
+  companyTz: string,
 ): string | null {
   let date = (attDate || "").trim();
   let time = (punchTime || "").trim();
@@ -198,27 +208,27 @@ export function buildPunchIso(
   time = `${String(h).padStart(2, "0")}:${mm}:${ss}`;
   if (!/^\d{2}:\d{2}:\d{2}$/.test(time)) return null;
 
-  // Normalize offset → ±HH:mm (accept "-0400" / "-04:00" / "-4").
-  let offset = (tz || "").trim();
-  const mo = /^([+-])(\d{1,2}):?(\d{2})?$/.exec(offset);
+  // Prefer NGTeco's own offset (±HH:mm, accepts "-0400" / "-04:00" / "-4").
+  const mo = /^([+-])(\d{1,2}):?(\d{2})?$/.exec((ngtecoOffset || "").trim());
   if (mo) {
-    offset = `${mo[1]}${mo[2]!.padStart(2, "0")}:${(mo[3] ?? "00").padStart(2, "0")}`;
-  } else {
-    offset = "";
+    const offset = `${mo[1]}${mo[2]!.padStart(2, "0")}:${(mo[3] ?? "00").padStart(2, "0")}`;
+    const iso = `${date}T${time}${offset}`;
+    return Number.isNaN(Date.parse(iso)) ? null : iso;
   }
 
-  const iso = `${date}T${time}${offset}`;
-  if (Number.isNaN(Date.parse(offset ? iso : `${iso}Z`))) return null;
-  return iso;
+  // No usable offset → interpret the wall-clock in the company IANA timezone
+  // (DST-correct). Never UTC, never a hardcoded offset.
+  const instant = wallClockToUtc(`${date}T${time}`, companyTz);
+  return instant ? instant.toISOString() : null;
 }
 
-function mapRecord(r: TransactionRecord): RawPunchEvent | null {
+function mapRecord(r: TransactionRecord, companyTz: string): RawPunchEvent | null {
   const personId = String(r.employee_code ?? "").trim();
   if (!personId) return null;
   const rawDate = String(r.att_date ?? "").trim();
   const rawTime = String(r.punch_format_time ?? "").trim();
   const rawTz = String(r.timezone ?? "").trim();
-  const punchAt = buildPunchIso(rawDate, rawTime, rawTz);
+  const punchAt = buildPunchIso(rawDate, rawTime, rawTz, companyTz);
   if (!punchAt) return null;
   const personName =
     String(r.employee_name ?? "").trim() ||
@@ -249,9 +259,16 @@ export type FetchTransactionsResult = {
 export async function fetchNgtecoTransactions(
   portalUrl: string,
   accessToken: string,
-  opts: { startDate: string; endDate: string; pageSize?: number; maxRecords?: number },
+  opts: {
+    startDate: string;
+    endDate: string;
+    /** Company IANA timezone — the fallback when a record omits its offset. */
+    timezone: string;
+    pageSize?: number;
+    maxRecords?: number;
+  },
 ): Promise<FetchTransactionsResult> {
-  const { startDate, endDate, pageSize = 500, maxRecords = 50_000 } = opts;
+  const { startDate, endDate, timezone, pageSize = 500, maxRecords = 50_000 } = opts;
   const base = ngtecoApiBase(portalUrl);
   const events: RawPunchEvent[] = [];
   let page = 1;
@@ -298,7 +315,7 @@ export async function fetchNgtecoTransactions(
       };
     }
     for (const r of rows) {
-      const ev = mapRecord(r);
+      const ev = mapRecord(r, timezone);
       if (ev) events.push(ev);
       else unparsed++;
     }

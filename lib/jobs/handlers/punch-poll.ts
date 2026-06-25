@@ -265,6 +265,7 @@ export async function handlePunchPoll(
       password,
       headless: ngteco.headless,
       runId,
+      timezone: tz,
       ...(maxRows !== undefined ? { maxRows } : {}),
     };
 
@@ -293,6 +294,7 @@ export async function handlePunchPoll(
         const fetched = await fetchNgtecoTransactions(ngteco.portalUrl, access, {
           startDate: apiStartDate,
           endDate: apiEndDate,
+          timezone: tz,
         });
         logger.info(
           {

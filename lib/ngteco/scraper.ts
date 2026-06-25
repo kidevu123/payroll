@@ -14,6 +14,10 @@
 // for any runtime that statically reaches it (instrumentation.ts edge
 // bundle, in particular). Only Node runtime ever actually invokes scrape().
 
+// Pure helper (Intl/Date only, no node built-ins) — safe to import statically
+// even in the edge bundle that statically reaches this module.
+import { wallClockToUtc } from "@/lib/time/wall-clock";
+
 const STORAGE_ROOT = process.env.NGTECO_STORAGE_DIR ?? "/data/ngteco";
 
 type Selectors = {
@@ -102,6 +106,8 @@ export type PollScrapeInput = {
   headless: boolean;
   /** Used to bucket failure artifacts; usually a poll-tick id. */
   runId: string;
+  /** Company IANA timezone — fallback when a scraped row omits its offset. */
+  timezone: string;
   /** Hard cap on rows. Default 1000. */
   maxRows?: number;
 };
@@ -1574,7 +1580,7 @@ export async function scrapeViewAttendance(
 
       for (const r of pageRows) {
         if (!looksLikeWallClockTime(r.timeRaw)) continue;
-        const punchAt = composeIso(r.dateRaw, r.timeRaw, r.tzRaw);
+        const punchAt = composeIso(r.dateRaw, r.timeRaw, r.tzRaw, input.timezone);
         if (!punchAt) continue;
         const key = `${r.personId}|${punchAt}`;
         if (seenKeys.has(key)) continue;
@@ -2108,6 +2114,7 @@ function composeIso(
   dateRaw: string,
   timeRaw: string,
   tzRaw: string,
+  companyTz: string,
 ): string | null {
   let dateIso: string;
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
@@ -2133,9 +2140,14 @@ function composeIso(
   const hh = tm[1]!.padStart(2, "0");
   const mm = tm[2]!;
   const ss = (tm[3] ?? "00").padStart(2, "0");
-  // Default tz to America/New_York EDT (-04:00) when the page strips it.
-  const tz = /^[+-]\d{2}:\d{2}$/.test(tzRaw) ? tzRaw : "-04:00";
-  return `${dateIso}T${hh}:${mm}:${ss}${tz}`;
+  // Use the row's own offset when present. When the page strips it, resolve the
+  // wall-clock in the company IANA timezone (DST-correct) — never a hardcoded
+  // -04:00 (wrong half the year) and never UTC.
+  if (/^[+-]\d{2}:\d{2}$/.test(tzRaw)) {
+    return `${dateIso}T${hh}:${mm}:${ss}${tzRaw}`;
+  }
+  const instant = wallClockToUtc(`${dateIso}T${hh}:${mm}:${ss}`, companyTz);
+  return instant ? instant.toISOString() : null;
 }
 
 function splitSelectorList(selector: string): string[] {
