@@ -13,10 +13,7 @@ import {
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import { getSetting } from "@/lib/settings/runtime";
-import {
-  getNextPeriodBounds,
-  getPeriodBounds,
-} from "@/lib/payroll/period-boundaries";
+import { getNextPeriodBounds } from "@/lib/payroll/period-boundaries";
 import type { Actor } from "./employees";
 
 export type ListPeriodsOpts = {
@@ -315,68 +312,6 @@ export async function unlockPeriod(
   });
 }
 
-/**
- * Idempotent: ensure an OPEN period exists for `today`. If a row already
- * covers today, returns it. Otherwise computes bounds from `payPeriod`
- * settings and inserts.
- *
- * `today` is a YYYY-MM-DD string in company timezone. The caller is
- * responsible for the conversion.
- */
-/**
- * Read-only counterpart to `ensureNextPeriod`. Returns the pay period
- * whose date range contains `today` if one exists; otherwise the most
- * recent period overall; otherwise null. NEVER creates a row.
- *
- * Use this from view paths and informational queries. Only the explicit
- * create flows (CSV upload, manual punch entry) should call
- * `ensureNextPeriod` — the owner doesn't want the system silently
- * creating periods for them anymore.
- */
-export async function ensureNextPeriod(
-  today: string,
-  actor: Actor | null = null,
-): Promise<PayPeriod> {
-  const settings = await getSetting("payPeriod");
-  const bounds = getPeriodBounds(today, settings);
-
-  // First try a startDate match — that's our unique key.
-  const [existing] = await db
-    .select()
-    .from(payPeriods)
-    .where(eq(payPeriods.startDate, bounds.startDate));
-  if (existing) return existing;
-
-  return db.transaction(async (tx) => {
-    // Re-check inside the transaction in case another caller raced us.
-    const [racingExisting] = await tx
-      .select()
-      .from(payPeriods)
-      .where(eq(payPeriods.startDate, bounds.startDate));
-    if (racingExisting) return racingExisting;
-    const [row] = await tx
-      .insert(payPeriods)
-      .values({
-        startDate: bounds.startDate,
-        endDate: bounds.endDate,
-        state: "OPEN",
-      })
-      .returning();
-    if (!row) throw new Error("ensureNextPeriod: insert returned no row");
-    await writeAudit(
-      {
-        actorId: actor?.id ?? null,
-        actorRole: actor?.role ?? null,
-        action: "period.create",
-        targetType: "PayPeriod",
-        targetId: row.id,
-        after: row,
-      },
-      tx,
-    );
-    return row;
-  });
-}
 
 /**
  * Compute the (startDate, endDate) bounds for the period that contains

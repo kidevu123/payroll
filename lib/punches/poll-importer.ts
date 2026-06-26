@@ -14,10 +14,9 @@
 // Imported lazily from lib/jobs/handlers/punch-poll.ts so node:crypto
 // stays out of the edge-bundle analysis path.
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employees, punches, payPeriods } from "@/lib/db/schema";
-import { ensureNextPeriod, getCurrentPeriod } from "@/lib/db/queries/pay-periods";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
 import { normalizeRef } from "@/lib/ngteco/normalize-ref";
@@ -607,9 +606,12 @@ async function resolvePeriodIdForDay(
     return created.id;
   }
 
-  // Legacy fallback: employee has no schedule attached. Match any
-  // existing period covering the day, otherwise create one with the
-  // legacy single-cadence settings (untagged).
+  // Fallback: the employee has no pay schedule. Onboarding forces a schedule on
+  // every employee, so this is a data error rather than a normal path — attach
+  // the punch to an existing period covering the day if one exists
+  // (deterministic), but NEVER create an untagged "UNASSIGNED" period. Those
+  // orphans (which had to be assigned by hand) are gone for good; an unresolved
+  // punch instead surfaces the missing-schedule as an unmatched employee.
   const [existing] = await db
     .select({ id: payPeriods.id })
     .from(payPeriods)
@@ -619,12 +621,7 @@ async function resolvePeriodIdForDay(
         sql`${payPeriods.endDate} >= ${dayIso}::date`,
       ),
     )
+    .orderBy(desc(payPeriods.startDate))
     .limit(1);
-  if (existing) return existing.id;
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-  }).format(new Date());
-  await ensureNextPeriod(today);
-  const cur = await getCurrentPeriod(dayIso);
-  return cur?.id ?? null;
+  return existing?.id ?? null;
 }

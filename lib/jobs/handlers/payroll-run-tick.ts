@@ -5,11 +5,7 @@
 // The full state machine (review/approve/publish) is wired in Phase 3.
 
 import { logger } from "@/lib/telemetry";
-import {
-  ensureNextPeriod,
-  ensurePeriodForSchedule,
-  getCurrentPeriod,
-} from "@/lib/db/queries/pay-periods";
+import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import type { PayPeriod } from "@/lib/db/schema";
 import { createRun, getRunForPeriod } from "@/lib/db/queries/payroll-runs";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
@@ -40,8 +36,13 @@ export async function handlePayrollRunTick(boss: {
   if (weekly) {
     period = await ensurePeriodForSchedule(weekly.id, today, null);
   } else {
-    await ensureNextPeriod(today);
-    period = await getCurrentPeriod(today);
+    // No weekly schedule configured — use the first active schedule's period
+    // rather than creating an untagged ("UNASSIGNED") period. You run weekly,
+    // so this branch never fires in practice.
+    const fallback = schedules[0] ?? null;
+    period = fallback
+      ? await ensurePeriodForSchedule(fallback.id, today, null)
+      : null;
   }
   if (!period) {
     logger.warn("payroll.run.tick: no current period after ensure; skipping");
