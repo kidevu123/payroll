@@ -73,8 +73,13 @@ export async function runPollAndLog(opts: {
   // Backfills legitimately page back through weeks of data; today-only polls
   // should never need more than a few minutes.
   const daysBack = opts.pollOptions?.daysBack ?? 0;
+  // CRON polls can auto-widen their window (auto-backfill of recent days), so
+  // they get the generous backfill timeout too — otherwise a legitimately wider
+  // cron run gets hard-killed under the short today-only ceiling.
   const hardTimeoutMs =
-    daysBack > 1 ? HARD_TIMEOUT_BACKFILL_MS : HARD_TIMEOUT_TODAY_MS;
+    daysBack > 1 || opts.triggeredBy === "CRON"
+      ? HARD_TIMEOUT_BACKFILL_MS
+      : HARD_TIMEOUT_TODAY_MS;
   try {
     const summary = await withHardTimeout(
       () => handlePunchPoll(opts.pollOptions ?? {}),

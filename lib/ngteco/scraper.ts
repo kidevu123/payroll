@@ -2135,9 +2135,16 @@ function composeIso(
     }
     dateIso = `${y}-${m}-${d}`;
   }
-  const tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(timeRaw);
+  // Accept optional trailing AM/PM (some NGTeco builds render the time cell in
+  // 12-hour format). Without this, those rows were silently dropped.
+  const tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$/.exec(timeRaw);
   if (!tm) return null;
-  const hh = tm[1]!.padStart(2, "0");
+  let h = parseInt(tm[1]!, 10);
+  const ampm = tm[4]?.toLowerCase();
+  if (ampm === "pm" && h < 12) h += 12;
+  if (ampm === "am" && h === 12) h = 0;
+  if (h < 0 || h > 23) return null;
+  const hh = String(h).padStart(2, "0");
   const mm = tm[2]!;
   const ss = (tm[3] ?? "00").padStart(2, "0");
   // Use the row's own offset when present. When the page strips it, resolve the
@@ -2237,7 +2244,7 @@ function prependFieldSelector(
 function looksLikeWallClockTime(raw: string): boolean {
   const t = raw.trim();
   if (!t || /check|clock\s*in|clock\s*out|^in$|^out$/i.test(t)) return false;
-  return /^\d{1,2}:\d{2}(:\d{2})?$/.test(t);
+  return /^\d{1,2}:\d{2}(:\d{2})?(\s*[AaPp][Mm])?$/.test(t);
 }
 
 /**

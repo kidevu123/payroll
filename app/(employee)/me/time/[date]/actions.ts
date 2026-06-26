@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/auth-guards";
 import {
   createMissedPunchRequest,
 } from "@/lib/db/queries/requests";
+import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
 import { adminUserIds } from "@/lib/db/queries/recipients";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
@@ -57,21 +58,12 @@ export async function reportPunchFixAction(
   const claim = parseMissedPunchClaim(claimInput);
   if (!claim.ok) return { error: claim.error };
 
-  // Find a period that CONTAINS the date (start <= date <= end). The
-  // previous query keyed on startDate alone, which only matched when
-  // the request date was the period's first day — six days a week the
-  // employee got "no period covers that date" with no recourse.
-  const [period] = await db
-    .select()
-    .from(payPeriods)
-    .where(
-      and(
-        lte(payPeriods.startDate, parsed.data.date),
-        gte(payPeriods.endDate, parsed.data.date),
-      ),
-    )
-    .limit(1);
-  const periodId = period?.id ?? null;
+  // Schedule-aware, deterministic resolution — the ad-hoc unordered limit(1)
+  // picked an arbitrary period when multiple pay schedules overlapped the date.
+  const periodId = await resolvePeriodIdForEmployeeDay(
+    session.user.employeeId,
+    parsed.data.date,
+  );
   if (!periodId) {
     return {
       error: "No pay period covers that date yet — ask an admin to open one.",
