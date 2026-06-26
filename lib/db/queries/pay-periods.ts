@@ -41,6 +41,13 @@ export async function getPeriodById(id: string): Promise<PayPeriod | null> {
 }
 
 /** Period whose [startDate,endDate] contains today (in company TZ as a YYYY-MM-DD). */
+/**
+ * SCHEDULE-BLIND current period — only a safety net for the rare schedule-less
+ * employee / no-weekly-schedule fallback. Prefer getCurrentPeriodForSchedule or
+ * resolvePeriodIdForEmployeeDay anywhere the schedule is known. Returns the
+ * MOST-RECENTLY-STARTED period covering `today` (deterministic) instead of an
+ * arbitrary database-page-order row.
+ */
 export async function getCurrentPeriod(today: string): Promise<PayPeriod | null> {
   const [row] = await db
     .select()
@@ -48,6 +55,7 @@ export async function getCurrentPeriod(today: string): Promise<PayPeriod | null>
     .where(
       and(lte(payPeriods.startDate, today), gte(payPeriods.endDate, today)),
     )
+    .orderBy(desc(payPeriods.startDate))
     .limit(1);
   return row ?? null;
 }
