@@ -41,7 +41,10 @@ export async function finishPoll(
       pairsUpdated: result.pairsUpdated ?? null,
       errorMessage: result.errorMessage ?? null,
     })
-    .where(eq(ngtecoPollLog.id, id));
+    // First terminal writer wins: if an admin cancel or hard-timeout already
+    // finished this row, the worker's own finishPoll must not clobber that
+    // status back to a stale ok/error.
+    .where(and(eq(ngtecoPollLog.id, id), isNull(ngtecoPollLog.finishedAt)));
 }
 
 /** True when pg-boss still has an active worker on ngteco.punch.poll. */

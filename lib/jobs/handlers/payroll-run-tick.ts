@@ -11,7 +11,7 @@ import {
   getCurrentPeriod,
 } from "@/lib/db/queries/pay-periods";
 import type { PayPeriod } from "@/lib/db/schema";
-import { createRun } from "@/lib/db/queries/payroll-runs";
+import { createRun, getRunForPeriod } from "@/lib/db/queries/payroll-runs";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
 
@@ -45,6 +45,18 @@ export async function handlePayrollRunTick(boss: {
   }
   if (!period) {
     logger.warn("payroll.run.tick: no current period after ensure; skipping");
+    return;
+  }
+  // Idempotency: a duplicate tick fire (cron retry, double-schedule) must not
+  // spin up a second run + ngteco.import for the same period. Reuse any
+  // existing run unless the only one is CANCELLED/FAILED (then a fresh run is a
+  // legitimate recovery).
+  const existing = await getRunForPeriod(period.id);
+  if (existing && existing.state !== "CANCELLED" && existing.state !== "FAILED") {
+    logger.info(
+      { runId: existing.id, periodId: period.id, state: existing.state },
+      "payroll.run.tick: run already exists for period; skipping duplicate",
+    );
     return;
   }
   const run = await createRun(period.id, new Date(), null, {

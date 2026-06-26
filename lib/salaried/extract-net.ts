@@ -129,11 +129,15 @@ export async function suggestNetFromText(
 export function parseNetCents(raw: string): number | null {
   if (!raw) return null;
   if (/^\s*none\s*$/i.test(raw)) return null;
-  // Match 1234.56 / 1,234.56 / $1234 / 1234 — first money-like token.
-  const m = raw.match(/\$?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/);
+  // Anchor to the WHOLE reply (the prompt demands the number alone). Picking
+  // the first money-shaped token meant a leading date/code like "06/15/2026"
+  // produced a confident-but-wrong net that still passed the range guard.
+  // Anything other than a single money value -> null, so the caller falls back
+  // to manual entry instead of silently saving garbage. >2 decimals is rejected
+  // by the anchored end (`1685.999` no longer partial-matches).
+  const m = raw.match(/^\s*\$?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*$/);
   if (!m || !m[1]) return null;
-  const normalized = m[1].replace(/,/g, "");
-  const value = Number(normalized);
+  const value = Number(m[1].replace(/,/g, ""));
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.round(value * 100);
 }

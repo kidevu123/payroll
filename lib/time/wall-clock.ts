@@ -31,7 +31,6 @@ export function wallClockToUtc(wallClock: string, tz: string): Date | null {
   const [, y, mo, d, h, mi, s] = m;
   const candidate = new Date(`${y}-${mo}-${d}T${h}:${mi}:${s ?? "00"}Z`);
   if (Number.isNaN(candidate.getTime())) return null;
-  // What does `tz` say the wall clock reads at `candidate`?
   const fmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     hourCycle: "h23",
@@ -42,13 +41,25 @@ export function wallClockToUtc(wallClock: string, tz: string): Date | null {
     minute: "2-digit",
     second: "2-digit",
   });
-  const parts = fmt.formatToParts(candidate);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
-  const tzWallStr = `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}Z`;
-  const tzWall = new Date(tzWallStr);
-  if (Number.isNaN(tzWall.getTime())) return null;
-  const offsetMs = candidate.getTime() - tzWall.getTime();
-  return new Date(candidate.getTime() + offsetMs);
+  // Offset (UTC minus what `tz`'s wall clock reads) AT a given instant.
+  const offsetAt = (instantMs: number): number | null => {
+    const parts = fmt.formatToParts(new Date(instantMs));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+    const tzWall = new Date(
+      `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:${get("second")}Z`,
+    );
+    if (Number.isNaN(tzWall.getTime())) return null;
+    return instantMs - tzWall.getTime();
+  };
+  // Evaluate the offset at the TARGET instant, not at the candidate. On DST
+  // transition days the offset at the candidate (wall-clock-as-UTC) differs
+  // from the offset at the real instant, which left punches an hour off. One
+  // re-evaluation converges across the spring-forward gap / fall-back overlap.
+  const off1 = offsetAt(candidate.getTime());
+  if (off1 === null) return null;
+  const off2 = offsetAt(candidate.getTime() + off1);
+  if (off2 === null) return null;
+  return new Date(candidate.getTime() + off2);
 }
 
 /**

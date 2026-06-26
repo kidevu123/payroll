@@ -22,10 +22,16 @@ type Actor = {
 /** Marker on a WITHDRAWAL for an accountant petty-cash purchase. */
 export const PETTY_CASH_CATEGORY = "PETTY_CASH";
 
-export async function getDrawerBalanceCents(): Promise<number> {
+// Advisory-lock key for the single cash drawer — withdrawals take this so a
+// balance-check + insert is atomic against other withdrawals (no overdraft).
+const CASH_DRAWER_LOCK_KEY = 48230011;
+
+export async function getDrawerBalanceCents(
+  executor: Pick<typeof db, "select"> = db,
+): Promise<number> {
   // Voided entries are excluded — a voided deposit/withdrawal no longer
   // affects cash on hand.
-  const [row] = await db
+  const [row] = await executor
     .select({
       deposits: sql<number>`COALESCE(SUM(CASE WHEN ${cashDrawerEntries.kind} = 'DEPOSIT' THEN ${cashDrawerEntries.amountCents} ELSE 0 END), 0)::bigint`,
       withdrawals: sql<number>`COALESCE(SUM(CASE WHEN ${cashDrawerEntries.kind} = 'WITHDRAWAL' THEN ${cashDrawerEntries.amountCents} ELSE 0 END), 0)::bigint`,
@@ -116,7 +122,12 @@ export async function recordWithdrawal(
   const run = async (
     t: Parameters<Parameters<typeof db.transaction>[0]>[0],
   ) => {
-    const balance = await getDrawerBalanceCents();
+    // Serialize withdrawals on the drawer, then read the balance INSIDE this
+    // transaction. Previously the balance was read via the global db outside
+    // the tx with no lock, so two concurrent withdrawals could both pass the
+    // check and overdraft the drawer.
+    await t.execute(sql`SELECT pg_advisory_xact_lock(${CASH_DRAWER_LOCK_KEY})`);
+    const balance = await getDrawerBalanceCents(t);
     if (balance - input.amountCents < 0) {
       throw new Error(
         `Insufficient cash on hand. Drawer balance is $${(balance / 100).toFixed(2)}; tried to withdraw $${(input.amountCents / 100).toFixed(2)}.`,

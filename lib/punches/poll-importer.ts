@@ -540,22 +540,27 @@ export async function importPunchPoll(
       }
     }
 
-    await voidSupersededAmbiguousPunches(
-      g.empId,
-      g.day,
-      options.timezone,
-    );
-    await reconcileOrphanDayPairs(g.empId, g.day, options.timezone);
-    summary.duplicatesMerged += await autoMergeDuplicatePunchesForDay(
-      g.empId,
-      g.day,
-      options.timezone,
-    );
-    summary.chainsMerged += await mergeChainedDaySegments(
-      g.empId,
-      g.day,
-      options.timezone,
-    );
+    // Housekeeping (superseded-void / orphan-reconcile / auto-merge / chained
+    // merge) mutates punches via voidPunch/editPunch, which REFUSE a PAID
+    // period. A poll window that touches a paid day must not crash the whole
+    // import — paid punches are frozen and need no housekeeping. Swallow only
+    // PERIOD_PAID; anything else still propagates.
+    try {
+      await voidSupersededAmbiguousPunches(g.empId, g.day, options.timezone);
+      await reconcileOrphanDayPairs(g.empId, g.day, options.timezone);
+      summary.duplicatesMerged += await autoMergeDuplicatePunchesForDay(
+        g.empId,
+        g.day,
+        options.timezone,
+      );
+      summary.chainsMerged += await mergeChainedDaySegments(
+        g.empId,
+        g.day,
+        options.timezone,
+      );
+    } catch (err) {
+      if (!(err instanceof Error && err.message === "PERIOD_PAID")) throw err;
+    }
   }
 
   if (summary.pairsInserted + summary.pairsUpdated + summary.unmatchedRefs > 0) {

@@ -464,17 +464,13 @@ export async function deleteRun(
       );
     }
     // For non-PUBLISHED runs (failed ingest, abandoned drafts, cancelled
-    // runs without payslips), proceed with the cascade. Soft-delete
-    // payslips via voidPayslip semantics — set voidedAt rather than
-    // hard-delete so any acknowledged history isn't lost.
-    await tx
-      .update(payslips)
-      .set({
-        voidedAt: new Date(),
-        voidedById: actor.id,
-        voidReason: `Run ${id} deleted (state=${before.state})`,
-      })
-      .where(eq(payslips.payrollRunId, id));
+    // runs) the payslips are never-published draft scaffolding — no
+    // acknowledged history to preserve (PUBLISHED is blocked above). They must
+    // be HARD-deleted before the run: the payslips.payrollRunId FK is ON DELETE
+    // RESTRICT, so merely voiding them (a column update, not a row removal)
+    // left the children referencing the run and made `delete(payrollRuns)`
+    // throw a foreign-key violation every time — the run could never be deleted.
+    await tx.delete(payslips).where(eq(payslips.payrollRunId, id));
     await tx.delete(payrollRuns).where(eq(payrollRuns.id, id));
     await writeAudit(
       {
