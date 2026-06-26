@@ -21,6 +21,7 @@ import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
+import { companyDayIso } from "@/lib/time/company-day";
 
 export type CockpitRow = {
   scheduleId: string;
@@ -37,9 +38,10 @@ export type CockpitRow = {
 };
 
 export async function computeScheduleCockpit(today: string): Promise<CockpitRow[]> {
-  const [schedules, payRules] = await Promise.all([
+  const [schedules, payRules, company] = await Promise.all([
     listSchedules(),
     getSetting("payRules"),
+    getSetting("company"),
   ]);
 
   const rows = await Promise.all(
@@ -115,12 +117,12 @@ export async function computeScheduleCockpit(today: string): Promise<CockpitRow[
         const rates = await listRates(e.id);
         const result = computePay({
           punches: ePunches,
+          timezone: company.timezone,
           rateAt: (p) => {
-            const day = (
-              p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn)
-            )
-              .toISOString()
-              .slice(0, 10);
+            const day = companyDayIso(
+              p.clockIn instanceof Date ? p.clockIn : new Date(p.clockIn),
+              company.timezone,
+            );
             for (const r of rates)
               if (r.effectiveFrom <= day) return r.hourlyRateCents;
             return e.hourlyRateCents ?? 0;

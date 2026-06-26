@@ -154,6 +154,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) {
         const fresh = await findUserById(token.id as string);
         if (fresh) {
+          // A disabled user must lose their session, not keep riding an old
+          // JWT. Returning null invalidates the token (Auth.js v5).
+          if (fresh.disabledAt) return null;
           token.employeeId = fresh.employeeId ?? undefined;
           token.role = fresh.role;
           token.mustChangePassword = fresh.mustChangePassword;

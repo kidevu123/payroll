@@ -34,9 +34,12 @@ export function pairPunchEvents(
   events: RawPunchEvent[],
   timezone: string,
 ): PairedPunchEvent[] {
+  // Sort by parsed INSTANT, not lexically: punchAt comes in two formats
+  // (offset form "…-04:00" and UTC "…Z"), so localeCompare is not chronological
+  // and would mis-order clock-in vs clock-out across mixed formats / DST.
   const sorted = events
     .slice()
-    .sort((a, b) => a.punchAt.localeCompare(b.punchAt));
+    .sort((a, b) => new Date(a.punchAt).getTime() - new Date(b.punchAt).getTime());
   if (sorted.length === 0) return [];
 
   const paired: PairedPunchEvent[] = [];

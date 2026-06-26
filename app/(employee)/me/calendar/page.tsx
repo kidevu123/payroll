@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/auth-guards";
 import { listApprovedTimeOffOverlapping } from "@/lib/db/queries/requests";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
+import { companyTodayIso } from "@/lib/time/company-day";
 import { resolveLocale } from "@/lib/i18n";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -99,7 +100,7 @@ export default async function EmployeeCalendar({
   const gridStart = new Date(first);
   gridStart.setDate(first.getDate() - dayOfWeek);
   const days: { date: Date; inMonth: boolean; key: string; isToday: boolean }[] = [];
-  const today = dayKey(new Date());
+  const today = companyTodayIso(new Date(), company.timezone);
   for (let i = 0; i < 42; i += 1) {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);

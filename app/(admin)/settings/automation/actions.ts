@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth-guards";
+import { requireAdminStrict } from "@/lib/auth-guards";
 import { getSetting, setSetting } from "@/lib/settings/runtime";
 import { logger } from "@/lib/telemetry";
 
@@ -51,7 +51,7 @@ const schema = z.object({
 export async function updateAutomationAction(
   formData: FormData,
 ): Promise<{ error?: string } | void> {
-  const session = await requireAdmin();
+  const session = await requireAdminStrict();
   const parsed = schema.safeParse({
     cronEnabled: formData.get("cronEnabled") ?? "off",
     enabled: formData.get("enabled") ?? "off",

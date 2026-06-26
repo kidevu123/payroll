@@ -148,6 +148,12 @@ export async function upsertPayslip(input: NewPayslip): Promise<Payslip> {
         taskPayCents: input.taskPayCents ?? 0,
         pdfPath: input.pdfPath ?? null,
         generatedAt: new Date(),
+        // Re-generating a payslip must bring it back to life: a prior void
+        // (e.g. from a deleted run) otherwise leaves the fresh payslip
+        // soft-deleted and invisible.
+        voidedAt: null,
+        voidedById: null,
+        voidReason: null,
       },
     })
     .returning();

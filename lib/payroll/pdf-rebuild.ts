@@ -231,7 +231,9 @@ export async function rebuildPeriodsFromPdfs(
       // 3) Create a single fresh PUBLISHED run owning all the payslips.
       // scheduledFor is NOT NULL on the schema; for backfill runs we use
       // periodEnd as a stable historical timestamp.
-      const scheduledFor = new Date(`${p.periodEnd}T19:00:00-05:00`);
+      // DST-correct ET offset (-04:00 in summer, -05:00 in winter) via the
+      // existing helper, instead of a fixed -05:00 that's an hour off in EDT.
+      const scheduledFor = new Date(buildEtTimestamp(p.periodEnd, "19:00"));
       const [run] = await tx
         .insert(payrollRuns)
         .values({

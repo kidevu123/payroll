@@ -25,7 +25,13 @@ export async function GET(
     new URL(req.url).searchParams.get("download") === "true";
   const payslip = await getPayslip(id);
   if (!payslip) return new NextResponse("not found", { status: 404 });
-  const isAdmin = session.user.role === "OWNER" || session.user.role === "ADMIN";
+  // Admin-grade = same set as requireAdmin (OWNER + ADMIN + PAYROLL_STAFF).
+  // Without PAYROLL_STAFF here, payroll staff were treated as plain employees
+  // and could only fetch their own payslip.
+  const isAdmin =
+    session.user.role === "OWNER" ||
+    session.user.role === "ADMIN" ||
+    session.user.role === "PAYROLL_STAFF";
   const isOwner = session.user.employeeId === payslip.employeeId;
   if (!isAdmin && !isOwner) {
     return new NextResponse("forbidden", { status: 403 });

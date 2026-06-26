@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
-import { payslips } from "@/lib/db/schema";
+import { payslips, payPeriods } from "@/lib/db/schema";
 import {
   activationRequirementsMessage,
   archiveEmployee,
@@ -324,14 +324,20 @@ export async function recomputeAllPayslipsForEmployeeAction(
     return { error: "Invalid employee id." };
   }
   const slips = await db
-    .select()
+    .select({ id: payslips.id, periodState: payPeriods.state })
     .from(payslips)
+    .innerJoin(payPeriods, eq(payslips.periodId, payPeriods.id))
     .where(
       and(eq(payslips.employeeId, employeeId), isNull(payslips.voidedAt)),
     );
   let recomputed = 0;
   let skipped = 0;
   for (const p of slips) {
+    // Never restamp a payslip in a PAID period — that's frozen history.
+    if (p.periodState === "PAID") {
+      skipped++;
+      continue;
+    }
     try {
       await recomputePayslip(p.id, {
         id: session.user.id,

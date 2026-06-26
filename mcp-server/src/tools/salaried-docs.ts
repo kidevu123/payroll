@@ -31,7 +31,13 @@ export function registerSalariedDocTools(
         pdfBase64: z.string().min(1),
         mime: z.string().default("application/pdf"),
         kind: kindSchema.default("PAYSTUB"),
-        netAmountDollars: z.number().positive().optional(),
+        netAmountDollars: z
+          .number()
+          .positive()
+          .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, {
+            message: "netAmountDollars must have at most 2 decimal places",
+          })
+          .optional(),
         payPeriodStart: z.string().date().optional(),
         payPeriodEnd: z.string().date().optional(),
       },

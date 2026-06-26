@@ -274,6 +274,17 @@ export async function approveMissedPunchRequest(
         .limit(1);
       periodId = matchingPeriod?.id ?? periodId;
     }
+    // Refuse to write a punch into an already-PAID period — approving a
+    // missed-punch into closed payroll would silently change paid history.
+    const [resolvedPeriod] = await tx
+      .select({ state: payPeriods.state })
+      .from(payPeriods)
+      .where(eq(payPeriods.id, periodId));
+    if (resolvedPeriod?.state === "PAID") {
+      throw new Error(
+        "This pay period is already paid. Unmark it as paid before approving punch changes.",
+      );
+    }
     const [alert] = before.alertId
       ? await tx
           .select({ issue: missedPunchAlerts.issue })

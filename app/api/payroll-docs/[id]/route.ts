@@ -17,7 +17,9 @@ export async function GET(
   if (!doc) return new NextResponse("not found", { status: 404 });
   if (doc.deletedAt) return new NextResponse("not found", { status: 404 });
   const isAdmin =
-    session.user.role === "OWNER" || session.user.role === "ADMIN";
+    session.user.role === "OWNER" ||
+    session.user.role === "ADMIN" ||
+    session.user.role === "PAYROLL_STAFF";
   const isOwner = session.user.employeeId === doc.employeeId;
   if (!isAdmin) {
     if (!isOwner || !doc.visibleToEmployee) {

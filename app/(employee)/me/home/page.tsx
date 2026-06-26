@@ -182,6 +182,7 @@ export default async function EmployeeHome() {
     );
     const result = computePay({
       punches,
+      timezone: company.timezone,
       rateAt: (p) => {
         // Resolve the punch day in COMPANY TZ (not UTC) — a 22:00 ET punch
         // shifts to next-day in UTC and silently grabs a next-day rate. Mirrors
