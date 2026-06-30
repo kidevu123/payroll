@@ -765,7 +765,18 @@ export const timeOffRequests = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("time_off_status_idx").on(t.status)],
+  (t) => [
+    index("time_off_status_idx").on(t.status),
+    // At most ONE pending change-request per original time-off entry. Makes the
+    // DB the atomic gate so a double-tap can't create two pending cancellations
+    // (the app-level pre-check has a race window). Partial: only constrains
+    // pending change rows, leaving normal requests (NULL change ref) untouched.
+    uniqueIndex("time_off_one_pending_change")
+      .on(t.changeRequestForId)
+      .where(
+        sql`${t.status} = 'PENDING' AND ${t.changeRequestForId} IS NOT NULL`,
+      ),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

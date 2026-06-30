@@ -693,19 +693,34 @@ export async function createTimeOffChangeRequest(
     .limit(1);
   if (pending) throw new Error("TIME_OFF_CHANGE_ALREADY_PENDING");
 
-  return createTimeOffRequest(
-    {
-      ...input,
-      employeeId: original.employeeId,
-      startDate: action === "CANCEL" ? original.startDate : input.startDate,
-      endDate: action === "CANCEL" ? original.endDate : input.endDate,
-      type: action === "CANCEL" ? original.type : input.type,
-      reason: input.reason ?? original.reason,
-      changeRequestForId: original.id,
-      changeRequestAction: action,
-    },
-    actor,
-  );
+  try {
+    return await createTimeOffRequest(
+      {
+        ...input,
+        employeeId: original.employeeId,
+        startDate: action === "CANCEL" ? original.startDate : input.startDate,
+        endDate: action === "CANCEL" ? original.endDate : input.endDate,
+        type: action === "CANCEL" ? original.type : input.type,
+        reason: input.reason ?? original.reason,
+        changeRequestForId: original.id,
+        changeRequestAction: action,
+      },
+      actor,
+    );
+  } catch (err) {
+    // Lost the race for the time_off_one_pending_change unique index — a
+    // concurrent change-request for this original committed first. Surface the
+    // same error the app-level pre-check above throws.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "23505"
+    ) {
+      throw new Error("TIME_OFF_CHANGE_ALREADY_PENDING");
+    }
+    throw err;
+  }
 }
 
 /** Direct admin correction for an approved time-off entry. Employee
