@@ -29,6 +29,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { periodNetCents } from "@/lib/reports/period-net";
 import {
   Download,
   Eye,
@@ -192,7 +193,12 @@ function groupByMonth(periods: GroupedReport[]): MonthGroup[] {
 function periodNet(g: GroupedReport): number {
   let total = 0;
   for (const r of g.runs) total += r.amountCents;
-  return total - g.replacedRunNetCents + g.docNetPayCents + g.tempLaborCents;
+  return periodNetCents({
+    runTotalCents: total,
+    replacedRunNetCents: g.replacedRunNetCents,
+    docNetPayCents: g.docNetPayCents,
+    tempLaborCents: g.tempLaborCents,
+  });
 }
 
 /** Period GROSS = sum of run gross + temp labor (temp counted once). */

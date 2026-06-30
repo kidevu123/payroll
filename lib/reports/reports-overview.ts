@@ -4,6 +4,7 @@
 
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { YtdRow } from "@/lib/reports/ytd";
+import { periodNetCents } from "@/lib/reports/period-net";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
@@ -50,16 +51,6 @@ const CADENCE_LABEL: Record<CadenceSlice["key"], string> = {
   SALARIED: "Salaried",
 };
 
-/** Net for a report row: rounded run pay + per-period temp labor (counted
- *  once per period, matching the page's existing YTD-paid logic). */
-function netCents(r: ReportRow, seenPeriodTemp: Set<string>): number {
-  let v = r.amountCents;
-  if (!seenPeriodTemp.has(r.periodId)) {
-    seenPeriodTemp.add(r.periodId);
-    v += r.tempLaborCents;
-  }
-  return v;
-}
 
 export function computeReportsOverview(
   reports: ReportRow[],
@@ -86,15 +77,45 @@ export function computeReportsOverview(
     .sort((a, b) => b.count - a.count);
 
   // ── Net pay trend (monthly, current year, by period start) ───────────────
-  const monthly = new Array(12).fill(0) as number[];
-  const seenTemp = new Set<string>();
-  let totalPaidYtd = 0;
+  // Aggregate to one net PER PERIOD using the canonical periodNetCents (which
+  // applies the salaried/W2 take-home swap), then bucket each period into its
+  // start-month / YTD-paid. Previously this summed raw run amounts per row and
+  // never applied the swap, so the headline net / trend / YTD overstated net
+  // for any period that paid salaried/W2 employees.
+  const byPeriod = new Map<
+    string,
+    {
+      runTotalCents: number;
+      replacedRunNetCents: number;
+      docNetPayCents: number;
+      tempLaborCents: number;
+      startDate: string;
+      periodState: ReportRow["periodState"];
+    }
+  >();
   for (const r of reports) {
-    if (r.startDate.slice(0, 4) !== String(year)) continue;
-    const mi = Number(r.startDate.slice(5, 7)) - 1;
-    const n = netCents(r, seenTemp);
+    const g = byPeriod.get(r.periodId);
+    if (g) {
+      g.runTotalCents += r.amountCents;
+    } else {
+      byPeriod.set(r.periodId, {
+        runTotalCents: r.amountCents,
+        replacedRunNetCents: r.replacedRunNetCents,
+        docNetPayCents: r.docNetPayCents,
+        tempLaborCents: r.tempLaborCents,
+        startDate: r.startDate,
+        periodState: r.periodState,
+      });
+    }
+  }
+  const monthly = new Array(12).fill(0) as number[];
+  let totalPaidYtd = 0;
+  for (const g of byPeriod.values()) {
+    if (g.startDate.slice(0, 4) !== String(year)) continue;
+    const n = periodNetCents(g);
+    const mi = Number(g.startDate.slice(5, 7)) - 1;
     if (mi >= 0 && mi < 12) monthly[mi] = (monthly[mi] ?? 0) + n;
-    if (r.periodState === "PAID") totalPaidYtd += n;
+    if (g.periodState === "PAID") totalPaidYtd += n;
   }
   const lastMonthWithData = monthly.reduce((acc, v, i) => (v > 0 ? i : acc), 0);
   const netTrend: NetTrendPoint[] = [];
