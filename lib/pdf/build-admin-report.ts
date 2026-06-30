@@ -452,7 +452,9 @@ export async function buildAdminReportArtifacts(
     const id = r.legacyId ?? "—";
     const hrs = r.hours.toFixed(2);
     const gross = (r.grossCents / 100).toFixed(2);
-    const rounded = Math.round(r.roundedCents / 100).toString();
+    // Cents, not whole dollars — otherwise the per-row 'Rounded' column doesn't
+    // add up to the exact-cents TOTAL printed below.
+    const rounded = (r.roundedCents / 100).toFixed(2);
     lines.push(`${id} | ${r.displayName} | ${hrs} | $${gross} | $${rounded}`);
   }
   lines.push("");

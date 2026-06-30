@@ -28,7 +28,22 @@ export async function createOwner(formData: FormData): Promise<{ error?: string 
   const { companyName, email, password } = parsed.data;
 
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ email, passwordHash, role: "OWNER" });
+  let user;
+  try {
+    user = await createUser({ email, passwordHash, role: "OWNER" });
+  } catch (err) {
+    // Race: a concurrent setup POST already created the first user (email is
+    // unique). Treat as "already completed" instead of a raw 23505.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "23505"
+    ) {
+      return { error: "Setup has already been completed." };
+    }
+    throw err;
+  }
 
   await setSetting(
     "company",

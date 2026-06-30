@@ -330,16 +330,32 @@ export async function inviteEmployeeUser(
   if (collision) {
     throw new Error("A user with that email already exists.");
   }
-  const [row] = await db
-    .insert(users)
-    .values({
-      email: input.email,
-      passwordHash: hash,
-      role: input.role,
-      employeeId: input.employeeId,
-      mustChangePassword: true,
-    })
-    .returning();
+  let row;
+  try {
+    [row] = await db
+      .insert(users)
+      .values({
+        email: input.email,
+        passwordHash: hash,
+        role: input.role,
+        employeeId: input.employeeId,
+        mustChangePassword: true,
+      })
+      .returning();
+  } catch (err) {
+    // Race: a concurrent invite for the same email slipped past the check
+    // above and hit the users_email_unique index. Surface the friendly message
+    // instead of a raw 23505.
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      (err as { code?: string }).code === "23505"
+    ) {
+      throw new Error("A user with that email already exists.");
+    }
+    throw err;
+  }
   if (!row) throw new Error("inviteEmployeeUser: insert returned no row");
   await writeAudit({
     actorId: actor.id,
