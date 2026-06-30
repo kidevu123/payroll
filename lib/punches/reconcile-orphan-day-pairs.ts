@@ -18,13 +18,18 @@ type DayPunch = {
   notes: string | null;
 };
 
-function isOrphanCandidate(row: DayPunch): boolean {
-  if (row.clockOut !== null) return false;
-  return (
-    isAmbiguousSinglePunch(row) ||
-    row.notes === null ||
-    !row.notes.includes("missing:in")
-  );
+/**
+ * Only a genuine "ambiguous single" (a lone NGTeco punch the importer couldn't
+ * label in vs out) is an orphan this pass may pair or dedup. A real in-progress
+ * OPEN shift (open, but NOT ambiguous:single — the employee is clocked in and
+ * still working) must be left alone; the importer closes it when the actual
+ * clock-out arrives. The old clauses (`notes === null || !notes.includes(
+ * "missing:in")`) matched almost any open punch, so they swept up live shifts
+ * and fused/deleted them — silently destroying real punches. Exported for tests.
+ */
+export function isOrphanCandidate(row: DayPunch): boolean {
+  // isAmbiguousSinglePunch already requires clockOut === null.
+  return isAmbiguousSinglePunch(row);
 }
 
 function cleanedNotes(notes: string | null): string {
