@@ -93,10 +93,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   } catch {
     /* metrics not critical to render */
   }
-  // Bell badge reflects what the admin will SEE on /requests — pending
-  // missed-punch + pending time-off requests. Was previously
-  // unreadCount(notifications), which drifted from the page contents and
-  // produced badges with no rows behind them ("8" with empty inbox).
+  // Pending-work badges are attributed to the section that owns the work,
+  // not a generic notifications bell: missed-punch reviews live on Time,
+  // time-off requests on Calendar. Earlier builds summed both onto the
+  // Notifications item, which then linked to the (empty) announcements feed
+  // — a badge with nothing behind it. Keyed by nav href so the shells can
+  // drop the count on the matching item.
   const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion] = await Promise.all([
     listPendingMissedPunchRequests().catch(() => []),
     listPendingTimeOffRequests().catch(() => []),
@@ -106,7 +108,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     resolveLocale(),
     assetVersion("logo").catch(() => "default"),
   ]);
-  const unread = missedReqs.length + timeOffReqs.length;
+  const missedCount = missedReqs.length;
+  const timeOffCount = timeOffReqs.length;
+  const navBadges: Record<string, number> = {
+    "/time": missedCount,
+    "/calendar": timeOffCount,
+  };
   // Override the stored logoPath's cache-bust with a fresh mtime stamp so
   // any server-side post-processing of the asset (e.g. transparent-margin
   // trimming) shows up in browsers that cached an earlier URL. The stored
@@ -183,7 +190,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               avatarUrl,
             }}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            unreadCount={unread}
+            badges={navBadges}
             commandTargets={commandTargets}
             signOutLabel={tAuth("signOut")}
             footer={{ sha, shaFull, serverTime }}
@@ -197,6 +204,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             company={companyForBrand}
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+            badges={navBadges}
           />
           <FeedbackLauncher />
         </div>
@@ -210,13 +218,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         company={companyForBrand}
         role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}
         allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+        badges={navBadges}
       />
       <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
         <PollStatusProvider>
+          {/* Bell links to /calendar, so it reflects pending time-off only.
+              Missed-punch reviews surface on the Time nav badge instead. */}
           <Topbar
             email={session.user.email}
             role={session.user.role}
-            unreadCount={unread}
+            unreadCount={timeOffCount}
             commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
             company={companyForBrand}
             currentLocale={locale}
@@ -227,6 +238,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             company={companyForBrand}
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+            badges={navBadges}
           />
           {/*
             Mobile spacing math:

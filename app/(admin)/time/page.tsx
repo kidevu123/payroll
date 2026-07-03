@@ -36,6 +36,7 @@ import { formatHoursMinutes, formatTimeShort, localMidnightUtc } from "@/lib/uti
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
+import { MissedPunchRailCard } from "@/components/domain/missed-punch-rail-card";
 import { companyDayIso } from "@/lib/time/company-day";
 
 function addDaysIso(iso: string, days: number): string {
@@ -1062,8 +1063,12 @@ export default async function TimePage({
         </div>
         </div>
 
-        {/* Right rail — today's summary, exceptions, labor, insight (#57). */}
+        {/* Right rail — pending reviews, today's summary, exceptions, labor,
+            insight (#57). Missed-punch review sits at the top: it's the only
+            card that needs an admin decision, and it lives next to the time
+            grid it corrects (moved here from the Calendar rail). */}
         <aside className="space-y-3">
+          <MissedPunchRailCard timezone={company.timezone} />
           <TodaySummaryCard summary={todaySummary} total={summaryTotal} />
           <ExceptionsQueueCard
             missing={staleOpenPunchCount}

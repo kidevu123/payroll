@@ -90,7 +90,7 @@ export function DashboardDarkShell({
   company,
   user,
   allowedSurfaces,
-  unreadCount,
+  badges,
   commandTargets,
   signOutLabel,
   footer,
@@ -99,7 +99,11 @@ export function DashboardDarkShell({
   company: { name: string; logoPath: string | null };
   user: DarkShellUser;
   allowedSurfaces?: ReadonlyArray<string>;
-  unreadCount: number;
+  /** Pending-work counts keyed by nav href (e.g. `{ "/time": 2 }`).
+   *  The badge sits on the section the work belongs to — missed punches on
+   *  Time, time-off on Calendar — never on the Notifications item, which is
+   *  the announcements feed and has no pending queue of its own. */
+  badges?: Record<string, number>;
   commandTargets: CommandTarget[];
   signOutLabel: string;
   /** Build/version info for the footer line (SHA + server time). */
@@ -186,19 +190,16 @@ export function DashboardDarkShell({
         </span>
         {/* Right cluster: notifications + avatar (matches the mobile refs). */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Announcements. No pending-work dot here — the review queue lives
+              on the Time and Calendar nav items where the work actually is,
+              so this bell stays a plain link to the announcements feed. */}
           <Link
             href="/notifications"
-            aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}
+            aria-label="Notifications"
             className="relative flex h-9 w-9 items-center justify-center rounded-full"
             style={{ color: DASH.textMuted, background: DASH.surfaceRaised }}
           >
             <Bell className="h-4 w-4" aria-hidden />
-            {unreadCount > 0 ? (
-              <span
-                className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
-                style={{ background: DASH.violetBright, boxShadow: `0 0 0 2px ${DASH.topbar}` }}
-              />
-            ) : null}
           </Link>
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -301,7 +302,7 @@ export function DashboardDarkShell({
                     label={tNav(labelKey)}
                     Icon={Icon}
                     active={isActive(pathname, href)}
-                    badge={href === "/notifications" && unreadCount > 0 ? unreadCount : null}
+                    badge={(badges?.[href] ?? 0) > 0 ? badges![href]! : null}
                   />
                 ))}
               </ul>

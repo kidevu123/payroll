@@ -86,6 +86,7 @@ export function Sidebar({
   systemHealthy = true,
   role = "ADMIN",
   allowedSurfaces,
+  badges,
 }: {
   company: { name: string; logoPath: string | null };
   systemHealthy?: boolean;
@@ -94,6 +95,11 @@ export function Sidebar({
    *  role matrix in /settings/roles. If omitted the full nav is shown
    *  (owner-equivalent fallback for safety). */
   allowedSurfaces?: ReadonlyArray<string>;
+  /** Pending-work counts keyed by nav href (e.g. `{ "/time": 2 }`).
+   *  Renders a count pill on that item so the badge sits on the section
+   *  the work belongs to — missed punches on Time, time-off on Calendar —
+   *  instead of a generic notification bell. */
+  badges?: Record<string, number>;
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
@@ -148,6 +154,7 @@ export function Sidebar({
                   label={tNav(labelKey)}
                   Icon={Icon}
                   active={isActive(pathname, href)}
+                  badge={badges?.[href] ?? 0}
                 />
               ))}
             </ul>
@@ -180,11 +187,14 @@ function SidebarItem({
   label,
   Icon,
   active,
+  badge = 0,
 }: {
   href: string;
   label: string;
   Icon: LucideIcon;
   active: boolean;
+  /** Pending-work count; renders a count pill when > 0. */
+  badge?: number;
 }) {
   return (
     <li className="list-none">
@@ -221,6 +231,14 @@ function SidebarItem({
           strokeWidth={active ? 2 : 1.75}
         />
         <span className="truncate">{label}</span>
+        {badge > 0 ? (
+          <span
+            className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-semibold tabular-nums text-warning-900"
+            aria-label={`${badge} pending`}
+          >
+            {badge > 99 ? "99+" : badge}
+          </span>
+        ) : null}
       </Link>
     </li>
   );

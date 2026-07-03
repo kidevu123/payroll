@@ -19,20 +19,15 @@ import {
   listPendingInRange,
   tallyTimeOffByEmployeeForYear,
 } from "@/lib/db/queries/time-off";
-import {
-  listPendingMissedPunchRequestsForReview,
-  listPendingTimeOffRequests,
-} from "@/lib/db/queries/requests";
-import { MissedPunchReviewSummary } from "@/components/domain/missed-punch-review-summary";
+import { listPendingTimeOffRequests } from "@/lib/db/queries/requests";
 import { listEmployees } from "@/lib/db/queries/employees";
 import {
-  MissedPunchActions,
   TimeOffActions,
   CancelTimeOffActionButton,
   EditApprovedTimeOffAction,
 } from "@/app/(admin)/requests/request-actions";
 import { TimeOffOnBehalfForm } from "@/app/(admin)/requests/time-off-on-behalf-form";
-import { MessageSquareWarning, Plane } from "lucide-react";
+import { Plane } from "lucide-react";
 import { getSetting } from "@/lib/settings/runtime";
 import { companyTodayIso } from "@/lib/time/company-day";
 import { isAdminManageableTimeOff } from "@/lib/time-off/change-request";
@@ -126,16 +121,13 @@ export default async function CalendarPage({
     approved,
     pending,
     employees,
-    pendingMissedPunchReviews,
     pendingTimeOff,
   ] = await Promise.all([
     listApprovedInRange(startIso, endIso),
     listPendingInRange(startIso, endIso),
     listEmployees(),
-    listPendingMissedPunchRequestsForReview(company.timezone),
     listPendingTimeOffRequests(),
   ]);
-  const pendingMissedPunches = pendingMissedPunchReviews;
   const empMap = new Map(employees.map((e) => [e.id, e.displayName]));
   const empById = new Map(employees.map((e) => [e.id, e]));
   const todayIso = companyTodayIso(today, company.timezone);
@@ -239,7 +231,7 @@ export default async function CalendarPage({
   const prev = new Date(monthStart.getTime() - 1 * MS_PER_DAY);
   const next = new Date(monthEnd.getTime() + 1 * MS_PER_DAY);
 
-  const pendingTotal = pendingMissedPunches.length + pendingTimeOff.length;
+  const pendingTotal = pendingTimeOff.length;
 
   // ── Month overview (drives the rail's stat cards) ──────────────────────
   // Real metrics derived from the data already fetched. There is no
@@ -555,43 +547,6 @@ export default async function CalendarPage({
             </div>
           ) : (
             <>
-              {pendingMissedPunches.length > 0 && (
-                <div className="rounded-card border border-border bg-surface p-3 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-medium text-warning-800">
-                    <MessageSquareWarning className="h-3.5 w-3.5" />
-                    Missed punches ({pendingMissedPunches.length})
-                  </div>
-                  {pendingMissedPunches.map(({ request: r, review }) => {
-                    const emp = empById.get(r.employeeId);
-                    return (
-                      <div
-                        key={r.id}
-                        className="rounded-input border border-border bg-surface-2/40 p-2 space-y-1.5"
-                      >
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-xs font-medium truncate">
-                            {emp?.displayName ?? r.employeeId}
-                          </span>
-                          <span className="text-[11px] text-text-muted tabular-nums shrink-0">
-                            {r.date}
-                          </span>
-                        </div>
-                        <MissedPunchReviewSummary
-                          ctx={review}
-                          timezone={company.timezone}
-                        />
-                        {r.reason && (
-                          <p className="text-[11px] text-text-muted line-clamp-2">
-                            {r.reason}
-                          </p>
-                        )}
-                        <MissedPunchActions requestId={r.id} />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               {pendingTimeOff.length > 0 && (
                 <div className="rounded-card border border-border bg-surface p-3 space-y-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-info-800">

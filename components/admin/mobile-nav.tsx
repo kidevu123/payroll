@@ -194,12 +194,14 @@ function MobileDrawer({
   sections,
   pathname,
   onClose,
+  badges,
 }: {
   company: { name: string; logoPath: string | null };
   currentLocale: "en" | "es";
   sections: { headingKey: string; items: NavItem[] }[];
   pathname: string;
   onClose: () => void;
+  badges?: Record<string, number> | undefined;
 }) {
   const tNav = useTranslations("nav");
   const panelRef = useFocusTrap(true);
@@ -240,6 +242,7 @@ function MobileDrawer({
               <ul className="space-y-0.5">
                 {sec.items.map(({ href, labelKey, icon: Icon }) => {
                   const active = isActive(pathname, href);
+                  const badge = badges?.[href] ?? 0;
                   return (
                     <li key={href}>
                       <Link
@@ -253,6 +256,14 @@ function MobileDrawer({
                       >
                         <Icon className="h-4 w-4 shrink-0" aria-hidden />
                         <span>{tNav(labelKey)}</span>
+                        {badge > 0 ? (
+                          <span
+                            className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-semibold tabular-nums text-warning-900"
+                            aria-label={`${badge} pending`}
+                          >
+                            {badge > 99 ? "99+" : badge}
+                          </span>
+                        ) : null}
                       </Link>
                     </li>
                   );
@@ -273,10 +284,12 @@ export function MobileNav({
   company,
   allowedSurfaces,
   currentLocale,
+  badges,
 }: {
   company: { name: string; logoPath: string | null };
   allowedSurfaces?: ReadonlyArray<Surface> | undefined;
   currentLocale: "en" | "es";
+  badges?: Record<string, number> | undefined;
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
@@ -301,6 +314,7 @@ export function MobileNav({
           sections={sections}
           pathname={pathname}
           onClose={() => setOpen(false)}
+          badges={badges}
         />
       )}
     </>
@@ -311,10 +325,12 @@ export function MobileQuickNav({
   company,
   allowedSurfaces,
   currentLocale,
+  badges,
 }: {
   company: { name: string; logoPath: string | null };
   allowedSurfaces?: ReadonlyArray<Surface> | undefined;
   currentLocale: "en" | "es";
+  badges?: Record<string, number> | undefined;
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
@@ -332,6 +348,7 @@ export function MobileQuickNav({
           sections={sections}
           pathname={pathname}
           onClose={() => setOpen(false)}
+          badges={badges}
         />
       )}
 

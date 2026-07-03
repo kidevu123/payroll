@@ -243,7 +243,7 @@ export async function syncMissedPunchAlerts(
             payload: {
               title: "Possible missed punch",
               body,
-              link: "/requests",
+              link: "/time",
               periodId: period.id,
               runId: opts.runId ?? null,
               source: opts.runId
@@ -253,7 +253,7 @@ export async function syncMissedPunchAlerts(
             push: {
               title: "Possible missed punch",
               body,
-              url: "/requests",
+              url: "/time",
               tag: `missed_punch_admin_${period.id}`,
             },
           })),

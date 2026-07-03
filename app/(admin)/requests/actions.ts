@@ -111,7 +111,8 @@ export async function approveMissedPunchAction(
     revalidatePath(`/payroll/${resolved.periodId}`);
   }
   revalidatePath("/requests");
-  revalidatePath("/calendar");
+  // Missed-punch review + its nav badge live on /time now.
+  revalidatePath("/time");
   revalidatePath("/me/home");
 }
 
@@ -146,6 +147,8 @@ export async function rejectMissedPunchAction(
     ]);
   }
   revalidatePath("/requests");
+  // Missed-punch review + its nav badge live on /time now.
+  revalidatePath("/time");
 }
 
 const timeOffResolveSchema = z.object({

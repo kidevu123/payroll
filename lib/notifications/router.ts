@@ -127,18 +127,26 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
       };
     }
     case "missed_punch.request_submitted":
+      // Missed-punch review lives on the Time page (next to the grid it
+      // corrects) — deep-link straight there, not to the calendar.
+      return {
+        title: "New employee request",
+        body: "Open Time to review the missed punch.",
+        url: "/time",
+        tag: "request_submitted",
+      };
     case "time_off.request_submitted":
       return {
         title: "New employee request",
-        body: "Open Requests to review.",
-        url: "/requests",
+        body: "Open Calendar to review the request.",
+        url: "/calendar",
         tag: "request_submitted",
       };
     case "time_off.request_cancelled":
       return {
         title: "Time-off request cancelled",
         body: "Employee cancelled their request.",
-        url: "/requests",
+        url: "/calendar",
         tag: "request_cancelled",
       };
     case "payslip.disputed": {
