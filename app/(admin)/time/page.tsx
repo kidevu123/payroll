@@ -32,7 +32,11 @@ import {
 } from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
-import { formatHoursMinutes, formatTimeShort, localMidnightUtc } from "@/lib/utils";
+import {
+  formatHoursMinutes,
+  formatTimeShort,
+  localMidnightUtc,
+} from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
@@ -87,7 +91,9 @@ async function ensureCadencePeriodForToday(
   const [schedule] = await db
     .select({ id: paySchedules.id })
     .from(paySchedules)
-    .where(and(eq(paySchedules.active, true), eq(paySchedules.periodKind, kind)))
+    .where(
+      and(eq(paySchedules.active, true), eq(paySchedules.periodKind, kind)),
+    )
     .limit(1);
   if (!schedule) return null;
   const row = await ensurePeriodForSchedule(schedule.id, today, null);
@@ -320,13 +326,13 @@ async function findAdjacentPeriods(
 type CellState =
   | "complete"
   | "incomplete"
-  | "missed"   // past day with no punch — genuinely absent
-  | "future"   // day hasn't happened yet — no punch expected
+  | "missed" // past day with no punch — genuinely absent
+  | "future" // day hasn't happened yet — no punch expected
   | "inactive"
-  | "pto"      // approved PERSONAL / paid time off
-  | "sick"     // approved SICK
-  | "unpaid"   // approved UNPAID
-  | "other";   // approved OTHER
+  | "pto" // approved PERSONAL / paid time off
+  | "sick" // approved SICK
+  | "unpaid" // approved UNPAID
+  | "other"; // approved OTHER
 
 // Background + text for cells that show a filled chip (data cells).
 function cellPillClasses(state: CellState): string {
@@ -493,17 +499,14 @@ export default async function TimePage({
           : tab === "weekly"
             ? "/payroll?schedule=weekly"
             : "/payroll";
-    const clockFirst =
-      tab === "monthly" || tab === "semi" || tab === "weekly";
+    const clockFirst = tab === "monthly" || tab === "semi" || tab === "weekly";
     return (
       <div className="space-y-5">
         <ScheduleTabs current={tab} basePath="/time" />
         <EmptyState
           icon={CalendarDays}
           title={
-            clockFirst
-              ? "Waiting for clock punches"
-              : "No pay periods yet"
+            clockFirst ? "Waiting for clock punches" : "No pay periods yet"
           }
           description={
             clockFirst
@@ -539,8 +542,7 @@ export default async function TimePage({
     start.setUTCDate(start.getUTCDate() + 6);
     return start.toISOString().slice(0, 10);
   })();
-  const lastDay =
-    period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
+  const lastDay = period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
   const days = eachDay(period.startDate, lastDay);
   const [allActive, punches, approvedTimeOff, adjacent] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
@@ -550,7 +552,8 @@ export default async function TimePage({
     listPunches({
       clockAfter: localMidnightUtc(period.startDate, company.timezone),
       clockBefore: new Date(
-        localMidnightUtc(addDaysIso(lastDay, 1), company.timezone).getTime() - 1,
+        localMidnightUtc(addDaysIso(lastDay, 1), company.timezone).getTime() -
+          1,
       ),
     }),
     // Approved time-off intersecting the displayed grid window. Owner
@@ -564,7 +567,10 @@ export default async function TimePage({
   // SCHEDULE_NOTE is a heads-up, not actual time off — skip those so
   // the grid still shows the underlying punches for that day instead
   // of hiding the cell behind a "Sick"-style label.
-  const timeOffByDay = new Map<string, "UNPAID" | "SICK" | "PERSONAL" | "OTHER">();
+  const timeOffByDay = new Map<
+    string,
+    "UNPAID" | "SICK" | "PERSONAL" | "OTHER"
+  >();
   for (const r of approvedTimeOff) {
     if (r.type === "SCHEDULE_NOTE") continue;
     const start = new Date(`${r.startDate}T00:00:00Z`);
@@ -632,7 +638,10 @@ export default async function TimePage({
     const mins = (p.clockOut.getTime() - p.clockIn.getTime()) / 60000;
     if (mins <= 0) continue;
     totalMinutes += mins;
-    minutesByEmp.set(p.employeeId, (minutesByEmp.get(p.employeeId) ?? 0) + mins);
+    minutesByEmp.set(
+      p.employeeId,
+      (minutesByEmp.get(p.employeeId) ?? 0) + mins,
+    );
   }
   const fmtHm = (mins: number): string =>
     `${Math.floor(mins / 60).toLocaleString()}h ${Math.round(mins % 60)}m`;
@@ -656,13 +665,21 @@ export default async function TimePage({
       overtimeMin += m - OT_MIN;
     } else regularMin += m;
   }
-  const overtimeRisk = [...minutesByEmp.values()].filter((m) => m >= OT_MIN * 0.875).length;
+  const overtimeRisk = [...minutesByEmp.values()].filter(
+    (m) => m >= OT_MIN * 0.875,
+  ).length;
   // Unpaired / ambiguous punches across the window (exceptions queue).
   const unpairedCount = punchesInRange.filter(
     (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p),
   ).length;
   // Today's column snapshot for the summary donut.
-  const todaySummary = { present: 0, incomplete: 0, missing: 0, timeOff: 0, unpaid: 0 };
+  const todaySummary = {
+    present: 0,
+    incomplete: 0,
+    missing: 0,
+    timeOff: 0,
+    unpaid: 0,
+  };
   for (const e of employees) {
     if (e.status !== "ACTIVE") continue;
     const list = grid.get(e.id)?.get(todayIso) ?? [];
@@ -673,7 +690,10 @@ export default async function TimePage({
       else todaySummary.missing++;
     } else if (
       list.some(
-        (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p) || isOpenShiftPunch(p),
+        (p) =>
+          isAmbiguousSinglePunch(p) ||
+          isMissingClockInPunch(p) ||
+          isOpenShiftPunch(p),
       )
     ) {
       todaySummary.incomplete++;
@@ -708,13 +728,25 @@ export default async function TimePage({
   const stateBadge = (() => {
     switch (period.state) {
       case "UPCOMING":
-        return { label: "Upcoming", cls: "bg-brand-50 text-brand-700 border-brand-200/80" };
+        return {
+          label: "Upcoming",
+          cls: "bg-brand-50 text-brand-700 border-brand-200/80",
+        };
       case "LOCKED":
-        return { label: "Locked", cls: "bg-warn-50 text-warn-700 border-warn-200/80" };
+        return {
+          label: "Locked",
+          cls: "bg-warn-50 text-warn-700 border-warn-200/80",
+        };
       case "PAID":
-        return { label: "Paid", cls: "bg-success-50 text-success-700 border-success-200/80" };
+        return {
+          label: "Paid",
+          cls: "bg-success-50 text-success-700 border-success-200/80",
+        };
       default:
-        return { label: "Open", cls: "bg-success-50 text-success-700 border-success-200/80" };
+        return {
+          label: "Open",
+          cls: "bg-success-50 text-success-700 border-success-200/80",
+        };
     }
   })();
 
@@ -751,7 +783,7 @@ export default async function TimePage({
               <span className="mx-1.5 text-text-subtle">&rarr;</span>
               {lastDay}
               {period.state === "UPCOMING" && (
-                <span className="ml-2.5 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
+                <span className="ml-2.5 text-xs font-semibold uppercase tracking-wider text-brand-600">
                   live · punches will land here
                 </span>
               )}
@@ -790,18 +822,48 @@ export default async function TimePage({
 
       {/* KPI row — five attendance metrics (matches #57). */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        <KpiCard icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
-        <KpiCard icon={Users} tone="indigo" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
-        <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
-        <KpiCard icon={CalendarX2} tone="violet" value={openNow} label="Open shifts" sub="In progress now" />
-        <KpiCard icon={TimerReset} tone="rose" value={overtimeRisk} label="Overtime risk" sub={overtimeRisk > 0 ? "Review needed" : "On track"} />
+        <KpiCard
+          icon={Clock}
+          tone="emerald"
+          value={fmtHm(totalMinutes)}
+          label="Total hours"
+          sub={`${days.length}-day period`}
+        />
+        <KpiCard
+          icon={Users}
+          tone="indigo"
+          value={`${clockedInToday} / ${teamSize}`}
+          label="Employees clocked in"
+          sub={`${teamPct}% of team`}
+        />
+        <KpiCard
+          icon={AlertTriangle}
+          tone="amber"
+          value={staleOpenPunchCount}
+          label="Missing punches"
+          sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"}
+        />
+        <KpiCard
+          icon={CalendarX2}
+          tone="violet"
+          value={openNow}
+          label="Open shifts"
+          sub="In progress now"
+        />
+        <KpiCard
+          icon={TimerReset}
+          tone="rose"
+          value={overtimeRisk}
+          label="Overtime risk"
+          sub={overtimeRisk > 0 ? "Review needed" : "On track"}
+        />
       </div>
 
       {staleOpenPunchCount > 0 && (
         <BackfillAlert openCountFromPriorDays={staleOpenPunchCount} />
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-3">
           {/* ── Mobile: day pills + single-day attendance list (#68) ── */}
           <div className="lg:hidden -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
@@ -831,7 +893,7 @@ export default async function TimePage({
                       : "border-border bg-surface text-text-muted"
                   }`}
                 >
-                  <span className="text-[11px] font-semibold uppercase">{dow}</span>
+                  <span className="text-xs font-semibold uppercase">{dow}</span>
                   <span className="text-xs font-bold tabular-nums">{dom}</span>
                 </Link>
               );
@@ -866,7 +928,9 @@ export default async function TimePage({
               const last = sorted[sorted.length - 1];
               const closedMs = sorted.reduce(
                 (acc, p) =>
-                  p.clockOut ? acc + (p.clockOut.getTime() - p.clockIn.getTime()) : acc,
+                  p.clockOut
+                    ? acc + (p.clockOut.getTime() - p.clockIn.getTime())
+                    : acc,
                 0,
               );
               const totalMin = Math.round(closedMs / 60000);
@@ -883,13 +947,16 @@ export default async function TimePage({
                   }`
                 : "—";
               const hLabel =
-                totalMin > 0 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : "";
+                totalMin > 0
+                  ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m`
+                  : "";
               const inner = (
                 <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-3">
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                     style={{
-                      background: "color-mix(in srgb, var(--dash-violet) 16%, transparent)",
+                      background:
+                        "color-mix(in srgb, var(--dash-violet) 16%, transparent)",
                       color: "var(--dash-violet)",
                     }}
                   >
@@ -905,7 +972,7 @@ export default async function TimePage({
                     </div>
                   </div>
                   <span
-                    className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-semibold"
                     style={{
                       background: `color-mix(in srgb, ${meta.color} 16%, transparent)`,
                       color: meta.color,
@@ -913,7 +980,10 @@ export default async function TimePage({
                   >
                     {meta.label}
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-text-subtle" aria-hidden />
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-text-subtle"
+                    aria-hidden
+                  />
                 </div>
               );
               return (
@@ -934,133 +1004,155 @@ export default async function TimePage({
           </ul>
 
           {/* ── Desktop: full employee×day grid ── */}
-          <div className="hidden lg:block overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
-        <table className="min-w-full text-body border-collapse">
-          <thead>
-            <tr className="border-b border-border/80 bg-surface-2/90">
-              <th className="sticky left-0 z-10 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
-                Employee
-              </th>
-              {days.map((d) => {
-                const isToday = d === today;
-                return (
-                  <th
-                    key={d}
-                    className={`w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50/70" : ""}`}
-                  >
-                    <span className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}>
-                      <span className="text-[9.5px] font-bold uppercase tracking-widest">
-                        {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
-                          new Date(`${d}T00:00:00Z`),
-                        )}
-                      </span>
-                      <span className="font-mono tabular-nums text-[11px] font-semibold mt-0.5">
-                        {new Intl.DateTimeFormat("en-US", {
-                          month: "numeric",
-                          day: "numeric",
-                        }).format(new Date(`${d}T00:00:00Z`))}
-                      </span>
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((e) => (
-              <tr
-                key={e.id}
-                className="border-t border-border/40 group hover:bg-surface-2/30 transition-colors"
-              >
-                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body whitespace-nowrap border-r border-border/40 transition-colors">
-                  <Link
-                    href={`/employees/${e.id}`}
-                    className="text-text hover:text-brand-700 hover:underline underline-offset-2 transition-colors"
-                  >
-                    {e.displayName}
-                  </Link>
-                </td>
-                {days.map((d) => {
-                  const isToday = d === today;
-                  const isFutureDay = d > today;
-                  const list = grid.get(e.id)?.get(d) ?? [];
-                  const offType = timeOffByDay.get(`${e.id}|${d}`);
-                  let state: CellState;
-                  if (list.length === 0) {
-                    if (offType) {
-                      state = timeOffStateFor(offType);
-                    } else if (isFutureDay) {
-                      // Day hasn't happened — don't show red
-                      state = "future";
-                    } else {
-                      state = "missed";
-                    }
-                  } else if (
-                    list.some(
-                      (p) =>
-                        isAmbiguousSinglePunch(p) ||
-                        isMissingClockInPunch(p) ||
-                        isOpenShiftPunch(p),
-                    )
-                  ) {
-                    state = "incomplete";
-                  } else {
-                    state = "complete";
-                  }
-                  if (e.status !== "ACTIVE") state = "inactive";
-
-                  const sorted = [...list].sort(
-                    (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
-                  );
-                  const first = sorted[0];
-                  const last = sorted[sorted.length - 1];
-                  const cellPeriodId = resolveTimeCellPeriodId({
-                    currentPeriodId: period.id,
-                    punches: sorted,
-                  });
-                  const closedMs = sorted.reduce((acc, p) => {
-                    if (!p.clockOut) return acc;
-                    return acc + (p.clockOut.getTime() - p.clockIn.getTime());
-                  }, 0);
-                  const hours = closedMs / (1000 * 60 * 60);
-
-                  const cellContent = (
-                    <PunchCellContent
-                      state={state}
-                      first={first}
-                      last={last}
-                      count={sorted.length}
-                      hours={hours}
-                      tz={company.timezone}
-                    />
-                  );
-
-                  return (
-                    <td
-                      key={d}
-                      className={`py-1.5 px-1.5 align-middle text-center ${isToday ? "bg-brand-50/25 group-hover:bg-brand-50/40" : ""}`}
-                    >
-                      {cellPeriodId ? (
-                        <Link
-                          href={`/time/${cellPeriodId}/${d}/${e.id}?${new URLSearchParams({ returnTo })}`}
-                          className="block"
-                          aria-label={cellAriaLabel(state, sorted, company.timezone)}
+          <div className="hidden lg:block">
+            <div className="flex items-center justify-between gap-3 rounded-t-card border border-b-0 border-border/70 bg-surface-2/70 px-4 py-2 text-xs text-text-muted">
+              <span>Scroll horizontally to review all {days.length} days.</span>
+              <span className="font-medium tabular-nums text-text">
+                Employee column stays pinned
+              </span>
+            </div>
+            <div className="overflow-x-auto rounded-b-card border border-border/70 bg-surface shadow-card-strong">
+              <table className="min-w-max text-body border-collapse">
+                <thead>
+                  <tr className="border-b border-border/80 bg-surface-2/90">
+                    <th className="sticky left-0 top-0 z-20 min-w-48 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
+                      Employee
+                    </th>
+                    {days.map((d) => {
+                      const isToday = d === today;
+                      return (
+                        <th
+                          key={d}
+                          className={`sticky top-0 z-10 w-28 min-w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50/70" : "bg-surface-2"}`}
                         >
-                          {cellContent}
+                          <span
+                            className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}
+                          >
+                            <span className="text-xs font-bold uppercase tracking-wide">
+                              {new Intl.DateTimeFormat("en-US", {
+                                weekday: "short",
+                              }).format(new Date(`${d}T00:00:00Z`))}
+                            </span>
+                            <span className="mt-0.5 font-mono text-xs font-semibold tabular-nums">
+                              {new Intl.DateTimeFormat("en-US", {
+                                month: "numeric",
+                                day: "numeric",
+                              }).format(new Date(`${d}T00:00:00Z`))}
+                            </span>
+                          </span>
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((e) => (
+                    <tr
+                      key={e.id}
+                      className="border-t border-border/40 group hover:bg-surface-2/30 transition-colors"
+                    >
+                      <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body whitespace-nowrap border-r border-border/40 transition-colors">
+                        <Link
+                          href={`/employees/${e.id}`}
+                          className="text-text hover:text-brand-700 hover:underline underline-offset-2 transition-colors"
+                        >
+                          {e.displayName}
                         </Link>
-                      ) : (
-                        <span aria-label={cellAriaLabel(state, sorted, company.timezone)}>
-                          {cellContent}
-                        </span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+                      </td>
+                      {days.map((d) => {
+                        const isToday = d === today;
+                        const isFutureDay = d > today;
+                        const list = grid.get(e.id)?.get(d) ?? [];
+                        const offType = timeOffByDay.get(`${e.id}|${d}`);
+                        let state: CellState;
+                        if (list.length === 0) {
+                          if (offType) {
+                            state = timeOffStateFor(offType);
+                          } else if (isFutureDay) {
+                            // Day hasn't happened — don't show red
+                            state = "future";
+                          } else {
+                            state = "missed";
+                          }
+                        } else if (
+                          list.some(
+                            (p) =>
+                              isAmbiguousSinglePunch(p) ||
+                              isMissingClockInPunch(p) ||
+                              isOpenShiftPunch(p),
+                          )
+                        ) {
+                          state = "incomplete";
+                        } else {
+                          state = "complete";
+                        }
+                        if (e.status !== "ACTIVE") state = "inactive";
+
+                        const sorted = [...list].sort(
+                          (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
+                        );
+                        const first = sorted[0];
+                        const last = sorted[sorted.length - 1];
+                        const cellPeriodId = resolveTimeCellPeriodId({
+                          currentPeriodId: period.id,
+                          punches: sorted,
+                        });
+                        const closedMs = sorted.reduce((acc, p) => {
+                          if (!p.clockOut) return acc;
+                          return (
+                            acc + (p.clockOut.getTime() - p.clockIn.getTime())
+                          );
+                        }, 0);
+                        const hours = closedMs / (1000 * 60 * 60);
+
+                        const cellContent = (
+                          <PunchCellContent
+                            state={state}
+                            first={first}
+                            last={last}
+                            count={sorted.length}
+                            hours={hours}
+                            tz={company.timezone}
+                          />
+                        );
+
+                        return (
+                          <td
+                            key={d}
+                            className={`py-1.5 px-1.5 align-middle text-center ${isToday ? "bg-brand-50/25 group-hover:bg-brand-50/40" : ""}`}
+                          >
+                            {cellPeriodId ? (
+                              <Link
+                                href={`/time/${cellPeriodId}/${d}/${e.id}?${new URLSearchParams({ returnTo })}`}
+                                className="block"
+                                aria-label={cellAriaLabel(
+                                  state,
+                                  sorted,
+                                  company.timezone,
+                                )}
+                              >
+                                {cellContent}
+                              </Link>
+                            ) : (
+                              <span
+                                aria-label={cellAriaLabel(
+                                  state,
+                                  sorted,
+                                  company.timezone,
+                                )}
+                              >
+                                {cellContent}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         {/* Right rail — pending reviews, today's summary, exceptions, labor,
@@ -1092,7 +1184,9 @@ export default async function TimePage({
 function Legend({ label, state }: { label: string; state: CellState }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`h-2 w-2 rounded-full shrink-0 ${legendDotClass(state)}`} />
+      <span
+        className={`h-2 w-2 rounded-full shrink-0 ${legendDotClass(state)}`}
+      />
       {label}
     </span>
   );
@@ -1117,36 +1211,43 @@ function PunchCellContent({
 }) {
   // Empty / non-data states: just a dash character with color.
   if (state === "future") {
-    return <span className="text-border-strong text-[11px] select-none">—</span>;
+    return <span className="select-none text-xs text-border-strong">—</span>;
   }
   if (state === "inactive") {
-    return <span className="text-text-subtle/30 text-[11px] select-none">—</span>;
+    return <span className="select-none text-xs text-text-subtle/30">—</span>;
   }
   if (state === "missed") {
     return <span className="text-danger-400 text-body font-medium">—</span>;
   }
 
   // Time-off label: compact uppercase badge.
-  if (state === "pto" || state === "sick" || state === "unpaid" || state === "other") {
+  if (
+    state === "pto" ||
+    state === "sick" ||
+    state === "unpaid" ||
+    state === "other"
+  ) {
     return (
-      <span className={`inline-block rounded-[5px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cellPillClasses(state)}`}>
+      <span
+        className={`inline-block rounded-[5px] px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${cellPillClasses(state)}`}
+      >
         {timeOffLabel(state)}
       </span>
     );
   }
 
   // Data states (complete / incomplete): pill with time range + duration.
-  if (!first) return <span className="text-border-strong text-[11px]">—</span>;
+  if (!first) return <span className="text-xs text-border-strong">—</span>;
   if (state === "incomplete" && last && isAmbiguousSinglePunch(last)) {
     const punchLabel = formatTimeShort(last.clockIn, tz);
     return (
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[9px] font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold uppercase tracking-wide">
           Unpaired
         </span>
-        <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+        <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">
           {punchLabel}
         </span>
       </span>
@@ -1160,35 +1261,42 @@ function PunchCellContent({
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[9px] font-semibold uppercase tracking-wide">
+        <span className="text-xs font-semibold uppercase tracking-wide">
           Missing in
         </span>
-        <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+        <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">
           out {outLabel}
         </span>
       </span>
     );
   }
   const inLabel = formatTimeShort(first.clockIn, tz);
-  const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "open";
+  const outLabel =
+    last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "open";
   return (
     <span
       className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug transition-all hover:brightness-95 ${cellPillClasses(state)}`}
     >
-      <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+      <span className="whitespace-nowrap font-mono text-xs font-semibold tabular-nums">
         {inLabel}
         <span className="opacity-40 mx-0.5">&ndash;</span>
         {outLabel}
-        {count > 1 ? <span className="ml-0.5 text-[9px] opacity-60">+{count - 1}</span> : null}
+        {count > 1 ? (
+          <span className="ml-0.5 text-xs opacity-60">+{count - 1}</span>
+        ) : null}
       </span>
-      <span className="text-[9px] font-medium opacity-65">
+      <span className="text-xs font-medium opacity-65">
         {state === "incomplete" ? "in progress" : formatHoursMinutes(hours)}
       </span>
     </span>
   );
 }
 
-function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string {
+function cellAriaLabel(
+  state: CellState,
+  list: PunchLite[],
+  tz: string,
+): string {
   if (state === "inactive") return "Inactive employee";
   if (state === "pto") return "Approved time off — PTO";
   if (state === "sick") return "Approved time off — Sick";
@@ -1231,7 +1339,10 @@ function KpiCard({
     <div className="rounded-card border border-border bg-surface p-3 shadow-card">
       <span
         className="flex h-8 w-8 items-center justify-center rounded-lg"
-        style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
+        style={{
+          background: `color-mix(in srgb, ${c} 16%, transparent)`,
+          color: c,
+        }}
       >
         <Icon className="h-4 w-4" />
       </span>
@@ -1239,7 +1350,7 @@ function KpiCard({
         {value}
       </div>
       <div className="text-[12px] font-medium text-text-muted">{label}</div>
-      <div className="text-[11px] font-medium" style={{ color: c }}>
+      <div className="text-xs font-medium" style={{ color: c }}>
         {sub}
       </div>
     </div>
@@ -1280,7 +1391,7 @@ function TodaySummaryCard({
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Today&rsquo;s summary</h3>
-        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+        <span className="text-xs uppercase tracking-wide text-text-subtle">
           Updated just now
         </span>
       </div>
@@ -1290,18 +1401,28 @@ function TodaySummaryCard({
           style={{ background: ring }}
         >
           <div className="absolute inset-[11px] flex flex-col items-center justify-center rounded-full bg-surface">
-            <span className="text-lg font-bold leading-none tabular-nums">{total}</span>
-            <span className="text-[10px] text-text-muted">Total</span>
+            <span className="text-lg font-bold leading-none tabular-nums">
+              {total}
+            </span>
+            <span className="text-xs text-text-muted">Total</span>
           </div>
         </div>
         <ul className="flex-1 space-y-1">
           {SUMMARY_SEGMENTS.map((s) => (
-            <li key={s.key} className="flex items-center justify-between text-xs">
+            <li
+              key={s.key}
+              className="flex items-center justify-between text-xs"
+            >
               <span className="flex items-center gap-1.5 text-text-muted">
-                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: s.color }}
+                />
                 {s.label}
               </span>
-              <span className="font-semibold tabular-nums">{summary[s.key] ?? 0}</span>
+              <span className="font-semibold tabular-nums">
+                {summary[s.key] ?? 0}
+              </span>
             </li>
           ))}
         </ul>
@@ -1331,23 +1452,29 @@ function ExceptionsQueueCard({
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           Exceptions queue
           {total > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 px-1.5 text-[11px] font-bold text-warn-700">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 px-1.5 text-xs font-bold text-warn-700">
               {total}
             </span>
           )}
         </h3>
         <Link
           href="/hall-monitor"
-          className="text-[11px] font-medium text-brand-700 hover:underline"
+          className="text-xs font-medium text-brand-700 hover:underline"
         >
           View all
         </Link>
       </div>
       <ul className="mt-3 space-y-2">
         {rows.map((r) => (
-          <li key={r.label} className="flex items-center justify-between text-xs">
+          <li
+            key={r.label}
+            className="flex items-center justify-between text-xs"
+          >
             <span className="flex items-center gap-1.5 text-text-muted">
-              <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: r.color }}
+              />
               {r.label}
             </span>
             <span className="font-semibold tabular-nums">{r.value}</span>
@@ -1364,10 +1491,18 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const w = 132;
   const h = 30;
   const pts = data
-    .map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * (h - 2) - 1}`)
+    .map(
+      (v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * (h - 2) - 1}`,
+    )
     .join(" ");
   return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+    <svg
+      width="100%"
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
       <polyline
         points={pts}
         fill="none"
@@ -1397,7 +1532,7 @@ function LaborHoursCard({
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Labor hours</h3>
-        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+        <span className="text-xs uppercase tracking-wide text-text-subtle">
           This pay period
         </span>
       </div>
@@ -1408,7 +1543,10 @@ function LaborHoursCard({
         </div>
         <div className="flex items-center justify-between">
           <dt className="text-text-muted">Overtime</dt>
-          <dd className="font-semibold tabular-nums" style={{ color: "var(--dash-amber)" }}>
+          <dd
+            className="font-semibold tabular-nums"
+            style={{ color: "var(--dash-amber)" }}
+          >
             {fmtHm(overtimeMin)}
           </dd>
         </div>
@@ -1431,9 +1569,10 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
         <Sparkles className="h-3.5 w-3.5 text-brand-700" />
         <h3 className="text-sm font-semibold">Milo insight</h3>
         <span
-          className="rounded px-1 text-[9px] font-bold uppercase tracking-wide"
+          className="rounded px-1 text-xs font-bold uppercase tracking-wide"
           style={{
-            background: "color-mix(in srgb, var(--dash-violet) 18%, transparent)",
+            background:
+              "color-mix(in srgb, var(--dash-violet) 18%, transparent)",
             color: "var(--dash-violet)",
           }}
         >

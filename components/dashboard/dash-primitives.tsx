@@ -17,7 +17,7 @@ export function DashCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl p-2",
+        "relative rounded-2xl p-4",
         "transition-colors duration-200",
         className,
       )}
@@ -39,7 +39,7 @@ export function DashCard({
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="text-[10px] font-semibold uppercase tracking-[0.14em]"
+      className="text-xs font-semibold uppercase tracking-[0.1em]"
       style={{ color: DASH.textFaint }}
     >
       {children}
@@ -58,7 +58,7 @@ export function Delta({
   if (pct === null) {
     return (
       <span
-        className={cn("text-[11px] font-medium", className)}
+        className={cn("text-xs font-medium", className)}
         style={{ color: DASH.textFaint }}
       >
         —
@@ -72,7 +72,7 @@ export function Delta({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
+        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
         className,
       )}
       style={{ color, background: bg }}

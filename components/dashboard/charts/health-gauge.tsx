@@ -65,7 +65,10 @@ export function HealthGauge({ score }: Props) {
         >
           {score}
         </span>
-        <span className="mt-0.5 text-[9px] font-medium uppercase tracking-wider" style={{ color: "#6e6e85" }}>
+        <span
+          className="mt-0.5 text-xs font-medium uppercase tracking-wider"
+          style={{ color: "#6e6e85" }}
+        >
           / 100
         </span>
       </div>

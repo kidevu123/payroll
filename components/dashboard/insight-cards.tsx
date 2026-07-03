@@ -62,13 +62,16 @@ export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
             </span>
             <Delta pct={trend.deltaPct} className="mb-1.5" />
           </div>
-          <div className="mt-1 text-[11px]" style={{ color: DASH.textFaint }}>
+          <div className="mt-1 text-xs" style={{ color: DASH.textFaint }}>
             Year-to-date payroll spend
           </div>
         </div>
         <span
           className="hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
-          style={{ background: "rgba(139,92,246,0.12)", border: `1px solid ${DASH.border}` }}
+          style={{
+            background: "rgba(139,92,246,0.12)",
+            border: `1px solid ${DASH.border}`,
+          }}
         >
           <Activity className="h-4 w-4" style={{ color: DASH.violetBright }} />
         </span>
@@ -88,7 +91,10 @@ function MiniStat({
 }: {
   eyebrow: string;
   value: string;
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   accent: string;
   sub?: React.ReactNode;
   href?: string;
@@ -99,7 +105,10 @@ function MiniStat({
         <Eyebrow>{eyebrow}</Eyebrow>
         <span
           className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
+          style={{
+            background: "var(--dash-hover)",
+            border: `1px solid ${DASH.border}`,
+          }}
         >
           <Icon className="h-4 w-4" style={{ color: accent }} />
         </span>
@@ -143,7 +152,10 @@ export function HeadcountCard({
       accent={DASH.violetBright}
       href="/employees"
       sub={
-        <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: DASH.textFaint }}>
+        <span
+          className="inline-flex items-center gap-1.5 text-xs"
+          style={{ color: DASH.textFaint }}
+        >
           Active employees
           {delta !== null && delta !== 0 ? (
             <span
@@ -171,12 +183,13 @@ export function ExceptionsCard({ count }: { count: number }) {
       href="/hall-monitor"
       sub={
         <span
-          className="inline-flex items-center gap-1 text-[11px]"
+          className="inline-flex items-center gap-1 text-xs"
           style={{ color: clear ? DASH.emerald : DASH.amber }}
         >
           {clear ? (
             <>
-              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> All resolved
+              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> All
+              resolved
             </>
           ) : (
             "Unresolved alerts"
@@ -202,7 +215,7 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
       <div className="flex items-start justify-between">
         <Eyebrow>NGTeco sync</Eyebrow>
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide"
           style={{ color: accent, background: `${accent}1f` }}
         >
           <StateIcon className="h-3 w-3" aria-hidden="true" />
@@ -222,9 +235,12 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
 }
 
 function healthLabel(score: number): { word: string; caption: string } {
-  if (score >= 90) return { word: "Excellent", caption: "Everything looks great!" };
-  if (score >= 75) return { word: "Good", caption: "Healthy with minor items." };
-  if (score >= 50) return { word: "Fair", caption: "A few things need attention." };
+  if (score >= 90)
+    return { word: "Excellent", caption: "Everything looks great!" };
+  if (score >= 75)
+    return { word: "Good", caption: "Healthy with minor items." };
+  if (score >= 50)
+    return { word: "Fair", caption: "A few things need attention." };
   return { word: "Needs attention", caption: "Several items to resolve." };
 }
 
@@ -236,7 +252,10 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <div className="flex w-28 flex-col items-center">
           <HealthGauge score={health.score} />
-          <div className="-mt-1 text-[12px] font-semibold" style={{ color: DASH.emerald }}>
+          <div
+            className="-mt-1 text-[12px] font-semibold"
+            style={{ color: DASH.emerald }}
+          >
             {word}
           </div>
         </div>
@@ -244,7 +263,7 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
           {health.checklist.map((item: HealthChecklistItem) => (
             <li
               key={item.key}
-              className="flex items-center gap-2 text-[11px]"
+              className="flex items-center gap-2 text-xs"
               style={{ color: item.ok ? DASH.textMuted : DASH.textFaint }}
             >
               {item.ok ? (
@@ -288,14 +307,18 @@ export function AutomationBanner({
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >
-            <Sparkles className="h-5 w-5" style={{ color: DASH.violetBright }} />
+            <Sparkles
+              className="h-5 w-5"
+              style={{ color: DASH.violetBright }}
+            />
           </span>
           <div>
             <div className="text-sm font-semibold" style={{ color: DASH.text }}>
               Automate more. Save more time.
             </div>
             <div className="text-[12px]" style={{ color: DASH.textMuted }}>
-              Sync punches from NGTeco and auto-apply rules to eliminate manual work.
+              Sync punches from NGTeco and auto-apply rules to eliminate manual
+              work.
             </div>
           </div>
         </div>
@@ -325,7 +348,10 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
     label: string;
     value: string;
     sub: string;
-    icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+    icon: React.ComponentType<{
+      className?: string;
+      style?: React.CSSProperties;
+    }>;
     accent: string;
   }> = [
     {
@@ -337,7 +363,10 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
     },
     {
       label: "Cost per employee",
-      value: kpis.costPerEmployeeCents !== null ? compactMoney(kpis.costPerEmployeeCents) : "—",
+      value:
+        kpis.costPerEmployeeCents !== null
+          ? compactMoney(kpis.costPerEmployeeCents)
+          : "—",
       sub: "YTD ÷ active headcount",
       icon: Wallet,
       accent: DASH.emerald,
@@ -373,13 +402,16 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
           <div key={t.label} className="flex items-center gap-2.5">
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
+              style={{
+                background: "var(--dash-hover)",
+                border: `1px solid ${DASH.border}`,
+              }}
             >
               <Icon className="h-[17px] w-[17px]" style={{ color: t.accent }} />
             </span>
             <div className="min-w-0">
               <div
-                className="truncate text-[10px] font-semibold uppercase tracking-[0.1em]"
+                className="truncate text-xs font-semibold uppercase tracking-[0.1em]"
                 style={{ color: DASH.textFaint }}
               >
                 {t.label}
@@ -390,7 +422,10 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
               >
                 {t.value}
               </div>
-              <div className="truncate text-[10px]" style={{ color: DASH.textFaint }}>
+              <div
+                className="truncate text-xs"
+                style={{ color: DASH.textFaint }}
+              >
                 {t.sub}
               </div>
             </div>

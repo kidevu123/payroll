@@ -31,7 +31,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { CommandPalette, type CommandTarget } from "@/components/admin/command-palette";
+import {
+  CommandPalette,
+  type CommandTarget,
+} from "@/components/admin/command-palette";
 import { SignOutButton } from "@/components/admin/sign-out-button";
 import { cn } from "@/lib/utils";
 import { DASH } from "./theme";
@@ -42,7 +45,9 @@ type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: "overview",
-    items: [{ href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard }],
+    items: [
+      { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+    ],
   },
   {
     headingKey: "manage",
@@ -65,10 +70,15 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   },
 ];
 
-const FOOTER_NAV: NavItem = { href: "/settings", labelKey: "settings", icon: Settings2 };
+const FOOTER_NAV: NavItem = {
+  href: "/settings",
+  labelKey: "settings",
+  icon: Settings2,
+};
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+  if (href === "/dashboard")
+    return pathname === "/dashboard" || pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
 
@@ -120,13 +130,16 @@ export function DashboardDarkShell({
   const allowSet = allowedSurfaces ? new Set(allowedSurfaces) : null;
   const sections = SECTIONS.map((sec) => ({
     ...sec,
-    items: allowSet ? sec.items.filter((it) => allowSet.has(it.href)) : sec.items,
+    items: allowSet
+      ? sec.items.filter((it) => allowSet.has(it.href))
+      : sec.items,
   })).filter((sec) => sec.items.length > 0);
   const settingsAllowed = allowSet ? allowSet.has("/settings") : true;
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const isMac = typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
+      const isMac =
+        typeof navigator !== "undefined" && /Mac/.test(navigator.platform);
       const cmd = isMac ? e.metaKey : e.ctrlKey;
       if (cmd && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
@@ -141,7 +154,8 @@ export function DashboardDarkShell({
   React.useEffect(() => {
     if (!menuOpen) return;
     function onClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node))
+        setMenuOpen(false);
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -149,7 +163,7 @@ export function DashboardDarkShell({
 
   return (
     <div
-      className="min-h-dvh"
+      className="min-h-dvh bg-page"
       style={{
         background: `radial-gradient(1100px 620px at 78% -8%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
         color: DASH.text,
@@ -180,12 +194,18 @@ export function DashboardDarkShell({
           <span
             aria-hidden
             className="flex h-6 w-6 items-center justify-center rounded-md text-[13px] font-black"
-            style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+            style={{
+              background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+              color: "#0b0b12",
+            }}
           >
             {company.name.slice(0, 1).toLowerCase()}
           </span>
         )}
-        <span className="text-[15px] font-bold tracking-tight" style={{ color: DASH.text }}>
+        <span
+          className="text-[15px] font-bold tracking-tight"
+          style={{ color: DASH.text }}
+        >
           {company.name}
         </span>
         {/* Right cluster: notifications + avatar (matches the mobile refs). */}
@@ -213,8 +233,11 @@ export function DashboardDarkShell({
           ) : (
             <span
               aria-hidden
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-              style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+              style={{
+                background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                color: "#0b0b12",
+              }}
             >
               {initialsOf(user.name)}
             </span>
@@ -255,7 +278,10 @@ export function DashboardDarkShell({
               {company.name.slice(0, 1).toLowerCase()}
             </span>
           )}
-          <span className="text-[17px] font-bold tracking-tight" style={{ color: DASH.text }}>
+          <span
+            className="text-[17px] font-bold tracking-tight"
+            style={{ color: DASH.text }}
+          >
             {company.name}
           </span>
           <ThemeToggle className="ml-auto" />
@@ -273,10 +299,14 @@ export function DashboardDarkShell({
               color: DASH.textMuted,
             }}
           >
-            <Search className="h-4 w-4" style={{ color: DASH.textFaint }} aria-hidden />
+            <Search
+              className="h-4 w-4"
+              style={{ color: DASH.textFaint }}
+              aria-hidden
+            />
             <span className="flex-1 text-left">{tNav("search")}</span>
             <kbd
-              className="rounded-md px-1.5 py-0.5 font-mono text-[10px]"
+              className="rounded-md px-1.5 py-0.5 font-mono text-xs"
               style={{ background: DASH.hover, color: DASH.textFaint }}
             >
               ⌘K
@@ -289,7 +319,7 @@ export function DashboardDarkShell({
           {sections.map((sec) => (
             <div key={sec.headingKey}>
               <div
-                className="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                className="px-2 mb-1.5 text-xs font-bold uppercase tracking-[0.12em]"
                 style={{ color: DASH.textFaint }}
               >
                 {tNav(sec.headingKey)}
@@ -315,23 +345,37 @@ export function DashboardDarkShell({
           <div
             className="rounded-2xl p-3.5"
             style={{
-              background: "linear-gradient(160deg, rgba(139,92,246,0.16), rgba(139,92,246,0.04))",
+              background:
+                "linear-gradient(160deg, rgba(139,92,246,0.16), rgba(139,92,246,0.04))",
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" style={{ color: DASH.violetBright }} aria-hidden />
-              <span className="text-[13px] font-bold" style={{ color: DASH.text }}>
+              <Sparkles
+                className="h-4 w-4"
+                style={{ color: DASH.violetBright }}
+                aria-hidden
+              />
+              <span
+                className="text-[13px] font-bold"
+                style={{ color: DASH.text }}
+              >
                 {company.name} Intelligence
               </span>
               <span
-                className="rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide"
-                style={{ background: "rgba(139,92,246,0.25)", color: DASH.violetBright }}
+                className="rounded px-1.5 py-px text-xs font-bold uppercase tracking-wide"
+                style={{
+                  background: "rgba(139,92,246,0.25)",
+                  color: DASH.violetBright,
+                }}
               >
                 Beta
               </span>
             </div>
-            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: DASH.textMuted }}>
+            <p
+              className="mt-1.5 text-xs leading-snug"
+              style={{ color: DASH.textMuted }}
+            >
               Ask anything about your payroll, team, or operations.
             </p>
             <Link
@@ -345,7 +389,10 @@ export function DashboardDarkShell({
         </div>
 
         {/* Footer: settings + profile */}
-        <div className="px-3 pb-4 shrink-0 space-y-1" style={{ borderTop: `1px solid ${DASH.border}` }}>
+        <div
+          className="px-3 pb-4 shrink-0 space-y-1"
+          style={{ borderTop: `1px solid ${DASH.border}` }}
+        >
           {settingsAllowed ? (
             <div className="pt-2">
               <DarkNavItem
@@ -378,34 +425,60 @@ export function DashboardDarkShell({
               ) : (
                 <span
                   aria-hidden
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-                  style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold"
+                  style={{
+                    background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                    color: "#0b0b12",
+                  }}
                 >
                   {initialsOf(user.name)}
                 </span>
               )}
               <span className="min-w-0 flex-1 text-left">
-                <span className="block truncate text-[13px] font-semibold" style={{ color: DASH.text }}>
+                <span
+                  className="block truncate text-[13px] font-semibold"
+                  style={{ color: DASH.text }}
+                >
                   {user.name}
                 </span>
-                <span className="block truncate text-[10px] uppercase tracking-wide" style={{ color: DASH.textFaint }}>
+                <span
+                  className="block truncate text-xs uppercase tracking-wide"
+                  style={{ color: DASH.textFaint }}
+                >
                   {user.role}
                 </span>
               </span>
-              <ChevronDown className="h-4 w-4 shrink-0" style={{ color: DASH.textFaint }} aria-hidden />
+              <ChevronDown
+                className="h-4 w-4 shrink-0"
+                style={{ color: DASH.textFaint }}
+                aria-hidden
+              />
             </button>
             {menuOpen ? (
               <div
                 role="menu"
                 className="absolute bottom-12 left-0 right-0 z-40 overflow-hidden rounded-xl"
-                style={{ background: DASH.surfaceRaised, border: `1px solid ${DASH.borderStrong}` }}
+                style={{
+                  background: DASH.surfaceRaised,
+                  border: `1px solid ${DASH.borderStrong}`,
+                }}
               >
-                <div className="px-3 py-2 text-[11px] truncate" style={{ color: DASH.textFaint }}>
+                <div
+                  className="px-3 py-2 text-xs truncate"
+                  style={{ color: DASH.textFaint }}
+                >
                   {user.email}
                 </div>
                 <div style={{ borderTop: `1px solid ${DASH.border}` }}>
-                  <div className="flex items-center gap-2 px-1 text-[13px]" style={{ color: DASH.text }}>
-                    <LogOut className="ml-2 h-4 w-4" style={{ color: DASH.textMuted }} aria-hidden />
+                  <div
+                    className="flex items-center gap-2 px-1 text-[13px]"
+                    style={{ color: DASH.text }}
+                  >
+                    <LogOut
+                      className="ml-2 h-4 w-4"
+                      style={{ color: DASH.textMuted }}
+                      aria-hidden
+                    />
                     <SignOutButton label={signOutLabel} />
                   </div>
                 </div>
@@ -415,7 +488,7 @@ export function DashboardDarkShell({
           {/* Version marker — always visible, kept out of the content column so
               the dashboard still fits one screen. */}
           <div
-            className="flex items-center justify-center gap-1.5 pt-0.5 text-[10px]"
+            className="flex items-center justify-center gap-1.5 pt-0.5 text-xs"
             style={{ color: DASH.textFaint }}
             title={`Server time ${footer.serverTime} · Made by your haute tech team`}
           >
@@ -435,8 +508,8 @@ export function DashboardDarkShell({
       </aside>
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
-      <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:py-4 lg:pt-4 lg:pb-4">
+      <main className="min-h-dvh min-w-0 lg:pl-64">
+        <div className="mx-auto w-full max-w-[1840px] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:py-6 lg:pt-6 lg:pb-6">
           {children}
         </div>
       </main>
@@ -485,7 +558,10 @@ function DarkNavItem({
           <span
             aria-hidden
             className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full"
-            style={{ background: DASH.violetBright, boxShadow: "0 0 8px 0 rgba(139,92,246,0.6)" }}
+            style={{
+              background: DASH.violetBright,
+              boxShadow: "0 0 8px 0 rgba(139,92,246,0.6)",
+            }}
           />
         ) : null}
         <Icon
@@ -497,8 +573,11 @@ function DarkNavItem({
         <span className="flex-1 truncate">{label}</span>
         {badge !== null ? (
           <span
-            className="rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums"
-            style={{ background: "rgba(139,92,246,0.3)", color: DASH.violetBright }}
+            className="rounded-full px-1.5 py-px text-xs font-bold tabular-nums"
+            style={{
+              background: "rgba(139,92,246,0.3)",
+              color: DASH.violetBright,
+            }}
           >
             {badge}
           </span>

@@ -33,10 +33,12 @@
      Mac/iPhone), giving the authentic Apple-bold feel. Falls back to Inter
      then system-ui elsewhere. Display/title sizes are pushed up and the
      tracking tightened for confident, heavy headings. */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono",
-    Menlo, Consolas, monospace;
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono:
+    "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
 
   --text-display: 2.75rem;
   --text-display--line-height: 3rem;
@@ -62,21 +64,20 @@
   --radius-chip: 0.625rem;
 
   /* ── Shadow scale (soft, no colored glows) ─────────────────────────── */
-  --shadow-card: 0 1px 2px 0 rgb(9 9 11 / 0.06),
-    0 0 0 1px rgb(9 9 11 / 0.04);
-  --shadow-card-strong: 0 2px 6px -1px rgb(9 9 11 / 0.10),
-    0 0 0 1px rgb(9 9 11 / 0.05);
-  --shadow-card-hover: 0 4px 12px -2px rgb(9 9 11 / 0.12),
-    0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-card: 0 1px 2px 0 rgb(9 9 11 / 0.06), 0 0 0 1px rgb(9 9 11 / 0.04);
+  --shadow-card-strong:
+    0 2px 6px -1px rgb(9 9 11 / 0.1), 0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-card-hover:
+    0 4px 12px -2px rgb(9 9 11 / 0.12), 0 0 0 1px rgb(9 9 11 / 0.05);
   /* Gentle Apple-style elevation for hero/cockpit cards. */
-  --shadow-elevated: 0 1px 2px 0 rgb(9 9 11 / 0.05),
-    0 10px 30px -10px rgb(9 9 11 / 0.12),
+  --shadow-elevated:
+    0 1px 2px 0 rgb(9 9 11 / 0.05), 0 10px 30px -10px rgb(9 9 11 / 0.12),
     0 2px 8px -4px rgb(9 9 11 / 0.06);
-  --shadow-elevated-hover: 0 2px 4px 0 rgb(9 9 11 / 0.06),
-    0 18px 40px -12px rgb(9 9 11 / 0.16),
+  --shadow-elevated-hover:
+    0 2px 4px 0 rgb(9 9 11 / 0.06), 0 18px 40px -12px rgb(9 9 11 / 0.16),
     0 4px 12px -4px rgb(9 9 11 / 0.08);
-  --shadow-pop: 0 8px 24px -4px rgb(9 9 11 / 0.18),
-    0 0 0 1px rgb(9 9 11 / 0.06);
+  --shadow-pop:
+    0 8px 24px -4px rgb(9 9 11 / 0.18), 0 0 0 1px rgb(9 9 11 / 0.06);
 
   /* ── Brand accent ──────────────────────────────────────────────────── */
   --color-brand-50: #f0fdfa;
@@ -191,113 +192,124 @@
   light theme always shows until a real, audited dark theme + toggle ships.
 */
 .dark {
-    color-scheme: dark;
-    --color-page: #09090b;
-    --color-surface: #18181b;
-    --color-surface-2: #27272a;
-    --color-surface-3: #3f3f46;
-    --color-border: #27272a;
-    --color-border-strong: #3f3f46;
-    --color-text: #fafaf9;
-    --color-text-muted: #a1a1aa;
-    --color-text-subtle: #71717a;
-    /*
+  color-scheme: dark;
+  --color-page: #09090b;
+  --color-surface: #18181b;
+  --color-surface-2: #27272a;
+  --color-surface-3: #3f3f46;
+  --color-border: #27272a;
+  --color-border-strong: #3f3f46;
+  --color-text: #fafaf9;
+  --color-text-muted: #a1a1aa;
+  --color-text-subtle: #71717a;
+  /*
       Brand stays the same teal in dark mode — pale-mint tints (brand-50,
       brand-100) read as a deliberate highlight on a near-black page, and
       keeping brand-700 unchanged means the primary button keeps its
       contrast with text-white. Don't retune unless WCAG fails on a
       specific surface — verify there first, override there second.
     */
-    --color-success-50: #022c22;
-    --color-success-100: #064e3b;
-    --color-success-200: #065f46;
-    --color-success-500: #10b981;
-    --color-success-600: #34d399;
-    --color-success-700: #34d399;
-    --color-success-800: #6ee7b7;
-    --color-success-900: #a7f3d0;
-    --color-warn-50: #2c1e02;
-    --color-warn-100: #422006;
-    --color-warn-200: #5a3a06;
-    --color-warn-600: #fbbf24;
-    --color-warn-700: #fbbf24;
-    --color-warn-800: #fcd34d;
-    --color-warn-900: #fde68a;
-    --color-danger-50: #2c0a0a;
-    --color-danger-100: #450a0a;
-    --color-danger-200: #5a1414;
-    --color-danger-500: #f87171;
-    --color-danger-600: #fca5a5;
-    --color-danger-700: #fca5a5;
-    --color-danger-800: #fecaca;
-    --color-danger-900: #fee2e2;
-    --color-info-50: #0a1f3d;
-    --color-info-100: #0f2a4d;
-    --color-info-200: #14315c;
-    --color-info-600: #60a5fa;
-    --color-info-700: #93c5fd;
-    --color-info-800: #bfdbfe;
-    --color-info-900: #dbeafe;
-    /* Warning (amber) — dark surface, light-amber text/icon (mirrors danger). */
-    --color-warning-50: #2a1a02;
-    --color-warning-100: #422f06;
-    --color-warning-200: #5c4310;
-    --color-warning-500: #fbbf24;
-    --color-warning-600: #fcd34d;
-    --color-warning-700: #fcd34d;
-    --color-warning-800: #fde68a;
-    --color-warning-900: #fef3c7;
+  --color-success-50: #022c22;
+  --color-success-100: #064e3b;
+  --color-success-200: #065f46;
+  --color-success-500: #10b981;
+  --color-success-600: #34d399;
+  --color-success-700: #34d399;
+  --color-success-800: #6ee7b7;
+  --color-success-900: #a7f3d0;
+  --color-warn-50: #2c1e02;
+  --color-warn-100: #422006;
+  --color-warn-200: #5a3a06;
+  --color-warn-600: #fbbf24;
+  --color-warn-700: #fbbf24;
+  --color-warn-800: #fcd34d;
+  --color-warn-900: #fde68a;
+  --color-danger-50: #2c0a0a;
+  --color-danger-100: #450a0a;
+  --color-danger-200: #5a1414;
+  --color-danger-500: #f87171;
+  --color-danger-600: #fca5a5;
+  --color-danger-700: #fca5a5;
+  --color-danger-800: #fecaca;
+  --color-danger-900: #fee2e2;
+  --color-info-50: #0a1f3d;
+  --color-info-100: #0f2a4d;
+  --color-info-200: #14315c;
+  --color-info-600: #60a5fa;
+  --color-info-700: #93c5fd;
+  --color-info-800: #bfdbfe;
+  --color-info-900: #dbeafe;
+  /* Warning (amber) — dark surface, light-amber text/icon (mirrors danger). */
+  --color-warning-50: #2a1a02;
+  --color-warning-100: #422f06;
+  --color-warning-200: #5c4310;
+  --color-warning-500: #fbbf24;
+  --color-warning-600: #fcd34d;
+  --color-warning-700: #fcd34d;
+  --color-warning-800: #fde68a;
+  --color-warning-900: #fef3c7;
 
-    /* ── Dashboard canvas (theme-aware) — DARK values ──────────────────
+  /* ── Dashboard canvas (theme-aware) — DARK values ──────────────────
        These match the original self-contained dark canvas hex exactly, so
        dark mode renders pixel-identical to before the var() refactor. */
-    --dash-bg: #0b0b12;
-    --dash-surface: #16161f;
-    --dash-surface-raised: #1c1c28;
-    --dash-border: rgba(255, 255, 255, 0.08);
-    --dash-border-strong: rgba(255, 255, 255, 0.14);
-    --dash-text: #f4f4f8;
-    --dash-text-muted: #a1a1b5;
-    --dash-text-faint: #6e6e85;
-    --dash-violet: #8b5cf6;
-    --dash-violet-bright: #a78bfa;
-    --dash-indigo: #6366f1;
-    --dash-emerald: #34d399;
-    --dash-emerald-dim: #10b981;
-    --dash-rose: #fb7185;
-    --dash-amber: #fbbf24;
-    --dash-chart-grid: rgba(255, 255, 255, 0.06);
-    --dash-chart-axis: #6e6e85;
-    --dash-sidebar: rgba(13, 13, 20, 0.72);
-    --dash-topbar: rgba(13, 13, 20, 0.9);
-    --dash-search: rgba(255, 255, 255, 0.04);
-    --dash-hover: rgba(255, 255, 255, 0.05);
-    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5),
-      0 6px 16px -4px rgb(0 0 0 / 0.6);
-    --shadow-card-strong: 0 1px 2px 0 rgb(0 0 0 / 0.6),
-      0 8px 24px -6px rgb(0 0 0 / 0.7),
-      0 0 0 1px rgb(255 255 255 / 0.04);
-    --shadow-card-hover: 0 2px 4px 0 rgb(0 0 0 / 0.5),
-      0 12px 28px -6px rgb(0 0 0 / 0.65);
-    --shadow-elevated: 0 1px 2px 0 rgb(0 0 0 / 0.6),
-      0 12px 32px -10px rgb(0 0 0 / 0.7);
-    --shadow-elevated-hover: 0 2px 4px 0 rgb(0 0 0 / 0.7),
-      0 20px 44px -12px rgb(0 0 0 / 0.78);
-    --shadow-pop: 0 12px 32px -6px rgb(0 0 0 / 0.7),
-      0 4px 8px -2px rgb(0 0 0 / 0.5);
+  --dash-bg: #0b0b12;
+  --dash-surface: #16161f;
+  --dash-surface-raised: #1c1c28;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-border-strong: rgba(255, 255, 255, 0.14);
+  --dash-text: #f4f4f8;
+  --dash-text-muted: #a1a1b5;
+  --dash-text-faint: #6e6e85;
+  --dash-violet: #8b5cf6;
+  --dash-violet-bright: #a78bfa;
+  --dash-indigo: #6366f1;
+  --dash-emerald: #34d399;
+  --dash-emerald-dim: #10b981;
+  --dash-rose: #fb7185;
+  --dash-amber: #fbbf24;
+  --dash-chart-grid: rgba(255, 255, 255, 0.06);
+  --dash-chart-axis: #6e6e85;
+  --dash-sidebar: rgba(13, 13, 20, 0.72);
+  --dash-topbar: rgba(13, 13, 20, 0.9);
+  --dash-search: rgba(255, 255, 255, 0.04);
+  --dash-hover: rgba(255, 255, 255, 0.05);
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5), 0 6px 16px -4px rgb(0 0 0 / 0.6);
+  --shadow-card-strong:
+    0 1px 2px 0 rgb(0 0 0 / 0.6), 0 8px 24px -6px rgb(0 0 0 / 0.7),
+    0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-card-hover:
+    0 2px 4px 0 rgb(0 0 0 / 0.5), 0 12px 28px -6px rgb(0 0 0 / 0.65);
+  --shadow-elevated:
+    0 1px 2px 0 rgb(0 0 0 / 0.6), 0 12px 32px -10px rgb(0 0 0 / 0.7);
+  --shadow-elevated-hover:
+    0 2px 4px 0 rgb(0 0 0 / 0.7), 0 20px 44px -12px rgb(0 0 0 / 0.78);
+  --shadow-pop:
+    0 12px 32px -6px rgb(0 0 0 / 0.7), 0 4px 8px -2px rgb(0 0 0 / 0.5);
 }
 
 html,
 body {
+  min-height: 100%;
   color-scheme: light;
   background: var(--color-page);
   color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1,
+    "calt" 1;
 }
 
+body {
+  min-height: 100dvh;
+}
+
+#admin-root {
+  min-height: 100dvh;
+  background: var(--dash-bg, var(--color-page));
+}
 
 /* Tabular numerics in the same JetBrains Mono used by tables and stats. */
 .tabnum,
@@ -384,7 +396,8 @@ td.num,
 
 /* Shared page title block — pairs with components/ui/page-header.tsx */
 .page-header-rule {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
   padding-bottom: 1rem;
   margin-bottom: 0.25rem;
 }
@@ -420,8 +433,8 @@ td.num,
 /* A gentle soft-shadow lift on hero cards. Compositor-friendly transform +
    box-shadow only. Motion is gated below for reduced-motion users. */
 .card-lift {
-  transition: transform var(--duration-normal, 300ms)
-      cubic-bezier(0.16, 1, 0.3, 1),
+  transition:
+    transform var(--duration-normal, 300ms) cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow var(--duration-normal, 300ms) cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }

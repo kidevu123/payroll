@@ -19,17 +19,16 @@ const buttonVariants = cva(
         // Secondary: refined surface with hairline border + subtle shadow.
         secondary:
           "bg-surface text-text border border-border shadow-[0_1px_2px_0_rgb(15_23_42_/_0.04)] hover:bg-surface-2 hover:border-border-strong",
-        outline:
-          "bg-surface text-text border border-border hover:bg-surface-2",
+        outline: "bg-surface text-text border border-border hover:bg-surface-2",
         ghost: "text-text hover:bg-surface-2",
         destructive:
           "bg-danger-700 text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.08)] hover:bg-danger-700/90",
       },
       size: {
-        default: "h-10 px-4",
-        sm: "h-8 px-3.5 text-xs",
-        lg: "h-11 px-6",
-        icon: "h-10 w-10",
+        default: "min-h-11 px-4 py-2",
+        sm: "min-h-10 px-3.5 py-2 text-xs",
+        lg: "min-h-12 px-6 py-2.5",
+        icon: "h-11 w-11 shrink-0 p-0",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -37,7 +36,8 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }

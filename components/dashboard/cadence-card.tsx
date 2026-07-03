@@ -39,24 +39,59 @@ function resolveNextStep(card: CadenceData): NextStep {
     ? `/payroll/run/${card.runId}`
     : `/payroll/${card.period.id}`;
   if (card.period.state === "PAID") {
-    return { label: "View run", href: `/payroll/${card.period.id}`, badge: "Paid", primary: false };
+    return {
+      label: "View run",
+      href: `/payroll/${card.period.id}`,
+      badge: "Paid",
+      primary: false,
+    };
   }
   switch (card.runState) {
     case "AWAITING_ADMIN_REVIEW":
     case "AWAITING_EMPLOYEE_FIXES":
-      return { label: "Review run", href: runHref, badge: "Needs review", primary: true };
+      return {
+        label: "Review run",
+        href: runHref,
+        badge: "Needs review",
+        primary: true,
+      };
     case "APPROVED":
-      return { label: "Publish run", href: runHref, badge: "Approved", primary: true };
+      return {
+        label: "Publish run",
+        href: runHref,
+        badge: "Approved",
+        primary: true,
+      };
     case "PUBLISHED":
-      return { label: "Mark paid", href: `/payroll/${card.period.id}`, badge: "Awaiting payment", primary: true };
+      return {
+        label: "Mark paid",
+        href: `/payroll/${card.period.id}`,
+        badge: "Awaiting payment",
+        primary: true,
+      };
     case "SCHEDULED":
     case "INGESTING":
-      return { label: "View progress", href: runHref, badge: "Running", primary: false };
+      return {
+        label: "View progress",
+        href: runHref,
+        badge: "Running",
+        primary: false,
+      };
     case "INGEST_FAILED":
     case "FAILED":
-      return { label: "View failure", href: runHref, badge: "Failed", primary: false };
+      return {
+        label: "View failure",
+        href: runHref,
+        badge: "Failed",
+        primary: false,
+      };
     default:
-      return { label: "Start payroll run", href: `/payroll/${card.period.id}`, badge: "Not started", primary: true };
+      return {
+        label: "Start payroll run",
+        href: `/payroll/${card.period.id}`,
+        badge: "Not started",
+        primary: true,
+      };
   }
 }
 
@@ -104,21 +139,30 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   return (
     <DashCard
       glow={step.primary}
-      className="flex h-full flex-col gap-1 overflow-hidden"
+      className="flex h-full min-h-[280px] flex-col gap-3"
     >
       {/* Big flowing sparkline that bleeds to the top + right edges, behind
           the content — matches the reference's prominent wave. */}
       {hasSpark ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute"
-          style={{ top: "2.1rem", right: "-0.5rem", bottom: "2.4rem", width: "64%" }}
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
         >
-          <CadenceSparkline
-            data={card.spark}
-            gradientId={`spark-${card.scheduleId}`}
-            className="h-full"
-          />
+          <div
+            className="absolute"
+            style={{
+              top: "3.5rem",
+              right: "-0.5rem",
+              bottom: "3.5rem",
+              width: "64%",
+            }}
+          >
+            <CadenceSparkline
+              data={card.spark}
+              gradientId={`spark-${card.scheduleId}`}
+              className="h-full"
+            />
+          </div>
         </div>
       ) : null}
 
@@ -141,7 +185,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
             >
               {card.scheduleName}
             </div>
-            <div className="text-[11px]" style={{ color: DASH.textFaint }}>
+            <div className="text-xs" style={{ color: DASH.textFaint }}>
               {card.period
                 ? shortRange(card.period.startDate, card.period.endDate)
                 : "No open period"}
@@ -149,7 +193,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           </div>
         </div>
         <span
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+          className="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
           style={{ color: badge.color, background: badge.bg }}
         >
           {step.badge}
@@ -168,24 +212,26 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <Delta pct={card.deltaPct} />
           {card.priorRangeLabel ? (
-            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+            <span className="text-xs" style={{ color: DASH.textFaint }}>
               vs {card.priorRangeLabel}
             </span>
           ) : (
-            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+            <span className="text-xs" style={{ color: DASH.textFaint }}>
               building history
             </span>
           )}
         </div>
         <div
-          className="mt-1 flex items-center gap-3 text-[11px]"
+          className="mt-1 flex items-center gap-3 text-xs"
           style={{ color: DASH.textMuted }}
         >
           <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3" aria-hidden="true" />
             {card.employeeCount} emp
           </span>
-          <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
+          <span aria-hidden="true" style={{ color: DASH.textFaint }}>
+            ·
+          </span>
           <span className="inline-flex items-center gap-1 tabular-nums">
             <Clock4 className="h-3 w-3" aria-hidden="true" />
             {formatHoursMinutes(card.hours)}
@@ -195,12 +241,11 @@ export function CadenceCard({ card }: { card: CadenceData }) {
 
       <div className="flex-1" />
 
-
       {/* Footer: full-width action + alert pill */}
       <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1 text-[13px] font-semibold transition-colors"
+          className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {

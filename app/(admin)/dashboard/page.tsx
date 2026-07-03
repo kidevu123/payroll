@@ -78,7 +78,10 @@ export default async function DashboardPage() {
     pendingTimeOff,
     rawRecent,
   ] = await Promise.all([
-    computeDashboardMetrics({ today, sessionEmail: session.user.email ?? null }),
+    computeDashboardMetrics({
+      today,
+      sessionEmail: session.user.email ?? null,
+    }),
     listEmployees({ status: "ACTIVE" }),
     listTodayPunches(today, company.timezone),
     listApprovedTimeOffForDate(today),
@@ -100,8 +103,13 @@ export default async function DashboardPage() {
 
   // Avatar URL only when the employee actually has a photo (else null →
   // initials fallback, never a broken image).
-  const photoUrlFor = (emp: { id: string; photoPath: string | null }): string | null =>
-    emp.photoPath ? `/api/employees/${emp.id}/photo?v=${emp.id.slice(0, 8)}` : null;
+  const photoUrlFor = (emp: {
+    id: string;
+    photoPath: string | null;
+  }): string | null =>
+    emp.photoPath
+      ? `/api/employees/${emp.id}/photo?v=${emp.id.slice(0, 8)}`
+      : null;
   const empById = new Map(employees.map((e) => [e.id, e]));
 
   const todayBuckets: TodayBuckets = {
@@ -110,18 +118,30 @@ export default async function DashboardPage() {
       .map((e) => ({
         id: e.id,
         name: e.displayName,
-        firstPunchAt: formatTimeShort(firstPunchByEmp.get(e.id)!, company.timezone),
+        firstPunchAt: formatTimeShort(
+          firstPunchByEmp.get(e.id)!,
+          company.timezone,
+        ),
         photoUrl: photoUrlFor(e),
       })),
     approvedOut: employees
       .filter((e) => !punchedEmpIds.has(e.id) && approvedOffEmpIds.has(e.id))
       .map((e) => {
         const req = approvedOffToday.find((r) => r.employeeId === e.id);
-        return { id: e.id, name: e.displayName, type: req?.type ?? "UNPAID", photoUrl: photoUrlFor(e) };
+        return {
+          id: e.id,
+          name: e.displayName,
+          type: req?.type ?? "UNPAID",
+          photoUrl: photoUrlFor(e),
+        };
       }),
     noPunch: employees
       .filter((e) => !punchedEmpIds.has(e.id) && !approvedOffEmpIds.has(e.id))
-      .map((e) => ({ id: e.id, name: e.displayName, photoUrl: photoUrlFor(e) })),
+      .map((e) => ({
+        id: e.id,
+        name: e.displayName,
+        photoUrl: photoUrlFor(e),
+      })),
     label: shortDateLabel(today),
   };
 
@@ -155,16 +175,20 @@ export default async function DashboardPage() {
   const periodIds = Array.from(new Set(rawRecent.map((r) => r.periodId)));
   const scheduleIds = Array.from(
     new Set(
-      rawRecent.map((r) => r.payScheduleId).filter((s): s is string => Boolean(s)),
+      rawRecent
+        .map((r) => r.payScheduleId)
+        .filter((s): s is string => Boolean(s)),
     ),
   );
-  const { payPeriods: periodsTable, paySchedules: schedulesTable } = await import(
-    "@/lib/db/schema"
-  );
+  const { payPeriods: periodsTable, paySchedules: schedulesTable } =
+    await import("@/lib/db/schema");
   const { inArray } = await import("drizzle-orm");
   const [periodRows, scheduleRows] = await Promise.all([
     periodIds.length
-      ? db.select().from(periodsTable).where(inArray(periodsTable.id, periodIds))
+      ? db
+          .select()
+          .from(periodsTable)
+          .where(inArray(periodsTable.id, periodIds))
       : [],
     scheduleIds.length
       ? db
@@ -209,20 +233,16 @@ export default async function DashboardPage() {
   // Greeting name: prefer the linked employee's real display name, fall back
   // to the email-derived name. First token only ("Nabeel Vira" → "Nabeel").
   const meEmp = session.user.employeeId
-    ? employees.find((e) => e.id === session.user.employeeId) ?? null
+    ? (employees.find((e) => e.id === session.user.employeeId) ?? null)
     : null;
-  const firstName = (meEmp?.displayName ?? metrics.greetingName).split(/\s+/)[0] ?? metrics.greetingName;
+  const firstName =
+    (meEmp?.displayName ?? metrics.greetingName).split(/\s+/)[0] ??
+    metrics.greetingName;
 
   return (
-    // The dark shell (layout) owns the canvas background + container; the page
-    // just lays out its content sections. Tight vertical rhythm so the whole
-    // dashboard reads as one composed screen (matches the reference density).
-    // Height-locked on desktop: the dashboard fills exactly the viewport
-    // (minus the shell's 2rem vertical padding) and never scrolls. The three
-    // data rows flex to fill leftover space; header/banner/KPI stay fixed.
-    // Charts shrink via ResponsiveContainer so populated cards always fit.
-    // Mobile keeps its natural vertical stack (scrolls as normal).
-    <div className="flex flex-col gap-2 lg:h-[calc(100dvh-2rem)] lg:min-h-0 lg:overflow-hidden">
+    // The shell owns the canvas. The page uses natural height so payroll
+    // content is never clipped simply to force a one-screen composition.
+    <div className="flex flex-col gap-4 pb-4">
       <GreetingHeader
         name={firstName}
         hour={hour}
@@ -233,27 +253,30 @@ export default async function DashboardPage() {
       />
 
       {/* TOP ROW — cadence cards (equal height) */}
-      <section className="grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-3 lg:flex-1 lg:min-h-0 xl:[grid-template-rows:minmax(0,1fr)]">
+      <section className="grid items-stretch gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {metrics.cadences.map((card) => (
           <CadenceCard key={card.scheduleId} card={card} />
         ))}
       </section>
 
       {/* SECOND ROW — trend + mini stats + sync + health, all equal height */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(0,1fr)]">
-        <div className="lg:col-span-5">
+      <section className="grid items-stretch gap-4 xl:grid-cols-12">
+        <div className="min-w-0 xl:col-span-5">
           <TrendCard trend={metrics.trend} />
         </div>
-        <div className="flex flex-col gap-2 lg:col-span-4">
-          <div className="grid grid-cols-2 gap-2">
-            <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
+        <div className="flex min-w-0 flex-col gap-4 xl:col-span-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <HeadcountCard
+              count={metrics.headcount}
+              delta={metrics.headcountDelta}
+            />
             <ExceptionsCard count={metrics.exceptions} />
           </div>
-          <div className="flex-1">
+          <div className="min-h-[180px] flex-1">
             <SyncCard sync={metrics.sync} />
           </div>
         </div>
-        <div className="lg:col-span-3">
+        <div className="min-w-0 xl:col-span-3">
           <HealthCard health={metrics.health} />
         </div>
       </section>
@@ -262,7 +285,7 @@ export default async function DashboardPage() {
       <AutomationBanner automation={metrics.automation} />
 
       {/* THIRD ROW — pending / recent / today (equal height) */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-3 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(0,1fr)]">
+      <section className="grid items-stretch gap-4 lg:grid-cols-3">
         <PendingRequestsCard items={pendingItems} />
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />

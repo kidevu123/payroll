@@ -48,8 +48,12 @@ function DashAvatar({
   return (
     <span
       aria-hidden="true"
-      style={{ ...dim, background: "rgba(139,92,246,0.18)", color: DASH.violetBright }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+      style={{
+        ...dim,
+        background: "rgba(139,92,246,0.18)",
+        color: DASH.violetBright,
+      }}
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-xs font-bold"
     >
       {initialsOf(name)}
     </span>
@@ -79,7 +83,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
         <Eyebrow>Pending requests</Eyebrow>
         <Link
           href="/requests"
-          className="inline-flex items-center text-[11px] font-medium"
+          className="inline-flex items-center text-xs font-medium"
           style={{ color: DASH.violetBright }}
         >
           Open <ChevronRight className="h-3 w-3" aria-hidden="true" />
@@ -90,15 +94,24 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
           className="flex flex-1 items-center gap-2 rounded-xl px-3 py-4 text-sm"
           style={{ background: "rgba(52,211,153,0.08)", color: DASH.emerald }}
         >
-          <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> All clear — nothing waiting.
+          <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> All clear —
+          nothing waiting.
         </div>
       ) : (
         <ul className="space-y-1">
           {items.slice(0, 2).map((r) => {
             const tone =
               r.kind === "MISSED_PUNCH"
-                ? { color: DASH.rose, bg: "rgba(251,113,133,0.14)", label: "Missed punch" }
-                : { color: DASH.violetBright, bg: "rgba(139,92,246,0.16)", label: "Awaiting" };
+                ? {
+                    color: DASH.rose,
+                    bg: "rgba(251,113,133,0.14)",
+                    label: "Missed punch",
+                  }
+                : {
+                    color: DASH.violetBright,
+                    bg: "rgba(139,92,246,0.16)",
+                    label: "Awaiting",
+                  };
             return (
               <li key={r.id}>
                 <Link
@@ -109,7 +122,11 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
                     border: `1px solid ${DASH.border}`,
                   }}
                 >
-                  <DashAvatar name={r.employeeName} photoUrl={r.photoUrl} size={24} />
+                  <DashAvatar
+                    name={r.employeeName}
+                    photoUrl={r.photoUrl}
+                    size={24}
+                  />
                   <span className="min-w-0 flex-1">
                     <span
                       className="block truncate text-[13px] font-semibold"
@@ -117,13 +134,16 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
                     >
                       {r.employeeName}
                     </span>
-                    <span className="block truncate text-[11px]" style={{ color: DASH.textFaint }}>
+                    <span
+                      className="block truncate text-xs"
+                      style={{ color: DASH.textFaint }}
+                    >
                       {r.title}
                       {r.subtitle ? ` · ${r.subtitle}` : ""}
                     </span>
                   </span>
                   <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    className="shrink-0 rounded-full px-2 py-0.5 text-xs font-bold"
                     style={{ color: tone.color, background: tone.bg }}
                   >
                     {tone.label}
@@ -137,7 +157,10 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
               <Link
                 href="/requests"
                 className="block rounded-xl px-3 py-1.5 text-center text-[12px] font-medium"
-                style={{ color: DASH.violetBright, background: "rgba(139,92,246,0.08)" }}
+                style={{
+                  color: DASH.violetBright,
+                  background: "rgba(139,92,246,0.08)",
+                }}
               >
                 View all {items.length}
               </Link>
@@ -194,7 +217,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
         <Eyebrow>Recent runs</Eyebrow>
         <Link
           href="/payroll"
-          className="inline-flex items-center text-[11px] font-medium"
+          className="inline-flex items-center text-xs font-medium"
           style={{ color: DASH.violetBright }}
         >
           All runs <ChevronRight className="h-3 w-3" aria-hidden="true" />
@@ -229,7 +252,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
                       {r.label}
                     </span>
                     <span
-                      className="block truncate text-[11px]"
+                      className="block truncate text-xs"
                       style={{ color: DASH.textFaint }}
                     >
                       {r.scheduleName ?? "—"}
@@ -239,7 +262,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
                     </span>
                   </span>
                   <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold"
                     style={{ color: tone.color, background: tone.bg }}
                   >
                     {prettyState(r.state)}
@@ -258,8 +281,18 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
 
 export type TodayBuckets = {
   noPunch: { id: string; name: string; photoUrl: string | null }[];
-  approvedOut: { id: string; name: string; type: string; photoUrl: string | null }[];
-  punched: { id: string; name: string; firstPunchAt: string; photoUrl: string | null }[];
+  approvedOut: {
+    id: string;
+    name: string;
+    type: string;
+    photoUrl: string | null;
+  }[];
+  punched: {
+    id: string;
+    name: string;
+    firstPunchAt: string;
+    photoUrl: string | null;
+  }[];
   label: string;
 };
 
@@ -278,7 +311,10 @@ function Bucket({
   accent,
   children,
 }: {
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   label: string;
   count: number;
   accent: string;
@@ -289,14 +325,14 @@ function Bucket({
     <section>
       <div className="mb-0.5 flex items-center justify-between">
         <span
-          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider"
           style={{ color: accent }}
         >
           <Icon className="h-3 w-3" aria-hidden="true" />
           {label}
         </span>
         <span
-          className="rounded-full px-1.5 py-px text-[10px] font-semibold tabular-nums"
+          className="rounded-full px-1.5 py-px text-xs font-semibold tabular-nums"
           style={{ color: accent, background: `${accent}1f` }}
         >
           {count}
@@ -317,13 +353,16 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
     <DashCard className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between">
         <Eyebrow>Today</Eyebrow>
-        <span className="text-[11px]" style={{ color: DASH.textFaint }}>
+        <span className="text-xs" style={{ color: DASH.textFaint }}>
           {buckets.label}
         </span>
       </div>
 
       {total === 0 ? (
-        <p className="py-4 text-center text-[12px]" style={{ color: DASH.textFaint }}>
+        <p
+          className="py-4 text-center text-[12px]"
+          style={{ color: DASH.textFaint }}
+        >
           No attendance data yet today.
         </p>
       ) : (
@@ -337,16 +376,18 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.noPunch.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[11.5px]"
+                className="flex items-center gap-2 text-xs"
                 style={{ color: DASH.text }}
               >
                 <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
-                <span className="shrink-0" style={{ color: DASH.rose }}>No punch</span>
+                <span className="shrink-0" style={{ color: DASH.rose }}>
+                  No punch
+                </span>
               </li>
             ))}
             {buckets.noPunch.length > MAX ? (
-              <li className="text-[10px]" style={{ color: DASH.textFaint }}>
+              <li className="text-xs" style={{ color: DASH.textFaint }}>
                 +{buckets.noPunch.length - MAX} more
               </li>
             ) : null}
@@ -361,7 +402,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.approvedOut.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[11.5px]"
+                className="flex items-center gap-2 text-xs"
                 style={{ color: DASH.text }}
               >
                 <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
@@ -382,18 +423,21 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             {buckets.punched.slice(0, MAX).map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-2 text-[11.5px]"
+                className="flex items-center gap-2 text-xs"
                 style={{ color: DASH.text }}
               >
                 <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
-                <span className="shrink-0 font-mono tabular-nums" style={{ color: DASH.emerald }}>
+                <span
+                  className="shrink-0 font-mono tabular-nums"
+                  style={{ color: DASH.emerald }}
+                >
                   {e.firstPunchAt}
                 </span>
               </li>
             ))}
             {buckets.punched.length > MAX ? (
-              <li className="text-[10px]" style={{ color: DASH.textFaint }}>
+              <li className="text-xs" style={{ color: DASH.textFaint }}>
                 +{buckets.punched.length - MAX} more
               </li>
             ) : null}

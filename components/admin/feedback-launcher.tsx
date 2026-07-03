@@ -17,7 +17,9 @@ export function FeedbackLauncher() {
   const [pending, setPending] = React.useState(false);
   const [done, setDone] = React.useState<null | "ok" | string>(null);
   const [kind, setKind] = React.useState<"BUG" | "IDEA" | "OTHER">("BUG");
-  const [severity, setSeverity] = React.useState<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">("MEDIUM");
+  const [severity, setSeverity] = React.useState<
+    "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+  >("MEDIUM");
   const [message, setMessage] = React.useState("");
   const pathname = usePathname() ?? "";
 
@@ -41,10 +43,16 @@ export function FeedbackLauncher() {
           kind,
           severity: kind === "BUG" ? severity : null,
           message,
-          pageUrl: typeof window !== "undefined" ? window.location.href : pathname,
-          userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : null,
+          pageUrl:
+            typeof window !== "undefined" ? window.location.href : pathname,
+          userAgent:
+            typeof navigator !== "undefined"
+              ? navigator.userAgent.slice(0, 500)
+              : null,
           viewport:
-            typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : null,
+            typeof window !== "undefined"
+              ? `${window.innerWidth}x${window.innerHeight}`
+              : null,
         }),
       });
       if (!r.ok) {
@@ -71,14 +79,15 @@ export function FeedbackLauncher() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Report a bug"
+        title="Report a bug"
         // Mobile: rest above the fixed bottom tab bar (bar height +
         // home-indicator inset) so the launcher never hides behind the nav
         // and stays tappable. lg has no bottom bar, so it drops back to the
         // plain bottom-right resting position.
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 lg:bottom-4 lg:right-4 lg:h-9 lg:w-auto lg:gap-1.5 lg:px-3 lg:text-xs lg:font-medium"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2 focus-visible:ring-offset-page lg:bottom-4 lg:right-4"
       >
-        <Bug className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
-        <span className="hidden sm:inline">Report bug</span>
+        <Bug className="h-4 w-4" aria-hidden />
+        <span className="sr-only">Report a bug</span>
       </button>
 
       {open && (
@@ -104,7 +113,7 @@ export function FeedbackLauncher() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="h-7 w-7 inline-flex items-center justify-center rounded-md text-text-muted hover:bg-surface-2"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-text-muted hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
@@ -117,7 +126,7 @@ export function FeedbackLauncher() {
                   type="button"
                   onClick={() => setKind(k)}
                   className={
-                    "h-9 rounded-md text-xs font-medium border " +
+                    "min-h-10 rounded-lg border text-xs font-medium " +
                     (kind === k
                       ? "bg-brand-50 text-brand-800 border-brand-200"
                       : "bg-surface text-text-muted border-border hover:bg-surface-2")
@@ -130,7 +139,7 @@ export function FeedbackLauncher() {
 
             {kind === "BUG" && (
               <div>
-                <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider">
+                <label className="text-xs font-medium uppercase tracking-wide text-text-muted">
                   Severity
                 </label>
                 <div className="grid grid-cols-4 gap-1.5 mt-1">
@@ -140,7 +149,7 @@ export function FeedbackLauncher() {
                       type="button"
                       onClick={() => setSeverity(s)}
                       className={
-                        "h-8 rounded-md text-[11px] font-medium border " +
+                        "min-h-10 rounded-lg border text-xs font-medium " +
                         (severity === s
                           ? "bg-brand-50 text-brand-800 border-brand-200"
                           : "bg-surface text-text-muted border-border hover:bg-surface-2")
@@ -154,7 +163,7 @@ export function FeedbackLauncher() {
             )}
 
             <div>
-              <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider">
+              <label className="text-xs font-medium uppercase tracking-wide text-text-muted">
                 What happened?
               </label>
               <textarea
@@ -167,7 +176,7 @@ export function FeedbackLauncher() {
               />
             </div>
 
-            <p className="text-[11px] text-text-subtle">
+            <p className="text-xs text-text-subtle">
               Auto-attached: current URL, browser, viewport size, build SHA.
             </p>
 
@@ -181,7 +190,7 @@ export function FeedbackLauncher() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-9 px-3 rounded-md text-xs text-text-muted hover:bg-surface-2"
+                className="min-h-11 rounded-lg px-4 text-sm text-text-muted hover:bg-surface-2"
               >
                 Cancel
               </button>
@@ -189,7 +198,7 @@ export function FeedbackLauncher() {
                 type="button"
                 onClick={submit}
                 disabled={pending || message.trim().length === 0}
-                className="h-9 px-3 rounded-md bg-brand-700 text-brand-fg text-xs font-medium hover:bg-brand-800 disabled:opacity-60 inline-flex items-center gap-1.5"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-700 px-4 text-sm font-medium text-brand-fg hover:bg-brand-800 disabled:opacity-60"
               >
                 <Send className="h-3.5 w-3.5" aria-hidden />
                 {pending ? "Sending…" : "Send"}
