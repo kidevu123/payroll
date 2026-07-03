@@ -93,7 +93,7 @@ export default async function EmployeesPage({
         </div>
 
         {/* Pill toggle group: status */}
-        <div className="inline-flex h-9 items-center rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
+        <div className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
           <PillToggle
             href={buildHref({ status: "" })}
             active={!explicitStatus}

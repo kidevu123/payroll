@@ -84,14 +84,19 @@ export function NgtecoForm({
                   defaultValue={locationId ?? ""}
                 />
               </div>
-              <label className="flex items-center gap-2 self-end pb-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="headless"
-                  defaultChecked={headless}
-                />
-                Run scraper headless
-              </label>
+              <div className="space-y-1">
+                <span className="block text-sm font-medium invisible" aria-hidden>
+                  Headless
+                </span>
+                <label className="flex h-10 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="headless"
+                    defaultChecked={headless}
+                  />
+                  Run scraper headless
+                </label>
+              </div>
             </div>
             {error && <p className="text-sm text-danger-700">{error}</p>}
             {saved && <p className="text-sm text-success-700">Saved.</p>}
@@ -117,11 +122,13 @@ export function NgtecoForm({
             if (result?.error) setError(result.error);
           }}
         >
-          <Button type="submit" disabled={running || !hasCredentials}>
-            <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={running || !hasCredentials}>
+              <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
+            </Button>
+          </div>
           {!hasCredentials && (
-            <p className="mt-2 text-xs text-text-muted">
+            <p className="mt-2 text-xs text-text-muted text-right">
               Save credentials first.
             </p>
           )}

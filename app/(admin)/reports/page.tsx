@@ -111,7 +111,7 @@ export default async function ReportsPage({
                 Pull the underlying data for any period or audit window.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
               <ExportLink type="employees" label="Employees" />
               <ExportLink type="payslips" label="Payslips" />
               <ExportLink type="punches" label="Punches" />

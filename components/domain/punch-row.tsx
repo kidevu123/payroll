@@ -63,7 +63,7 @@ export function PunchRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-card border border-border bg-surface px-3 py-2 text-sm",
+        "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-input border border-border bg-surface px-3 py-2.5 text-sm",
         punch.voidedAt && "opacity-50 line-through",
         (missingIn || ambiguous) && "border-warning-200/80 bg-warning-50/40",
         className,

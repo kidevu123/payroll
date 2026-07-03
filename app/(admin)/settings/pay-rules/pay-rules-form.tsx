@@ -35,8 +35,8 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
           }}
           className="space-y-5"
         >
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Rounding rule</legend>
+          <fieldset className="space-y-2 rounded-card border border-border bg-surface-2/50 p-4">
+            <legend className="text-sm font-medium px-1">Rounding rule</legend>
             <div className="space-y-1.5">
               {RULES.map((r) => (
                 <label key={r.value} className="flex items-center gap-2 text-sm">
@@ -53,17 +53,19 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
             </div>
           </fieldset>
 
-          <div className="space-y-1 max-w-xs">
-            <Label htmlFor="hoursDecimalPlaces">Hours decimal places</Label>
-            <Input
-              id="hoursDecimalPlaces"
-              name="hoursDecimalPlaces"
-              type="number"
-              min={0}
-              max={6}
-              defaultValue={settings.hoursDecimalPlaces}
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="hoursDecimalPlaces">Hours decimal places</Label>
+              <Input
+                id="hoursDecimalPlaces"
+                name="hoursDecimalPlaces"
+                type="number"
+                min={0}
+                max={6}
+                defaultValue={settings.hoursDecimalPlaces}
+                required
+              />
+            </div>
           </div>
 
           <fieldset className="space-y-2 rounded-card border border-border bg-surface-2/50 p-4">
@@ -88,7 +90,8 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
                   step={0.25}
                   defaultValue={settings.overtime.thresholdHours}
                   disabled={!otEnabled}
-                  required
+                  required={otEnabled}
+                  className="disabled:opacity-50"
                 />
               </div>
               <div className="space-y-1">
@@ -101,7 +104,8 @@ export function PayRulesForm({ settings }: { settings: PayRulesSettings }) {
                   step={0.05}
                   defaultValue={settings.overtime.multiplier}
                   disabled={!otEnabled}
-                  required
+                  required={otEnabled}
+                  className="disabled:opacity-50"
                 />
               </div>
             </div>

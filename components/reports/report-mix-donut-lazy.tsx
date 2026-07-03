@@ -8,5 +8,5 @@ import { ChartSkeleton } from "@/components/ui/skeleton";
 
 export const ReportMixDonut = dynamic(
   () => import("./report-mix-donut").then((m) => m.ReportMixDonut),
-  { ssr: false, loading: () => <ChartSkeleton className="h-36 w-36" /> },
+  { ssr: false, loading: () => <ChartSkeleton className="h-36 w-full" /> },
 );

@@ -18,37 +18,37 @@ function variantOf(name: string | null | undefined): Variant {
   return "other";
 }
 
-const STYLES: Record<Variant, { bg: string; text: string; ring: string; label: string }> = {
+const STYLES: Record<Variant, { bg: string; text: string; border: string; label: string }> = {
   weekly: {
     // info/warning are flipping semantic tokens; purple/teal have none, so
     // they carry explicit dark: variants. All read correctly on dark now.
     bg: "bg-info-50",
     text: "text-info-700",
-    ring: "ring-info-200",
+    border: "border-info-200",
     label: "Weekly",
   },
   semiMonthly: {
     bg: "bg-purple-50 dark:bg-purple-500/15",
     text: "text-purple-700 dark:text-purple-300",
-    ring: "ring-purple-200 dark:ring-purple-500/40",
+    border: "border-purple-200 dark:border-purple-500/40",
     label: "Semi-monthly",
   },
   biWeekly: {
     bg: "bg-teal-50 dark:bg-teal-500/15",
     text: "text-teal-700 dark:text-teal-300",
-    ring: "ring-teal-200 dark:ring-teal-500/40",
+    border: "border-teal-200 dark:border-teal-500/40",
     label: "Bi-weekly",
   },
   monthly: {
     bg: "bg-warning-50",
     text: "text-warning-700",
-    ring: "ring-warning-200",
+    border: "border-warning-200",
     label: "Monthly",
   },
   other: {
     bg: "bg-surface-3",
     text: "text-text-muted",
-    ring: "ring-border",
+    border: "border-border",
     label: "Unassigned",
   },
 };
@@ -71,10 +71,10 @@ export function SchedulePill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-chip px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ring-1 ring-inset whitespace-nowrap",
+        "inline-flex items-center rounded-chip border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide whitespace-nowrap",
         s.bg,
         s.text,
-        s.ring,
+        s.border,
         className,
       )}
     >

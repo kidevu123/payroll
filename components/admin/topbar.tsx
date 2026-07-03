@@ -175,7 +175,7 @@ export function Topbar({
             {unreadCount > 0 ? (
               <span
                 aria-hidden="true"
-                className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-danger-700 text-white text-[10px] font-semibold flex items-center justify-center font-mono tabular-nums shadow-[0_0_0_2px_rgb(255_255_255)]"
+                className="absolute -top-0.5 -right-0.5 h-5 min-w-5 px-1.5 rounded-full bg-danger-700 text-white text-[11px] font-semibold flex items-center justify-center font-mono tabular-nums shadow-[0_0_0_2px_rgb(255_255_255)]"
               >
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>

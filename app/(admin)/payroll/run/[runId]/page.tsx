@@ -175,7 +175,7 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-semibold font-mono">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-xl font-semibold font-mono">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">
@@ -296,8 +296,8 @@ export default async function RunReviewPage({
                     <span className="text-right font-mono tabular-nums font-semibold">
                       <MoneyDisplay cents={tw.amountCents} />
                     </span>
-                    <span></span>
-                    <span></span>
+                    <span className="text-xs text-text-subtle">—</span>
+                    <span className="text-xs text-text-subtle">—</span>
                   </div>
                 ))}
               </div>
@@ -317,8 +317,8 @@ export default async function RunReviewPage({
                 <div className="text-right font-mono tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
-                <div></div>
-                <div></div>
+                <div className="text-text-subtle">—</div>
+                <div className="text-text-subtle">—</div>
               </div>
               </div>
             </div>
@@ -439,7 +439,7 @@ function RunPunchTable({
   }
   const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   return (
-    <div className="px-9 pb-3 pt-1">
+    <div className="overflow-x-auto px-3 pb-3 pt-1 sm:px-9">
       <table className="min-w-full text-xs">
         <thead className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
           <tr>

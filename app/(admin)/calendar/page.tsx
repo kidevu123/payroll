@@ -539,9 +539,11 @@ export default async function CalendarPage({
                     // Always render the actual name. The previous build
                     // hid them in a `title` tooltip, which doesn't fire
                     // on touch — owner couldn't tell whose birthday it
-                    // was without going to the employees page.
+                    // was without going to the employees page. Capped with
+                    // a +N roll-up like the time-off entries so a day with
+                    // many birthdays doesn't overflow the fixed cell.
                     <div className="mt-1 space-y-0.5">
-                      {cell.birthdays.map((b, i) => (
+                      {cell.birthdays.slice(0, MAX_VISIBLE).map((b, i) => (
                         <div
                           key={`bday-${day}-${i}`}
                           className="truncate rounded border border-pink-300 bg-pink-50 px-1.5 py-0.5 text-[11px] leading-tight text-pink-800 dark:border-pink-500/40 dark:bg-pink-500/15 dark:text-pink-300"
@@ -550,6 +552,17 @@ export default async function CalendarPage({
                           {b.name}
                         </div>
                       ))}
+                      {cell.birthdays.length > MAX_VISIBLE && (
+                        <div
+                          className="truncate px-1.5 text-[11px] font-medium leading-tight text-pink-700 dark:text-pink-300"
+                          title={cell.birthdays
+                            .slice(MAX_VISIBLE)
+                            .map((b) => b.name)
+                            .join(", ")}
+                        >
+                          +{cell.birthdays.length - MAX_VISIBLE} more
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Mobile: colored dots per entry (matches #69). Name bars
@@ -576,14 +589,17 @@ export default async function CalendarPage({
                       />
                     ))}
                     {overflow.length > 0 && (
-                      <details className="group">
+                      <details className="group relative">
                         <summary
                           className="cursor-pointer list-none text-[11px] font-medium text-text-muted hover:text-text"
                           title={overflow.map((r) => r.emp).join(", ")}
                         >
                           +{overflow.length} more
                         </summary>
-                        <div className="mt-1 space-y-0.5 rounded-card border border-border bg-surface-2 p-1">
+                        {/* Absolutely positioned so expanding the roll-up
+                            doesn't stretch the whole 7-day row (matches the
+                            edit popover pattern below). */}
+                        <div className="absolute left-0 top-full z-20 mt-1 w-40 space-y-0.5 rounded-card border border-border bg-surface-2 p-1 shadow-pop">
                           {overflow.map((r) => (
                             <CalendarEntry
                               key={`${day}-overflow-${r.id}`}
@@ -620,30 +636,33 @@ export default async function CalendarPage({
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Pending {pendingTotal > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-medium text-warning-900">
-                  {pendingTotal}
-                </span>
-              )}
-            </h2>
-            <TimeOffOnBehalfForm
-              employees={employees
-                .filter((e) => e.status !== "TERMINATED")
-                .map((e) => ({ id: e.id, displayName: e.displayName }))}
-            />
-          </div>
-
-          {pendingTotal === 0 ? (
-            <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
-              Nothing waiting on you. New requests show up here as
-              employees submit them.
+          {/* Pending heading + on-behalf form carded so they don't float
+              as bare markup between the overview and coverage cards. */}
+          <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Pending {pendingTotal > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-medium text-warning-900">
+                    {pendingTotal}
+                  </span>
+                )}
+              </h2>
+              <TimeOffOnBehalfForm
+                employees={employees
+                  .filter((e) => e.status !== "TERMINATED")
+                  .map((e) => ({ id: e.id, displayName: e.displayName }))}
+              />
             </div>
-          ) : (
-            <>
-              {pendingTimeOff.length > 0 && (
-                <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+
+            {pendingTotal === 0 ? (
+              <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
+                Nothing waiting on you. New requests show up here as
+                employees submit them.
+              </div>
+            ) : (
+              <>
+                {pendingTimeOff.length > 0 && (
+                  <div className="rounded-card border border-border bg-surface p-3 space-y-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-info-800">
                     <Plane className="h-3.5 w-3.5" />
                     Time off ({pendingTimeOff.length})
@@ -693,8 +712,9 @@ export default async function CalendarPage({
                   })}
                 </div>
               )}
-            </>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Need coverage? — quick jump to the attendance board to fill
               open shifts (matches the #58 rail). */}

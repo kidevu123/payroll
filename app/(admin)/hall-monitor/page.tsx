@@ -144,7 +144,9 @@ export default async function HallMonitorPage({
                 key={`${d.title}-${i}`}
                 className={`rounded-card border px-4 py-3 ${SEVERITY_STYLES[d.severity]}`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div
+                  className={`flex items-start gap-2 ${d.href ? "justify-between" : ""}`}
+                >
                   <span
                     className={`shrink-0 rounded-chip px-2 py-0.5 text-[11px] font-medium ${SEVERITY_BADGE[d.severity]}`}
                   >
@@ -188,7 +190,7 @@ export default async function HallMonitorPage({
         </>
       )}
 
-      <p className="text-sm text-text-muted leading-relaxed">
+      <p className="mt-6 border-t border-border pt-4 text-sm text-text-muted leading-relaxed">
         Day to day, use{" "}
         <Link href="/calendar" className="underline font-medium text-text">
           Calendar → Pending

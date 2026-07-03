@@ -41,7 +41,7 @@ function KpiCard({
 
 export function ReportsKpis({ kpis }: { kpis: ReportsOverview["kpis"] }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 items-stretch gap-3 lg:grid-cols-5">
       <KpiCard label="Total paid (YTD)" icon={DollarSign} accent="#a78bfa" sub="This calendar year">
         <MoneyDisplay cents={kpis.totalPaidYtdCents} monospace={false} />
       </KpiCard>

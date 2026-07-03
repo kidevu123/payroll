@@ -109,7 +109,7 @@ export default async function EmployeeDay({
                   p.voidedAt ? "opacity-50 line-through" : ""
                 }`}
               >
-                <span className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+                <span className="flex flex-nowrap items-baseline gap-x-3 gap-y-0.5">
                   <span>
                     <span className="text-text-muted">{t("in")}: </span>
                     <span className="font-mono tabular-nums">

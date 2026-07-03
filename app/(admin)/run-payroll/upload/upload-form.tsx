@@ -418,7 +418,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                   {tempWorkers.map((tw, i) => (
                     <div
                       key={tw.key}
-                      className="grid grid-cols-1 sm:grid-cols-[1.6fr_0.7fr_0.7fr_2fr_auto] gap-2 items-end"
+                      className="grid grid-cols-1 md:grid-cols-[1.6fr_0.7fr_0.7fr_2fr_auto] gap-2 items-end"
                     >
                       <div className="space-y-0.5">
                         {i === 0 && (

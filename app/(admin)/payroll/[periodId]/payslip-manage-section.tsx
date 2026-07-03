@@ -59,23 +59,25 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
           </summary>
         </CardHeader>
         <CardContent>
-          <table className="min-w-full text-sm">
-          <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-            <tr>
-              <th className="py-2 pr-3 font-medium">Employee</th>
-              <th className="py-2 px-3 font-medium text-right">Hours</th>
-              <th className="py-2 px-3 font-medium text-right">Amount</th>
-              <th className="py-2 px-3 font-medium">Status</th>
-              <th className="py-2 px-3 font-medium text-right">Payslip</th>
-              <th className="py-2 px-3 font-medium text-right" />
-            </tr>
-          </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((r) => (
-                <PayslipRow key={r.payslip.id} row={r} />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+            <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Employee</th>
+                <th className="py-2 px-3 font-medium text-right">Hours</th>
+                <th className="py-2 px-3 font-medium text-right">Amount</th>
+                <th className="py-2 px-3 font-medium">Status</th>
+                <th className="py-2 px-3 font-medium text-right">Payslip</th>
+                <th className="py-2 px-3 font-medium text-right" />
+              </tr>
+            </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((r) => (
+                  <PayslipRow key={r.payslip.id} row={r} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </details>
     </Card>

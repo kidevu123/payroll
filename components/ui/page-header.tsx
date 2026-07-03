@@ -34,7 +34,7 @@ export function PageHeader({
       <div className="min-w-0 space-y-1">
         <h1
           className={cn(
-            "text-title font-semibold tracking-tight antialiased text-text",
+            "text-title tracking-tight antialiased text-text",
             density === "employee" && "text-[1.375rem] leading-snug",
           )}
         >

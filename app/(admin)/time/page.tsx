@@ -736,13 +736,13 @@ export default async function TimePage({
             {adjacent.prevId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.prevId })}`}
-                className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
                 aria-label="Previous period"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Link>
             ) : (
-              <span className="h-6 w-6 inline-flex items-center justify-center text-text-subtle/20">
+              <span className="h-8 w-8 inline-flex items-center justify-center text-text-subtle/20">
                 <ChevronLeft className="h-3.5 w-3.5" />
               </span>
             )}
@@ -759,13 +759,13 @@ export default async function TimePage({
             {adjacent.nextId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.nextId })}`}
-                className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
                 aria-label="Next period"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             ) : (
-              <span className="h-6 w-6 inline-flex items-center justify-center text-text-subtle/20">
+              <span className="h-8 w-8 inline-flex items-center justify-center text-text-subtle/20">
                 <ChevronRight className="h-3.5 w-3.5" />
               </span>
             )}
@@ -797,7 +797,7 @@ export default async function TimePage({
       </div>
 
       {/* KPI row — five attendance metrics (matches #57). */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
         <KpiCard icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
         <KpiCard icon={Users} tone="indigo" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
         <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
@@ -1138,10 +1138,12 @@ function PunchCellContent({
     return <span className="text-danger-400 text-body font-medium">—</span>;
   }
 
-  // Time-off label: compact uppercase badge.
+  // Time-off label: compact uppercase badge. min-h matches the two-line
+  // data pills (px-2 py-1 + two text rows) so pill heights stay even
+  // across a grid row instead of this single-line chip sitting short.
   if (state === "pto" || state === "sick" || state === "unpaid" || state === "other") {
     return (
-      <span className={`inline-block rounded-[5px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cellPillClasses(state)}`}>
+      <span className={`inline-flex min-h-[2.25rem] items-center justify-center rounded-[5px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${cellPillClasses(state)}`}>
         {timeOffLabel(state)}
       </span>
     );

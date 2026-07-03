@@ -180,7 +180,11 @@ export default async function PayrollPage({
         </CardHeader>
         <CardContent className="space-y-2">
           {openPeriods.length === 0 ? (
-            <p className="text-sm text-text-muted">No periods yet.</p>
+            <EmptyState
+              icon={Wallet}
+              title="No periods yet"
+              description="Open and locked pay periods awaiting work will appear here. Paid periods live in Reports."
+            />
           ) : (
             openPeriods.map((p) => {
               // Canonical 7-day week for weekly schedules — short uploads
@@ -212,12 +216,14 @@ export default async function PayrollPage({
                     href={`/payroll/${p.id}`}
                     className="group flex items-center gap-3 font-medium flex-1 min-w-0 pl-1 after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:outline-none"
                   >
-                    <span className="tabular-nums">
-                      {p.startDate} – {displayEnd}
-                    </span>
-                    <SchedulePill name={p.scheduleName} />
-                    <StatusPill status={p.state} />
-                    <ChevronRight className="h-4 w-4 text-text-muted ml-auto transition-transform group-hover:translate-x-0.5" />
+                    <div className="flex flex-1 min-w-0 items-center gap-3">
+                      <span className="tabular-nums">
+                        {p.startDate} – {displayEnd}
+                      </span>
+                      <SchedulePill name={p.scheduleName} />
+                      <StatusPill status={p.state} />
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5" />
                   </Link>
                   <div className="relative z-10">
                     <PeriodDeleteButton periodId={p.id} state={p.state} />

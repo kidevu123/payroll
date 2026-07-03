@@ -199,7 +199,7 @@ export default async function EmployeeDetailPage({
         {/* Right: work history + payslips + punches */}
         <div className="space-y-4 min-w-0">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-sm">Rate history</CardTitle>
               <Button asChild size="sm" variant="secondary">
                 <Link href={`/employees/${employee.id}/rate`}>
@@ -213,7 +213,7 @@ export default async function EmployeeDetailPage({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="text-sm">Payslips</CardTitle>
               {payslipsWithPeriods.length > 0 && (
                 <RecomputePayslipsButton employeeId={employee.id} />

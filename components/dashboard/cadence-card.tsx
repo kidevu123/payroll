@@ -200,7 +200,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-1 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {

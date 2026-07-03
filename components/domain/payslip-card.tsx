@@ -94,7 +94,7 @@ export function PayslipCard(props: PayslipCardProps) {
         props.className,
       )}
     >
-      <div className="px-5 py-4 sm:px-6 sm:py-5 flex items-center gap-4">
+      <div className="px-4 py-3 flex items-center gap-4">
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-semibold tracking-tight antialiased text-text">

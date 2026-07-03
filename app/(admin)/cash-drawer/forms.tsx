@@ -285,7 +285,7 @@ export function LedgerRowActions({
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="Entry actions">
+            <Button size="sm" variant="ghost" className="h-10 w-10 md:h-8 md:w-8 p-0" title="Entry actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

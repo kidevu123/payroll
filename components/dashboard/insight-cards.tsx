@@ -364,11 +364,11 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
   ];
 
   return (
-    <DashCard className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+    <DashCard className="grid grid-cols-2 items-stretch gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map((t) => {
         const Icon = t.icon;
         return (
-          <div key={t.label} className="flex items-center gap-2.5">
+          <div key={t.label} className="flex h-full items-center gap-2.5">
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
               style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}

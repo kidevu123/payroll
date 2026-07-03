@@ -115,7 +115,7 @@ export default async function EmployeeCalendar({
   const dowLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
-    <main className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto pb-32">
+    <main className="space-y-6 p-4 sm:p-6 max-w-md sm:max-w-2xl mx-auto">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight antialiased">

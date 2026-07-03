@@ -98,7 +98,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
             <option value="ADMIN">Admin</option>
           </select>
         </div>
-        <Button type="submit" disabled={pending !== null}>
+        <Button type="submit" disabled={pending !== null} className="min-w-[10rem]">
           <UserPlus className="h-4 w-4" />
           {pending === "create" ? "Creating…" : "Create staff login"}
         </Button>
@@ -199,7 +199,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 align-middle">
+                  <td className="px-4 py-2.5 align-middle whitespace-nowrap min-w-[16rem]">
                     <div className="flex items-center justify-end gap-1.5">
                       <Button
                         size="sm"

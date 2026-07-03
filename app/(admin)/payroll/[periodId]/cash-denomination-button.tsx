@@ -47,7 +47,7 @@ export function CashDenominationButton({
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2 hover:text-text"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2 hover:text-text sm:h-8 sm:w-8"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />

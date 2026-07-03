@@ -103,7 +103,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
               <li key={r.id}>
                 <Link
                   href="/requests"
-                  className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 transition-colors"
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors"
                   style={{
                     background: "var(--dash-search)",
                     border: `1px solid ${DASH.border}`,
@@ -132,7 +132,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
               </li>
             );
           })}
-          {items.length > 4 ? (
+          {items.length > 2 ? (
             <li>
               <Link
                 href="/requests"
@@ -371,6 +371,11 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
                 </span>
               </li>
             ))}
+            {buckets.approvedOut.length > MAX ? (
+              <li className="text-[10px]" style={{ color: DASH.textFaint }}>
+                +{buckets.approvedOut.length - MAX} more
+              </li>
+            ) : null}
           </Bucket>
 
           <Bucket

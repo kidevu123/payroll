@@ -47,7 +47,7 @@ export function RunActions({
       <div className="space-y-3 rounded-card border-2 border-brand-700 bg-surface p-5">
         {!confirming ? (
           <>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-semibold">Approve and publish</h3>
                 <p className="text-sm text-text-muted">

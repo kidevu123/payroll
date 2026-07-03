@@ -406,7 +406,7 @@ async function PayslipBody({
             {t("timesShownLocal", { tz: tz.replace("_", " ") })}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-2 sm:px-4 py-2">
+        <CardContent className="px-4 py-2">
           {days.length === 0 ? (
             <p className="px-4 py-4 text-sm text-text-muted leading-relaxed">
               {t("noClockInRecords")}
@@ -437,14 +437,14 @@ async function PayslipBody({
                               <span className="flex flex-col gap-0.5 text-xs">
                                 <span className="text-text-muted">
                                   {t("in")}{" "}
-                                  <span className="font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap font-mono tabular-nums text-text">
                                     {fmtTime(r.inT, tz, dateLocale)}
                                   </span>
                                   <span className="mx-1.5 text-text-subtle">
                                     →
                                   </span>
                                   {t("out")}{" "}
-                                  <span className="font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap font-mono tabular-nums text-text">
                                     {fmtTime(r.outT, tz, dateLocale)}
                                   </span>
                                 </span>

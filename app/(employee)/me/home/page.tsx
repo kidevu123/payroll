@@ -270,7 +270,7 @@ export default async function EmployeeHome() {
       {!isSalaried && <ConfirmHoursHero employeeId={employee.id} />}
 
       {!isSalaried && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 items-stretch gap-3">
           <EmpMetric
             icon={Clock}
             tone="violet"
@@ -439,7 +439,7 @@ export default async function EmployeeHome() {
                     <li
                       key={r.id}
                       className={
-                        "flex items-center justify-between gap-3 rounded-input border bg-surface px-3 py-2 " +
+                        "flex flex-col gap-2 rounded-input border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 " +
                         (isCancelled
                           ? "border-border/40 opacity-60"
                           : "border-border/70")
@@ -565,7 +565,7 @@ function EmpMetric({
 }) {
   const c = EMP_TONE[tone];
   return (
-    <Card className="p-4">
+    <Card className="h-full p-4">
       <span
         className="flex h-9 w-9 items-center justify-center rounded-lg"
         style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}

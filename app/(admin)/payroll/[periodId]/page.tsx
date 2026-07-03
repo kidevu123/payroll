@@ -528,7 +528,7 @@ export default async function PeriodReviewPage({
               </p>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <Button asChild variant="secondary" className="justify-start">
               <Link
                 href={`/api/payslips/period/${period.id}/signature`}
@@ -552,12 +552,13 @@ export default async function PeriodReviewPage({
               periodLabel={periodLabel}
             />
             <form
+              className="contents"
               action={async () => {
                 "use server";
                 await backupAdminReportToZohoAction(period.id, run?.id ?? null);
               }}
             >
-              <Button type="submit" variant="secondary" className="justify-start">
+              <Button type="submit" variant="secondary" className="w-full justify-start">
                 <UploadCloud className="h-4 w-4" /> Back up admin report
               </Button>
             </form>
@@ -615,7 +616,7 @@ export default async function PeriodReviewPage({
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 text-xs">
-              <div className="rounded-input border border-success-200/60 bg-success-50/40 p-2">
+              <div className="rounded-input border border-success-200/60 bg-success-50/40 p-3">
                 <p className="font-semibold text-success-800 mb-1">
                   Acknowledged ({ackd.length})
                 </p>
@@ -628,7 +629,7 @@ export default async function PeriodReviewPage({
                         .join(", ")}
                 </p>
               </div>
-              <div className="rounded-input border border-warning-200/60 bg-warning-50/40 p-2">
+              <div className="rounded-input border border-warning-200/60 bg-warning-50/40 p-3">
                 <p className="font-semibold text-warning-800 mb-1">
                   Pending ({pending.length})
                 </p>
@@ -641,7 +642,7 @@ export default async function PeriodReviewPage({
                         .join(", ")}
                 </p>
               </div>
-              <div className="rounded-input border border-danger-200/60 bg-danger-50/40 p-2">
+              <div className="rounded-input border border-danger-200/60 bg-danger-50/40 p-3">
                 <p className="font-semibold text-danger-800 mb-1">
                   Disputed ({disputed.length})
                 </p>
@@ -762,7 +763,7 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                         <div className="rounded-input border border-border/70 bg-surface p-2">
                           <div className="text-[10px] uppercase tracking-wider text-text-subtle">
                             Hours
@@ -873,7 +874,7 @@ export default async function PeriodReviewPage({
                     <details key={employee.id} className="group">
                       <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
                         <ChevronRight className="h-3.5 w-3.5 text-text-subtle group-open:rotate-90 transition-transform" />
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 flex-col gap-0.5">
                           {isAccountant ? (
                             <span className="block truncate font-semibold">
                               {employee.displayName}
@@ -886,19 +887,22 @@ export default async function PeriodReviewPage({
                               {employee.displayName}
                             </Link>
                           )}
-	                          <div className="text-xs text-text-muted">
-	                            {rateLabel(employee)}
-	              </div>
-                          {pdfUrl ? (
-                            <PayslipPdfActions
-                              url={pdfUrl}
-                              printLabel="Print"
-                              downloadLabel="PDF"
-                              layout="inline"
-                              className="mt-1"
-                            />
-                          ) : null}
-	              </div>
+                          <div className="text-xs text-text-muted">
+                            {rateLabel(employee)}
+                          </div>
+                          {/* Reserve the actions slot so rows with and
+                              without a payslip PDF stay the same height. */}
+                          <div className="min-h-[1.75rem]">
+                            {pdfUrl ? (
+                              <PayslipPdfActions
+                                url={pdfUrl}
+                                printLabel="Print"
+                                downloadLabel="PDF"
+                                layout="inline"
+                              />
+                            ) : null}
+                          </div>
+                        </div>
 	                        <span className="text-right font-mono tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}

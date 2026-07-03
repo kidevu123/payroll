@@ -93,7 +93,9 @@ export default async function NotificationsPage() {
                   className="rounded-card border border-border bg-surface p-3 space-y-2"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-sm font-semibold">{a.title}</h3>
+                    <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      {a.title}
+                    </h3>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[11px] text-text-muted tabular-nums">
                         {shortDateTime(a.sentAt)}
@@ -104,7 +106,7 @@ export default async function NotificationsPage() {
                           type="submit"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-text-muted hover:text-danger-700"
+                          className="h-9 w-9 md:h-7 md:w-7 text-text-muted hover:text-danger-700"
                           title="Delete announcement from history"
                           aria-label={`Delete announcement ${a.title}`}
                         >
@@ -139,16 +141,20 @@ export default async function NotificationsPage() {
                     <span className="inline-flex items-center gap-1">
                       <Users className="h-3 w-3" /> {audienceText}
                     </span>
-                    <span>·</span>
                     <span className="font-medium">
+                      <span aria-hidden="true" className="mr-1 text-text-subtle">
+                        ·
+                      </span>
                       {a.recipientCount}{" "}
                       {a.recipientCount === 1 ? "recipient" : "recipients"}
                     </span>
                     {a.sentByEmail && (
-                      <>
-                        <span>·</span>
-                        <span>by {a.sentByEmail}</span>
-                      </>
+                      <span>
+                        <span aria-hidden="true" className="mr-1 text-text-subtle">
+                          ·
+                        </span>
+                        by {a.sentByEmail}
+                      </span>
                     )}
                   </div>
                 </div>

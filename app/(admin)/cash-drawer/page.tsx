@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireCashDrawerAccess } from "@/lib/auth-guards";
 import {
   getDrawerBalanceCents,
@@ -54,8 +55,8 @@ export default async function CashDrawerPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
+      <div className="grid gap-3 sm:grid-cols-3 items-stretch">
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <Wallet className="h-4 w-4 text-brand-700" />
@@ -71,7 +72,7 @@ export default async function CashDrawerPage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
@@ -82,9 +83,13 @@ export default async function CashDrawerPage() {
             <p className="text-2xl font-semibold tabular-nums">
               <MoneyDisplay cents={totalDeposits} monospace={false} />
             </p>
+            {/* Reserved sub-line so this card's baseline matches "On hand". */}
+            <p className="text-[11px] text-text-muted mt-1" aria-hidden="true">
+              &nbsp;
+            </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
@@ -95,12 +100,16 @@ export default async function CashDrawerPage() {
             <p className="text-2xl font-semibold tabular-nums">
               <MoneyDisplay cents={totalWithdrawals} monospace={false} />
             </p>
+            {/* Reserved sub-line so this card's baseline matches "On hand". */}
+            <p className="text-[11px] text-text-muted mt-1" aria-hidden="true">
+              &nbsp;
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
@@ -110,11 +119,11 @@ export default async function CashDrawerPage() {
               Required: invoice number for the source of the deposit.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <DepositForm />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <ShoppingCart className="h-4 w-4 text-brand-700" />
@@ -124,11 +133,11 @@ export default async function CashDrawerPage() {
               Record a purchase paid from the drawer (office supplies, etc.).
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <PettyCashForm />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
@@ -138,7 +147,7 @@ export default async function CashDrawerPage() {
               Use sparingly — payroll cash payments record automatically.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <WithdrawForm />
           </CardContent>
         </Card>
@@ -167,8 +176,12 @@ export default async function CashDrawerPage() {
               <tbody className="divide-y divide-border/50">
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={canManage ? 6 : 5} className="px-4 py-6 text-center text-text-muted">
-                      No drawer activity yet. Record your first deposit above.
+                    <td colSpan={canManage ? 6 : 5} className="px-4 py-6">
+                      <EmptyState
+                        icon={Wallet}
+                        title="No drawer activity yet"
+                        description="Record your first deposit above to start the ledger."
+                      />
                     </td>
                   </tr>
                 ) : (
