@@ -1,7 +1,7 @@
 // Punch queries. Edit preserves originalClockIn/Out and demands a reason.
 // voidPunch is the soft-delete (sets voidedAt; never DELETEs).
 
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
@@ -87,9 +87,12 @@ export async function listPunches(
   if (filters.clockAfter) conds.push(gte(punches.clockIn, filters.clockAfter));
   if (filters.clockBefore)
     conds.push(lte(punches.clockIn, filters.clockBefore));
-  const q = db.select().from(punches);
-  const rows = conds.length > 0 ? await q.where(and(...conds)) : await q;
-  return rows.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
+  // Order in SQL (clockIn asc). Lets the (clock_in) index satisfy the
+  // range+sort for the Time grid / dashboard instead of pulling rows and
+  // re-sorting in JS on every render.
+  const base = db.select().from(punches);
+  const filtered = conds.length > 0 ? base.where(and(...conds)) : base;
+  return filtered.orderBy(asc(punches.clockIn));
 }
 
 /**

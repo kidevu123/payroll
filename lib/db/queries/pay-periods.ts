@@ -24,12 +24,15 @@ export type ListPeriodsOpts = {
 
 export async function listPeriods(opts: ListPeriodsOpts = {}): Promise<PayPeriod[]> {
   const limit = opts.limit ?? 30;
-  const q = db.select().from(payPeriods);
+  // Order + limit in SQL. This runs in the admin layout on every full page
+  // load; the previous "select all, sort+slice in JS" full-scanned the table
+  // (seen in pg_stat as hundreds of thousands of seq scans) for no reason.
   const where = opts.before ? lte(payPeriods.startDate, opts.before) : undefined;
-  const rows = where ? await q.where(where) : await q;
-  return rows
-    .sort((a, b) => (a.startDate < b.startDate ? 1 : -1))
-    .slice(0, limit);
+  const base = db.select().from(payPeriods);
+  const rows = await (where ? base.where(where) : base)
+    .orderBy(desc(payPeriods.startDate))
+    .limit(limit);
+  return rows;
 }
 
 export async function getPeriodById(id: string): Promise<PayPeriod | null> {

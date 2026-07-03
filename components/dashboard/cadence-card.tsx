@@ -14,7 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatMoney, formatHoursMinutes } from "@/lib/utils";
-import { CadenceSparkline } from "./charts/cadence-sparkline";
+import { CadenceSparkline } from "./charts/lazy";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
 import type { CadenceCard as CadenceData } from "@/lib/payroll/dashboard-metrics";

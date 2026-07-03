@@ -5,8 +5,8 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { MoneyDisplay } from "@/components/domain/money-display";
-import { SpendTrendChart } from "@/components/dashboard/charts/spend-trend-chart";
-import { ReportMixDonut } from "./report-mix-donut";
+import { SpendTrendChart } from "@/components/dashboard/charts/lazy";
+import { ReportMixDonut } from "./report-mix-donut-lazy";
 import type { ReportsOverview } from "@/lib/reports/reports-overview";
 
 function RailCard({

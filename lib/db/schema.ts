@@ -394,6 +394,9 @@ export const payPeriods = pgTable(
     ),
     index("pay_periods_state_idx").on(t.state),
     index("pay_periods_schedule_idx").on(t.payScheduleId),
+    // Range-containment "which period covers this day" lookups (getCurrentPeriod,
+    // resolvePeriodIdForEmployeeDay) run on every punch create/edit.
+    index("pay_periods_dates_idx").on(t.startDate, t.endDate),
   ],
 );
 
@@ -432,6 +435,12 @@ export const punches = pgTable(
       .where(sql`${t.ngtecoRecordHash} IS NOT NULL`),
     index("punches_employee_period_idx").on(t.employeeId, t.periodId),
     index("punches_clock_in_idx").on(t.clockIn),
+    // Live-row clockIn scans (Time grid range, dashboard "today"): keeps the
+    // index tight to non-voided rows so it wins over a seq scan as the table
+    // grows year over year.
+    index("punches_clock_in_live_idx")
+      .on(t.clockIn)
+      .where(sql`${t.voidedAt} IS NULL`),
   ],
 );
 
@@ -776,6 +785,10 @@ export const timeOffRequests = pgTable(
       .where(
         sql`${t.status} = 'PENDING' AND ${t.changeRequestForId} IS NOT NULL`,
       ),
+    // Calendar/Time range-overlap queries: status='APPROVED' AND start<=X AND
+    // end>=Y. The status-only index is low-selectivity once most rows are
+    // APPROVED; this composite serves the date window too.
+    index("time_off_status_dates_idx").on(t.status, t.startDate, t.endDate),
   ],
 );
 

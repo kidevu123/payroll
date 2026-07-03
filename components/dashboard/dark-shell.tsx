@@ -10,6 +10,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -31,7 +32,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { CommandPalette, type CommandTarget } from "@/components/admin/command-palette";
+import type { CommandTarget } from "@/components/admin/command-palette";
+// Cmd+K palette — power-user modal, not needed for first paint. Load its
+// chunk (and @radix-ui/react-dialog) after hydration instead of shipping it
+// in every admin page's initial bundle.
+const CommandPalette = dynamic(
+  () => import("@/components/admin/command-palette").then((m) => m.CommandPalette),
+  { ssr: false },
+);
 import { SignOutButton } from "@/components/admin/sign-out-button";
 import { cn } from "@/lib/utils";
 import { DASH } from "./theme";

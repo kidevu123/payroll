@@ -18,7 +18,7 @@ import { getCurrentPeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getRunForPeriod } from "@/lib/db/queries/payroll-runs";
 import { listAlertsForPeriod } from "@/lib/db/queries/alerts";
-import { listRates } from "@/lib/db/queries/rate-history";
+import { listRatesForEmployees } from "@/lib/db/queries/rate-history";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { companyDayIso } from "@/lib/time/company-day";
@@ -110,11 +110,15 @@ export async function computeScheduleCockpit(today: string): Promise<CockpitRow[
       let roundedCents = 0;
       let withWork = 0;
 
+      // Preload every employee's rate history in one query instead of a
+      // per-employee round-trip inside the loop (was the dashboard's N+1).
+      const ratesByE = await listRatesForEmployees(emps.map((e) => e.id));
+
       for (const e of emps) {
         const ePunches = punchesByE.get(e.id) ?? [];
         const eTasks = tasksByE.get(e.id) ?? [];
         if (ePunches.length === 0 && eTasks.length === 0) continue;
-        const rates = await listRates(e.id);
+        const rates = ratesByE.get(e.id) ?? [];
         const result = computePay({
           punches: ePunches,
           timezone: company.timezone,

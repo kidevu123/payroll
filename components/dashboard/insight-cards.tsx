@@ -16,9 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
-import { SpendTrendChart } from "./charts/spend-trend-chart";
-import { SyncSparkline } from "./charts/sync-sparkline";
-import { HealthGauge } from "./charts/health-gauge";
+import { SpendTrendChart, SyncSparkline, HealthGauge } from "./charts/lazy";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DashboardPollButton } from "./dashboard-poll-button";
 import { DASH } from "./theme";
