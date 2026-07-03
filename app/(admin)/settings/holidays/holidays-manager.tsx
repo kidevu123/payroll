@@ -60,6 +60,8 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
                 <Button
                   size="sm"
                   variant="ghost"
+                  aria-label={`Delete holiday ${h.label} on ${h.date}`}
+                  title="Delete holiday"
                   onClick={async () => {
                     if (!confirm(`Delete "${h.label}" on ${h.date}?`)) return;
                     setPending(true);

@@ -75,7 +75,10 @@ export function FeedbackLauncher() {
         // home-indicator inset) so the launcher never hides behind the nav
         // and stays tappable. lg has no bottom bar, so it drops back to the
         // plain bottom-right resting position.
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 lg:bottom-4 lg:right-4 lg:h-9 lg:w-auto lg:gap-1.5 lg:px-3 lg:text-xs lg:font-medium"
+        // Icon-only 40px circle on phones; expands to a labelled pill at `sm`
+        // — the SAME breakpoint the label turns on, so the fixed square never
+        // has to hold text (was a circle→broken-pill collision from sm–lg).
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3 sm:text-xs sm:font-medium lg:bottom-4 lg:right-4"
       >
         <Bug className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
         <span className="hidden sm:inline">Report bug</span>

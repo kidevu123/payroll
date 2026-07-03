@@ -769,6 +769,14 @@ export default async function TimePage({
                 <ChevronRight className="h-3.5 w-3.5" />
               </span>
             )}
+            {/* Jump straight back to the current period (drops ?period= so the
+                page auto-selects today's period for this schedule). */}
+            <Link
+              href={`/time${tab !== "all" ? `?schedule=${tab}` : ""}`}
+              className="ml-1 h-6 inline-flex items-center rounded px-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+            >
+              Today
+            </Link>
           </div>
           <ScheduleTabs current={tab} basePath="/time" />
         </div>
@@ -933,12 +941,16 @@ export default async function TimePage({
             })}
           </ul>
 
-          {/* ── Desktop: full employee×day grid ── */}
-          <div className="hidden lg:block overflow-x-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
+          {/* ── Desktop: full employee×day grid (data-grid surface) ──
+              A bounded 2-axis scroll region so BOTH the employee column
+              (sticky left) and the day header (sticky top) stay pinned while
+              scrolling a wide/tall roster. The visible scrollbar is the
+              horizontal-more cue. */}
+          <div className="hidden lg:block max-h-[72vh] overflow-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
         <table className="min-w-full text-body border-collapse">
           <thead>
-            <tr className="border-b border-border/80 bg-surface-2/90">
-              <th className="sticky left-0 z-10 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
+            <tr className="sticky top-0 z-20 border-b border-border/80 bg-surface-2/95 backdrop-blur">
+              <th className="sticky left-0 z-30 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
                 Employee
               </th>
               {days.map((d) => {
@@ -946,10 +958,10 @@ export default async function TimePage({
                 return (
                   <th
                     key={d}
-                    className={`w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50/70" : ""}`}
+                    className={`w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50" : "bg-surface-2"}`}
                   >
                     <span className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}>
-                      <span className="text-[9.5px] font-bold uppercase tracking-widest">
+                      <span className="text-[11px] font-bold uppercase tracking-widest">
                         {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
                           new Date(`${d}T00:00:00Z`),
                         )}
@@ -1143,7 +1155,7 @@ function PunchCellContent({
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[9px] font-semibold uppercase tracking-wide">
+        <span className="text-[11px] font-semibold uppercase tracking-wide">
           Unpaired
         </span>
         <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
@@ -1160,7 +1172,7 @@ function PunchCellContent({
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[9px] font-semibold uppercase tracking-wide">
+        <span className="text-[11px] font-semibold uppercase tracking-wide">
           Missing in
         </span>
         <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
@@ -1179,9 +1191,9 @@ function PunchCellContent({
         {inLabel}
         <span className="opacity-40 mx-0.5">&ndash;</span>
         {outLabel}
-        {count > 1 ? <span className="ml-0.5 text-[9px] opacity-60">+{count - 1}</span> : null}
+        {count > 1 ? <span className="ml-0.5 text-[11px] opacity-60">+{count - 1}</span> : null}
       </span>
-      <span className="text-[9px] font-medium opacity-65">
+      <span className="text-[11px] font-medium opacity-65">
         {state === "incomplete" ? "in progress" : formatHoursMinutes(hours)}
       </span>
     </span>
@@ -1431,7 +1443,7 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
         <Sparkles className="h-3.5 w-3.5 text-brand-700" />
         <h3 className="text-sm font-semibold">Milo insight</h3>
         <span
-          className="rounded px-1 text-[9px] font-bold uppercase tracking-wide"
+          className="rounded px-1 text-[11px] font-bold uppercase tracking-wide"
           style={{
             background: "color-mix(in srgb, var(--dash-violet) 18%, transparent)",
             color: "var(--dash-violet)",

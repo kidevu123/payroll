@@ -510,6 +510,8 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                         type="button"
                         size="sm"
                         variant="ghost"
+                        aria-label="Remove this temporary worker row"
+                        title="Remove row"
                         onClick={() =>
                           setTempWorkers((prev) => prev.filter((x) => x.key !== tw.key))
                         }

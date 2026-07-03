@@ -134,7 +134,15 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Archive the ${s.name} shift`}
+                            title="Archive shift"
                             onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Archive the "${s.name}" shift? It will no longer be assignable.`,
+                                )
+                              )
+                                return;
                               const result = await archiveShiftAction(s.id);
                               if (result?.error) setError(result.error);
                             }}

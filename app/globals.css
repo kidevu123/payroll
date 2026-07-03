@@ -293,9 +293,35 @@ body {
   background: var(--color-page);
   color: var(--color-text);
   font-family: var(--font-sans);
+  /* Kill rubber-band overscroll that reveals the white body behind the dark
+     app shell (the "white strip" seen at the page edges on bounce). */
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+/* Admin shell backstop: #admin-root carries the theme class (.dark) and wraps
+   the whole dark shell. Give it the themed canvas background + full viewport
+   min-height so short pages never let the white <body> show below the app.
+   Scoped to admin, so auth/login pages are untouched. */
+#admin-root {
+  min-height: 100dvh;
+  background: var(--dash-bg);
+}
+
+/* Respect prefers-reduced-motion: neutralize non-essential motion — card
+   hover lifts, glow pulses, status/expand transitions, smooth scroll — for
+   users who ask the OS to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 

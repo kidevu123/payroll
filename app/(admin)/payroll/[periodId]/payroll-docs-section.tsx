@@ -267,6 +267,16 @@ function DocRow({
               size="sm"
               variant="ghost"
               disabled={removing}
+              aria-label={`Delete document ${doc.originalFilename}`}
+              title="Delete document"
+              onClick={(e) => {
+                if (
+                  !window.confirm(
+                    `Delete "${doc.originalFilename}"? This can't be undone.`,
+                  )
+                )
+                  e.preventDefault();
+              }}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

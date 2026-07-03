@@ -202,11 +202,15 @@ export default async function PayrollPage({
               return (
                 <div
                   key={p.id}
-                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 ${rowAccent}`}
+                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 focus-within:ring-2 focus-within:ring-brand-700/60 ${rowAccent}`}
                 >
+                  {/* Stretched link: the whole row is the click/hover target
+                      (after:inset-0), while the delete button sits above it
+                      via z-10 so it stays independently clickable. Keyboard
+                      focus lights the row through focus-within. */}
                   <Link
                     href={`/payroll/${p.id}`}
-                    className="group flex items-center gap-3 font-medium flex-1 min-w-0 pl-1"
+                    className="group flex items-center gap-3 font-medium flex-1 min-w-0 pl-1 after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:outline-none"
                   >
                     <span className="tabular-nums">
                       {p.startDate} – {displayEnd}
@@ -215,7 +219,9 @@ export default async function PayrollPage({
                     <StatusPill status={p.state} />
                     <ChevronRight className="h-4 w-4 text-text-muted ml-auto transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <PeriodDeleteButton periodId={p.id} state={p.state} />
+                  <div className="relative z-10">
+                    <PeriodDeleteButton periodId={p.id} state={p.state} />
+                  </div>
                 </div>
               );
             })

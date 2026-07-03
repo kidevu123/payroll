@@ -56,4 +56,53 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
+/**
+ * IconButton — square, icon-only control with a MANDATORY accessible name.
+ *
+ * Prevents the two recurring bugs the design audit found:
+ *   1. Geometry collision — a fixed square (`w-10`) that also holds text turns
+ *      a circle into a broken pill. IconButton never renders text, so the
+ *      square footprint is always honest.
+ *   2. Missing accessible name — `aria-label` is required at the type level, so
+ *      an icon-only button can't ship without a screen-reader name.
+ *
+ * Touch-friendly by default (min 44px hit area) while staying visually 36–40px.
+ */
+export interface IconButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">,
+    Pick<VariantProps<typeof buttonVariants>, "variant"> {
+  /** Required: screen-reader name for the icon-only action. */
+  "aria-label": string;
+  /** The icon element (aria-hidden). */
+  children: React.ReactNode;
+  /** Visual footprint. Defaults to md (40px); sm (32px) for dense tables. */
+  sizePx?: "sm" | "md";
+  asChild?: boolean;
+}
+
+export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ className, variant = "ghost", sizePx = "md", asChild = false, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        type={asChild ? undefined : "button"}
+        className={cn(
+          buttonVariants({ variant }),
+          // Square footprint + generous touch target (hit area >= 44px via
+          // padding-free min sizing on touch, visual box stays compact).
+          "shrink-0 rounded-lg p-0",
+          sizePx === "sm" ? "h-8 w-8 min-h-8 min-w-8" : "h-10 w-10",
+          "[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
+          className,
+        )}
+        ref={ref}
+        {...props}
+      >
+        {children}
+      </Comp>
+    );
+  },
+);
+IconButton.displayName = "IconButton";
+
 export { buttonVariants };

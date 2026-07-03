@@ -217,12 +217,12 @@ export default async function DashboardPage() {
     // The dark shell (layout) owns the canvas background + container; the page
     // just lays out its content sections. Tight vertical rhythm so the whole
     // dashboard reads as one composed screen (matches the reference density).
-    // Height-locked on desktop: the dashboard fills exactly the viewport
-    // (minus the shell's 2rem vertical padding) and never scrolls. The three
-    // data rows flex to fill leftover space; header/banner/KPI stay fixed.
-    // Charts shrink via ResponsiveContainer so populated cards always fit.
-    // Mobile keeps its natural vertical stack (scrolls as normal).
-    <div className="flex flex-col gap-2 lg:h-[calc(100dvh-2rem)] lg:min-h-0 lg:overflow-hidden">
+    // Desktop: the dashboard TARGETS one viewport (minus the shell's 2rem
+    // padding) so it reads as a single screen, but uses min-height (not a hard
+    // height + overflow-hidden) so tall content, long labels, or browser zoom
+    // scroll instead of being clipped. The three data rows flex to fill any
+    // leftover space; header/banner/KPI stay fixed. Mobile stacks naturally.
+    <div className="flex flex-col gap-2 lg:min-h-[calc(100dvh-2rem)]">
       <GreetingHeader
         name={firstName}
         hour={hour}
@@ -233,14 +233,14 @@ export default async function DashboardPage() {
       />
 
       {/* TOP ROW — cadence cards (equal height) */}
-      <section className="grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-3 lg:flex-1 lg:min-h-0 xl:[grid-template-rows:minmax(0,1fr)]">
+      <section className="grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-3 lg:flex-1 lg:min-h-0 xl:[grid-template-rows:minmax(min-content,1fr)]">
         {metrics.cadences.map((card) => (
           <CadenceCard key={card.scheduleId} card={card} />
         ))}
       </section>
 
       {/* SECOND ROW — trend + mini stats + sync + health, all equal height */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(0,1fr)]">
+      <section className="grid items-stretch gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(min-content,1fr)]">
         <div className="lg:col-span-5">
           <TrendCard trend={metrics.trend} />
         </div>
@@ -262,7 +262,7 @@ export default async function DashboardPage() {
       <AutomationBanner automation={metrics.automation} />
 
       {/* THIRD ROW — pending / recent / today (equal height) */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-3 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(0,1fr)]">
+      <section className="grid items-stretch gap-2 lg:grid-cols-3 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(min-content,1fr)]">
         <PendingRequestsCard items={pendingItems} />
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />

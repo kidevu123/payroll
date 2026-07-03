@@ -171,6 +171,8 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                         <Button
                           size="sm"
                           variant="ghost"
+                          aria-label={`Delete the ${o.name} integration`}
+                          title="Delete integration"
                           onClick={async () => {
                             if (!confirm(`Delete the ${o.name} integration?`)) return;
                             setPending(`del-${o.id}`);

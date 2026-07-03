@@ -182,7 +182,7 @@ function TableViewer({
               {columns.map((c) => (
                 <th key={c.name} className="px-2 py-2 font-medium whitespace-nowrap">
                   <div>{c.name}</div>
-                  <div className="text-[9px] normal-case font-normal text-text-subtle">
+                  <div className="text-[11px] normal-case font-normal text-text-subtle">
                     {c.dataType}
                     {c.isNullable ? "?" : ""}
                   </div>

@@ -333,7 +333,7 @@ export function DashboardDarkShell({
                 {company.name} Intelligence
               </span>
               <span
-                className="rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-wide"
+                className="rounded px-1.5 py-px text-[11px] font-bold uppercase tracking-wide"
                 style={{ background: "rgba(139,92,246,0.25)", color: DASH.violetBright }}
               >
                 Beta
@@ -444,7 +444,7 @@ export function DashboardDarkShell({
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
       <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[1500px] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:py-4 lg:pt-4 lg:pb-4">
+        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:py-4 lg:pt-4 lg:pb-4 2xl:px-10">
           {children}
         </div>
       </main>

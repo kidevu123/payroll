@@ -1091,7 +1091,7 @@ function PunchSubTable({
   return (
     <div className="overflow-x-auto px-3 pb-3 pt-1 md:px-9">
       <table className="min-w-[22rem] text-xs md:min-w-full">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-medium">Day</th>
             <th className="py-1 px-3 font-medium">In</th>

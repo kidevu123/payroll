@@ -176,7 +176,14 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                           </option>
                         ))}
                       </select>
-                      <Button type="submit" size="sm" variant="ghost" disabled={pending !== null}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending !== null}
+                        aria-label="Save role change"
+                        title="Save role"
+                      >
                         <Send className="h-3.5 w-3.5" />
                       </Button>
                     </form>

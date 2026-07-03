@@ -402,7 +402,7 @@ function MonthCard({
           </span>
         </div>
         <div className="flex flex-col items-end leading-none whitespace-nowrap">
-          <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-text-subtle">
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
             Month net
           </span>
           <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text">

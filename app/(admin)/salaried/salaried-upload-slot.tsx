@@ -66,6 +66,13 @@ function formatRange(start: string | null, end: string | null): string | null {
   return `${left} – ${right}`;
 }
 
+/** Loose label compare so "Semi-monthly" and "Semi-Monthly" (and "Monthly"
+ *  vs "Monthly") are treated as the same word — used to suppress redundant
+ *  schedule-name labels next to the cadence badge. */
+function normalizeLabel(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function formatMoney(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
@@ -211,7 +218,13 @@ export function SalariedUploadSlot({
           <span className="inline-flex items-center gap-1 rounded-chip bg-surface-2 px-2 py-0.5 font-medium text-text-muted ring-1 ring-inset ring-border/70">
             {scheduleBadge}
           </span>
-          <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
+          {/* Only show the schedule NAME when it adds information — the default
+              schedules are literally named after their cadence ("Monthly"),
+              which produced a redundant "Monthly  Monthly". Compare loosely so
+              "Semi-monthly" vs "Semi-Monthly" also collapses to one. */}
+          {normalizeLabel(inferred.scheduleName) !== normalizeLabel(scheduleBadge) && (
+            <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
+          )}
         </div>
       )}
 

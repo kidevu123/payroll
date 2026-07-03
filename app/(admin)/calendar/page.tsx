@@ -96,7 +96,12 @@ export default async function CalendarPage({
 }) {
   const params = await searchParams;
   const company = await getSetting("company");
-  const tab = params.tab === "totals" ? "totals" : "calendar";
+  const tab =
+    params.tab === "totals"
+      ? "totals"
+      : params.tab === "agenda"
+        ? "agenda"
+        : "calendar";
   const today = new Date();
   const companyToday = companyTodayIso(today, company.timezone);
   const year = Number(params.year) || Number(companyToday.slice(0, 4));
@@ -322,9 +327,14 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {/* Tab nav. Two pills, no chrome — keeps the page header light. */}
+      {/* Tab nav. Pills, no chrome — keeps the page header light. */}
       <div className="flex items-center gap-1 border-b border-border">
         <TabPill href="/calendar" label="Calendar" active={tab === "calendar"} />
+        <TabPill
+          href="/calendar?tab=agenda"
+          label="Agenda"
+          active={tab === "agenda"}
+        />
         <TabPill
           href="/calendar?tab=totals"
           label="Time off totals"
@@ -366,6 +376,91 @@ export default async function CalendarPage({
               View full breakdown →
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Agenda — one row per absence with a SINGLE Edit/Cancel pair. The
+          month grid necessarily repeats a visual bar (and its actions) on
+          every day a leave spans; that's dozens of duplicated controls in the
+          reading order for a multi-week leave. This view is the keyboard /
+          screen-reader friendly path: each absence is one actionable item. */}
+      {tab === "agenda" && (
+        <div className="rounded-card border border-border bg-surface">
+          {approved.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-text-muted">
+              No approved time-off in {monthName}.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {[...approved]
+                .sort((a, b) =>
+                  a.startDate < b.startDate
+                    ? -1
+                    : a.startDate > b.startDate
+                      ? 1
+                      : nameFromMap(empMap, a.employeeId).localeCompare(
+                          nameFromMap(empMap, b.employeeId),
+                        ),
+                )
+                .map((r) => {
+                  const manageable = isAdminManageableTimeOff(r, todayIso);
+                  const partial = partialLabel(
+                    r.partialStartTime,
+                    r.partialEndTime,
+                  );
+                  return (
+                    <li
+                      key={r.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">
+                            {nameFromMap(empMap, r.employeeId)}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-[11px] ${TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER}`}
+                          >
+                            {TYPE_LABEL[r.type] ?? r.type}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-text-muted tabular-nums">
+                          {r.startDate}
+                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          {partial ? ` · ${partial}` : ""}
+                        </div>
+                        {r.reason && (
+                          <p className="mt-0.5 text-[11px] text-text-subtle line-clamp-1">
+                            {r.reason}
+                          </p>
+                        )}
+                      </div>
+                      {manageable && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <EditApprovedTimeOffAction
+                            request={{
+                              id: r.id,
+                              startDate: r.startDate,
+                              endDate: r.endDate,
+                              type: r.type as
+                                | "UNPAID"
+                                | "SICK"
+                                | "PERSONAL"
+                                | "OTHER",
+                              reason: r.reason,
+                            }}
+                          />
+                          <CancelTimeOffActionButton
+                            requestId={r.id}
+                            status="APPROVED"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
+          )}
         </div>
       )}
 

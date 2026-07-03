@@ -441,7 +441,7 @@ function RunPunchTable({
   return (
     <div className="px-9 pb-3 pt-1">
       <table className="min-w-full text-xs">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-medium">Day</th>
             <th className="py-1 px-3 font-medium">In</th>
