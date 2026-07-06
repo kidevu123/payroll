@@ -486,6 +486,12 @@ function PeriodLine({
   const paystubRun = group.runs.find((r) => r.isSalariedPaystub);
   if (paystubRun) {
     const docs = paystubRun.paystubDocs ?? [];
+    // Period-attached paystub groups carry the real period id (uuid) —
+    // link back to that period's page. Salaried-tab uploads have only the
+    // synthetic "salaried-paystub:" key and keep linking to /salaried.
+    const rangeHref = group.periodId.startsWith("salaried-paystub:")
+      ? "/salaried"
+      : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
         <span
@@ -496,7 +502,7 @@ function PeriodLine({
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-5">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
               <Link
-                href="/salaried"
+                href={rangeHref}
                 className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
               >
                 {formatRange(group.periodStart, group.periodEnd)}
