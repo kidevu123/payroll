@@ -44,7 +44,7 @@ import { PublishPeriodButton } from "./publish-period-button";
 import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { PayrollDocsSection } from "./payroll-docs-section";
-import { listDocs } from "@/lib/db/queries/payroll-documents";
+import { listDocs, listUnattachedDocsForRange } from "@/lib/db/queries/payroll-documents";
 import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { DedupPunchesButton } from "./dedup-button";
@@ -152,7 +152,7 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs, allPayslips, duplicateClusters] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, attachedDocs, rangeDocs, allPayslips, duplicateClusters] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
@@ -161,9 +161,13 @@ export default async function PeriodReviewPage({
     db.select().from(paySchedules),
     listTempWorkers({ periodId }),
     listDocs({ periodId }),
+    // Salaried-tab uploads carry the same date range but no period link —
+    // show them here too so the period page sees every paystub it covers.
+    listUnattachedDocsForRange(period.startDate, period.endDate),
     listPayslipsForPeriod(periodId, { includeVoided: true }),
     findDuplicatePunchClusters({ periodId }),
   ]);
+  const payrollDocs = [...attachedDocs, ...rangeDocs];
   const tz = company.timezone ?? "America/New_York";
   const duplicateDetails = buildDuplicatePunchDetails({
     timezone: tz,

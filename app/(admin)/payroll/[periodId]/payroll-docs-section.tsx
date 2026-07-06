@@ -18,6 +18,7 @@ import {
   deletePayrollDocAction,
   uploadPayrollDocAction,
 } from "./payroll-docs-actions";
+import { ZohoDocStatus } from "@/components/domain/zoho-doc-status";
 
 type EmployeeLite = Pick<
   Employee,
@@ -242,6 +243,11 @@ function DocRow({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        {/* Zoho stays available on locked/PAID periods — pushing the expense
+            is exactly what happens after paying. Hourly requiresW2Upload
+            employees never appear on the Salaried page, so this is the only
+            place their paystub can be pushed. */}
+        <ZohoDocStatus doc={doc} />
         <Button asChild size="sm" variant="ghost">
           <Link
             href={`/api/payroll-docs/${doc.id}`}

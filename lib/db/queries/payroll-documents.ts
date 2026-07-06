@@ -36,6 +36,32 @@ export async function listDocs(
   );
 }
 
+/**
+ * Paystubs uploaded from the Salaried tab (periodId NULL) whose declared
+ * pay period exactly matches [start, end]. The period detail page merges
+ * these with its period-attached docs so every paystub covering the range
+ * is visible and manageable in one place — otherwise a Salaried-tab upload
+ * is invisible on the period page (and vice versa on the Salaried page for
+ * hourly requiresW2Upload employees, who aren't listed there at all).
+ */
+export async function listUnattachedDocsForRange(
+  start: string,
+  end: string,
+): Promise<PayrollPeriodDocument[]> {
+  return db
+    .select()
+    .from(payrollPeriodDocuments)
+    .where(
+      and(
+        isNull(payrollPeriodDocuments.periodId),
+        isNull(payrollPeriodDocuments.deletedAt),
+        eq(payrollPeriodDocuments.payPeriodStart, start),
+        eq(payrollPeriodDocuments.payPeriodEnd, end),
+      ),
+    )
+    .orderBy(desc(payrollPeriodDocuments.uploadedAt));
+}
+
 export async function getDoc(
   id: string,
 ): Promise<PayrollPeriodDocument | null> {
