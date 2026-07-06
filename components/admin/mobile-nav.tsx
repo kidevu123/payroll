@@ -326,11 +326,15 @@ export function MobileQuickNav({
   allowedSurfaces,
   currentLocale,
   badges,
+  hideFrom = "lg",
 }: {
   company: { name: string; logoPath: string | null };
   allowedSurfaces?: ReadonlyArray<Surface> | undefined;
   currentLocale: "en" | "es";
   badges?: Record<string, number> | undefined;
+  /** Breakpoint where the shell's own sidebar takes over. The light shell's
+   *  sidebar appears at lg; the dark shell shows a tablet icon rail from md. */
+  hideFrom?: "md" | "lg";
 }) {
   const pathname = usePathname() ?? "";
   const tNav = useTranslations("nav");
@@ -363,7 +367,8 @@ export function MobileQuickNav({
       <nav
         aria-label={tNav("openNavigation")}
         className={cn(
-          "lg:hidden fixed inset-x-0 bottom-0 z-40",
+          hideFrom === "md" ? "md:hidden" : "lg:hidden",
+          "fixed inset-x-0 bottom-0 z-40",
           "border-t border-border/80 bg-surface/95 backdrop-blur-md",
           "shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(15_23_42_/_0.12)]",
           "pb-[env(safe-area-inset-bottom)]",

@@ -216,10 +216,12 @@ function PollStatusBarView({
   ui,
   onDismiss,
   onCancel,
+  offsetForFixedTopbar,
 }: {
   ui: ReturnType<typeof deriveUi>;
   onDismiss: () => void;
   onCancel: () => void;
+  offsetForFixedTopbar: boolean;
 }) {
   if (!ui.show) return null;
 
@@ -250,7 +252,12 @@ function PollStatusBarView({
     <div
       role="status"
       aria-live="polite"
-      className="border-b border-border bg-surface px-3 py-2 text-text sm:px-4 mt-[calc(3.5rem+env(safe-area-inset-top))] lg:mt-0"
+      className={cn(
+        "border-b border-border bg-surface px-3 py-2 text-text sm:px-4",
+        // Only the light shell needs to clear its fixed mobile Topbar; the
+        // dark shell renders this bar inside an already-offset canvas.
+        offsetForFixedTopbar && "mt-[calc(3.5rem+env(safe-area-inset-top))] lg:mt-0",
+      )}
       style={{
         // Subtle state-tinted wash over the dark surface + a colored left edge.
         background: `linear-gradient(90deg, color-mix(in srgb, ${accent} 14%, transparent), color-mix(in srgb, ${accent} 5%, transparent))`,
@@ -432,7 +439,13 @@ export function PollStatusProvider({
   );
 }
 
-export function PollStatusBar() {
+export function PollStatusBar({
+  offsetForFixedTopbar = false,
+}: {
+  /** Set when the bar sits directly under the light shell's fixed mobile
+   *  Topbar (below lg). The dark shell canvas already pads for its top bar. */
+  offsetForFixedTopbar?: boolean;
+} = {}) {
   const ctx = React.useContext(PollStatusContext);
   if (!ctx) return null;
 
@@ -444,6 +457,7 @@ export function PollStatusBar() {
       ui={show ? ui : { ...ui, show: false }}
       onDismiss={ctx.dismiss}
       onCancel={ctx.cancel}
+      offsetForFixedTopbar={offsetForFixedTopbar}
     />
   );
 }

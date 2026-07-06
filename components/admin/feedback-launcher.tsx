@@ -12,7 +12,14 @@ import { usePathname } from "next/navigation";
  * emits a logger.info so the report shows up in the errors panel of
  * the Grafana dashboard.
  */
-export function FeedbackLauncher() {
+export function FeedbackLauncher({
+  bottomBarHideFrom = "lg",
+}: {
+  /** Breakpoint where the shell's fixed bottom tab bar disappears — the
+   *  launcher drops to the plain corner there. lg for the light shell,
+   *  md for the dark shell (its tablet icon rail replaces the bar at md). */
+  bottomBarHideFrom?: "md" | "lg";
+} = {}) {
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [done, setDone] = React.useState<null | "ok" | string>(null);
@@ -73,12 +80,12 @@ export function FeedbackLauncher() {
         aria-label="Report a bug"
         // Mobile: rest above the fixed bottom tab bar (bar height +
         // home-indicator inset) so the launcher never hides behind the nav
-        // and stays tappable. lg has no bottom bar, so it drops back to the
-        // plain bottom-right resting position.
+        // and stays tappable. Once the shell's bottom bar hides
+        // (bottomBarHideFrom), it drops back to the plain corner.
         // Icon-only 40px circle on phones; expands to a labelled pill at `sm`
         // — the SAME breakpoint the label turns on, so the fixed square never
         // has to hold text (was a circle→broken-pill collision from sm–lg).
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3 sm:text-xs sm:font-medium lg:bottom-4 lg:right-4"
+        className={`fixed bottom-[calc(env(safe-area-inset-bottom)+4.25rem)] right-3 z-30 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-brand-fg shadow-pop transition-colors hover:bg-brand-800 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3 sm:text-xs sm:font-medium ${bottomBarHideFrom === "md" ? "md:bottom-4 md:right-4" : "lg:bottom-4 lg:right-4"}`}
       >
         <Bug className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
         <span className="hidden sm:inline">Report bug</span>

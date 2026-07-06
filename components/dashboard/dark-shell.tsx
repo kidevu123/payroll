@@ -163,10 +163,11 @@ export function DashboardDarkShell({
         color: DASH.text,
       }}
     >
-      {/* ── Mobile top bar (branding) — the desktop sidebar is hidden on
-          small screens; the bottom tab bar (MobileQuickNav) carries nav. */}
+      {/* ── Mobile top bar (branding) — shown below md only; from md up the
+          sidebar rail takes over and the bottom tab bar (MobileQuickNav)
+          hides at the same breakpoint. */}
       <div
-        className="lg:hidden fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 px-4"
+        className="md:hidden fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 px-4"
         style={{
           height: "calc(3.5rem + env(safe-area-inset-top))",
           paddingTop: "env(safe-area-inset-top)",
@@ -230,9 +231,13 @@ export function DashboardDarkShell({
         </div>
       </div>
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      {/* ── Sidebar ─────────────────────────────────────────────────
+          Compact icon rail on tablet (md, w-16) → full sidebar on desktop
+          (lg, w-64). Below md it's hidden and the mobile top bar + bottom
+          tab bar take over. Labels/search/intelligence/profile-detail are
+          gated to lg so the rail stays icon-only. */}
       <aside
-        className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 flex-col h-dvh"
+        className="hidden md:flex fixed inset-y-0 left-0 z-30 w-16 lg:w-64 flex-col h-dvh"
         style={{
           background: DASH.sidebar,
           borderRight: `1px solid ${DASH.border}`,
@@ -240,7 +245,7 @@ export function DashboardDarkShell({
         }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 shrink-0">
+        <div className="flex items-center justify-center lg:justify-start gap-2.5 px-0 lg:px-5 pt-5 pb-4 shrink-0">
           {company.logoPath ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -263,14 +268,14 @@ export function DashboardDarkShell({
               {company.name.slice(0, 1).toLowerCase()}
             </span>
           )}
-          <span className="text-[17px] font-bold tracking-tight" style={{ color: DASH.text }}>
+          <span className="hidden lg:inline text-[17px] font-bold tracking-tight" style={{ color: DASH.text }}>
             {company.name}
           </span>
-          <ThemeToggle className="ml-auto" />
+          <ThemeToggle className="ml-auto hidden lg:inline-flex" />
         </div>
 
-        {/* Search */}
-        <div className="px-3 pb-3 shrink-0">
+        {/* Search — full sidebar only; Cmd+K still works on the rail. */}
+        <div className="hidden lg:block px-3 pb-3 shrink-0">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -297,7 +302,7 @@ export function DashboardDarkShell({
           {sections.map((sec) => (
             <div key={sec.headingKey}>
               <div
-                className="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                className="hidden lg:block px-2 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: DASH.textFaint }}
               >
                 {tNav(sec.headingKey)}
@@ -318,8 +323,9 @@ export function DashboardDarkShell({
           ))}
         </nav>
 
-        {/* Intelligence card → Assistant */}
-        <div className="px-3 pb-3 shrink-0">
+        {/* Intelligence card → Assistant — full sidebar only; the rail
+            already carries the Assistant nav icon. */}
+        <div className="hidden lg:block px-3 pb-3 shrink-0">
           <div
             className="rounded-2xl p-3.5"
             style={{
@@ -369,10 +375,11 @@ export function DashboardDarkShell({
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 transition-colors"
+              className="flex w-full items-center justify-center lg:justify-start gap-0 lg:gap-2.5 rounded-xl px-0 lg:px-2 py-2 transition-colors"
               style={{ background: menuOpen ? DASH.hover : "transparent" }}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-label={user.name}
             >
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -392,7 +399,7 @@ export function DashboardDarkShell({
                   {initialsOf(user.name)}
                 </span>
               )}
-              <span className="min-w-0 flex-1 text-left">
+              <span className="hidden lg:block min-w-0 flex-1 text-left">
                 <span className="block truncate text-[13px] font-semibold" style={{ color: DASH.text }}>
                   {user.name}
                 </span>
@@ -400,12 +407,15 @@ export function DashboardDarkShell({
                   {user.role}
                 </span>
               </span>
-              <ChevronDown className="h-4 w-4 shrink-0" style={{ color: DASH.textFaint }} aria-hidden />
+              <ChevronDown className="hidden lg:block h-4 w-4 shrink-0" style={{ color: DASH.textFaint }} aria-hidden />
             </button>
+            {/* On the rail the sidebar is only 64px wide, so the menu flies
+                out to the right of the avatar; from lg it spans the sidebar
+                width as before. */}
             {menuOpen ? (
               <div
                 role="menu"
-                className="absolute bottom-12 left-0 right-0 z-40 overflow-hidden rounded-xl"
+                className="absolute bottom-12 left-0 z-40 w-56 overflow-hidden rounded-xl lg:w-auto lg:right-0"
                 style={{ background: DASH.surfaceRaised, border: `1px solid ${DASH.borderStrong}` }}
               >
                 <div className="px-3 py-2 text-[11px] truncate" style={{ color: DASH.textFaint }}>
@@ -423,7 +433,7 @@ export function DashboardDarkShell({
           {/* Version marker — always visible, kept out of the content column so
               the dashboard still fits one screen. */}
           <div
-            className="flex items-center justify-center gap-1.5 pt-0.5 text-[10px]"
+            className="hidden lg:flex items-center justify-center gap-1.5 pt-0.5 text-[10px]"
             style={{ color: DASH.textFaint }}
             title={`Server time ${footer.serverTime} · Made by your haute tech team`}
           >
@@ -443,8 +453,11 @@ export function DashboardDarkShell({
       </aside>
 
       {/* ── Canvas ──────────────────────────────────────────────── */}
-      <main className="lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:py-4 lg:pt-4 lg:pb-4 2xl:px-10">
+      {/* md clears the 4rem icon rail; lg the full 16rem sidebar. The mobile
+          top/bottom fixed bars hide from md up, so their pt/pb offsets reset
+          to plain py-4 at the same breakpoint. */}
+      <main className="md:pl-16 lg:pl-64 min-h-dvh">
+        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-4 md:pt-4 md:pb-4 2xl:px-10">
           {children}
         </div>
       </main>
@@ -477,11 +490,15 @@ function DarkNavItem({
 }) {
   return (
     <li className="list-none">
+      {/* Icon-only on the tablet rail (label hidden, native title as the
+          tooltip, badge collapses to a dot); full row with label + count
+          pill from lg up. */}
       <Link
         href={href}
         aria-current={active ? "page" : undefined}
+        title={label}
         className={cn(
-          "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors",
+          "group relative flex items-center justify-center lg:justify-start gap-0 lg:gap-3 rounded-xl px-0 lg:px-3 py-2 text-[13px] font-semibold transition-colors",
         )}
         style={
           active
@@ -502,14 +519,21 @@ function DarkNavItem({
           strokeWidth={active ? 2 : 1.75}
           aria-hidden
         />
-        <span className="flex-1 truncate">{label}</span>
+        <span className="hidden lg:block flex-1 truncate">{label}</span>
         {badge !== null ? (
-          <span
-            className="rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums"
-            style={{ background: "rgba(139,92,246,0.3)", color: DASH.violetBright }}
-          >
-            {badge}
-          </span>
+          <>
+            <span
+              aria-hidden
+              className="lg:hidden absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+              style={{ background: DASH.violetBright }}
+            />
+            <span
+              className="hidden lg:inline rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums"
+              style={{ background: "rgba(139,92,246,0.3)", color: DASH.violetBright }}
+            >
+              {badge}
+            </span>
+          </>
         ) : null}
       </Link>
     </li>

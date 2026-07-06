@@ -199,14 +199,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <PollStatusBar />
             {children}
           </DashboardDarkShell>
-          {/* Mobile navigation (the dark sidebar is desktop-only). */}
+          {/* Mobile navigation — hands off to the dark shell's icon rail at md. */}
           <MobileQuickNav
             company={companyForBrand}
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
             badges={navBadges}
+            hideFrom="md"
           />
-          <FeedbackLauncher />
+          <FeedbackLauncher bottomBarHideFrom="md" />
         </div>
       </PollStatusProvider>
     );
@@ -233,7 +234,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
           />
-          <PollStatusBar />
+          <PollStatusBar offsetForFixedTopbar />
           <MobileQuickNav
             company={companyForBrand}
             currentLocale={locale}
