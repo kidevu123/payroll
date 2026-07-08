@@ -5,6 +5,7 @@
 // Plus an Acknowledge button when not yet acknowledged.
 
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileDown, AlertTriangle, CircleCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -552,9 +553,9 @@ async function PayslipBody({
               {t("spreadsheetAttached")}
             </p>
             <Button asChild variant="secondary">
-              <a href={`/api/payslips/${payslip.id}/pdf`} download>
+              <PdfLink href={`/api/payslips/${payslip.id}/pdf`} filename="payslip.pdf">
                 <FileDown className="h-4 w-4" /> {t("downloadOriginal")}
-              </a>
+              </PdfLink>
             </Button>
           </CardContent>
         </Card>

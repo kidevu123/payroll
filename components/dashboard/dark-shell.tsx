@@ -109,8 +109,7 @@ export function DashboardDarkShell({
   allowedSurfaces?: ReadonlyArray<string>;
   /** Pending-work counts keyed by nav href (e.g. `{ "/time": 2 }`).
    *  The badge sits on the section the work belongs to — missed punches on
-   *  Time, time-off on Calendar — never on the Notifications item, which is
-   *  the announcements feed and has no pending queue of its own. */
+   *  Time, time-off on Calendar, recent announcements on Notifications. */
   badges?: Record<string, number>;
   commandTargets: CommandTarget[];
   signOutLabel: string;
@@ -199,9 +198,8 @@ export function DashboardDarkShell({
         </span>
         {/* Right cluster: notifications + avatar (matches the mobile refs). */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Announcements. No pending-work dot here — the review queue lives
-              on the Time and Calendar nav items where the work actually is,
-              so this bell stays a plain link to the announcements feed. */}
+          {/* Announcements bell. Mirrors the sidebar's Notifications badge —
+              recent announcements (last 7 days) show as a count bubble. */}
           <Link
             href="/notifications"
             aria-label="Notifications"
@@ -209,6 +207,14 @@ export function DashboardDarkShell({
             style={{ color: DASH.textMuted, background: DASH.surfaceRaised }}
           >
             <Bell className="h-4 w-4" aria-hidden />
+            {(badges?.["/notifications"] ?? 0) > 0 ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums"
+                style={{ background: DASH.violetBright, color: "#0b0b12" }}
+              >
+                {badges!["/notifications"]}
+              </span>
+            ) : null}
           </Link>
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -327,7 +333,7 @@ export function DashboardDarkShell({
             already carries the Assistant nav icon. */}
         <div className="hidden lg:block px-3 pb-3 shrink-0">
           <div
-            className="rounded-2xl p-3.5"
+            className="rounded-xl p-3.5"
             style={{
               background: "linear-gradient(160deg, rgba(139,92,246,0.16), rgba(139,92,246,0.04))",
               border: `1px solid ${DASH.borderStrong}`,

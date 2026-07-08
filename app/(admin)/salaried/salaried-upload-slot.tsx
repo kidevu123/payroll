@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import {
   CalendarClock,
   CheckCircle2,
@@ -496,14 +497,13 @@ function DocRow({ doc }: { doc: DocLite }) {
           <InlineNet doc={doc} />
           <ZohoDocStatus doc={doc} />
           <Button asChild size="sm" variant="ghost">
-            <Link
+            <PdfLink
               href={`/api/payroll-docs/${doc.id}`}
-              target="_blank"
-              rel="noopener"
+              filename="paystub.pdf"
               title="View document"
             >
               <Download className="h-3.5 w-3.5" /> View
-            </Link>
+            </PdfLink>
           </Button>
           <form
             action={async () => {

@@ -119,6 +119,21 @@ export async function listAnnouncements(limit = 100): Promise<
   return rows;
 }
 
+/** Announcements sent in the last `days` days — powers the sidebar badge
+ *  so "Notifications" shows recent activity at a glance. */
+export async function countRecentAnnouncements(days = 7): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(announcements)
+    .where(
+      and(
+        isNull(announcements.deletedAt),
+        sql`${announcements.sentAt} > now() - make_interval(days => ${days})`,
+      ),
+    );
+  return row?.n ?? 0;
+}
+
 export async function deleteAnnouncementForHistory(args: {
   id: string;
   actorId: string;

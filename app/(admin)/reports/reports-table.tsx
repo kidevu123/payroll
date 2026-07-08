@@ -29,6 +29,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { periodNetCents } from "@/lib/reports/period-net";
 import {
   Download,
@@ -1009,9 +1010,9 @@ function RowOverflowMenu({
         <DropdownMenuLabel>Documents</DropdownMenuLabel>
         {hasPdf ? (
           <DropdownMenuItem asChild>
-            <Link href={`/api/reports/${runId}/pdf`} target="_blank" rel="noopener">
+            <PdfLink href={`/api/reports/${runId}/pdf`} filename="admin-report.pdf">
               <Download className="h-3.5 w-3.5" /> Download report PDF
-            </Link>
+            </PdfLink>
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem disabled>
@@ -1019,22 +1020,20 @@ function RowOverflowMenu({
           </DropdownMenuItem>
         )}
         <DropdownMenuItem asChild>
-          <Link
+          <PdfLink
             href={`/api/payroll/${periodId}/payslips-cut-sheet`}
-            target="_blank"
-            rel="noopener"
+            filename="payslip-cut-sheet.pdf"
           >
             <Scissors className="h-3.5 w-3.5" /> Pay-slip cut sheet
-          </Link>
+          </PdfLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link
+          <PdfLink
             href={`/api/payslips/period/${periodId}/signature`}
-            target="_blank"
-            rel="noopener"
+            filename="signature-report.pdf"
           >
             <Printer className="h-3.5 w-3.5" /> Signature report
-          </Link>
+          </PdfLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/payroll/${periodId}`}>

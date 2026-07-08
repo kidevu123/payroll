@@ -3,6 +3,7 @@
 // runs never appear here.
 
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, FileText, Wallet } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
@@ -239,14 +240,13 @@ function DocPill({ doc: d, viewLabel }: { doc: PayrollPeriodDocument; viewLabel:
           </p>
         </div>
       </div>
-      <Link
+      <PdfLink
         href={`/api/payroll-docs/${d.id}`}
-        target="_blank"
-        rel="noopener"
+        filename="paystub.pdf"
         className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
       >
         <Download className="h-3 w-3" /> {viewLabel}
-      </Link>
+      </PdfLink>
     </li>
   );
 }

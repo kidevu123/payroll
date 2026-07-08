@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,16 +96,16 @@ export function PayslipBatchPrintList({
           {batchUrl && (
             <>
               <Button asChild size="sm" variant="secondary" className="h-8 text-xs">
-                <Link href={batchUrl} target="_blank" rel="noopener noreferrer">
+                <PdfLink href={batchUrl} filename="payslips.pdf">
                   <Printer className="h-3.5 w-3.5" />
                   Print {count} selected (compact)
-                </Link>
+                </PdfLink>
               </Button>
               <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-                <Link href={batchDownloadUrl!}>
+                <PdfLink href={batchDownloadUrl!} filename="payslips.pdf">
                   <Download className="h-3.5 w-3.5" />
                   Download {count}
-                </Link>
+                </PdfLink>
               </Button>
             </>
           )}
@@ -150,13 +151,9 @@ export function PayslipBatchPrintList({
                 />
               ) : item.pdfPath ? (
                 <Button asChild size="sm" variant="ghost">
-                  <Link
-                    href={`/api/payslips/${item.id}/pdf`}
-                    target="_blank"
-                    rel="noopener"
-                  >
+                  <PdfLink href={`/api/payslips/${item.id}/pdf`} filename="payslip.pdf">
                     <Download className="h-3.5 w-3.5" /> File
-                  </Link>
+                  </PdfLink>
                 </Button>
               ) : (
                 <span className="text-xs text-text-subtle">No PDF</span>

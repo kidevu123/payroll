@@ -22,6 +22,7 @@ import {
   listPendingMissedPunchRequests,
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
+import { countRecentAnnouncements } from "@/lib/db/queries/announcements";
 import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
 
@@ -93,13 +94,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   } catch {
     /* metrics not critical to render */
   }
-  // Pending-work badges are attributed to the section that owns the work,
-  // not a generic notifications bell: missed-punch reviews live on Time,
-  // time-off requests on Calendar. Earlier builds summed both onto the
-  // Notifications item, which then linked to the (empty) announcements feed
-  // — a badge with nothing behind it. Keyed by nav href so the shells can
-  // drop the count on the matching item.
-  const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion] = await Promise.all([
+  // Pending-work badges are attributed to the section that owns the work:
+  // missed-punch reviews live on Time, time-off requests on Calendar, and
+  // Notifications shows a recent-activity count (announcements from the
+  // last 7 days). Keyed by nav href so the shells can drop the count on
+  // the matching item.
+  const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion, recentAnnouncements] = await Promise.all([
     listPendingMissedPunchRequests().catch(() => []),
     listPendingTimeOffRequests().catch(() => []),
     getSetting("company").catch(() => null),
@@ -107,12 +107,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     listPeriods({ limit: 12 }).catch(() => []),
     resolveLocale(),
     assetVersion("logo").catch(() => "default"),
+    countRecentAnnouncements(7).catch(() => 0),
   ]);
   const missedCount = missedReqs.length;
   const timeOffCount = timeOffReqs.length;
   const navBadges: Record<string, number> = {
     "/time": missedCount,
     "/calendar": timeOffCount,
+    // Owner direction (Jul 2026 mock): Notifications carries a count too —
+    // announcements sent in the last 7 days, i.e. "recent activity", since
+    // the feed has no per-user read tracking to badge against.
+    "/notifications": recentAnnouncements,
   };
   // Override the stored logoPath's cache-bust with a fresh mtime stamp so
   // any server-side post-processing of the asset (e.g. transparent-margin

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import {
   ArrowLeft,
   Pencil,
@@ -269,13 +270,9 @@ export default async function EmployeeDetailPage({
                         </div>
                       </div>
                       <Button asChild size="sm" variant="ghost">
-                        <Link
-                          href={`/api/payroll-docs/${d.id}`}
-                          target="_blank"
-                          rel="noopener"
-                        >
+                        <PdfLink href={`/api/payroll-docs/${d.id}`} filename="paystub.pdf">
                           <Download className="h-3.5 w-3.5" /> View
-                        </Link>
+                        </PdfLink>
                       </Button>
                     </li>
                   ))}

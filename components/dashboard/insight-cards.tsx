@@ -119,7 +119,7 @@ function MiniStat({
   return (
     <Link
       href={href}
-      className="block h-full rounded-2xl transition duration-150 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="block h-full rounded-xl transition duration-150 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
       {card}
     </Link>

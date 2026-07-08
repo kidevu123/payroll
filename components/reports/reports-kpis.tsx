@@ -25,8 +25,12 @@ function KpiCard({
           {label}
         </span>
         <span
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2"
-          style={{ color: accent }}
+          className="flex h-8 w-8 items-center justify-center rounded-input"
+          style={{
+            color: accent,
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${accent} 22%, transparent)`,
+          }}
         >
           <Icon className="h-4 w-4" />
         </span>
@@ -48,7 +52,7 @@ export function ReportsKpis({ kpis }: { kpis: ReportsOverview["kpis"] }) {
       <KpiCard
         label="Total reports"
         icon={FileText}
-        accent="#a78bfa"
+        accent="#60a5fa"
         sub={kpis.draftCount > 0 ? `${kpis.draftCount} draft${kpis.draftCount === 1 ? "" : "s"}` : "All published"}
       >
         {kpis.totalReports}
@@ -56,7 +60,7 @@ export function ReportsKpis({ kpis }: { kpis: ReportsOverview["kpis"] }) {
       <KpiCard label="Employees paid" icon={Users} accent="#34d399" sub="Year to date">
         {kpis.employeesPaid}
       </KpiCard>
-      <KpiCard label="Avg gross pay" icon={TrendingUp} accent="#a78bfa" sub="Per employee, YTD">
+      <KpiCard label="Avg gross pay" icon={TrendingUp} accent="#fbbf24" sub="Per employee, YTD">
         {kpis.avgGrossPerEmployeeCents !== null ? (
           <MoneyDisplay cents={kpis.avgGrossPerEmployeeCents} monospace={false} />
         ) : (

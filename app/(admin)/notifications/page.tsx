@@ -1,16 +1,32 @@
+// /notifications — announcement composer entry + sent history.
+//
+// Jul 2026 detail pass (owner direction): the page reads as a proper
+// operations surface, not a bare list. Overview tiles up top (sent this
+// month, people reached, last sent), then the history as scannable rows —
+// audience-typed icon tile, title + relative time, body, and a meta row
+// of chips. Squared corners + visible borders per the global token shift.
+
 import Link from "next/link";
-import { Plus, Megaphone, Trash2, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Plus,
+  Megaphone,
+  Trash2,
+  Users,
+  Briefcase,
+  CalendarRange,
+  UserRound,
+  Send,
+  Clock3,
+  ExternalLink,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { listAnnouncements } from "@/lib/db/queries/announcements";
 import { listEmployees } from "@/lib/db/queries/employees";
+import { getSetting } from "@/lib/settings/runtime";
 import { deleteAnnouncementAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -19,150 +35,248 @@ const AUDIENCE_LABEL: Record<string, string> = {
   ALL: "All employees",
   BY_ROLE: "By role",
   BY_SCHEDULE: "By schedule",
-  SPECIFIC: "Specific",
+  SPECIFIC: "Specific people",
 };
 
-function shortDateTime(d: Date | string): string {
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toISOString().slice(0, 16).replace("T", " ");
+const AUDIENCE_ICON: Record<string, LucideIcon> = {
+  ALL: Users,
+  BY_ROLE: Briefcase,
+  BY_SCHEDULE: CalendarRange,
+  SPECIFIC: UserRound,
+};
+
+function relativeTime(from: Date, now: Date): string {
+  const mins = Math.round((now.getTime() - from.getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.round(days / 30);
+  return `${months}mo ago`;
 }
 
 export default async function NotificationsPage() {
-  const [announcements, employees] = await Promise.all([
+  const [announcements, employees, company] = await Promise.all([
     listAnnouncements(100),
     listEmployees(),
+    getSetting("company").catch(() => null),
   ]);
   const empById = new Map(employees.map((e) => [e.id, e.displayName]));
+  const tz = company?.timezone ?? "America/New_York";
+  const now = new Date();
+
+  const fmtDateTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  // Overview numbers — month-to-date in the company timezone.
+  const monthKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+  }).format(now);
+  const inMonth = announcements.filter(
+    (a) =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+      }).format(new Date(a.sentAt)) === monthKey,
+  );
+  const reachedThisMonth = inMonth.reduce(
+    (sum, a) => sum + (a.recipientCount ?? 0),
+    0,
+  );
+  const lastSent = announcements[0]?.sentAt
+    ? relativeTime(new Date(announcements[0].sentAt), now)
+    : "—";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Notifications
-          </h1>
-          <p className="text-sm text-text-muted">
-            Send a custom message to employees, and review what&apos;s been
-            sent. Recipients see it in their in-app inbox + as a push
-            notification on devices that opted in.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/notifications/new">
-            <Plus className="h-4 w-4" /> Send announcement
-          </Link>
-        </Button>
+    <div className="space-y-5">
+      <PageHeader
+        title="Notifications"
+        description="Send a custom message to employees, and review what's been sent. Recipients see it in their in-app inbox plus a push notification on devices that opted in."
+        actions={
+          <Button asChild>
+            <Link href="/notifications/new">
+              <Plus className="h-4 w-4" /> Send announcement
+            </Link>
+          </Button>
+        }
+      />
+
+      {/* Overview tiles — squared icon plates, one accent each. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <OverviewTile
+          Icon={Send}
+          tone="bg-info-50 text-info-700"
+          value={String(inMonth.length)}
+          label="Sent this month"
+        />
+        <OverviewTile
+          Icon={Users}
+          tone="bg-success-50 text-success-700"
+          value={String(reachedThisMonth)}
+          label="People reached this month"
+        />
+        <OverviewTile
+          Icon={Clock3}
+          tone="bg-warning-50 text-warning-700"
+          value={lastSent}
+          label="Last announcement"
+        />
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">History</CardTitle>
-          <CardDescription className="text-xs">
-            Newest first. Recipient counts reflect the audience at send
-            time, not at view time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="p-0">
           {announcements.length === 0 ? (
-            <EmptyState
-              icon={Megaphone}
-              title="No announcements yet"
-              description="Click 'Send announcement' to broadcast a message."
-            />
+            <div className="p-6">
+              <EmptyState
+                icon={Megaphone}
+                title="No announcements yet"
+                description="Click 'Send announcement' to broadcast a message."
+              />
+            </div>
           ) : (
-            announcements.map((a) => {
-              const labels = Array.isArray(a.audienceLabels)
-                ? (a.audienceLabels as string[])
-                : [];
-              const ids = Array.isArray(a.audienceIds)
-                ? (a.audienceIds as string[])
-                : [];
-              const audienceText =
-                a.audienceKind === "SPECIFIC" && ids.length > 0
-                  ? ids
-                      .map((id) => empById.get(id) ?? "Unknown")
-                      .slice(0, 3)
-                      .join(", ") +
-                    (ids.length > 3 ? ` +${ids.length - 3} more` : "")
-                  : a.audienceKind === "ALL"
-                    ? "All employees"
-                    : labels.join(" · ") || AUDIENCE_LABEL[a.audienceKind];
-              return (
-                <div
-                  key={a.id}
-                  className="rounded-card border border-border bg-surface p-3 space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
-                      {a.title}
-                    </h3>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-text-muted tabular-nums">
-                        {shortDateTime(a.sentAt)}
-                      </span>
-                      <form action={deleteAnnouncementAction}>
-                        <input type="hidden" name="id" value={a.id} />
-                        <Button
-                          type="submit"
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 md:h-7 md:w-7 text-text-muted hover:text-danger-700"
-                          title="Delete announcement from history"
-                          aria-label={`Delete announcement ${a.title}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </form>
+            <ul className="divide-y divide-border/60">
+              {announcements.map((a) => {
+                const labels = Array.isArray(a.audienceLabels)
+                  ? (a.audienceLabels as string[])
+                  : [];
+                const ids = Array.isArray(a.audienceIds)
+                  ? (a.audienceIds as string[])
+                  : [];
+                const audienceText =
+                  a.audienceKind === "SPECIFIC" && ids.length > 0
+                    ? ids
+                        .map((id) => empById.get(id) ?? "Unknown")
+                        .slice(0, 3)
+                        .join(", ") +
+                      (ids.length > 3 ? ` +${ids.length - 3} more` : "")
+                    : a.audienceKind === "ALL"
+                      ? "All employees"
+                      : labels.join(" · ") ||
+                        AUDIENCE_LABEL[a.audienceKind] ||
+                        a.audienceKind;
+                const AudienceIcon = AUDIENCE_ICON[a.audienceKind] ?? Users;
+                const sentAt = new Date(a.sentAt);
+                return (
+                  <li key={a.id} className="flex gap-3 px-4 py-3.5 sm:px-5">
+                    {/* Audience-typed icon plate. */}
+                    <span
+                      aria-hidden
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-input bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100"
+                    >
+                      <AudienceIcon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="truncate text-sm font-semibold text-text">
+                            {a.title}
+                          </h3>
+                          <p
+                            className="text-[11px] text-text-muted tabular-nums"
+                            title={sentAt.toISOString()}
+                          >
+                            {relativeTime(sentAt, now)} ·{" "}
+                            {fmtDateTime.format(sentAt)}
+                            {a.sentByEmail ? ` · by ${a.sentByEmail}` : ""}
+                          </p>
+                        </div>
+                        <form action={deleteAnnouncementAction}>
+                          <input type="hidden" name="id" value={a.id} />
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 md:h-7 md:w-7 text-text-muted hover:text-danger-700"
+                            title="Delete announcement from history"
+                            aria-label={`Delete announcement ${a.title}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </form>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-text-muted">
+                        {a.body}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <MetaChip>
+                          <Users className="h-3 w-3" aria-hidden />
+                          {audienceText}
+                        </MetaChip>
+                        <MetaChip>
+                          {a.recipientCount}{" "}
+                          {a.recipientCount === 1 ? "recipient" : "recipients"}
+                        </MetaChip>
+                        {a.link ? (
+                          <a
+                            href={a.link}
+                            className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium text-info-700 hover:underline"
+                            target={a.link.startsWith("http") ? "_blank" : undefined}
+                            rel={
+                              a.link.startsWith("http")
+                                ? "noopener noreferrer"
+                                : undefined
+                            }
+                          >
+                            <ExternalLink className="h-3 w-3" aria-hidden />
+                            <span className="max-w-[16rem] truncate">{a.link}</span>
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap text-text-muted">
-                    {a.body}
-                  </p>
-                  {a.link && (
-                    <p className="text-xs">
-                      <span className="text-text-subtle">Link: </span>
-                      <a
-                        href={a.link}
-                        className="text-brand-700 hover:underline break-all"
-                        target={
-                          a.link.startsWith("http") ? "_blank" : undefined
-                        }
-                        rel={
-                          a.link.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
-                      >
-                        {a.link}
-                      </a>
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 flex-wrap text-[11px] text-text-muted">
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="h-3 w-3" /> {audienceText}
-                    </span>
-                    <span className="font-medium">
-                      <span aria-hidden="true" className="mr-1 text-text-subtle">
-                        ·
-                      </span>
-                      {a.recipientCount}{" "}
-                      {a.recipientCount === 1 ? "recipient" : "recipients"}
-                    </span>
-                    {a.sentByEmail && (
-                      <span>
-                        <span aria-hidden="true" className="mr-1 text-text-subtle">
-                          ·
-                        </span>
-                        by {a.sentByEmail}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function OverviewTile({
+  Icon,
+  tone,
+  value,
+  label,
+}: {
+  Icon: LucideIcon;
+  tone: string;
+  value: string;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-card border border-border/70 bg-surface p-4 shadow-card">
+      <span
+        aria-hidden
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-input ${tone}`}
+      >
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <div className="min-w-0">
+        <p className="truncate text-xl font-semibold tracking-tight tabular-nums text-text">
+          {value}
+        </p>
+        <p className="truncate text-xs text-text-muted">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function MetaChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-text-muted">
+      {children}
+    </span>
   );
 }

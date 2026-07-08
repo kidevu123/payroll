@@ -4,6 +4,7 @@
 // Reused for both legacy LEGACY_IMPORT runs and live cron-generated runs.
 
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
 import type React from "react";
 import {
@@ -492,13 +493,12 @@ export default async function PeriodReviewPage({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0 lg:flex-wrap lg:items-center">
             {!isAccountant && run?.pdfPath && (
               <Button asChild variant="secondary" size="sm" className="w-full justify-center lg:w-auto">
-                <Link
+                <PdfLink
                   href={`/api/reports/${run.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
+                  filename="admin-report.pdf"
                 >
                   <Download className="h-4 w-4" /> PDF
-                </Link>
+                </PdfLink>
               </Button>
             )}
             {!isAccountant && (
@@ -534,22 +534,20 @@ export default async function PeriodReviewPage({
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <Button asChild variant="secondary" className="justify-start">
-              <Link
+              <PdfLink
                 href={`/api/payslips/period/${period.id}/signature`}
-                target="_blank"
-                rel="noopener"
+                filename="signature-report.pdf"
               >
                 <Printer className="h-4 w-4" /> Signature report
-              </Link>
+              </PdfLink>
             </Button>
             <Button asChild variant="secondary" className="justify-start">
-              <Link
+              <PdfLink
                 href={`/api/payroll/${period.id}/payslips-cut-sheet`}
-                target="_blank"
-                rel="noopener"
+                filename="payslip-cut-sheet.pdf"
               >
                 <Scissors className="h-4 w-4" /> Pay-slip cut sheet
-              </Link>
+              </PdfLink>
             </Button>
             <CashDenominationButton
               summary={cashSummary}
@@ -568,13 +566,12 @@ export default async function PeriodReviewPage({
             </form>
             {run?.pdfPath && (
               <Button asChild variant="secondary" className="justify-start">
-                <Link
+                <PdfLink
                   href={`/api/reports/${run.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
+                  filename="admin-report.pdf"
                 >
                   <Download className="h-4 w-4" /> Generated report PDF
-                </Link>
+                </PdfLink>
               </Button>
             )}
           </CardContent>

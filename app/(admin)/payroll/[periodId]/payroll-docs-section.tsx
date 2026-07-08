@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
 import type { Employee, PayrollPeriodDocument } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
@@ -249,13 +250,9 @@ function DocRow({
             place their paystub can be pushed. */}
         <ZohoDocStatus doc={doc} />
         <Button asChild size="sm" variant="ghost">
-          <Link
-            href={`/api/payroll-docs/${doc.id}`}
-            target="_blank"
-            rel="noopener"
-          >
+          <PdfLink href={`/api/payroll-docs/${doc.id}`} filename="paystub.pdf">
             <Download className="h-3.5 w-3.5" />
-          </Link>
+          </PdfLink>
         </Button>
         {!locked && (
           <form

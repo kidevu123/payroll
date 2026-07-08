@@ -6,9 +6,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  // Apple-bold base: rounder corners (rounded-xl), semibold confident text,
-  // smooth transition so press eases, softened focus ring, tactile active-press.
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold tracking-tight antialiased select-none transition-all duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]",
+  // Squared-intentional base (owner direction Jul 2026): buttons share the
+  // input radius so controls read as one precise family. Semibold confident
+  // text, smooth transition, softened focus ring, tactile active-press.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-input text-sm font-semibold tracking-tight antialiased select-none transition-all duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]",
   {
     variants: {
       variant: {
@@ -90,7 +91,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           buttonVariants({ variant }),
           // Square footprint + generous touch target (hit area >= 44px via
           // padding-free min sizing on touch, visual box stays compact).
-          "shrink-0 rounded-lg p-0",
+          "shrink-0 rounded-input p-0",
           sizePx === "sm" ? "h-8 w-8 min-h-8 min-w-8" : "h-10 w-10",
           "[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
           className,

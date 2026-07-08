@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Download, Printer } from "lucide-react";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { cn } from "@/lib/utils";
 
 export function payslipPdfHref(
@@ -30,14 +30,14 @@ export function PayslipPdfActions({
 
   const links = (
     <>
-      <Link href={url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+      <PdfLink href={url} filename="payslip.pdf" className={linkClass}>
         <Printer className="h-3.5 w-3.5" aria-hidden />
         {printLabel}
-      </Link>
-      <Link href={downloadUrl} className={linkClass}>
+      </PdfLink>
+      <PdfLink href={downloadUrl} filename="payslip.pdf" className={linkClass}>
         <Download className="h-3.5 w-3.5" aria-hidden />
         {downloadLabel}
-      </Link>
+      </PdfLink>
     </>
   );
 

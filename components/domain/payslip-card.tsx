@@ -21,6 +21,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { ChevronRight, AlertTriangle, FileText, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -211,14 +212,13 @@ function DocRow({ doc, viewLabel }: { doc: PayslipCardDoc; viewLabel: string }) 
           </p>
         </div>
       </div>
-      <Link
+      <PdfLink
         href={`/api/payroll-docs/${doc.id}`}
-        target="_blank"
-        rel="noopener"
+        filename="paystub.pdf"
         className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0"
       >
         <Download className="h-3 w-3" /> {viewLabel}
-      </Link>
+      </PdfLink>
     </div>
   );
 }
