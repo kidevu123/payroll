@@ -61,7 +61,7 @@ export function ReportProblemButton({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-warn-700 hover:bg-warn-50"
+          className="h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 text-warn-700 hover:bg-warn-50"
           onClick={() => {
             setOpen(false);
             setReason("");
@@ -81,7 +81,7 @@ export function ReportProblemButton({
         maxLength={1000}
       />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] text-text-muted tabular-nums">
+        <span className="text-[11px] text-text-muted tabular-nums">
           {reason.length}/1000
         </span>
         {error && <span className="text-xs text-danger-700">{error}</span>}

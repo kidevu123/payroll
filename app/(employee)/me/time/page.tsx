@@ -231,7 +231,7 @@ export default async function EmployeeTime() {
                         </span>
                         <span className="flex items-center gap-2.5 text-xs text-text-muted">
                           {edited ? (
-                            <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 px-1.5 py-0.5 text-[10px] font-medium">
+                            <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 px-1.5 py-0.5 text-[11px] font-medium">
                               {t("edited")}
                             </span>
                           ) : null}

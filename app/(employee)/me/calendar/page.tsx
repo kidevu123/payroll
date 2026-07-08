@@ -136,7 +136,7 @@ export default async function EmployeeCalendar({
               ).toString()}`}
               aria-current={viewMode === "all" ? "page" : undefined}
               className={
-                "inline-flex items-center px-2.5 h-8 rounded-chip " +
+                "inline-flex items-center px-2.5 h-8 [@media(pointer:coarse)]:min-h-11 rounded-chip " +
                 (viewMode === "all"
                   ? "bg-brand-50 text-brand-800 font-medium"
                   : "text-text-muted hover:bg-surface-2 hover:text-text")
@@ -150,7 +150,7 @@ export default async function EmployeeCalendar({
               ).toString()}`}
               aria-current={viewMode === "me" ? "page" : undefined}
               className={
-                "inline-flex items-center px-2.5 h-8 rounded-chip " +
+                "inline-flex items-center px-2.5 h-8 [@media(pointer:coarse)]:min-h-11 rounded-chip " +
                 (viewMode === "me"
                   ? "bg-brand-50 text-brand-800 font-medium"
                   : "text-text-muted hover:bg-surface-2 hover:text-text")
@@ -165,7 +165,7 @@ export default async function EmployeeCalendar({
                 m: String(offset - 1),
                 view: viewMode,
               }).toString()}`}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              className="inline-flex items-center justify-center h-8 w-8 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
               aria-label={t("prev")}
             >
               ‹
@@ -173,7 +173,7 @@ export default async function EmployeeCalendar({
             {offset !== 0 && (
               <a
                 href={`/me/calendar?view=${viewMode}`}
-                className="inline-flex items-center px-2.5 h-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+                className="inline-flex items-center px-2.5 h-8 [@media(pointer:coarse)]:min-h-11 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
               >
                 {t("today")}
               </a>
@@ -183,7 +183,7 @@ export default async function EmployeeCalendar({
                 m: String(offset + 1),
                 view: viewMode,
               }).toString()}`}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+              className="inline-flex items-center justify-center h-8 w-8 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
               aria-label={t("next")}
             >
               ›
@@ -193,7 +193,7 @@ export default async function EmployeeCalendar({
       </header>
 
       <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-border/60 bg-surface-2/40 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
+        <div className="grid grid-cols-7 border-b border-border/60 bg-surface-2/40 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
           {dowLabels.map((d, i) => (
             <div key={i} className="px-1 py-1.5 text-center">
               {d}
@@ -228,7 +228,7 @@ export default async function EmployeeCalendar({
                     <div
                       key={j}
                       className={
-                        "truncate rounded px-1.5 py-0.5 text-[11px] leading-tight border " +
+                        "truncate rounded-chip px-1.5 py-0.5 text-[11px] leading-tight border " +
                         (TYPE_COLORS[e.type] ?? TYPE_COLORS.OTHER)
                       }
                       title={`${e.name} · ${e.type}`}
@@ -252,7 +252,7 @@ export default async function EmployeeCalendar({
                           <div
                             key={`o-${j}`}
                             className={
-                              "truncate rounded px-1.5 py-0.5 text-[10px] " +
+                              "truncate rounded-chip px-1.5 py-0.5 text-[11px] " +
                               (TYPE_COLORS[e.type] ?? TYPE_COLORS.OTHER)
                             }
                           >
@@ -291,7 +291,7 @@ export default async function EmployeeCalendar({
                       className={
                         "inline-block h-2 w-2 rounded-full shrink-0 " +
                         ((TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER ?? "")
-                          .split(" ")[0] ?? "bg-slate-400")
+                          .split(" ")[0] ?? "bg-text/30")
                       }
                     />
                     <span className="font-medium truncate">{r.name}</span>
@@ -306,7 +306,7 @@ export default async function EmployeeCalendar({
         </section>
       )}
 
-      <p className="text-[10px] text-text-subtle">
+      <p className="text-[11px] text-text-subtle">
         {t("footer")} · {company.timezone}
       </p>
 

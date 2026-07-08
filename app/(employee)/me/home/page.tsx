@@ -378,7 +378,7 @@ export default async function EmployeeHome() {
                   {t("alertsTitle")}
                 </h3>
                 {alerts.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 border border-warn-200/80 px-1.5 text-[10px] font-medium text-warn-700 tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 border border-warn-200/80 px-1.5 text-[11px] font-medium text-warn-700 tabular-nums">
                     {alerts.length}
                   </span>
                 )}
@@ -567,7 +567,7 @@ function EmpMetric({
   return (
     <Card className="h-full p-4">
       <span
-        className="flex h-9 w-9 items-center justify-center rounded-lg"
+        className="flex h-9 w-9 items-center justify-center rounded-input"
         style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
       >
         <Icon className="h-4 w-4" />

@@ -229,7 +229,7 @@ function DocPill({ doc: d, viewLabel }: { doc: PayrollPeriodDocument; viewLabel:
           <p className="truncate text-xs font-medium text-text antialiased">
             {d.originalFilename}
           </p>
-          <p className="text-[10px] text-text-muted leading-relaxed">
+          <p className="text-[11px] text-text-muted leading-relaxed">
             {d.kind}
             {d.payPeriodStart && d.payPeriodEnd
               ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
@@ -243,7 +243,7 @@ function DocPill({ doc: d, viewLabel }: { doc: PayrollPeriodDocument; viewLabel:
       <PdfLink
         href={`/api/payroll-docs/${d.id}`}
         filename="paystub.pdf"
-        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+        className="inline-flex min-h-9 items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text [@media(pointer:coarse)]:min-h-11"
       >
         <Download className="h-3 w-3" /> {viewLabel}
       </PdfLink>

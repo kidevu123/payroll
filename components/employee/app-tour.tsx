@@ -194,7 +194,7 @@ export function AppTour({
       <div className="fixed inset-0 z-[60] bg-black/55 pointer-events-none" />
       {rect && (
         <div
-          className="fixed z-[61] pointer-events-none rounded-2xl ring-2 ring-brand-300 ring-offset-4 ring-offset-black/0"
+          className="fixed z-[61] pointer-events-none rounded-card ring-2 ring-brand-300 ring-offset-4 ring-offset-black/0"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
@@ -219,7 +219,7 @@ export function AppTour({
             type="button"
             aria-label="Close"
             onClick={complete}
-            className="text-text-subtle hover:text-text"
+            className="-m-2 flex h-9 w-9 items-center justify-center rounded-input text-text-subtle hover:text-text [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11"
           >
             <X className="h-4 w-4" />
           </button>

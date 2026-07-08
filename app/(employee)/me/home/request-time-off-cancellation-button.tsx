@@ -42,7 +42,7 @@ export function RequestTimeOffCancellationButton({
         {pending ? "..." : label}
       </Button>
       {error ? (
-        <span className="max-w-[160px] truncate text-[10px] text-danger-700" title={error}>
+        <span className="max-w-[160px] truncate text-[11px] text-danger-700" title={error}>
           {error}
         </span>
       ) : null}

@@ -228,7 +228,7 @@ function MobileDrawer({
             type="button"
             onClick={onClose}
             aria-label={tNav("closeNavigation")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-input hover:bg-surface-2"
+            className="inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>
@@ -236,7 +236,7 @@ function MobileDrawer({
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 overscroll-contain">
           {sections.map((sec) => (
             <div key={sec.headingKey}>
-              <div className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
+              <div className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
                 {tNav(sec.headingKey)}
               </div>
               <ul className="space-y-0.5">
@@ -302,7 +302,7 @@ export function MobileNav({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={tNav("openNavigation")}
-        className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-input hover:bg-surface-2"
+        className="lg:hidden inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2"
       >
         <Menu className="h-5 w-5" aria-hidden />
       </button>
@@ -369,7 +369,7 @@ export function MobileQuickNav({
         className={cn(
           hideFrom === "md" ? "md:hidden" : "lg:hidden",
           "fixed inset-x-0 bottom-0 z-40",
-          "border-t border-border/80 bg-surface/95 backdrop-blur-md",
+          "border-t border-border/80 bg-surface/95 backdrop-blur-sm",
           "shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(15_23_42_/_0.12)]",
           "pb-[env(safe-area-inset-bottom)]",
         )}
@@ -383,7 +383,7 @@ export function MobileQuickNav({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-colors",
+                  "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors",
                   active
                     ? "text-brand-800"
                     : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",
@@ -414,7 +414,7 @@ export function MobileQuickNav({
             aria-expanded={open}
             aria-label={tNav("openNavigation")}
             className={cn(
-              "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-medium leading-tight transition-colors",
+              "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors",
               moreActive
                 ? "text-brand-800"
                 : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",

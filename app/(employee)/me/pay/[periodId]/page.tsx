@@ -304,11 +304,11 @@ async function PayslipBody({
             )}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
               {t("netPay")}
             </p>
-            <p className="text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
+            <p className="text-[1.875rem] sm:text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
               <MoneyDisplay
                 cents={payslip.roundedPayCents}
                 monospace={false}
@@ -483,7 +483,7 @@ async function PayslipBody({
               <div className="hidden sm:block">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
                       <th className="px-3 py-3 font-medium">{t("day")}</th>
                       <th className="px-3 py-3 font-medium">{t("in")}</th>
                       <th className="px-3 py-3 font-medium">{t("out")}</th>
@@ -564,7 +564,7 @@ async function PayslipBody({
       {/* Sticky-feeling actions footer. Acknowledge is the primary CTA;
           Report-a-problem stays a quiet ghost. The whole strip sits in a
           slim card so on mobile it visually anchors below the breakdown. */}
-      <Card className="no-print bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      <Card className="no-print">
         <CardContent className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <ReportProblemButton
             payslipId={payslip.id}
