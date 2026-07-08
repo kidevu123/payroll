@@ -690,7 +690,7 @@ function MonthCard({
             <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
               Total gross{grossIncomplete ? "*" : ""}
             </span>
-            <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text-muted">
+            <span className="mt-1 tabular-nums text-base font-semibold text-text-muted">
               <MoneyDisplay cents={gross} />
             </span>
           </div>
@@ -698,7 +698,7 @@ function MonthCard({
             <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
               Total net
             </span>
-            <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text">
+            <span className="mt-1 tabular-nums text-base font-semibold text-text">
               <MoneyDisplay cents={net} />
             </span>
           </div>
@@ -803,7 +803,7 @@ function PeriodLine({
             <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 lg:col-span-1">
               <Link
                 href={rangeHref}
-                className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
+                className="rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
               >
                 {formatRange(group.periodStart, group.periodEnd)}
               </Link>
@@ -842,16 +842,16 @@ function PeriodLine({
             </div>
 
             {/* 5 · Gross — the W2 paystub carries net only */}
-            <div className="hidden text-right font-mono text-sm tabular-nums text-text-subtle lg:block">
+            <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-subtle lg:block">
               —
             </div>
 
             {/* 6 · Net */}
             <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
-              <span className="font-mono tabular-nums text-lg font-semibold tracking-tight text-text">
+              <span className="tabular-nums text-base font-semibold tracking-tight text-text">
                 <MoneyDisplay cents={net} />
               </span>
-              <span className="mt-1 font-mono text-[10px] leading-tight tabular-nums text-text-subtle">
+              <span className="mt-1 tabular-nums text-[10px] leading-tight tabular-nums text-text-subtle">
                 W2 net · uploaded paystubs
               </span>
             </div>
@@ -938,7 +938,7 @@ function PeriodLine({
           {/* 1 · Pay period */}
           <Link
             href={`/payroll/${group.periodId}`}
-            className="col-span-2 min-w-0 justify-self-start rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40 lg:col-span-1"
+            className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40 lg:col-span-1"
           >
             {formatRange(group.periodStart, canonicalEnd)}
           </Link>
@@ -972,7 +972,7 @@ function PeriodLine({
           </div>
 
           {/* 5 · Gross (own column at lg; folded into the net addenda below lg) */}
-          <div className="hidden text-right font-mono text-sm tabular-nums text-text-muted lg:block">
+          <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-muted lg:block">
             {gross > 0 ? (
               <MoneyDisplay cents={gross} />
             ) : (
@@ -982,13 +982,13 @@ function PeriodLine({
 
           {/* 6 · Net */}
           <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
-            <span className="font-mono tabular-nums text-lg font-semibold tracking-tight text-text">
+            <span className="tabular-nums text-base font-semibold tracking-tight text-text">
               <MoneyDisplay cents={net} />
             </span>
             {(gross > 0 && gross !== net) ||
             group.docNetPayCents > 0 ||
             group.tempLaborCents > 0 ? (
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 font-mono text-[10px] leading-tight tabular-nums lg:justify-end">
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 tabular-nums text-[10px] leading-tight tabular-nums lg:justify-end">
                 {gross > 0 && gross !== net && (
                   <span className="text-text-subtle lg:hidden">
                     gross <MoneyDisplay cents={gross} monospace={false} />
@@ -1050,7 +1050,7 @@ function PeriodLine({
               <p className="text-[11px] uppercase tracking-wider text-text-subtle">
                 Drawer balance
               </p>
-              <p className="font-mono tabular-nums text-sm font-semibold">
+              <p className="tabular-nums text-sm font-semibold">
                 <MoneyDisplay cents={drawerBalanceCents} />
               </p>
             </div>
@@ -1107,18 +1107,18 @@ function PeriodLine({
                   {r.source.replace(/_/g, " ")}
                 </span>
                 <span className="text-text-subtle">·</span>
-                <span className="font-mono text-xs tabular-nums text-text-muted">
+                <span className="tabular-nums text-xs tabular-nums text-text-muted">
                   {r.id.slice(0, 8)}
                 </span>
                 <span className="truncate text-[11px] text-text-muted">
                   {r.createdByDisplay} ·{" "}
-                  <span className="font-mono tabular-nums">{formatDate(r.postedAt)}</span>
+                  <span className="tabular-nums">{formatDate(r.postedAt)}</span>
                 </span>
               </Link>
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <ZohoBadges run={r} haute={haute} boomin={boomin} />
                 <VisibilityChip published={r.publishedToPortalAt !== null} />
-                <span className="min-w-[5rem] text-right font-mono tabular-nums text-sm font-semibold text-text">
+                <span className="min-w-[5rem] text-right tabular-nums text-sm font-semibold text-text">
                   <MoneyDisplay cents={r.amountCents} />
                 </span>
                 <RunActions
@@ -1149,27 +1149,28 @@ function PeriodLine({
 function StatusCell({ state }: { state: "OPEN" | "LOCKED" | "PAID" }) {
   if (state === "PAID") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-success-200/80 bg-success-50 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-success-700 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1 rounded-chip border border-success-200/80 bg-success-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-success-700 whitespace-nowrap">
         <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
       </span>
     );
   }
   if (state === "LOCKED") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-warn-700 whitespace-nowrap">
+      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700 whitespace-nowrap">
         <Lock className="h-3 w-3" aria-hidden /> Locked
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-semibold tracking-tight text-info-700 whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-info-700 whitespace-nowrap">
       <CircleDot className="h-3 w-3" aria-hidden /> Open
     </span>
   );
 }
 
-/** Payment-method table cell — colored like the original paid-via chips
- *  (owner ask): amber for cash-drawer, blue for bank transfer. */
+/** Payment-method table cell — quiet icon + text (calm pass: the status
+ *  chip is the single colored element per row; this column just states
+ *  the rail, like the reference mock). */
 function PaymentMethodCell({
   state,
   method,
@@ -1182,19 +1183,19 @@ function PaymentMethodCell({
   }
   if (method === "CASH") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium text-warn-700 whitespace-nowrap">
-        <Banknote className="h-3 w-3" aria-hidden /> Cash drawer
+      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
+        <Banknote className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Cash drawer
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium text-info-700 whitespace-nowrap">
-      <Landmark className="h-3 w-3" aria-hidden /> Bank transfer
+    <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
+      <Landmark className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Bank transfer
     </span>
   );
 }
 
-/** Period payment-method chip (PAID) — bank / drawer / generic. */
+/** Period payment-method chip (PAID, mobile cluster) — quiet neutral. */
 function PaymentChip({
   state,
   method,
@@ -1203,23 +1204,11 @@ function PaymentChip({
   method: "BANK" | "CASH" | null;
 }) {
   if (state !== "PAID") return null;
-  if (method === "CASH") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200 bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-800">
-        <Banknote className="h-3 w-3" /> Paid from drawer
-      </span>
-    );
-  }
-  if (method === "BANK") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-        <Landmark className="h-3 w-3" /> Paid via bank
-      </span>
-    );
-  }
+  const Icon = method === "CASH" ? Banknote : Landmark;
+  const label = method === "CASH" ? "Cash drawer" : "Bank transfer";
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-      <Landmark className="h-3 w-3" /> Paid from bank account
+    <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-text-muted whitespace-nowrap">
+      <Icon className="h-3 w-3" aria-hidden /> {label}
     </span>
   );
 }

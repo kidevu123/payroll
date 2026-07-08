@@ -57,7 +57,7 @@ export function NotificationsForm({
                     <tr key={kind}>
                       <td className="py-2 pr-3">
                         <div className="font-medium">{KIND_LABELS[kind] ?? kind}</div>
-                        <div className="text-xs text-text-muted font-mono">{kind}</div>
+                        <div className="text-xs text-text-muted tabular-nums">{kind}</div>
                       </td>
                       <td className="py-2 px-3 text-center">
                         <input

@@ -59,7 +59,7 @@ export async function MissedPunchReviewSummary({
       <span className="text-text-muted shrink-0">{label}</span>
       <span
         className={cn(
-          "tabular-nums font-mono",
+          "tabular-nums",
           highlight
             ? "font-semibold text-warning-900 bg-warning-100 px-1.5 py-0.5 rounded"
             : time
@@ -122,7 +122,7 @@ export async function MissedPunchReviewSummary({
       ) : null}
 
       <p className="text-center text-[10px] text-text-muted">{t("afterApprove")}</p>
-      <p className="text-center font-mono text-[11px] font-medium tabular-nums">
+      <p className="text-center tabular-nums text-[11px] font-medium tabular-nums">
         {formatOptionalTimeShort(mergedIn(ctx), timezone)}
         <span className="text-text-muted font-normal mx-1">→</span>
         <span

@@ -98,10 +98,10 @@ function PayslipRow({ row }: { row: Row }) {
             {row.employee.displayName}
           </span>
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           {Number(row.payslip.hoursWorked).toFixed(2)}
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           <MoneyDisplay cents={row.payslip.roundedPayCents} />
         </td>
         <td className="py-2 px-3 text-xs text-text-muted">

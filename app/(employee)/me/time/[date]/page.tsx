@@ -112,13 +112,13 @@ export default async function EmployeeDay({
                 <span className="flex flex-nowrap items-baseline gap-x-3 gap-y-0.5">
                   <span>
                     <span className="text-text-muted">{t("in")}: </span>
-                    <span className="font-mono tabular-nums">
+                    <span className="tabular-nums">
                       {fmtTime(p.clockIn, company.timezone, dateLocale)}
                     </span>
                   </span>
                   <span>
                     <span className="text-text-muted">{t("out")}: </span>
-                    <span className="font-mono tabular-nums">
+                    <span className="tabular-nums">
                       {fmtTime(p.clockOut, company.timezone, dateLocale)}
                     </span>
                   </span>

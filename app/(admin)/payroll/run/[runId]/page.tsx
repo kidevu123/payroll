@@ -175,7 +175,7 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-semibold font-mono">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-xl font-semibold tabular-nums">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">
@@ -220,16 +220,16 @@ export default async function RunReviewPage({
                         >
                           {employee.displayName}
                         </Link>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
                           />
                         </span>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <MoneyDisplay cents={result.grossCents} />
                         </span>
-                        <span className="text-right font-mono tabular-nums font-semibold">
+                        <span className="text-right tabular-nums font-semibold">
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
                         <span className="flex flex-wrap gap-1">
@@ -287,13 +287,13 @@ export default async function RunReviewPage({
                         </div>
                       )}
                     </div>
-                    <span className="text-right font-mono tabular-nums text-text-muted">
+                    <span className="text-right tabular-nums text-text-muted">
                       {tw.hours !== null ? Number(tw.hours).toFixed(2) : "—"}
                     </span>
-                    <span className="text-right font-mono tabular-nums">
+                    <span className="text-right tabular-nums">
                       <MoneyDisplay cents={tw.amountCents} />
                     </span>
-                    <span className="text-right font-mono tabular-nums font-semibold">
+                    <span className="text-right tabular-nums font-semibold">
                       <MoneyDisplay cents={tw.amountCents} />
                     </span>
                     <span className="text-xs text-text-subtle">—</span>
@@ -305,16 +305,16 @@ export default async function RunReviewPage({
               <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
                 <div></div>
                 <div>Totals</div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
                     decimals={payRules.hoursDecimalPlaces}
                   />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.gross} />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
                 <div className="text-text-subtle">—</div>
@@ -367,8 +367,8 @@ export default async function RunReviewPage({
                       : "";
                     return (
                       <tr key={e.id} className="hover:bg-surface-2/30">
-                        <td className="py-1.5 pr-3 font-mono text-xs">{e.type}</td>
-                        <td className="py-1.5 px-3 font-mono text-xs">
+                        <td className="py-1.5 pr-3 tabular-nums text-xs">{e.type}</td>
+                        <td className="py-1.5 px-3 tabular-nums text-xs">
                           {e.ngtecoEmployeeRef ?? "—"}
                         </td>
                         <td className="py-1.5 px-3 text-xs">
@@ -477,14 +477,14 @@ function RunPunchTable({
                           }).format(new Date(`${day}T12:00:00Z`))
                         : ""}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">
                       {new Intl.DateTimeFormat("en-US", {
                         hour: "numeric",
                         minute: "2-digit",
                         timeZone: tz,
                       }).format(inT)}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">
                       {outT
                         ? new Intl.DateTimeFormat("en-US", {
                             hour: "numeric",
@@ -493,7 +493,7 @@ function RunPunchTable({
                           }).format(outT)
                         : "—"}
                     </td>
-                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                    <td className="py-0.5 px-3 text-right tabular-nums">
                       {hours !== null ? hours.toFixed(2) : "—"}
                     </td>
                   </tr>

@@ -70,7 +70,7 @@ export function PunchRow({
       )}
     >
       <div className="text-text-muted">{formatDay(punch.clockIn, timezone)}</div>
-      <div className="font-mono tabular-nums">
+      <div className="tabular-nums">
         {ambiguous ? (
           <span className="text-warning-800 text-xs font-semibold uppercase tracking-wide">
             Unpaired
@@ -83,9 +83,9 @@ export function PunchRow({
           formatClock(punch.clockIn, timezone)
         )}
       </div>
-      <div className="font-mono tabular-nums">
+      <div className="tabular-nums">
         {ambiguous ? (
-          <span className="font-mono tabular-nums text-warning-900">
+          <span className="tabular-nums text-warning-900">
             {formatClock(punch.clockIn, timezone)}
           </span>
         ) : openShift ? (

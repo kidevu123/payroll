@@ -387,7 +387,7 @@ export function SalariedUploadSlot({
                   if (readState.kind === "FILLED") setReadState({ kind: "IDLE" });
                 }}
                 placeholder="2143.20"
-                className="font-mono tabular-nums"
+                className="tabular-nums"
                 title="Post-tax net the employee receives — this is what Zoho gets."
               />
             </div>
@@ -563,7 +563,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
   if (!editable) {
     if (!liveHasAmount) return null;
     return (
-      <span className="font-mono tabular-nums text-xs text-text-muted">
+      <span className="tabular-nums text-xs text-text-muted">
         {formatMoney(amountCents as number)}
       </span>
     );
@@ -602,7 +602,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
             if (e.key === "Escape") setEditing(false);
           }}
           placeholder="1702.42"
-          className="h-7 w-24 font-mono tabular-nums text-xs"
+          className="h-7 w-24 tabular-nums text-xs"
           disabled={pending}
         />
         <Button
@@ -632,7 +632,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
       onClick={() => setEditing(true)}
       title="Click to edit net pay"
       className={[
-        "rounded-chip px-2 py-0.5 font-mono tabular-nums text-xs transition-colors",
+        "rounded-chip px-2 py-0.5 tabular-nums text-xs transition-colors",
         liveHasAmount
           ? "text-text hover:bg-surface-2"
           : "bg-warn-50 text-warn-700 hover:bg-warn-50/80",

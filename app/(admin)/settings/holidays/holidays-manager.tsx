@@ -54,7 +54,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
               >
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="font-mono text-text">{h.date}</span>
+                  <span className="tabular-nums text-text">{h.date}</span>
                   <span className="text-text-muted">{h.label}</span>
                 </div>
                 <Button

@@ -15,7 +15,7 @@ export function HoursDisplay({
   className?: string;
 }) {
   return (
-    <span className={cn("font-mono tabular-nums", className)}>
+    <span className={cn("tabular-nums", className)}>
       {formatHours(hours, decimals)}
     </span>
   );

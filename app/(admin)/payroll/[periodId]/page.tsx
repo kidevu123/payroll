@@ -756,7 +756,7 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono text-base font-semibold tabular-nums">
+                          <div className="tabular-nums text-base font-semibold tabular-nums">
                             <MoneyDisplay cents={result.roundedCents} />
                           </div>
                           <div className="text-[10px] uppercase tracking-wider text-text-subtle">
@@ -769,7 +769,7 @@ export default async function PeriodReviewPage({
                           <div className="text-[10px] uppercase tracking-wider text-text-subtle">
                             Hours
                           </div>
-                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                          <div className="mt-1 tabular-nums font-semibold tabular-nums">
                             <HoursDisplay
                               hours={result.totalHours}
                               decimals={payRules.hoursDecimalPlaces}
@@ -780,7 +780,7 @@ export default async function PeriodReviewPage({
                           <div className="text-[10px] uppercase tracking-wider text-text-subtle">
                             Gross
                           </div>
-                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                          <div className="mt-1 tabular-nums font-semibold tabular-nums">
                             <MoneyDisplay cents={result.grossCents} />
                           </div>
                         </div>
@@ -831,14 +831,14 @@ export default async function PeriodReviewPage({
               <div className="rounded-card border border-border bg-surface-2 p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">Employee subtotal</span>
-                  <span className="font-mono font-semibold tabular-nums">
+                  <span className="tabular-nums font-semibold tabular-nums">
                     <MoneyDisplay cents={totals.rounded} />
                   </span>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-muted">
                   <div>
                     Hours:{" "}
-                    <span className="font-mono text-text">
+                    <span className="tabular-nums text-text">
                       <HoursDisplay
                         hours={totals.hours}
                         decimals={payRules.hoursDecimalPlaces}
@@ -847,7 +847,7 @@ export default async function PeriodReviewPage({
                   </div>
                   <div className="text-right">
                     Gross:{" "}
-                    <span className="font-mono text-text">
+                    <span className="tabular-nums text-text">
                       <MoneyDisplay cents={totals.gross} />
                     </span>
                   </div>
@@ -904,16 +904,16 @@ export default async function PeriodReviewPage({
                             ) : null}
                           </div>
                         </div>
-	                        <span className="text-right font-mono tabular-nums">
+	                        <span className="text-right tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
                           />
                         </span>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <MoneyDisplay cents={result.grossCents} />
                         </span>
-                        <span className="text-right font-mono tabular-nums font-semibold">
+                        <span className="text-right tabular-nums font-semibold">
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
                         <span className="text-right">
@@ -937,16 +937,16 @@ export default async function PeriodReviewPage({
               <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
                 <div></div>
                 <div>Employee subtotal</div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
                     decimals={payRules.hoursDecimalPlaces}
                   />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.gross} />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
                 <div></div>
@@ -957,7 +957,7 @@ export default async function PeriodReviewPage({
                   <div>+ Temp / manual labor</div>
                   <div></div>
                   <div></div>
-                  <div className="text-right font-mono tabular-nums">
+                  <div className="text-right tabular-nums">
                     <MoneyDisplay cents={tempWorkersTotalCents} />
                   </div>
                   <div></div>
@@ -969,7 +969,7 @@ export default async function PeriodReviewPage({
                   <div>Period grand total</div>
                   <div></div>
                   <div></div>
-                  <div className="text-right font-mono tabular-nums">
+                  <div className="text-right tabular-nums">
                     <MoneyDisplay cents={periodGrandTotalCents} />
                   </div>
                   <div></div>
@@ -1134,8 +1134,8 @@ function PunchSubTable({
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0 ? formatDayLabel(day, tz) : ""}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">{formatHm(inT, tz)}</td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">{formatHm(inT, tz)}</td>
+                    <td className="py-0.5 px-3 tabular-nums">
                       {isInProgress ? (
                         <span className="text-brand-700 font-medium">open</span>
                       ) : isStaleOpen && canEdit ? (
@@ -1149,7 +1149,7 @@ function PunchSubTable({
                         formatHm(outT, tz)
                       )}
                     </td>
-                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                    <td className="py-0.5 px-3 text-right tabular-nums">
                       {hours !== null ? hours.toFixed(2) : "—"}
                     </td>
                   </tr>

@@ -343,12 +343,14 @@ body {
 }
 
 
-/* Tabular numerics in the same JetBrains Mono used by tables and stats. */
+/* Tabular numerics for tables and stats. Calm pass: figures stay in the UI
+   sans — tabular-nums alone provides the column alignment; the mono face
+   made every number read like terminal output. Mono is reserved for real
+   code artifacts (build sha, kbd shortcuts). */
 .tabnum,
 td.num,
 .num {
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-mono);
 }
 
 /*

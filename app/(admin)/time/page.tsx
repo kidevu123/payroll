@@ -966,7 +966,7 @@ export default async function TimePage({
                           new Date(`${d}T00:00:00Z`),
                         )}
                       </span>
-                      <span className="font-mono tabular-nums text-[11px] font-semibold mt-0.5">
+                      <span className="tabular-nums text-[11px] font-semibold mt-0.5">
                         {new Intl.DateTimeFormat("en-US", {
                           month: "numeric",
                           day: "numeric",
@@ -1160,7 +1160,7 @@ function PunchCellContent({
         <span className="text-[11px] font-semibold uppercase tracking-wide">
           Unpaired
         </span>
-        <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+        <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
           {punchLabel}
         </span>
       </span>
@@ -1177,7 +1177,7 @@ function PunchCellContent({
         <span className="text-[11px] font-semibold uppercase tracking-wide">
           Missing in
         </span>
-        <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+        <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
           out {outLabel}
         </span>
       </span>
@@ -1189,7 +1189,7 @@ function PunchCellContent({
     <span
       className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug transition-all hover:brightness-95 ${cellPillClasses(state)}`}
     >
-      <span className="font-mono tabular-nums text-[10px] font-semibold whitespace-nowrap">
+      <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
         {inLabel}
         <span className="opacity-40 mx-0.5">&ndash;</span>
         {outLabel}

@@ -460,7 +460,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                             )
                           }
                           placeholder="200.00"
-                          className="h-9 text-sm font-mono"
+                          className="h-9 text-sm tabular-nums"
                         />
                       </div>
                       <div className="space-y-0.5">
@@ -483,7 +483,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                             )
                           }
                           placeholder="—"
-                          className="h-9 text-sm font-mono"
+                          className="h-9 text-sm tabular-nums"
                         />
                       </div>
                       <div className="space-y-0.5">
@@ -801,7 +801,7 @@ function PreviewRow({
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="13.50"
-                className="w-full rounded-input border border-border/70 bg-surface px-2.5 h-9 text-sm font-mono tabular-nums"
+                className="w-full rounded-input border border-border/70 bg-surface px-2.5 h-9 text-sm tabular-nums"
                 disabled={pending}
               />
             </label>

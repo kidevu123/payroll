@@ -392,7 +392,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
               >
                 <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
-                <span className="shrink-0 font-mono tabular-nums" style={{ color: DASH.emerald }}>
+                <span className="shrink-0 tabular-nums" style={{ color: DASH.emerald }}>
                   {e.firstPunchAt}
                 </span>
               </li>

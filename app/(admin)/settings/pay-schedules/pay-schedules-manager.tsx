@@ -102,7 +102,7 @@ export function PaySchedulesManager({
                         )}
                         {s.anchorDate && <span>Anchor {s.anchorDate}</span>}
                         <span className="inline-flex items-center gap-2">
-                          <code className="rounded bg-surface-3 px-1.5 py-0.5 font-mono">{s.cron}</code>
+                          <code className="rounded bg-surface-3 px-1.5 py-0.5 tabular-nums">{s.cron}</code>
                           <span className="text-text-subtle">
                             {employeeCounts[s.id] ?? 0} emp
                             {(employeeCounts[s.id] ?? 0) === 1 ? "" : "s"} · {runCounts[s.id] ?? 0} runs

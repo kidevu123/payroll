@@ -297,7 +297,7 @@ export default async function EmployeeCalendar({
                     <span className="font-medium truncate">{r.name}</span>
                     <span className="text-text-muted">{r.type.toLowerCase()}</span>
                   </div>
-                  <span className="text-text-subtle font-mono text-[11px] shrink-0">
+                  <span className="text-text-subtle tabular-nums text-[11px] shrink-0">
                     {r.from === r.to ? r.from : `${r.from} → ${r.to}`}
                   </span>
                 </li>

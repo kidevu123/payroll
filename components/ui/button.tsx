@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   // Squared-intentional base (owner direction Jul 2026): buttons share the
-  // input radius so controls read as one precise family. Semibold confident
-  // text, smooth transition, softened focus ring, tactile active-press.
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-input text-sm font-semibold tracking-tight antialiased select-none transition-all duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]",
+  // input radius so controls read as one precise family. Calm pass: medium
+  // weight — smooth transition, softened focus ring, tactile active-press.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-input text-sm font-medium tracking-tight antialiased select-none transition-all duration-150 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface active:scale-[0.98]",
   {
     variants: {
       variant: {

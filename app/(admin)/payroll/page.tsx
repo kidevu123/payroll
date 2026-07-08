@@ -270,7 +270,7 @@ export default async function PayrollPage({
                   >
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold tabular-nums tracking-tight">
+                        <span className="font-medium tabular-nums tracking-tight">
                           {p.startDate} – {p.displayEnd}
                         </span>
                         <SchedulePill name={p.scheduleName} />
@@ -361,7 +361,7 @@ function PhaseChip({ phase }: { phase: PeriodPhase }) {
   const { Icon } = s;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-semibold tracking-tight antialiased ${s.className}`}
+      className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-medium tracking-tight antialiased ${s.className}`}
     >
       <Icon className="h-3 w-3" aria-hidden />
       {s.label}

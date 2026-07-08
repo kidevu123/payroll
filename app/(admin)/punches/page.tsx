@@ -222,13 +222,13 @@ export default async function PunchesAdmin({
                       {emp?.displayName ?? "Unknown"}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
+                  <td className="px-3 py-2 tabular-nums text-xs">
                     {fmt(p.clockIn, company.timezone)}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
+                  <td className="px-3 py-2 tabular-nums text-xs">
                     {fmt(p.clockOut, company.timezone)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {hrs}
                   </td>
                   <td className="px-3 py-2 text-xs text-text-muted">

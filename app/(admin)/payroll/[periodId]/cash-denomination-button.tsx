@@ -74,7 +74,7 @@ export function CashDenominationButton({
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
                     ${denomination.value}s
                   </div>
-                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums">
+                  <div className="mt-1 tabular-nums text-xl font-semibold tabular-nums">
                     {denomination.count}
                   </div>
                   <div className="truncate text-[11px] text-text-muted">
@@ -89,7 +89,7 @@ export function CashDenominationButton({
                 <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                   Total cash
                 </span>
-                <span className="font-mono text-lg font-semibold">
+                <span className="tabular-nums text-lg font-semibold">
                   <MoneyDisplay cents={summary.totalCents} />
                 </span>
               </div>
@@ -115,13 +115,13 @@ export function CashDenominationButton({
                   {summary.rows.map((row) => (
                     <tr key={row.employeeId}>
                       <td className="px-3 py-2 font-medium">{row.employeeName}</td>
-                      <td className="px-3 py-2 text-right font-mono">
+                      <td className="px-3 py-2 text-right tabular-nums">
                         <MoneyDisplay cents={row.roundedPayCents} />
                       </td>
                       {CASH_DENOMINATIONS.map((denomination) => (
                         <td
                           key={denomination}
-                          className="px-3 py-2 text-right font-mono tabular-nums"
+                          className="px-3 py-2 text-right tabular-nums"
                         >
                           {row.bills[denomination] || "—"}
                         </td>

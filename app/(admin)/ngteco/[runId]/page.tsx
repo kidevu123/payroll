@@ -33,7 +33,7 @@ export default async function NgtecoRunDetail({
         </Link>
       </Button>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold font-mono">{run.id}</h1>
+        <h1 className="text-2xl font-semibold tabular-nums">{run.id}</h1>
         <StatusPill status={run.state as never} />
       </div>
       <p className="text-sm text-text-muted">
@@ -46,7 +46,7 @@ export default async function NgtecoRunDetail({
             <CardTitle>Last error</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-xs whitespace-pre-wrap">{run.lastError}</p>
+            <p className="tabular-nums text-xs whitespace-pre-wrap">{run.lastError}</p>
             {run.ingestScreenshotPath && (
               <p className="mt-2 text-xs text-text-muted">
                 Screenshot on the LXC: <span className="font-mono">{run.ingestScreenshotPath}</span>

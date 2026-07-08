@@ -74,10 +74,10 @@ export function DedupPunchesButton({
                         <td className="py-1.5 pr-3 font-medium">
                           {row.willKeep ? "Keep" : "Void"}
                         </td>
-                        <td className="py-1.5 pr-3 font-mono">{shortId(row.id)}</td>
+                        <td className="py-1.5 pr-3 tabular-nums">{shortId(row.id)}</td>
                         <td className="py-1.5 pr-3">{row.source}</td>
                         <td className="py-1.5 pr-3">{row.localTimeRange}</td>
-                        <td className="py-1.5 pr-3 text-right font-mono tabular-nums">
+                        <td className="py-1.5 pr-3 text-right tabular-nums">
                           {row.durationHours}
                         </td>
                       </tr>

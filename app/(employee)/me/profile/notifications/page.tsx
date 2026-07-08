@@ -120,7 +120,7 @@ export default async function NotificationsPage() {
                   key={n.id}
                   className="flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5"
                 >
-                  <span className="min-w-0 flex-1 font-mono text-[11px] tracking-tight text-text truncate">
+                  <span className="min-w-0 flex-1 tabular-nums text-[11px] tracking-tight text-text truncate">
                     {n.kind}
                   </span>
                   <span className="text-[11px] text-text-muted tabular-nums shrink-0">

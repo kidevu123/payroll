@@ -352,7 +352,6 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={storedHours}
                   decimals={payRules.hoursDecimalPlaces}
-                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
               </p>
@@ -361,7 +360,6 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={liveHours}
                   decimals={payRules.hoursDecimalPlaces}
-                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={liveCents} monospace={false} />
               </p>
@@ -438,20 +436,20 @@ async function PayslipBody({
                               <span className="flex flex-col gap-0.5 text-xs">
                                 <span className="text-text-muted">
                                   {t("in")}{" "}
-                                  <span className="whitespace-nowrap font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap tabular-nums text-text">
                                     {fmtTime(r.inT, tz, dateLocale)}
                                   </span>
                                   <span className="mx-1.5 text-text-subtle">
                                     →
                                   </span>
                                   {t("out")}{" "}
-                                  <span className="whitespace-nowrap font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap tabular-nums text-text">
                                     {fmtTime(r.outT, tz, dateLocale)}
                                   </span>
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                                <span className="font-mono text-xs tabular-nums text-text">
+                                <span className="tabular-nums text-xs tabular-nums text-text">
                                   {r.hours !== null ? r.hours.toFixed(2) : "—"}
                                   <span className="ml-1 lowercase text-text-subtle">
                                     {t("hours")}
@@ -508,13 +506,13 @@ async function PayslipBody({
                             <td className="px-3 py-3 text-xs font-medium text-text">
                               {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
                             </td>
-                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
                               {fmtTime(r.inT, tz, dateLocale)}
                             </td>
-                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
                               {fmtTime(r.outT, tz, dateLocale)}
                             </td>
-                            <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
+                            <td className="px-3 py-3 text-right tabular-nums text-xs tabular-nums text-text">
                               {r.hours !== null ? r.hours.toFixed(2) : "—"}
                             </td>
                             {payType === "HOURLY" && (

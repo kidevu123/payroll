@@ -58,7 +58,7 @@ export default async function NgtecoRunsPage() {
                 const p = periods[i];
                 return (
                   <tr key={r.id} className="hover:bg-surface-2/40">
-                    <td className="px-3 py-2 font-mono text-xs">
+                    <td className="px-3 py-2 tabular-nums text-xs">
                       {r.id.slice(0, 8)}…
                     </td>
                     <td className="px-3 py-2">
@@ -69,7 +69,7 @@ export default async function NgtecoRunsPage() {
                     <td className="px-3 py-2 text-text-muted">
                       {p ? `${p.startDate} – ${p.endDate}` : "—"}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-text-muted">
+                    <td className="px-3 py-2 text-right tabular-nums text-text-muted">
                       {durationOf(r)}
                     </td>
                     <td className="px-3 py-2 text-text-muted text-xs">

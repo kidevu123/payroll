@@ -141,7 +141,7 @@ export function TempWorkersSection({
                   <td className="py-2 pr-3" colSpan={3}>
                     Temp labor subtotal
                   </td>
-                  <td className="py-2 px-3 text-right font-mono tabular-nums">
+                  <td className="py-2 px-3 text-right tabular-nums">
                     <MoneyDisplay cents={total} />
                   </td>
                   <td />
@@ -169,10 +169,10 @@ function TempWorkerRow({
       <tr className="hover:bg-surface-2/40 transition-colors">
         <td className="py-2 pr-3 font-medium">{entry.workerName}</td>
         <td className="py-2 px-3 text-text-muted">{entry.description ?? "—"}</td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums text-text-muted">
+        <td className="py-2 px-3 text-right tabular-nums text-text-muted">
           {entry.hours ?? "—"}
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           <MoneyDisplay cents={entry.amountCents} />
         </td>
         <td className="py-2 pl-3 pr-1 text-right">
