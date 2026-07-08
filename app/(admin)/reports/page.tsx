@@ -1,19 +1,20 @@
-// Reports landing — a calm payroll statement. Periods roll up into
-// month cards (one soft shadow each), with hairline-separated statement
-// lines inside. The cadence filter is a sticky segmented control; the
-// header carries a slim count + YTD-paid summary derived from the rows
-// already fetched.
+// Reports landing — organized like a statement console (owner reference,
+// Jul 2026): title + Export on the header row, four KPI stat cards, a
+// filter bar (search / schedule / status / payment / sort), then the
+// month-grouped report table with aligned columns, and the insight rail
+// (mix donut, net trend, summary) on the right.
 
 import Link from "next/link";
-import { Download, CalendarRange } from "lucide-react";
+import { Download, CalendarRange, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   listReports,
   listSalariedPaystubReports,
@@ -29,7 +30,6 @@ import { ReportsKpis } from "@/components/reports/reports-kpis";
 import { ReportsRail } from "@/components/reports/reports-rail";
 import { requireSession } from "@/lib/auth-guards";
 import {
-  ScheduleTabs,
   parseScheduleTab,
   scheduleTabToKind,
 } from "@/components/domain/schedule-tabs";
@@ -80,45 +80,43 @@ export default async function ReportsPage({
             Payroll insights, compliance visibility, and historical runs.
           </p>
         </div>
-        <Link
-          href="/reports/time-off"
-          className="inline-flex items-center gap-1 text-xs text-brand-700 hover:underline"
-        >
-          <CalendarRange className="h-3.5 w-3.5" aria-hidden="true" /> Year-end time-off tally
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/reports/time-off">
+              <CalendarRange className="h-4 w-4" /> Time-off tally
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" size="sm">
+                <Download className="h-4 w-4" /> Export
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[13rem]">
+              <DropdownMenuLabel>CSV exports</DropdownMenuLabel>
+              <ExportItem type="periods" label="Period totals" />
+              <ExportItem type="payslips" label="Payslips" />
+              <ExportItem type="punches" label="Punches" />
+              <ExportItem type="employees" label="Employees" />
+              <DropdownMenuSeparator />
+              <ExportItem type="audit" label="Audit log" />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <ReportsKpis kpis={overview.kpis} />
+      <ReportsKpis ytd={overview.ytd} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
-          <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-1 bg-page/85 px-1 py-2 backdrop-blur supports-[backdrop-filter]:bg-page/70 lg:top-[3.5rem]">
-            <ScheduleTabs current={tab} basePath="/reports" />
-          </div>
-
           <ReportsTable
             reports={periodRows}
             zohoOrgs={orgs}
             drawerBalanceCents={drawerBalanceCents}
             canManageReports={session.user.role !== "ACCOUNTANT"}
+            scheduleTab={tab}
           />
-
-          <Card>
-            <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-              <Download className="h-4 w-4 text-brand-700" />
-              <CardTitle className="text-base">CSV exports</CardTitle>
-              <CardDescription className="ml-auto hidden sm:block">
-                Pull the underlying data for any period or audit window.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-              <ExportLink type="employees" label="Employees" />
-              <ExportLink type="payslips" label="Payslips" />
-              <ExportLink type="punches" label="Punches" />
-              <ExportLink type="audit" label="Audit log" />
-              <ExportLink type="periods" label="Period totals" />
-            </CardContent>
-          </Card>
         </div>
 
         <aside className="lg:sticky lg:top-[calc(3.5rem+env(safe-area-inset-top))] lg:self-start">
@@ -129,12 +127,12 @@ export default async function ReportsPage({
   );
 }
 
-function ExportLink({ type, label }: { type: string; label: string }) {
+function ExportItem({ type, label }: { type: string; label: string }) {
   return (
-    <Button asChild variant="secondary" className="justify-start">
+    <DropdownMenuItem asChild>
       <Link href={`/api/reports/csv?type=${type}`}>
-        <Download className="h-4 w-4" /> {label}
+        <Download className="h-3.5 w-3.5" /> {label}
       </Link>
-    </Button>
+    </DropdownMenuItem>
   );
 }

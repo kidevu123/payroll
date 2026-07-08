@@ -74,17 +74,34 @@ export function ReportsRail({ overview }: { overview: ReportsOverview }) {
         )}
       </RailCard>
 
-      <RailCard title="YTD summary">
+      <RailCard title="Summary (YTD)">
         <div className="divide-y divide-border/60">
-          <SummaryRow label="Total gross pay">
+          <SummaryRow label="Gross pay">
             <MoneyDisplay cents={overview.ytd.totalGrossCents} monospace={false} />
           </SummaryRow>
-          <SummaryRow label="Total net pay" accent="#34d399">
+          <SummaryRow label="Net pay" accent="#34d399">
             <MoneyDisplay cents={overview.ytd.totalNetCents} monospace={false} />
           </SummaryRow>
-          <SummaryRow label="Total reports">{overview.ytd.totalReports}</SummaryRow>
+          <SummaryRow label="Deductions">
+            <MoneyDisplay
+              cents={Math.max(
+                0,
+                overview.ytd.totalGrossCents - overview.ytd.totalNetCents,
+              )}
+              monospace={false}
+            />
+          </SummaryRow>
           <SummaryRow label="Employees paid">{overview.ytd.employeesPaid}</SummaryRow>
+          <SummaryRow label="Pay runs">{overview.ytd.totalReports}</SummaryRow>
         </div>
+        <Link
+          href="/dashboard"
+          className="mt-3 flex items-center justify-between rounded-input px-1 py-1.5 text-[13px] font-semibold hover:underline"
+          style={{ color: "#a78bfa" }}
+        >
+          View detailed analytics
+          <span aria-hidden>→</span>
+        </Link>
       </RailCard>
 
       <Link
