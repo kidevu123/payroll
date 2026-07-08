@@ -118,15 +118,17 @@ export const automationSchema = z.object({
     // Sunday 7pm ET — confirmed default per §21 #6.
     cron: z.string().default("0 19 * * 0"),
   }),
-  // Per-punch poll of NGTeco's View Attendance Punch view. Default every
-  // 15 min so /me/time is approximately real-time without hammering the
-  // service account. Disable to fall back to weekly-only ingestion.
+  // Automatic punch poll. Rides NGTeco's REST API (browserless — see
+  // lib/ngteco/api-client.ts), so each poll is a ~2s JSON fetch, not a
+  // Chromium session. Owner-set default: hourly (Jul 2026 directive;
+  // migration 0040 aligned the stored setting). Disable to fall back to
+  // manual/weekly-only ingestion.
   ngtecoPunchPoll: z
     .object({
       enabled: z.boolean(),
       cron: z.string(),
     })
-    .default({ enabled: true, cron: "*/15 * * * *" }),
+    .default({ enabled: true, cron: "0 * * * *" }),
   employeeFixWindowHours: z.number().int().min(1).max(168).default(24),
   adminAutoNotifyOnIngestFail: z.boolean().default(true),
   suspiciousDurationMinutesShortThreshold: z.number().int().min(1).default(240),

@@ -237,7 +237,7 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   if (cronEnabled && automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(
       NGTECO_PUNCH_POLL_QUEUE,
-      automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
+      automation.ngtecoPunchPoll.cron ?? "0 * * * *",
       { triggeredBy: "CRON" } satisfies PunchPollJobData,
       tzOpts,
     );

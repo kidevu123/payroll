@@ -28,8 +28,11 @@ export function NgtecoForm({
       <div className="space-y-3">
         <h2 className="text-heading font-semibold tracking-tight text-text">NGTeco connection</h2>
         <p className="text-xs text-text-muted">
-          Credentials are encrypted at rest with AES-GCM. Plaintext only
-          crosses the boundary the moment a Playwright session opens.
+          Punches sync through NGTeco&apos;s REST API (browserless — a
+          two-second JSON fetch, no Chromium). The headless browser scraper
+          remains only as an automatic fallback if the API call fails.
+          Credentials are encrypted at rest with AES-GCM; plaintext only
+          crosses the boundary the moment a sync runs.
         </p>
           <form
             action={async (form) => {
@@ -94,8 +97,12 @@ export function NgtecoForm({
                     name="headless"
                     defaultChecked={headless}
                   />
-                  Run scraper headless
+                  Run fallback scraper headless
                 </label>
+                <p className="text-[11px] text-text-subtle">
+                  Only applies when the API path fails and the browser
+                  fallback kicks in.
+                </p>
               </div>
             </div>
             {error && <p className="text-sm text-danger-700">{error}</p>}
