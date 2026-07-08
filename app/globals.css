@@ -192,6 +192,16 @@
 */
 .dark {
     color-scheme: dark;
+    /*
+      Re-establish the default text color AT the themed root. body sets
+      `color: var(--color-text)` while the light tokens are active, so its
+      computed near-black color is what descendants inherit — redefining the
+      variable below does not re-resolve it. Without this line, any element
+      inside a .dark subtree that lacks an explicit text-* class (CardTitle,
+      native date/time input values via preflight `color: inherit`, …)
+      renders near-black on the dark background and is unreadable.
+    */
+    color: var(--color-text);
     --color-page: #09090b;
     --color-surface: #18181b;
     --color-surface-2: #27272a;
