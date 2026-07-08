@@ -234,7 +234,7 @@ function monthGross(m: MonthGroup): number {
 // because the server merges salaried paystubs per tab.
 
 type StatusFilter = "all" | "PAID" | "LOCKED" | "OPEN";
-type MethodFilter = "all" | "BANK" | "CASH" | "PAYSLIPS";
+type MethodFilter = "all" | "BANK" | "CASH";
 type SortKey = "newest" | "oldest" | "net-desc" | "net-asc";
 
 function groupState(g: GroupedReport): "OPEN" | "LOCKED" | "PAID" {
@@ -247,7 +247,11 @@ function groupState(g: GroupedReport): "OPEN" | "LOCKED" | "PAID" {
 }
 
 function groupMethod(g: GroupedReport): MethodFilter | null {
-  if (g.runs.some((r) => r.isSalariedPaystub)) return "PAYSLIPS";
+  // Salaried W2 paystubs are paid out via bank transfer (owner directive),
+  // unless their period explicitly recorded a cash-drawer payment.
+  if (g.runs.some((r) => r.isSalariedPaystub)) {
+    return g.runs[0]?.periodPaymentMethod === "CASH" ? "CASH" : "BANK";
+  }
   if (groupState(g) !== "PAID") return null;
   return g.runs[0]?.periodPaymentMethod === "CASH" ? "CASH" : "BANK";
 }
@@ -552,7 +556,6 @@ function FilterBar({
           ["all", "All"],
           ["BANK", "Bank transfer"],
           ["CASH", "Cash drawer"],
-          ["PAYSLIPS", "Payslips"],
         ]}
       />
       <FilterSelect
@@ -639,6 +642,12 @@ function MonthCard({
 }: { month: MonthGroup } & SharedHandlers) {
   const net = monthNet(month);
   const gross = monthGross(month);
+  // W2 paystub periods have no gross figure (paystubs carry net only), so a
+  // month containing them under-reports Total gross — flag it rather than
+  // let gross read as smaller than net without explanation.
+  const grossIncomplete = month.periods.some(
+    (p) => periodGross(p) === 0 && periodNet(p) > 0,
+  );
   const runCount = month.periods.reduce((n, p) => n + p.runs.length, 0);
 
   return (
@@ -670,9 +679,16 @@ function MonthCard({
           </span>
         </div>
         <div className="flex items-center gap-5 whitespace-nowrap">
-          <div className="hidden flex-col items-end leading-none sm:flex">
+          <div
+            className="hidden flex-col items-end leading-none sm:flex"
+            title={
+              grossIncomplete
+                ? "Partial: W2 paystub periods carry net pay only, so their gross isn't included here."
+                : undefined
+            }
+          >
             <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
-              Total gross
+              Total gross{grossIncomplete ? "*" : ""}
             </span>
             <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text-muted">
               <MoneyDisplay cents={gross} />
@@ -799,19 +815,25 @@ function PeriodLine({
 
             {/* Mobile chip cluster */}
             <div className="col-span-2 flex flex-wrap items-center gap-1.5 lg:hidden">
-              <SchedulePill name="Salaried" />
+              <SchedulePill name={group.scheduleName ?? "Salaried"} />
               <StatusCell state="PAID" />
+              <PaymentMethodCell
+                state="PAID"
+                method={group.runs[0]?.periodPaymentMethod ?? "BANK"}
+              />
             </div>
 
-            {/* 2 · Schedule */}
+            {/* 2 · Schedule — salaried staff still ride a real cadence */}
             <div className="hidden min-w-0 lg:block">
-              <SchedulePill name="Salaried" />
+              <SchedulePill name={group.scheduleName ?? "Salaried"} />
             </div>
 
-            {/* 3 · Payment method */}
-            <div className="hidden min-w-0 items-center gap-1.5 text-xs text-text-muted lg:flex">
-              <FileText className="h-3.5 w-3.5 text-text-subtle" aria-hidden />
-              Payslips
+            {/* 3 · Payment method — W2 paystubs pay out via bank transfer */}
+            <div className="hidden min-w-0 lg:flex">
+              <PaymentMethodCell
+                state="PAID"
+                method={group.runs[0]?.periodPaymentMethod ?? "BANK"}
+              />
             </div>
 
             {/* 4 · Status */}
@@ -1146,8 +1168,8 @@ function StatusCell({ state }: { state: "OPEN" | "LOCKED" | "PAID" }) {
   );
 }
 
-/** Payment-method table cell (lg) — quiet icon + text, per the mockup.
- *  Not a chip: status carries the color, this column just states the rail. */
+/** Payment-method table cell — colored like the original paid-via chips
+ *  (owner ask): amber for cash-drawer, blue for bank transfer. */
 function PaymentMethodCell({
   state,
   method,
@@ -1160,14 +1182,14 @@ function PaymentMethodCell({
   }
   if (method === "CASH") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
-        <Banknote className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Cash drawer
+      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium text-warn-700 whitespace-nowrap">
+        <Banknote className="h-3 w-3" aria-hidden /> Cash drawer
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
-      <Landmark className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Bank transfer
+    <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium text-info-700 whitespace-nowrap">
+      <Landmark className="h-3 w-3" aria-hidden /> Bank transfer
     </span>
   );
 }

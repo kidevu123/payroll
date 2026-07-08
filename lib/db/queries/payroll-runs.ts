@@ -187,6 +187,18 @@ export type ReportRow = {
  * double-count. Rows group per (start,end) pay period, summing every
  * employee's net, and flow into the reports month-total.
  */
+/** Best-effort cadence label from a paystub's date range — used only when
+ *  the doc has no period row to read the real schedule from. */
+function inferCadenceFromRange(start: string, end: string): string {
+  const a = new Date(`${start}T12:00:00Z`);
+  const b = new Date(`${end}T12:00:00Z`);
+  const days = Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
+  if (days <= 9) return "Weekly";
+  if (days <= 20) return "Semi-monthly";
+  if (days <= 32) return "Monthly";
+  return "Salaried";
+}
+
 export async function listSalariedPaystubReports(
   limit = 200,
 ): Promise<ReportRow[]> {
@@ -201,10 +213,12 @@ export async function listSalariedPaystubReports(
       periodId: payrollPeriodDocuments.periodId,
       periodState: payPeriods.state,
       periodPaymentMethod: payPeriods.paymentMethod,
+      scheduleName: paySchedules.name,
     })
     .from(payrollPeriodDocuments)
     .leftJoin(employees, eq(payrollPeriodDocuments.employeeId, employees.id))
     .leftJoin(payPeriods, eq(payrollPeriodDocuments.periodId, payPeriods.id))
+    .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
     .where(
       and(
         eq(payrollPeriodDocuments.kind, "PAYSTUB"),
@@ -231,6 +245,7 @@ export async function listSalariedPaystubReports(
       periodId: string | null;
       periodState: "OPEN" | "LOCKED" | "PAID" | null;
       periodPaymentMethod: "BANK" | "CASH" | null;
+      scheduleName: string | null;
       docs: Array<{ id: string; employeeName: string; amountCents: number }>;
     }
   >();
@@ -245,6 +260,7 @@ export async function listSalariedPaystubReports(
       periodId: null,
       periodState: null,
       periodPaymentMethod: null,
+      scheduleName: null,
       docs: [],
     };
     g.total += d.amountCents;
@@ -253,6 +269,7 @@ export async function listSalariedPaystubReports(
       g.periodId = d.periodId;
       g.periodState = d.periodState;
       g.periodPaymentMethod = d.periodPaymentMethod;
+      g.scheduleName = d.scheduleName;
     }
     g.docs.push({
       id: d.id,
@@ -273,7 +290,11 @@ export async function listSalariedPaystubReports(
       endDate: g.end,
       source: "AD_HOC" as PayrollRun["source"],
       state: "PUBLISHED" as PayrollRun["state"],
-      scheduleName: "Salaried",
+      // Salaried employees still ride a pay schedule (weekly / semi-monthly /
+      // monthly). Prefer the attached period's real schedule name; for
+      // legacy Salaried-tab uploads with no period row, infer the cadence
+      // from the date range so the Schedule column never reads as blank.
+      scheduleName: g.scheduleName ?? inferCadenceFromRange(g.start, g.end),
       amountCents: g.total,
       grossPayCents: 0,
       docNetPayCents: 0,

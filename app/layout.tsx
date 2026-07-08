@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, DM_Mono } from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
@@ -48,6 +49,23 @@ export const viewport: Viewport = {
 // `next build` does not try to hit the database for missing-at-build-time data.
 export const dynamic = "force-dynamic";
 
+// Self-hosted fonts (next/font): downloaded at build, served same-origin as
+// immutable assets. Replaces the render-blocking Google Fonts stylesheet that
+// added an external round-trip to every cold load — the single biggest
+// first-paint cost on the phone. Exposed as CSS variables consumed by the
+// --font-sans / --font-mono tokens in globals.css.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-dm-mono",
+});
+
 export default async function RootLayout({
   children,
 }: {
@@ -64,15 +82,11 @@ export default async function RootLayout({
     : undefined;
 
   return (
-    <html lang={locale} style={brandStyle}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang={locale}
+      style={brandStyle}
+      className={`${inter.variable} ${dmMono.variable}`}
+    >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DeployVersionGuard />

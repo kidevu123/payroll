@@ -33,10 +33,14 @@
      Mac/iPhone), giving the authentic Apple-bold feel. Falls back to Inter
      then system-ui elsewhere. Display/title sizes are pushed up and the
      tracking tightened for confident, heavy headings. */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
-    "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, "SF Mono",
-    Menlo, Consolas, monospace;
+  /* var(--font-inter) / var(--font-dm-mono) are injected by next/font on
+     <html> — self-hosted, no external CSS request. Fallback stack keeps
+     real SF Pro on Apple hardware. */
+  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont,
+    "SF Pro Display", "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI",
+    sans-serif;
+  --font-mono: var(--font-dm-mono), "DM Mono", ui-monospace, SFMono-Regular,
+    "SF Mono", Menlo, Consolas, monospace;
 
   --text-display: 2.75rem;
   --text-display--line-height: 3rem;

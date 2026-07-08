@@ -22,11 +22,29 @@ export function ChartSkeleton({ className }: { className?: string }) {
   return <Skeleton className={cn("w-full rounded-input", className)} />;
 }
 
-/** Generic route-level loading fallback: a title line, an optional stat row,
- *  and a content block. Rendered by each route's loading.tsx so navigation
- *  shows instant structure instead of dead air while the dynamic (uncached)
- *  server render resolves. Shape is approximate on purpose — it signals
- *  "this page is loading" without pretending to be the final layout. */
+/** Phone-shaped loading fallback for the employee PWA tabs: greeting line +
+ *  stacked cards inside the same main padding the real pages use. Every tab
+ *  tap paints this instantly instead of freezing on the previous screen
+ *  while the dynamic server render resolves. */
+export function EmployeeRouteSkeleton({ cards = 3 }: { cards?: number }) {
+  return (
+    <main
+      className="px-4 py-6 sm:px-6 sm:py-8 space-y-4"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="space-y-2">
+        <Skeleton className="h-7 w-44 rounded-input" />
+        <Skeleton className="h-4 w-64 max-w-full rounded-input" />
+      </div>
+      {Array.from({ length: cards }).map((_, i) => (
+        <Skeleton key={i} className={i === 0 ? "h-32" : "h-44"} />
+      ))}
+    </main>
+  );
+}
+
+/** Generic route-level loading fallback (admin): title, stat row, content. */
 export function RouteSkeleton({
   stats = 4,
   withRail = false,
