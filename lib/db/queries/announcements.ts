@@ -119,6 +119,23 @@ export async function listAnnouncements(limit = 100): Promise<
   return rows;
 }
 
+/** All-time totals for the /notifications overview tiles. Counted in SQL —
+ *  the history list itself is capped at 100 rows, so summing the fetched
+ *  page would under-report. */
+export async function getAnnouncementTotals(): Promise<{
+  sentCount: number;
+  recipientsReached: number;
+}> {
+  const [row] = await db
+    .select({
+      sentCount: sql<number>`count(*)::int`,
+      recipientsReached: sql<number>`coalesce(sum(${announcements.recipientCount}), 0)::int`,
+    })
+    .from(announcements)
+    .where(isNull(announcements.deletedAt));
+  return row ?? { sentCount: 0, recipientsReached: 0 };
+}
+
 /** Announcements sent in the last `days` days — powers the sidebar badge
  *  so "Notifications" shows recent activity at a glance. */
 export async function countRecentAnnouncements(days = 7): Promise<number> {
