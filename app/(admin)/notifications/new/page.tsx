@@ -9,15 +9,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listEmployees } from "@/lib/db/queries/employees";
+import { getAnnouncementTemplateById } from "@/lib/db/queries/announcement-templates";
 import { ComposeAnnouncementForm } from "../compose-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewAnnouncementPage() {
+export default async function NewAnnouncementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ template?: string }>;
+}) {
+  const sp = await searchParams;
   // Only ACTIVE/INACTIVE employees who actually have a linked user can
   // receive a push or in-app notification. We pass the lighter shape
   // the form needs for the SPECIFIC picker.
-  const employees = await listEmployees();
+  const [employees, template] = await Promise.all([
+    listEmployees(),
+    sp.template
+      ? getAnnouncementTemplateById(sp.template).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const eligible = employees
     .filter((e) => e.status !== "TERMINATED")
     .map((e) => ({
@@ -52,7 +63,18 @@ export default async function NewAnnouncementPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ComposeAnnouncementForm employees={eligible} />
+          <ComposeAnnouncementForm
+            employees={eligible}
+            {...(template
+              ? {
+                  initial: {
+                    title: template.title,
+                    body: template.body,
+                    link: template.link,
+                  },
+                }
+              : {})}
+          />
         </CardContent>
       </Card>
     </div>

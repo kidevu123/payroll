@@ -18,6 +18,8 @@ import {
   Send,
   Clock3,
   ExternalLink,
+  LayoutTemplate,
+  PenLine,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,9 +27,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { listAnnouncements } from "@/lib/db/queries/announcements";
+import { listAnnouncementTemplates } from "@/lib/db/queries/announcement-templates";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
-import { deleteAnnouncementAction } from "./actions";
+import { deleteAnnouncementAction, deleteTemplateAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -58,10 +61,11 @@ function relativeTime(from: Date, now: Date): string {
 }
 
 export default async function NotificationsPage() {
-  const [announcements, employees, company] = await Promise.all([
+  const [announcements, employees, company, templates] = await Promise.all([
     listAnnouncements(100),
     listEmployees(),
     getSetting("company").catch(() => null),
+    listAnnouncementTemplates().catch(() => []),
   ]);
   const empById = new Map(employees.map((e) => [e.id, e.displayName]));
   const tz = company?.timezone ?? "America/New_York";
@@ -236,6 +240,74 @@ export default async function NotificationsPage() {
                   </li>
                 );
               })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Saved templates — reusable starting points. "Use" opens the
+          compose form pre-filled; audience is always chosen per send. */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 sm:px-5">
+            <div className="flex items-center gap-2">
+              <LayoutTemplate className="h-4 w-4 text-brand-700" aria-hidden />
+              <h2 className="text-sm font-semibold text-text">Saved templates</h2>
+            </div>
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/notifications/templates/new">
+                <Plus className="h-3.5 w-3.5" /> New template
+              </Link>
+            </Button>
+          </div>
+          {templates.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-text-muted sm:px-5">
+              No templates yet. Save one and it becomes a one-tap starting
+              point for future announcements.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {templates.map((tpl) => (
+                <li
+                  key={tpl.id}
+                  className="flex items-center gap-3 px-4 py-3 sm:px-5"
+                >
+                  <span
+                    aria-hidden
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input bg-success-50 text-success-700 ring-1 ring-inset ring-success-200/60"
+                  >
+                    <PenLine className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text">
+                      {tpl.name}
+                    </p>
+                    <p className="truncate text-xs text-text-muted">
+                      {tpl.title}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={`/notifications/new?template=${tpl.id}`}>
+                        Use
+                      </Link>
+                    </Button>
+                    <form action={deleteTemplateAction}>
+                      <input type="hidden" name="id" value={tpl.id} />
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 text-text-muted hover:text-danger-700"
+                        title="Delete template"
+                        aria-label={`Delete template ${tpl.name}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </form>
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
         </CardContent>

@@ -27,8 +27,11 @@ const PAY_TYPE_LABELS: Record<string, string> = {
 
 export function ComposeAnnouncementForm({
   employees,
+  initial,
 }: {
   employees: EmployeeOpt[];
+  /** Pre-fill from a saved template (/notifications/new?template=<id>). */
+  initial?: { title: string; body: string; link: string | null };
 }) {
   const [mode, setMode] = React.useState<Mode>("ALL");
   const [payTypes, setPayTypes] = React.useState<Set<string>>(new Set());
@@ -100,6 +103,7 @@ export function ComposeAnnouncementForm({
           name="title"
           required
           maxLength={200}
+          defaultValue={initial?.title}
           placeholder="e.g. Office closed Friday for inventory"
         />
       </div>
@@ -111,6 +115,7 @@ export function ComposeAnnouncementForm({
           required
           rows={5}
           maxLength={2000}
+          defaultValue={initial?.body}
           placeholder="What do you want to tell them?"
           className="w-full rounded-input border border-border bg-surface px-3 py-2 text-sm"
         />
@@ -121,6 +126,7 @@ export function ComposeAnnouncementForm({
           id="link"
           name="link"
           maxLength={500}
+          defaultValue={initial?.link ?? undefined}
           placeholder="/me/calendar  (or  https://...)"
         />
         <p className="text-[11px] text-text-muted">

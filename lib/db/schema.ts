@@ -968,6 +968,36 @@ export const announcements = pgTable(
 export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;
 
+/** Reusable announcement starting points. Picking one on /notifications
+ *  pre-fills the compose form; the sent announcement itself is still a
+ *  normal `announcements` row (templates are never referenced after
+ *  send, so deleting one never orphans history). */
+export const announcementTemplates = pgTable(
+  "announcement_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Short admin-facing label shown in the Saved templates card. */
+    name: varchar("name", { length: 120 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    createdById: uuid("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [index("announcement_templates_created_at_idx").on(t.createdAt)],
+);
+
+export type AnnouncementTemplate = typeof announcementTemplates.$inferSelect;
+export type NewAnnouncementTemplate = typeof announcementTemplates.$inferInsert;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Notifications
 // ─────────────────────────────────────────────────────────────────────────────
