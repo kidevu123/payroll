@@ -7,6 +7,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-guards";
 import {
   createMissedPunchRequest,
+  DuplicatePendingRequestError,
 } from "@/lib/db/queries/requests";
 import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
 import { adminUserIds } from "@/lib/db/queries/recipients";
@@ -70,17 +71,24 @@ export async function reportPunchFixAction(
     };
   }
 
-  await createMissedPunchRequest(
-    {
-      employeeId: session.user.employeeId,
-      periodId,
-      date: parsed.data.date,
-      claimedClockIn: claim.clockIn,
-      claimedClockOut: claim.clockOut,
-      reason: parsed.data.reason,
-    },
-    { id: session.user.id, role: session.user.role },
-  );
+  try {
+    await createMissedPunchRequest(
+      {
+        employeeId: session.user.employeeId,
+        periodId,
+        date: parsed.data.date,
+        claimedClockIn: claim.clockIn,
+        claimedClockOut: claim.clockOut,
+        reason: parsed.data.reason,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof DuplicatePendingRequestError) {
+      return { error: err.message };
+    }
+    throw err;
+  }
   const admins = await adminUserIds();
   if (admins.length > 0) {
     await dispatch(

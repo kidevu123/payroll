@@ -739,7 +739,15 @@ export const missedPunchRequests = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("missed_requests_status_idx").on(t.status)],
+  (t) => [
+    index("missed_requests_status_idx").on(t.status),
+    // One PENDING request per employee per date. The employee-facing forms
+    // give a friendly error first; this index is the race-proof backstop so
+    // double-taps and parallel submissions can't spam the admin queue.
+    uniqueIndex("missed_requests_pending_unique")
+      .on(t.employeeId, t.date)
+      .where(sql`${t.status} = 'PENDING'`),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

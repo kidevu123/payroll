@@ -162,29 +162,50 @@ export async function getMissedPunchRequest(id: string): Promise<MissedPunchRequ
   return row ?? null;
 }
 
+/** Thrown when the employee already has a PENDING fix request for the date.
+ *  Actions surface `.message` directly — keep it employee-friendly. */
+export class DuplicatePendingRequestError extends Error {
+  constructor(date: string) {
+    super(
+      `You already have a pending fix request for ${date}. An admin will review it — no need to submit again.`,
+    );
+    this.name = "DuplicatePendingRequestError";
+  }
+}
+
 export async function createMissedPunchRequest(
   input: NewMissedPunchRequest,
   actor: Actor,
 ): Promise<MissedPunchRequest> {
   return db.transaction(async (tx) => {
-    if (input.alertId) {
-      const [existing] = await tx
-        .select()
-        .from(missedPunchRequests)
-        .where(
-          and(
-            eq(missedPunchRequests.alertId, input.alertId),
-            eq(missedPunchRequests.status, "PENDING"),
-          ),
-        )
-        .limit(1);
-      if (existing) return existing;
-    }
+    // One PENDING request per employee per date, regardless of which flow
+    // (alert-driven or ad-hoc report) filed it. The partial unique index
+    // missed_requests_pending_unique enforces the same rule against races.
+    const [existing] = await tx
+      .select()
+      .from(missedPunchRequests)
+      .where(
+        and(
+          eq(missedPunchRequests.employeeId, input.employeeId),
+          eq(missedPunchRequests.date, input.date),
+          eq(missedPunchRequests.status, "PENDING"),
+        ),
+      )
+      .limit(1);
+    if (existing) throw new DuplicatePendingRequestError(input.date);
 
-    const [row] = await tx
-      .insert(missedPunchRequests)
-      .values(input)
-      .returning();
+    let row: MissedPunchRequest | undefined;
+    try {
+      [row] = await tx.insert(missedPunchRequests).values(input).returning();
+    } catch (err) {
+      // Race backstop: two parallel submissions both passed the check above;
+      // the unique index rejected the loser. Same friendly message.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("missed_requests_pending_unique")) {
+        throw new DuplicatePendingRequestError(input.date);
+      }
+      throw err;
+    }
     if (!row) throw new Error("createMissedPunchRequest: insert returned no row");
     await writeAudit(
       {

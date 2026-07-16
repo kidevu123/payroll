@@ -4,7 +4,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-guards";
-import { getMissedPunchAlertById, createMissedPunchRequest } from "@/lib/db/queries/requests";
+import {
+  getMissedPunchAlertById,
+  createMissedPunchRequest,
+  DuplicatePendingRequestError,
+} from "@/lib/db/queries/requests";
 import { adminUserIds } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
 import { getSetting } from "@/lib/settings/runtime";
@@ -41,18 +45,25 @@ export async function submitMissedPunchAction(
     issue: alert.issue,
   });
   if (!claim.ok) return { error: claim.error };
-  await createMissedPunchRequest(
-    {
-      employeeId: alert.employeeId,
-      periodId: alert.periodId,
-      alertId,
-      date: alert.date,
-      claimedClockIn: claim.clockIn,
-      claimedClockOut: claim.clockOut,
-      reason: parsed.data.reason,
-    },
-    { id: session.user.id, role: session.user.role },
-  );
+  try {
+    await createMissedPunchRequest(
+      {
+        employeeId: alert.employeeId,
+        periodId: alert.periodId,
+        alertId,
+        date: alert.date,
+        claimedClockIn: claim.clockIn,
+        claimedClockOut: claim.clockOut,
+        reason: parsed.data.reason,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof DuplicatePendingRequestError) {
+      return { error: err.message };
+    }
+    throw err;
+  }
   // Notify admins.
   const admins = await adminUserIds();
   if (admins.length > 0) {
