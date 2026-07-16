@@ -1,0 +1,1 @@
+ALTER TABLE "cash_drawer_entries" ADD COLUMN "receipt_path" text;

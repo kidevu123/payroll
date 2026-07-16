@@ -534,6 +534,10 @@ export const cashDrawerEntries = pgTable(
     /** Optional classification. 'PETTY_CASH' marks an accountant-recorded
      *  petty-cash purchase (a WITHDRAWAL); NULL for payroll/manual entries. */
     category: text("category"),
+    /** Uploaded receipt image/PDF for petty-cash purchases. Absolute
+     *  container path under /data/uploads/drawer-receipts. Written by this
+     *  app and by Cashbook (the linked drawer app on the same host). */
+    receiptPath: text("receipt_path"),
     /** Withdrawals link back to the period that consumed them. Null
      *  for deposits and for any historical withdrawal recorded
      *  manually. */

@@ -89,12 +89,25 @@ export async function recordPettyCashAction(formData: FormData) {
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  // Optional receipt upload (image/PDF). Stored before the ledger insert so
+  // a failed write never leaves an entry pointing at a missing file.
+  let receiptPath: string | null = null;
+  const receipt = formData.get("receipt");
+  if (receipt instanceof File && receipt.size > 0) {
+    const { writeReceiptFile } = await import("@/lib/cash-drawer/receipt-storage");
+    try {
+      receiptPath = await writeReceiptFile(receipt);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Receipt upload failed." };
+    }
+  }
   try {
     await recordPettyCash(
       {
         amountCents: Math.round(parsed.data.amountDollars * 100),
         description: parsed.data.description,
         reference: parsed.data.reference ?? null,
+        receiptPath,
       },
       { id: session.user.id, role: session.user.role },
     );

@@ -5,7 +5,7 @@
 // sum(WITHDRAWAL), constrained to never go negative.
 
 import Link from "next/link";
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Paperclip } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireCashDrawerAccess } from "@/lib/auth-guards";
 import {
@@ -231,6 +231,18 @@ export default async function CashDrawerPage() {
                       </td>
                       <td className="px-4 py-2 text-xs text-text-muted">
                         {entry.notes ?? ""}
+                        {entry.receiptPath && (
+                          <a
+                            href={`/cash-drawer/receipt/${entry.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-1.5 inline-flex items-center gap-0.5 text-brand-700 underline-offset-2 hover:underline"
+                            title="View uploaded receipt"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            receipt
+                          </a>
+                        )}
                         {createdByEmail && (
                           <span className="block text-[10px] text-text-subtle mt-0.5">
                             by {createdByEmail}

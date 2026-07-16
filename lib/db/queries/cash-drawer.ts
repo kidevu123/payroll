@@ -105,6 +105,7 @@ export type WithdrawInput = {
   periodId?: string | null;
   notes?: string | null;
   category?: string | null;
+  receiptPath?: string | null;
 };
 
 /** Record a withdrawal. Used both by the period mark-paid flow (with
@@ -141,6 +142,7 @@ export async function recordWithdrawal(
         invoiceNumber: null,
         notes: input.notes?.trim() || null,
         category: input.category ?? null,
+        receiptPath: input.receiptPath ?? null,
         periodId: input.periodId ?? null,
         createdById: actor.id,
       })
@@ -168,6 +170,8 @@ export type PettyCashInput = {
   description: string;
   /** Optional receipt / reference number. */
   reference?: string | null;
+  /** Optional uploaded receipt file path (see actions.ts for storage). */
+  receiptPath?: string | null;
 };
 
 /** Record an accountant petty-cash purchase as a categorized WITHDRAWAL. */
@@ -182,7 +186,13 @@ export async function recordPettyCash(input: PettyCashInput, actor: Actor) {
     ? `${input.description.trim()} (ref ${input.reference.trim()})`
     : input.description.trim();
   return recordWithdrawal(
-    { amountCents: input.amountCents, periodId: null, notes: note, category: PETTY_CASH_CATEGORY },
+    {
+      amountCents: input.amountCents,
+      periodId: null,
+      notes: note,
+      category: PETTY_CASH_CATEGORY,
+      receiptPath: input.receiptPath ?? null,
+    },
     actor,
   );
 }

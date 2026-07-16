@@ -198,6 +198,17 @@ export function PettyCashForm() {
           placeholder="e.g. office supplies, stamps"
         />
       </div>
+      <div className="space-y-1">
+        <Label htmlFor="pc-receipt">Receipt (optional, PDF or photo)</Label>
+        <Input
+          id="pc-receipt"
+          name="receipt"
+          type="file"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          disabled={pending}
+          className="file:mr-2 file:rounded-chip file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:font-medium"
+        />
+      </div>
       <div className="flex items-center justify-between gap-2">
         {error && <p className="text-xs text-danger-700">{error}</p>}
         {ok && <p className="text-xs text-success-700">Purchase recorded.</p>}
