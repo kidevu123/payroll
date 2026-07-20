@@ -313,31 +313,38 @@ export async function approveMissedPunchRequest(
           .where(eq(missedPunchAlerts.id, before.alertId))
       : [];
 
+    // One snapshot of the period's punches backs every resolution path
+    // below. It also feeds issue inference: ad-hoc reports carry no alert,
+    // so what the employee was fixing (unpaired punch, missing clock-in)
+    // is recovered from the punches on file — without this, an alertless
+    // request fell through to the insert fallback and left the unpaired
+    // punch behind next to a duplicate open punch.
+    const dayPunches = await tx
+      .select()
+      .from(punches)
+      .where(
+        and(
+          eq(punches.employeeId, before.employeeId),
+          eq(punches.periodId, periodId),
+          isNull(punches.voidedAt),
+        ),
+      );
+    const dayKeyFn = (d: Date) => dayFmt.format(d);
+    const ctx = buildMissedPunchReviewContext(
+      before,
+      alert?.issue,
+      dayPunches,
+      dayKeyFn,
+    );
+
     let punch;
-    if (alert?.issue === "UNPAIRED_PUNCH") {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
-        );
+    if (ctx.issue === "UNPAIRED_PUNCH") {
       const unpaired = dayPunches.find(
         (p) =>
           dayFmt.format(p.clockIn) === before.date &&
           isAmbiguousSinglePunch(p),
       );
       if (unpaired) {
-        const dayKeyFn = (d: Date) => dayFmt.format(d);
-        const ctx = buildMissedPunchReviewContext(
-          before,
-          "UNPAIRED_PUNCH",
-          dayPunches,
-          dayKeyFn,
-        );
         let nextClockIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
         let nextClockOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
         if (
@@ -384,20 +391,11 @@ export async function approveMissedPunchRequest(
     }
 
     if (
-      alert?.issue === "MISSING_IN" &&
+      !punch &&
+      ctx.issue === "MISSING_IN" &&
       before.claimedClockIn &&
       !before.claimedClockOut
     ) {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
-        );
       const sentinel = dayPunches.find(
         (p) =>
           dayFmt.format(p.clockIn) === before.date &&
@@ -421,17 +419,7 @@ export async function approveMissedPunchRequest(
       }
     }
 
-    if (before.claimedClockOut) {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
-        );
+    if (!punch && before.claimedClockOut) {
       const forDay = punchesForCalendarDay(dayPunches, claimedDay, dayFmt.format);
       const openPunchForRequestDate = findOpenPunchOnDay(
         forDay,
