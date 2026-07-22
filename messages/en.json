@@ -236,7 +236,8 @@
       "sendToAdmin": "Send to admin",
       "reasonQuickForgot": "I forgot to punch",
       "reasonQuickClock": "The time clock did not take my punch",
-      "reasonQuickLeftEarly": "I left early / came in late"
+      "reasonQuickLeftEarly": "I left early / came in late",
+      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do."
     },
     "pay": {
       "title": "My pay",
@@ -318,7 +319,8 @@
       "submitFix": "Submit fix request",
       "reasonQuickForgot": "I forgot to punch",
       "reasonQuickClock": "The time clock did not take my punch",
-      "reasonQuickLeftEarly": "I left early / came in late"
+      "reasonQuickLeftEarly": "I left early / came in late",
+      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do."
     },
     "timeOff": {
       "back": "Back",
@@ -410,7 +412,8 @@
       "errorNotSupportedShort": "Not supported."
     },
     "alertCard": {
-      "fixThis": "Fix this"
+      "fixThis": "Fix this",
+      "inReview": "Office is reviewing"
     },
     "onboarding": {
       "saveTitle": "Save Milo to your Home Screen",

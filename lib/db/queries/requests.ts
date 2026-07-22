@@ -160,6 +160,27 @@ export async function listPendingMissedPunchRequestsForReview(
   });
 }
 
+/**
+ * Dates (YYYY-MM-DD) with a PENDING missed-punch request for the
+ * employee. Drives the "office is reviewing" state on every surface
+ * that would otherwise keep prompting the employee to fix a day they
+ * already reported (home alert card, day page, alert form, kiosk).
+ */
+export async function listPendingMissedPunchDatesForEmployee(
+  employeeId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ date: missedPunchRequests.date })
+    .from(missedPunchRequests)
+    .where(
+      and(
+        eq(missedPunchRequests.employeeId, employeeId),
+        eq(missedPunchRequests.status, "PENDING"),
+      ),
+    );
+  return rows.map((r) => r.date);
+}
+
 export async function getMissedPunchRequest(id: string): Promise<MissedPunchRequest | null> {
   const [row] = await db
     .select()

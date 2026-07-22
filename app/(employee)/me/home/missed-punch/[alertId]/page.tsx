@@ -1,13 +1,16 @@
 // Employee-side fix-punch form. Only asks for the punch side that's missing.
 
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Hourglass } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth-guards";
-import { getMissedPunchAlertById } from "@/lib/db/queries/requests";
+import {
+  getMissedPunchAlertById,
+  listPendingMissedPunchDatesForEmployee,
+} from "@/lib/db/queries/requests";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { localMidnightUtc } from "@/lib/utils";
@@ -55,6 +58,10 @@ export default async function MissedPunchFixPage({
   const alert = await getMissedPunchAlertById(alertId);
   if (!alert || alert.employeeId !== session.user.employeeId) notFound();
 
+  const pendingDates = await listPendingMissedPunchDatesForEmployee(
+    alert.employeeId,
+  );
+  const alreadyReported = pendingDates.includes(alert.date);
   const company = await getSetting("company");
   const tz = company.timezone;
   const dayStart = localMidnightUtc(alert.date, tz);
@@ -99,6 +106,12 @@ export default async function MissedPunchFixPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {alreadyReported ? (
+            <p className="flex items-start gap-2 rounded-input border border-border bg-surface-2 px-3 py-3 text-sm leading-relaxed text-text-muted">
+              <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+              {t("alreadyReported")}
+            </p>
+          ) : (
           <MissedPunchForm
             alertId={alertId}
             date={alert.date}
@@ -108,6 +121,7 @@ export default async function MissedPunchFixPage({
             {...(recordedUnpairedPunch ? { recordedUnpairedPunch } : {})}
             {...(defaultClockOut ? { defaultClockOut } : {})}
           />
+          )}
         </CardContent>
       </Card>
     </main>

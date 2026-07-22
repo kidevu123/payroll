@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, AlertTriangle, CheckCircle2, ChevronRight, MinusCircle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, ChevronRight, Hourglass, MinusCircle } from "lucide-react";
 import { requireKioskEmployee } from "../../actions";
 import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
 import { getSetting } from "@/lib/settings/runtime";
 import { listPunches } from "@/lib/db/queries/punches";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import { companyDayIso } from "@/lib/time/company-day";
 import {
   isAmbiguousSinglePunch,
@@ -35,6 +36,9 @@ export default async function KioskFixDayPicker() {
     byDay.set(day, [...(byDay.get(day) ?? []), p]);
   }
 
+  const pendingDates = new Set(
+    await listPendingMissedPunchDatesForEmployee(employee.id),
+  );
   const todayIso = companyDayIso(new Date(), tz);
   const days: string[] = [];
   for (let i = 0; i < DAYS_BACK; i++) {
@@ -85,13 +89,16 @@ export default async function KioskFixDayPicker() {
                     : c.missingOut
                   : formatHoursMinutes(totalHours);
           const problem = hasProblem && !(day === todayIso && list.length > 0);
+          const inReview = pendingDates.has(day);
           return (
             <Link
               key={day}
               href={`/kiosk/fix/${day}`}
               className="flex items-center gap-4 px-6 py-5 active:bg-neutral-100"
             >
-              {problem ? (
+              {inReview ? (
+                <Hourglass className="h-8 w-8 shrink-0 text-neutral-500" />
+              ) : problem ? (
                 list.length === 0 ? (
                   <MinusCircle className="h-8 w-8 shrink-0 text-neutral-400" />
                 ) : (
@@ -106,12 +113,12 @@ export default async function KioskFixDayPicker() {
                 </span>
                 <span
                   className={
-                    problem && list.length > 0
+                    !inReview && problem && list.length > 0
                       ? "block text-lg font-semibold text-amber-700"
                       : "block text-lg text-neutral-500"
                   }
                 >
-                  {status}
+                  {inReview ? c.inReview : status}
                 </span>
               </span>
               <ChevronRight className="h-7 w-7 shrink-0 text-neutral-400" />

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Hourglass } from "lucide-react";
 import { requireKioskEmployee } from "../../../actions";
 import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
 import { getSetting } from "@/lib/settings/runtime";
 import { listPunches } from "@/lib/db/queries/punches";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import { companyDayIso } from "@/lib/time/company-day";
 import { buildEmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 import { KioskFixForm } from "./fix-form";
@@ -26,6 +27,10 @@ export default async function KioskFixDay({
   const company = await getSetting("company");
   const tz = company.timezone;
 
+  const pendingDates = await listPendingMissedPunchDatesForEmployee(
+    employee.id,
+  );
+  const alreadyReported = pendingDates.includes(date);
   const punches = (await listPunches({ employeeId: employee.id })).filter(
     (p) => !p.voidedAt && companyDayIso(p.clockIn, tz) === date,
   );
@@ -49,7 +54,13 @@ export default async function KioskFixDay({
         </Link>
         <p className="text-xl font-bold">{dayLabel}</p>
       </div>
-      <KioskFixForm date={date} mode={mode} copy={c} />
+      {alreadyReported ? (
+        <p className="flex items-center gap-3 rounded-2xl border-2 border-neutral-300 bg-neutral-50 px-5 py-6 text-xl font-semibold text-neutral-700">
+          <Hourglass className="h-8 w-8 shrink-0" /> {c.inReview}
+        </p>
+      ) : (
+        <KioskFixForm date={date} mode={mode} copy={c} />
+      )}
     </main>
   );
 }

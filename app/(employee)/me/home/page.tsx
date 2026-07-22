@@ -37,6 +37,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee, resolveAlert } from "@/lib/db/queries/alerts";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import {
   listApprovedTimeOffInRange,
   listRecentForEmployee,
@@ -121,6 +122,7 @@ export default async function EmployeeHome() {
 
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
+  let alertsInReview: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
   if (period && !isSalaried) {
     const [punches, rates, openAlerts, holidays, approvedTimeOff] = await Promise.all([
       listPunches({ periodId: period.id, employeeId: employee.id }),
@@ -180,6 +182,15 @@ export default async function EmployeeHome() {
         !staleIds.includes(a.id) &&
         validKeys.has(`${a.employeeId}|${a.date}|${a.issue}`),
     );
+    // A day the employee ALREADY reported (any flow — alert, day page,
+    // kiosk) is waiting on the office, not on them. Show it as calm
+    // "in review" instead of a red fix prompt; resubmitting would only
+    // bounce off the duplicate-request gate anyway.
+    const pendingDates = new Set(
+      await listPendingMissedPunchDatesForEmployee(employee.id),
+    );
+    alertsInReview = alerts.filter((a) => pendingDates.has(a.date));
+    alerts = alerts.filter((a) => !pendingDates.has(a.date));
     const result = computePay({
       punches,
       timezone: company.timezone,
@@ -383,7 +394,7 @@ export default async function EmployeeHome() {
                   </span>
                 )}
               </div>
-              {alerts.length === 0 ? (
+              {alerts.length === 0 && alertsInReview.length === 0 ? (
                 <p className="text-sm text-text-muted leading-relaxed">
                   {t("alertsEmpty")}
                 </p>
@@ -395,6 +406,15 @@ export default async function EmployeeHome() {
                       alertId={a.id}
                       date={a.date}
                       issue={a.issue}
+                    />
+                  ))}
+                  {alertsInReview.map((a) => (
+                    <AlertCard
+                      key={a.id}
+                      alertId={a.id}
+                      date={a.date}
+                      issue={a.issue}
+                      inReview
                     />
                   ))}
                 </div>

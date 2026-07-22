@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Hourglass } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { ExceptionBadge } from "@/components/domain/exception-badge";
 
@@ -12,6 +12,7 @@ export async function AlertCard({
   alertId,
   date,
   issue,
+  inReview,
 }: {
   alertId: string;
   date: string;
@@ -22,8 +23,30 @@ export async function AlertCard({
     | "NO_PUNCH"
     | "SUSPICIOUS_DURATION"
     | "INVERTED_TIMES";
+  /**
+   * True when the employee already filed a fix request for this date
+   * and it's waiting on the office — the card goes calm and read-only
+   * instead of prompting another (duplicate-rejected) submission.
+   */
+  inReview?: boolean;
 }) {
   const t = await getTranslations("employee.alertCard");
+  if (inReview) {
+    return (
+      <div className="flex items-center gap-3 rounded-input border border-border/70 bg-surface-2/60 px-3 py-2.5">
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="text-sm font-medium tracking-tight text-text antialiased">
+            {date}
+          </div>
+          <ExceptionBadge issue={issue} />
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-text-muted">
+          <Hourglass className="h-3.5 w-3.5" />
+          {t("inReview")}
+        </span>
+      </div>
+    );
+  }
   return (
     <Link
       href={`/me/home/missed-punch/${alertId}`}

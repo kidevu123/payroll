@@ -236,7 +236,8 @@
       "sendToAdmin": "Enviar al administrador",
       "reasonQuickForgot": "Olvidé marcar",
       "reasonQuickClock": "El reloj no registró mi marcación",
-      "reasonQuickLeftEarly": "Salí temprano / llegué tarde"
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde",
+      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer."
     },
     "pay": {
       "title": "Mi pago",
@@ -318,7 +319,8 @@
       "submitFix": "Enviar solicitud de corrección",
       "reasonQuickForgot": "Olvidé marcar",
       "reasonQuickClock": "El reloj no registró mi marcación",
-      "reasonQuickLeftEarly": "Salí temprano / llegué tarde"
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde",
+      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer."
     },
     "timeOff": {
       "back": "Atrás",
@@ -410,7 +412,8 @@
       "errorNotSupportedShort": "No compatible."
     },
     "alertCard": {
-      "fixThis": "Corregir"
+      "fixThis": "Corregir",
+      "inReview": "La oficina lo esta revisando"
     },
     "onboarding": {
       "saveTitle": "Guarde Milo en su pantalla de inicio",

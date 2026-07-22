@@ -44,6 +44,7 @@ const en = {
   unpairedHint: "We have one punch for this day. Tell us which one is missing.",
   clockIn: "Clock in",
   clockOut: "Clock out",
+  inReview: "Sent — office is reviewing",
 };
 
 const es: Record<keyof typeof en, string> = {
@@ -86,6 +87,7 @@ const es: Record<keyof typeof en, string> = {
   unpairedHint: "Hay una marcacion este dia. Diganos cual falta.",
   clockIn: "Entrada",
   clockOut: "Salida",
+  inReview: "Enviado — la oficina lo revisa",
 };
 
 export type KioskCopy = typeof en;

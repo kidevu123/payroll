@@ -3,7 +3,7 @@
 // missed-punch request without needing a pre-existing alert.
 
 import Link from "next/link";
-import { ArrowLeft, Pencil, CircleCheck } from "lucide-react";
+import { ArrowLeft, Pencil, CircleCheck, Hourglass } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { requireSession } from "@/lib/auth-guards";
 import { listPunches } from "@/lib/db/queries/punches";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
@@ -48,6 +49,10 @@ export default async function EmployeeDay({
   const company = await getSetting("company");
   const payRules = await getSetting("payRules");
   const punches = await listPunches({ employeeId: session.user.employeeId });
+  const pendingDates = await listPendingMissedPunchDatesForEmployee(
+    session.user.employeeId,
+  );
+  const alreadyReported = pendingDates.includes(date);
   const dayPunches = punches.filter(
     (p) =>
       companyDayIso(p.clockIn, company.timezone) === date,
@@ -134,7 +139,14 @@ export default async function EmployeeDay({
         </CardContent>
       </Card>
 
-      <ReportFixForm date={date} mode={reportMode} />
+      {alreadyReported ? (
+        <p className="flex items-start gap-2 rounded-card border border-border bg-surface-2 px-4 py-3.5 text-sm leading-relaxed text-text-muted">
+          <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+          {tDay("alreadyReported")}
+        </p>
+      ) : (
+        <ReportFixForm date={date} mode={reportMode} />
+      )}
     </main>
   );
 }
