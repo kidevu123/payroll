@@ -5,12 +5,18 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  TextareaField,
   FormError,
   SideRadio,
 } from "@/components/employee/form-field";
+import { ReasonField } from "@/components/employee/reason-field";
 import { submitMissedPunchAction } from "./actions";
 import type { MissedPunchIssue } from "@/lib/missed-punch/claim";
+
+/** "2026-07-13T17:00" (page-computed guess) -> "17:00" for <input type="time">. */
+function timeOf(value: string): string {
+  const t = value.indexOf("T");
+  return t === -1 ? value : value.slice(t + 1);
+}
 
 export function MissedPunchForm({
   alertId,
@@ -90,18 +96,18 @@ export function MissedPunchForm({
         <Field
           id="claimedClockOut"
           name="claimedClockOut"
-          type="datetime-local"
+          type="time"
           required
-          defaultValue={defaultClockOut ?? `${date}T17:00`}
+          defaultValue={timeOf(defaultClockOut ?? "17:00")}
           label={t("enterClockOut")}
         />
       ) : onlyIn ? (
         <Field
           id="claimedClockIn"
           name="claimedClockIn"
-          type="datetime-local"
+          type="time"
           required
-          defaultValue={`${date}T08:00`}
+          defaultValue="08:00"
           label={t("enterClockIn")}
         />
       ) : unpaired ? (
@@ -128,18 +134,18 @@ export function MissedPunchForm({
             <Field
               id="claimedClockOut"
               name="claimedClockOut"
-              type="datetime-local"
+              type="time"
               required
-              defaultValue={defaultClockOut ?? `${date}T17:00`}
+              defaultValue={timeOf(defaultClockOut ?? "17:00")}
               label={t("enterClockOut")}
             />
           ) : (
             <Field
               id="claimedClockIn"
               name="claimedClockIn"
-              type="datetime-local"
+              type="time"
               required
-              defaultValue={`${date}T08:00`}
+              defaultValue="08:00"
               label={t("enterClockIn")}
             />
           )}
@@ -148,31 +154,32 @@ export function MissedPunchForm({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <Field
             id="claimedClockIn"
             name="claimedClockIn"
-            type="datetime-local"
-            defaultValue={`${date}T08:00`}
+            type="time"
+            defaultValue="08:00"
             label={t("clockIn")}
           />
           <Field
             id="claimedClockOut"
             name="claimedClockOut"
-            type="datetime-local"
-            defaultValue={`${date}T16:00`}
+            type="time"
+            defaultValue="16:00"
             label={t("clockOut")}
           />
         </div>
       )}
 
-      <TextareaField
+      <ReasonField
         id="reason"
-        name="reason"
-        required
-        minLength={1}
-        maxLength={500}
         label={t("whatHappened")}
+        quickReasons={[
+          t("reasonQuickForgot"),
+          t("reasonQuickClock"),
+          t("reasonQuickLeftEarly"),
+        ]}
       />
       <FormError message={error} />
       <Button type="submit" size="lg" disabled={pending} className="w-full">

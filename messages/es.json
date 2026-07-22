@@ -211,9 +211,9 @@
     "day": {
       "back": "Atrás",
       "noPunches": "Aún no hay marcaciones.",
-      "reportSent": "Enviado. El administrador lo revisará en /requests.",
+      "reportSent": "Enviado. Un administrador lo revisará pronto.",
       "reportFix": "Reportar una corrección para este día",
-      "reportInstructions": "Dígale al administrador cuáles deberían ser las horas correctas de entrada / salida para {date}. Se revisan en /requests y se aplica la corrección.",
+      "reportInstructions": "Ingrese las horas correctas para {date}. Un administrador revisará y aplicará la corrección.",
       "missingPunchInstructions": "Encontramos una marcación registrada para {date}. Ingrese solo la hora que falta.",
       "correctClockIn": "Hora de entrada correcta",
       "correctClockOutOptional": "Hora de salida correcta (opcional)",
@@ -233,7 +233,10 @@
       "reasonPlaceholder": "Olvidé marcar la salida del almuerzo, salí temprano para una cita médica, etc.",
       "cancel": "Cancelar",
       "submitting": "Enviando...",
-      "sendToAdmin": "Enviar al administrador"
+      "sendToAdmin": "Enviar al administrador",
+      "reasonQuickForgot": "Olvidé marcar",
+      "reasonQuickClock": "El reloj no registró mi marcación",
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde"
     },
     "pay": {
       "title": "Mi pago",
@@ -312,7 +315,10 @@
       "enterClockOut": "¿A qué hora salió?",
       "whatHappened": "¿Qué pasó?",
       "submitting": "Enviando...",
-      "submitFix": "Enviar solicitud de corrección"
+      "submitFix": "Enviar solicitud de corrección",
+      "reasonQuickForgot": "Olvidé marcar",
+      "reasonQuickClock": "El reloj no registró mi marcación",
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde"
     },
     "timeOff": {
       "back": "Atrás",

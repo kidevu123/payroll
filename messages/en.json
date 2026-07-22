@@ -211,9 +211,9 @@
     "day": {
       "back": "Back",
       "noPunches": "No punches yet.",
-      "reportSent": "Sent. Admin will review on /requests.",
+      "reportSent": "Sent. An admin will review it shortly.",
       "reportFix": "Report a fix for this day",
-      "reportInstructions": "Tell admin what the correct in / out times should be for {date}. They review on /requests and apply the fix.",
+      "reportInstructions": "Enter the correct times for {date}. An admin will review and apply the fix.",
       "missingPunchInstructions": "We found one punch already on file for {date}. Only enter the missing time.",
       "correctClockIn": "Correct clock in",
       "correctClockOutOptional": "Correct clock out (optional)",
@@ -233,7 +233,10 @@
       "reasonPlaceholder": "Forgot to clock out for lunch, left early for a doctor appointment, etc.",
       "cancel": "Cancel",
       "submitting": "Submitting...",
-      "sendToAdmin": "Send to admin"
+      "sendToAdmin": "Send to admin",
+      "reasonQuickForgot": "I forgot to punch",
+      "reasonQuickClock": "The time clock did not take my punch",
+      "reasonQuickLeftEarly": "I left early / came in late"
     },
     "pay": {
       "title": "My pay",
@@ -312,7 +315,10 @@
       "enterClockOut": "When did you clock out?",
       "whatHappened": "What happened?",
       "submitting": "Submitting...",
-      "submitFix": "Submit fix request"
+      "submitFix": "Submit fix request",
+      "reasonQuickForgot": "I forgot to punch",
+      "reasonQuickClock": "The time clock did not take my punch",
+      "reasonQuickLeftEarly": "I left early / came in late"
     },
     "timeOff": {
       "back": "Back",

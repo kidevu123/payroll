@@ -54,6 +54,7 @@ export async function reportPunchFixAction(
     claimedClockIn: parsed.data.claimedClockIn,
     claimedClockOut: parsed.data.claimedClockOut,
     timezone: company.timezone,
+    date: parsed.data.date,
     ...(parsed.data.issue ? { issue: parsed.data.issue } : {}),
   };
   const claim = parseMissedPunchClaim(claimInput);

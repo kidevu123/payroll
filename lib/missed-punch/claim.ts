@@ -14,7 +14,14 @@ export type MissedPunchClaimInput = {
   timezone: string;
   /** When set, only the missing side may be submitted (no duplicate punches). */
   issue?: MissedPunchIssue;
+  /**
+   * Report date (YYYY-MM-DD). When set, bare time-of-day claims ("17:30",
+   * from phone-friendly <input type="time">) are anchored to this date.
+   */
+  date?: string;
 };
+
+const BARE_TIME_RE = /^(\d{2}):(\d{2})(?::\d{2})?$/;
 
 export type MissedPunchClaimResult =
   | { ok: true; clockIn: Date | null; clockOut: Date | null }
@@ -24,11 +31,17 @@ function parseClaimedWallClock(
   value: string | null | undefined,
   timezone: string,
   label: string,
+  date?: string,
 ): Date | null | { error: string } {
   if (!value) return null;
-  const parsed = isBareWallClock(value)
-    ? wallClockToUtc(value, timezone)
-    : new Date(value);
+  const timeMatch = value.match(BARE_TIME_RE);
+  const wallClock =
+    timeMatch && date ? `${date}T${timeMatch[1]}:${timeMatch[2]}` : value;
+  const parsed = isBareWallClock(wallClock)
+    ? wallClockToUtc(wallClock, timezone)
+    : timeMatch
+      ? null // bare time without a date to anchor it — nothing to parse
+      : new Date(wallClock);
   if (!parsed || Number.isNaN(parsed.getTime())) {
     return { error: `Invalid ${label} time.` };
   }
@@ -42,6 +55,7 @@ export function parseMissedPunchClaim(
     input.claimedClockIn,
     input.timezone,
     "clock-in",
+    input.date,
   );
   if (clockIn && "error" in clockIn) return { ok: false, error: clockIn.error };
 
@@ -49,6 +63,7 @@ export function parseMissedPunchClaim(
     input.claimedClockOut,
     input.timezone,
     "clock-out",
+    input.date,
   );
   if (clockOut && "error" in clockOut) {
     return { ok: false, error: clockOut.error };
