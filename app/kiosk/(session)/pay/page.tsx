@@ -8,6 +8,9 @@ import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
 import { formatMoney, formatHoursMinutes } from "@/lib/utils";
+import { listPunches } from "@/lib/db/queries/punches";
+import { companyDayIso } from "@/lib/time/company-day";
+import { getSetting } from "@/lib/settings/runtime";
 import { kioskAcknowledgePayslipAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +48,35 @@ export default async function KioskPay({
   // Newest published payslip still waiting on the employee's OK — shown
   // front and center so it can be approved in one tap before anything else.
   const toApprove = rows.find(({ slip }) => !slip.acknowledgedAt) ?? null;
+
+  // Day-by-day hours for the payslip awaiting approval, so the employee
+  // can see exactly what they are OK-ing before tapping Approve.
+  const company = await getSetting("company");
+  const tz = company.timezone;
+  type DayRow = { day: string; in: string; out: string | null; hours: number };
+  let approveDays: DayRow[] = [];
+  if (toApprove) {
+    const fmtTime = (d: Date) =>
+      new Intl.DateTimeFormat(locale, {
+        timeZone: tz,
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(d);
+    const punches = await listPunches({
+      employeeId: employee.id,
+      periodId: toApprove.slip.periodId,
+    });
+    approveDays = punches
+      .filter((p) => !p.voidedAt)
+      .map((p) => ({
+        day: companyDayIso(p.clockIn, tz),
+        in: fmtTime(p.clockIn),
+        out: p.clockOut ? fmtTime(p.clockOut) : null,
+        hours: p.clockOut
+          ? (p.clockOut.getTime() - p.clockIn.getTime()) / 3_600_000
+          : 0,
+      }));
+  }
 
   const fmtDay = (iso: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -86,6 +118,31 @@ export default async function KioskPay({
               {formatMoney(toApprove.slip.roundedPayCents, locale)}
             </p>
           </div>
+          {approveDays.length > 0 ? (
+            <div className="divide-y divide-brand-200 rounded-input border border-brand-200 bg-surface">
+              {approveDays.map((r, i) => (
+                <div
+                  key={`${r.day}-${i}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <p className="text-lg font-semibold text-text">
+                    {new Intl.DateTimeFormat(locale, {
+                      timeZone: tz,
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    }).format(new Date(`${r.day}T12:00:00Z`))}
+                  </p>
+                  <p className="text-lg tabular-nums text-text-muted">
+                    {r.in} – {r.out ?? c.open}
+                  </p>
+                  <p className="w-20 text-right text-lg font-bold tabular-nums text-text">
+                    {r.out ? formatHoursMinutes(r.hours) : "—"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <form action={kioskAcknowledgePayslipAction}>
             <input type="hidden" name="payslipId" value={toApprove.slip.id} />
             <button
