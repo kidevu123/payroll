@@ -411,6 +411,24 @@ export function EmployeeForm(props: Props) {
           </p>
         </div>
       </div>
+      <div className="space-y-1">
+        <Label htmlFor="kioskPin">
+          Warehouse kiosk PIN {e?.kioskPinHash ? "(set — enter to replace)" : "(not set)"}
+        </Label>
+        <Input
+          id="kioskPin"
+          name="kioskPin"
+          inputMode="numeric"
+          pattern="\d{4,6}"
+          maxLength={6}
+          placeholder="4-6 digits"
+          autoComplete="off"
+        />
+        <p className="text-xs text-text-muted">
+          Lets this employee sign in at the warehouse kiosk with their
+          NGTeco clock ID + this PIN. Leave blank to keep the current PIN.
+        </p>
+      </div>
       {scheduleWarning && (
         <p className="text-sm text-warning-800 bg-warning-50 border border-warning-200 rounded-card px-3 py-2">
           {scheduleWarning}

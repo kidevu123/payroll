@@ -8,7 +8,15 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/setup", "/api/health", "/login/change-password"];
+// /kiosk runs its own short-lived PIN session (lib/kiosk/session.ts) —
+// its pages and actions self-guard; Auth.js cookies are not involved.
+const PUBLIC_PATHS = [
+  "/login",
+  "/setup",
+  "/api/health",
+  "/login/change-password",
+  "/kiosk",
+];
 
 // Auth.js v5 default cookie names. Suffix differs in production (Secure cookies
 // get the `__Secure-` prefix). Check both.

@@ -313,6 +313,13 @@ export const employees = pgTable(
      */
     zohoExpenseAccount: text("zoho_expense_account"),
     zohoPaidThrough: text("zoho_paid_through"),
+    /**
+     * Argon2id hash of the employee's warehouse-kiosk PIN (4-6 digits).
+     * Null = kiosk sign-in disabled for this employee. Set from the
+     * admin employee form; verified by the /kiosk login action against
+     * the employee's NGTeco clock ID.
+     */
+    kioskPinHash: text("kiosk_pin_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

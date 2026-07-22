@@ -41,7 +41,13 @@ import { localMidnightUtc } from "@/lib/utils";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 export type Actor = {
-  id: string;
+  /**
+   * users.id of the acting account, or null for actors without a user row
+   * (kiosk sign-ins are keyed to the employee, not a user). Every column
+   * this lands in (audit actor_id, resolved_by_id, edited_by_id) is a
+   * nullable FK to users.
+   */
+  id: string | null;
   role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 

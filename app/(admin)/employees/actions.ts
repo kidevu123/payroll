@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
+import { hashPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { payslips, payPeriods } from "@/lib/db/schema";
 import {
@@ -63,6 +64,10 @@ const createSchema = z.object({
     .union([z.string().max(120), z.literal("").transform(() => null)])
     .nullable()
     .optional(),
+  kioskPin: z
+    .union([z.string().regex(/^\d{4,6}$/, "Kiosk PIN must be 4-6 digits"), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function createEmployeeAction(
@@ -86,6 +91,7 @@ export async function createEmployeeAction(
     ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
     zohoExpenseAccount: formData.get("zohoExpenseAccount") || null,
     zohoPaidThrough: formData.get("zohoPaidThrough") || null,
+    kioskPin: formData.get("kioskPin") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -107,6 +113,7 @@ export async function createEmployeeAction(
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
       zohoExpenseAccount: d.zohoExpenseAccount ?? null,
       zohoPaidThrough: d.zohoPaidThrough ?? null,
+      ...(d.kioskPin ? { kioskPinHash: await hashPassword(d.kioskPin) } : {}),
       // Prefer the dollar field; fall back to cents for legacy callers.
       ...(d.initialHourlyRateDollars !== undefined && d.initialHourlyRateDollars !== null
         ? { initialHourlyRateCents: Math.round(d.initialHourlyRateDollars * 100) }
@@ -160,6 +167,10 @@ const updateSchema = z.object({
     .union([z.string().max(120), z.literal("").transform(() => null)])
     .nullable()
     .optional(),
+  kioskPin: z
+    .union([z.string().regex(/^\d{4,6}$/, "Kiosk PIN must be 4-6 digits"), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function updateEmployeeAction(
@@ -185,6 +196,7 @@ export async function updateEmployeeAction(
     ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
     zohoExpenseAccount: formData.get("zohoExpenseAccount") || null,
     zohoPaidThrough: formData.get("zohoPaidThrough") || null,
+    kioskPin: formData.get("kioskPin") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -245,6 +257,7 @@ export async function updateEmployeeAction(
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
       zohoExpenseAccount: d.zohoExpenseAccount ?? null,
       zohoPaidThrough: d.zohoPaidThrough ?? null,
+      ...(d.kioskPin ? { kioskPinHash: await hashPassword(d.kioskPin) } : {}),
     },
     { id: session.user.id, role: session.user.role },
   );
