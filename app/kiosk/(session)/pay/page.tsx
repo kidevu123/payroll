@@ -11,6 +11,13 @@ import { formatMoney, formatHoursMinutes } from "@/lib/utils";
 import { listPunches } from "@/lib/db/queries/punches";
 import { companyDayIso } from "@/lib/time/company-day";
 import { getSetting } from "@/lib/settings/runtime";
+import { localMidnightUtc } from "@/lib/utils";
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 import { kioskAcknowledgePayslipAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -62,10 +69,33 @@ export default async function KioskPay({
         hour: "numeric",
         minute: "2-digit",
       }).format(d);
-    const punches = await listPunches({
+    // Union of period-linked and date-range punches: legacy imports can
+    // sit under a sibling schedule's overlapping period id (the /time
+    // grid fetches by date range for the same reason), while back-pay
+    // punches carry this period's id but an out-of-range date. Both
+    // belong on the card the employee is approving.
+    const byPeriod = await listPunches({
       employeeId: employee.id,
       periodId: toApprove.slip.periodId,
     });
+    const period = toApprove.period;
+    const byRange = period
+      ? await listPunches({
+          employeeId: employee.id,
+          clockAfter: localMidnightUtc(period.startDate, tz),
+          clockBefore: new Date(
+            localMidnightUtc(addDaysIso(period.endDate, 1), tz).getTime() - 1,
+          ),
+        })
+      : [];
+    const seen = new Set<string>();
+    const punches = [...byPeriod, ...byRange]
+      .filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      })
+      .sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
     approveDays = punches
       .filter((p) => !p.voidedAt)
       .map((p) => ({
