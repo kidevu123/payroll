@@ -384,7 +384,9 @@
       "kioskPinSave": "Set PIN",
       "kioskPinReplace": "Change PIN",
       "kioskPinSaving": "Saving...",
-      "kioskPinSaved": "PIN saved. Use it at the kiosk with your clock ID."
+      "kioskPinSaved": "PIN saved. Use it at the kiosk with your clock ID.",
+      "clockIdLabel": "Your clock ID",
+      "clockIdMissing": "Not set yet — ask the office."
     },
     "notifications": {
       "back": "Back",

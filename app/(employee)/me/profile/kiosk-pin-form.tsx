@@ -12,7 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Field, FormError } from "@/components/employee/form-field";
 import { setKioskPinAction } from "./actions";
 
-export function KioskPinForm({ pinSet }: { pinSet: boolean }) {
+export function KioskPinForm({
+  pinSet,
+  clockId,
+}: {
+  pinSet: boolean;
+  /** NGTeco clock ID — the number they type at the kiosk. Null = unassigned. */
+  clockId: string | null;
+}) {
   const t = useTranslations("employee.profile");
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
@@ -27,7 +34,21 @@ export function KioskPinForm({ pinSet }: { pinSet: boolean }) {
           {t("kioskPinTitle")}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-3 rounded-input border border-brand-200 bg-brand-50 px-3 py-2.5">
+          <span className="text-sm font-medium text-brand-900">
+            {t("clockIdLabel")}
+          </span>
+          {clockId ? (
+            <span className="text-xl font-bold tabular-nums tracking-widest text-brand-900">
+              {clockId}
+            </span>
+          ) : (
+            <span className="text-sm text-text-muted">
+              {t("clockIdMissing")}
+            </span>
+          )}
+        </div>
         <form
           ref={formRef}
           action={async (form) => {

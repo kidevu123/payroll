@@ -384,7 +384,9 @@
       "kioskPinSave": "Crear PIN",
       "kioskPinReplace": "Cambiar PIN",
       "kioskPinSaving": "Guardando...",
-      "kioskPinSaved": "PIN guardado. Uselo en el kiosco con su numero de reloj."
+      "kioskPinSaved": "PIN guardado. Uselo en el kiosco con su numero de reloj.",
+      "clockIdLabel": "Su numero de reloj",
+      "clockIdMissing": "Sin asignar — pregunte en la oficina."
     },
     "notifications": {
       "back": "Atrás",

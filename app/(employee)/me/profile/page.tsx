@@ -131,7 +131,10 @@ export default async function EmployeeProfile() {
 
       <ProfileForm employee={employee} />
 
-      <KioskPinForm pinSet={Boolean(employee.kioskPinHash)} />
+      <KioskPinForm
+        pinSet={Boolean(employee.kioskPinHash)}
+        clockId={employee.ngtecoEmployeeRef}
+      />
 
       {/* Per-device language switcher. The "saved" preference (set above)
           is what new devices use; this overrides only the current one. */}
