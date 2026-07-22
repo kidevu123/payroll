@@ -48,14 +48,14 @@ export default async function KioskFixDay({
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/kiosk/fix"
-          className="flex h-14 items-center gap-2 rounded-2xl border-2 border-neutral-300 px-5 text-xl font-semibold active:bg-neutral-100"
+          className="flex h-14 items-center gap-2 rounded-xl border-2 border-border px-5 text-xl font-semibold active:bg-surface-2"
         >
           <ArrowLeft className="h-6 w-6" /> {c.back}
         </Link>
         <p className="text-xl font-bold">{dayLabel}</p>
       </div>
       {alreadyReported ? (
-        <p className="flex items-center gap-3 rounded-2xl border-2 border-neutral-300 bg-neutral-50 px-5 py-6 text-xl font-semibold text-neutral-700">
+        <p className="flex items-center gap-3 rounded-xl border-2 border-border bg-surface-2 px-5 py-6 text-xl font-semibold text-text">
           <Hourglass className="h-8 w-8 shrink-0" /> {c.inReview}
         </p>
       ) : (

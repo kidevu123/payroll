@@ -1,6 +1,7 @@
 // Authed kiosk shell: guard, big header with sign-out, idle auto-logout.
 
 import { redirect } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { requireKioskEmployee, kioskLogoutAction } from "../actions";
 import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
 import { KioskIdleWatcher } from "./idle-watcher";
@@ -36,9 +37,9 @@ export default async function KioskSessionLayout({
         <form action={kioskLogoutAction}>
           <button
             type="submit"
-            className="h-14 rounded-2xl bg-neutral-900 px-6 text-xl font-bold text-white active:bg-neutral-700"
+            className="flex h-16 items-center gap-2 rounded-xl bg-danger-700 px-7 text-2xl font-bold text-white shadow-card active:opacity-90"
           >
-            {c.done}
+            <LogOut className="h-7 w-7" /> {c.exit}
           </button>
         </form>
       </header>

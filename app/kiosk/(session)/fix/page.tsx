@@ -58,13 +58,13 @@ export default async function KioskFixDayPicker() {
       <div className="flex items-center justify-between gap-3">
         <Link
           href="/kiosk/home"
-          className="flex h-14 items-center gap-2 rounded-2xl border-2 border-neutral-300 px-5 text-xl font-semibold active:bg-neutral-100"
+          className="flex h-14 items-center gap-2 rounded-xl border-2 border-border px-5 text-xl font-semibold active:bg-surface-2"
         >
           <ArrowLeft className="h-6 w-6" /> {c.back}
         </Link>
-        <p className="text-lg font-medium text-neutral-500">{c.pickDay}</p>
+        <p className="text-lg font-medium text-text-muted">{c.pickDay}</p>
       </div>
-      <div className="divide-y-2 divide-neutral-200 rounded-3xl border-2 border-neutral-300">
+      <div className="divide-y-2 divide-border rounded-xl border-2 border-border">
         {days.map((day) => {
           const list = byDay.get(day) ?? [];
           const hasProblem =
@@ -94,18 +94,18 @@ export default async function KioskFixDayPicker() {
             <Link
               key={day}
               href={`/kiosk/fix/${day}`}
-              className="flex items-center gap-4 px-6 py-5 active:bg-neutral-100"
+              className="flex items-center gap-4 px-6 py-5 active:bg-surface-2"
             >
               {inReview ? (
-                <Hourglass className="h-8 w-8 shrink-0 text-neutral-500" />
+                <Hourglass className="h-8 w-8 shrink-0 text-text-muted" />
               ) : problem ? (
                 list.length === 0 ? (
-                  <MinusCircle className="h-8 w-8 shrink-0 text-neutral-400" />
+                  <MinusCircle className="h-8 w-8 shrink-0 text-text-subtle" />
                 ) : (
-                  <AlertTriangle className="h-8 w-8 shrink-0 text-amber-600" />
+                  <AlertTriangle className="h-8 w-8 shrink-0 text-warning-600" />
                 )
               ) : (
-                <CheckCircle2 className="h-8 w-8 shrink-0 text-teal-700" />
+                <CheckCircle2 className="h-8 w-8 shrink-0 text-brand-700" />
               )}
               <span className="min-w-0 flex-1">
                 <span className="block text-xl font-bold">
@@ -114,14 +114,14 @@ export default async function KioskFixDayPicker() {
                 <span
                   className={
                     !inReview && problem && list.length > 0
-                      ? "block text-lg font-semibold text-amber-700"
-                      : "block text-lg text-neutral-500"
+                      ? "block text-lg font-semibold text-warning-700"
+                      : "block text-lg text-text-muted"
                   }
                 >
                   {inReview ? c.inReview : status}
                 </span>
               </span>
-              <ChevronRight className="h-7 w-7 shrink-0 text-neutral-400" />
+              <ChevronRight className="h-7 w-7 shrink-0 text-text-subtle" />
             </Link>
           );
         })}

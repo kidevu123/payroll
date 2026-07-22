@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BadgeCheck, CheckCircle2 } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { requireKioskEmployee } from "../../actions";
 import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
@@ -8,12 +8,18 @@ import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
 import { formatMoney, formatHoursMinutes } from "@/lib/utils";
+import { kioskAcknowledgePayslipAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
 const SHOWN = 6;
 
-export default async function KioskPay() {
+export default async function KioskPay({
+  searchParams,
+}: {
+  searchParams: Promise<{ acked?: string }>;
+}) {
+  const sp = await searchParams;
   const employee = await requireKioskEmployee();
   if (!employee) redirect("/kiosk");
   const lang = (employee.language === "es" ? "es" : "en") as KioskLang;
@@ -36,6 +42,10 @@ export default async function KioskPay() {
     )
     .slice(0, SHOWN);
 
+  // Newest published payslip still waiting on the employee's OK — shown
+  // front and center so it can be approved in one tap before anything else.
+  const toApprove = rows.find(({ slip }) => !slip.acknowledgedAt) ?? null;
+
   const fmtDay = (iso: string) =>
     new Intl.DateTimeFormat(locale, {
       month: "short",
@@ -48,14 +58,48 @@ export default async function KioskPay() {
       <div>
         <Link
           href="/kiosk/home"
-          className="inline-flex h-14 items-center gap-2 rounded-2xl border-2 border-neutral-300 px-5 text-xl font-semibold active:bg-neutral-100"
+          className="inline-flex h-14 items-center gap-2 rounded-xl border-2 border-border px-5 text-xl font-semibold active:bg-surface-2"
         >
           <ArrowLeft className="h-6 w-6" /> {c.back}
         </Link>
       </div>
-      <div className="divide-y-2 divide-neutral-200 rounded-3xl border-2 border-neutral-300">
+      {sp.acked ? (
+        <p className="flex items-center gap-3 rounded-xl border-2 border-brand-200 bg-brand-50 px-4 py-4 text-xl font-semibold text-brand-900">
+          <CheckCircle2 className="h-7 w-7 shrink-0" /> {c.payApprovedBanner}
+        </p>
+      ) : null}
+      {toApprove && toApprove.period ? (
+        <div className="space-y-4 rounded-xl border-2 border-brand-700 bg-brand-50 px-6 py-5 shadow-card">
+          <p className="flex items-center gap-2 text-lg font-bold text-brand-900">
+            <BadgeCheck className="h-6 w-6 shrink-0" /> {c.payApproveTitle}
+          </p>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xl font-bold text-text">
+                {fmtDay(toApprove.period.startDate)} – {fmtDay(toApprove.period.endDate)}
+              </p>
+              <p className="text-lg text-text-muted">
+                {formatHoursMinutes(Number(toApprove.slip.hoursWorked))}
+              </p>
+            </div>
+            <p className="text-4xl font-bold tabular-nums text-text">
+              {formatMoney(toApprove.slip.roundedPayCents, locale)}
+            </p>
+          </div>
+          <form action={kioskAcknowledgePayslipAction}>
+            <input type="hidden" name="payslipId" value={toApprove.slip.id} />
+            <button
+              type="submit"
+              className="h-16 w-full rounded-xl bg-brand-700 text-2xl font-bold text-white active:bg-brand-800"
+            >
+              {c.payApprove}
+            </button>
+          </form>
+        </div>
+      ) : null}
+      <div className="divide-y-2 divide-border rounded-xl border-2 border-border bg-surface">
         {rows.length === 0 ? (
-          <p className="px-6 py-8 text-center text-xl text-neutral-500">
+          <p className="px-6 py-8 text-center text-xl text-text-muted">
             {c.noPayslips}
           </p>
         ) : (
@@ -70,7 +114,7 @@ export default async function KioskPay() {
                     ? `${fmtDay(period.startDate)} – ${fmtDay(period.endDate)}`
                     : "—"}
                 </p>
-                <p className="text-lg text-neutral-600">
+                <p className="text-lg text-text-muted">
                   {formatHoursMinutes(Number(slip.hoursWorked))}
                 </p>
               </div>

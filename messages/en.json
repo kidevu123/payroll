@@ -413,7 +413,7 @@
     },
     "alertCard": {
       "fixThis": "Fix this",
-      "inReview": "Office is reviewing"
+      "inReview": "Pending review"
     },
     "onboarding": {
       "saveTitle": "Save Milo to your Home Screen",

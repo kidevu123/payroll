@@ -15,7 +15,7 @@ function timeOf(value: string): string {
 }
 
 const FIELD =
-  "h-16 w-full rounded-2xl border-2 border-neutral-300 bg-white px-4 text-2xl font-semibold tabular-nums";
+  "h-16 w-full rounded-xl border-2 border-border bg-surface px-4 text-2xl font-semibold tabular-nums";
 
 function TimeField({
   name,
@@ -78,7 +78,7 @@ export function KioskFixForm({
 
       {mode.kind === "MISSING_OUT" ? (
         <>
-          <p className="rounded-2xl border-2 border-neutral-300 bg-neutral-50 px-4 py-4 text-xl">
+          <p className="rounded-xl border-2 border-border bg-surface-2 px-4 py-4 text-xl">
             {c.onFile}: <strong>{c.in} {mode.recordedClockIn}</strong>
           </p>
           <TimeField
@@ -89,7 +89,7 @@ export function KioskFixForm({
         </>
       ) : mode.kind === "MISSING_IN" ? (
         <>
-          <p className="rounded-2xl border-2 border-neutral-300 bg-neutral-50 px-4 py-4 text-xl">
+          <p className="rounded-xl border-2 border-border bg-surface-2 px-4 py-4 text-xl">
             {c.onFile}: <strong>{c.out} {mode.recordedClockOut}</strong>
           </p>
           <TimeField
@@ -100,9 +100,9 @@ export function KioskFixForm({
         </>
       ) : mode.kind === "UNPAIRED_PUNCH" ? (
         <>
-          <p className="rounded-2xl border-2 border-neutral-300 bg-neutral-50 px-4 py-4 text-xl">
+          <p className="rounded-xl border-2 border-border bg-surface-2 px-4 py-4 text-xl">
             {c.onFile}: <strong>{mode.recordedUnpairedPunch}</strong>
-            <span className="mt-1 block text-lg text-neutral-500">
+            <span className="mt-1 block text-lg text-text-muted">
               {c.unpairedHint}
             </span>
           </p>
@@ -119,8 +119,8 @@ export function KioskFixForm({
                 onClick={() => setMissingSide(side)}
                 className={
                   missingSide === side
-                    ? "h-16 rounded-2xl border-2 border-teal-700 bg-teal-50 px-4 text-left text-xl font-bold text-teal-900"
-                    : "h-16 rounded-2xl border-2 border-neutral-300 bg-white px-4 text-left text-xl font-semibold active:bg-neutral-100"
+                    ? "h-16 rounded-xl border-2 border-brand-700 bg-brand-50 px-4 text-left text-xl font-bold text-brand-900"
+                    : "h-16 rounded-xl border-2 border-border bg-surface px-4 text-left text-xl font-semibold active:bg-surface-2"
                 }
               >
                 {label}
@@ -166,8 +166,8 @@ export function KioskFixForm({
               onClick={() => setReason(r)}
               className={
                 reason === r
-                  ? "min-h-14 rounded-2xl border-2 border-teal-700 bg-teal-50 px-4 py-3 text-lg font-bold text-teal-900"
-                  : "min-h-14 rounded-2xl border-2 border-neutral-300 bg-white px-4 py-3 text-lg font-semibold active:bg-neutral-100"
+                  ? "min-h-14 rounded-xl border-2 border-brand-700 bg-brand-50 px-4 py-3 text-lg font-bold text-brand-900"
+                  : "min-h-14 rounded-xl border-2 border-border bg-surface px-4 py-3 text-lg font-semibold active:bg-surface-2"
               }
             >
               {r}
@@ -180,7 +180,7 @@ export function KioskFixForm({
       {error ? (
         <p
           role="alert"
-          className="flex items-start gap-2 rounded-2xl border-2 border-red-300 bg-red-50 px-4 py-4 text-lg font-semibold text-red-800"
+          className="flex items-start gap-2 rounded-xl border-2 border-danger-200 bg-danger-50 px-4 py-4 text-lg font-semibold text-danger-700"
         >
           <AlertCircle className="mt-1 h-6 w-6 shrink-0" /> {error}
         </p>
@@ -189,7 +189,7 @@ export function KioskFixForm({
       <button
         type="submit"
         disabled={pending || reason.length === 0}
-        className="h-18 min-h-16 w-full rounded-2xl bg-teal-700 text-2xl font-bold text-white disabled:opacity-40 active:bg-teal-800"
+        className="h-18 min-h-16 w-full rounded-xl bg-brand-700 text-2xl font-bold text-white disabled:opacity-40 active:bg-brand-800"
       >
         {pending ? c.sending : c.send}
       </button>

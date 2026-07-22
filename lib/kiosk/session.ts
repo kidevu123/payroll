@@ -10,7 +10,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 export const KIOSK_SESSION_TTL_S = 5 * 60;
 export const KIOSK_COOKIE_NAME = "kiosk_session";
 /** Client-side inactivity sign-out, in seconds. Kiosk is a shared device. */
-export const KIOSK_IDLE_LOGOUT_S = 60;
+export const KIOSK_IDLE_LOGOUT_S = 45;
 
 export type KioskSessionPayload = {
   employeeId: string;

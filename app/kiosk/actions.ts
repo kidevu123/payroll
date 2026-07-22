@@ -101,7 +101,10 @@ export async function kioskLoginAction(
 
 export async function kioskLogoutAction(): Promise<void> {
   const jar = await cookies();
-  jar.delete(KIOSK_COOKIE_NAME);
+  // Path MUST match the set-cookie path — a bare delete() defaults to
+  // path "/" and the browser keeps the /kiosk-scoped cookie, which made
+  // auto-logout bounce straight back into the session.
+  jar.delete({ name: KIOSK_COOKIE_NAME, path: "/kiosk" });
   redirect("/kiosk");
 }
 
@@ -198,6 +201,111 @@ export async function kioskReportPunchFixAction(
         recipientId: id,
         kind: "missed_punch.request_submitted" as const,
         payload: { date: parsed.data.date, employeeId: employee.id },
+      })),
+    );
+  }
+  redirect("/kiosk/home?sent=1");
+}
+
+/**
+ * Cookie clear WITHOUT redirect — the idle watcher calls this then
+ * navigates client-side (a redirect() from a directly-invoked action
+ * is less reliable than router.replace on some webviews/kiosk browsers).
+ */
+export async function kioskClearSessionAction(): Promise<void> {
+  const jar = await cookies();
+  jar.delete({ name: KIOSK_COOKIE_NAME, path: "/kiosk" });
+}
+
+const acknowledgeSchema = z.object({ payslipId: z.string().uuid() });
+
+/** Approve (acknowledge) a published payslip from the kiosk. */
+export async function kioskAcknowledgePayslipAction(
+  formData: FormData,
+): Promise<void> {
+  const employee = await requireKioskEmployee();
+  if (!employee) redirect("/kiosk");
+  const parsed = acknowledgeSchema.safeParse({
+    payslipId: formData.get("payslipId"),
+  });
+  // Invalid/foreign ids just land back on the list — the card only
+  // renders the employee's own published payslips, so this is an edge.
+  if (!parsed.success) redirect("/kiosk/pay");
+  const { listPublishedPayslipsForEmployee, markAcknowledged } = await import(
+    "@/lib/db/queries/payslips"
+  );
+  // Ownership + published gate: only this employee's portal-visible
+  // payslips are acknowledgeable from the kiosk.
+  const mine = await listPublishedPayslipsForEmployee(employee.id);
+  const slip = mine.find((p) => p.id === parsed.data.payslipId);
+  if (!slip) redirect("/kiosk/pay");
+  const [linkedUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.employeeId, employee.id))
+    .limit(1);
+  await markAcknowledged(slip.id, {
+    id: linkedUser?.id ?? null,
+    role: "EMPLOYEE",
+  });
+  redirect("/kiosk/pay?acked=1");
+}
+
+const timeOffSchema = z.object({
+  type: z.enum(["SICK", "PERSONAL", "UNPAID", "OTHER"]),
+  startDate: z.string().date(),
+  endDate: z.string().date(),
+});
+
+/** Quick time-off request from the kiosk — same queue as the portal. */
+export async function kioskTimeOffAction(
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const employee = await requireKioskEmployee();
+  if (!employee) redirect("/kiosk");
+  const parsed = timeOffSchema.safeParse({
+    type: formData.get("type"),
+    startDate: formData.get("startDate"),
+    endDate: formData.get("endDate") || formData.get("startDate"),
+  });
+  if (!parsed.success) return { error: "DATES_INVALID" };
+  if (parsed.data.endDate < parsed.data.startDate) {
+    return { error: "DATES_BACKWARDS" };
+  }
+  const { createTimeOffRequest } = await import("@/lib/db/queries/requests");
+  const [linkedUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.employeeId, employee.id))
+    .limit(1);
+  try {
+    await createTimeOffRequest(
+      {
+        employeeId: employee.id,
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        type: parsed.data.type,
+        reason: "[kiosk]",
+      },
+      { id: linkedUser?.id ?? null, role: "EMPLOYEE" },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "TIME_OFF_OVERLAP") {
+      return { error: "TIME_OFF_OVERLAP" };
+    }
+    throw err;
+  }
+  const admins = await adminUserIds();
+  if (admins.length > 0) {
+    await dispatch(
+      admins.map((id) => ({
+        recipientId: id,
+        kind: "time_off.request_submitted" as const,
+        payload: {
+          startDate: parsed.data.startDate,
+          endDate: parsed.data.endDate,
+          type: parsed.data.type,
+        },
       })),
     );
   }

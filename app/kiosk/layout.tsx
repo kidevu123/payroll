@@ -22,7 +22,7 @@ export default function KioskLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white text-neutral-900 antialiased [color-scheme:light]">
+    <div className="min-h-screen bg-page text-text antialiased [color-scheme:light]">
       <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-6">
         {children}
       </div>

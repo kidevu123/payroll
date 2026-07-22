@@ -68,27 +68,27 @@ export default async function KioskHours() {
       <div className="flex items-center justify-between">
         <Link
           href="/kiosk/home"
-          className="flex h-14 items-center gap-2 rounded-2xl border-2 border-neutral-300 px-5 text-xl font-semibold active:bg-neutral-100"
+          className="flex h-14 items-center gap-2 rounded-xl border-2 border-border px-5 text-xl font-semibold active:bg-surface-2"
         >
           <ArrowLeft className="h-6 w-6" /> {c.back}
         </Link>
         {period ? (
-          <p className="text-lg font-medium text-neutral-500">
+          <p className="text-lg font-medium text-text-muted">
             {c.period}: {fmtDay(period.startDate)} – {fmtDay(period.endDate)}
           </p>
         ) : null}
       </div>
 
-      <div className="rounded-3xl bg-teal-700 px-6 py-6 text-white">
-        <p className="text-lg font-medium text-teal-100">{c.total}</p>
+      <div className="rounded-xl bg-brand-700 px-6 py-6 text-white">
+        <p className="text-lg font-medium text-brand-100">{c.total}</p>
         <p className="text-5xl font-bold tabular-nums tracking-tight">
           {formatHoursMinutes(totalHours)}
         </p>
       </div>
 
-      <div className="divide-y-2 divide-neutral-200 rounded-3xl border-2 border-neutral-300">
+      <div className="divide-y-2 divide-border rounded-xl border-2 border-border">
         {rows.length === 0 ? (
-          <p className="px-6 py-8 text-center text-xl text-neutral-500">
+          <p className="px-6 py-8 text-center text-xl text-text-muted">
             {c.noPunches}
           </p>
         ) : (
@@ -99,7 +99,7 @@ export default async function KioskHours() {
             >
               <div>
                 <p className="text-xl font-bold">{fmtDay(r.day)}</p>
-                <p className="text-lg tabular-nums text-neutral-600">
+                <p className="text-lg tabular-nums text-text-muted">
                   {r.in} – {r.out ?? c.open}
                 </p>
               </div>

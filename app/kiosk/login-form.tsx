@@ -57,13 +57,13 @@ export function KioskLoginForm() {
         <h1 className="text-3xl font-bold tracking-tight">
           {step === "id" ? "Clock ID" : "PIN"}
         </h1>
-        <p className="mt-1 text-lg text-neutral-500">
+        <p className="mt-1 text-lg text-text-muted">
           {step === "id" ? "Numero de reloj" : "Su PIN de 4-6 digitos"}
         </p>
       </div>
 
       <div
-        className="mx-auto flex h-16 w-full max-w-xs items-center justify-center rounded-2xl border-2 border-neutral-300 bg-neutral-50 text-4xl font-bold tracking-[0.3em] tabular-nums"
+        className="mx-auto flex h-16 w-full max-w-xs items-center justify-center rounded-xl border-2 border-border bg-surface-2 text-4xl font-bold tracking-[0.3em] tabular-nums"
         aria-live="polite"
       >
         {step === "id" ? value || " " : "•".repeat(pin.length)}
@@ -72,7 +72,7 @@ export function KioskLoginForm() {
       {error ? (
         <p
           role="alert"
-          className="mx-auto w-full max-w-sm rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-center text-lg font-semibold text-red-800"
+          className="mx-auto w-full max-w-sm rounded-xl border-2 border-danger-200 bg-danger-50 px-4 py-3 text-center text-lg font-semibold text-danger-700"
         >
           {error}
         </p>
@@ -84,7 +84,7 @@ export function KioskLoginForm() {
             key={d}
             type="button"
             onClick={() => press(d)}
-            className="h-20 rounded-2xl border-2 border-neutral-300 bg-white text-3xl font-bold active:bg-neutral-200"
+            className="h-20 rounded-xl border-2 border-border bg-surface text-3xl font-bold active:bg-surface-2"
           >
             {d}
           </button>
@@ -95,14 +95,14 @@ export function KioskLoginForm() {
             setError(null);
             setValue("");
           }}
-          className="h-20 rounded-2xl border-2 border-neutral-300 bg-white text-lg font-semibold text-neutral-600 active:bg-neutral-200"
+          className="h-20 rounded-xl border-2 border-border bg-surface text-lg font-semibold text-text-muted active:bg-surface-2"
         >
           Clear
         </button>
         <button
           type="button"
           onClick={() => press("0")}
-          className="h-20 rounded-2xl border-2 border-neutral-300 bg-white text-3xl font-bold active:bg-neutral-200"
+          className="h-20 rounded-xl border-2 border-border bg-surface text-3xl font-bold active:bg-surface-2"
         >
           0
         </button>
@@ -113,7 +113,7 @@ export function KioskLoginForm() {
             setError(null);
             setValue((v) => v.slice(0, -1));
           }}
-          className="flex h-20 items-center justify-center rounded-2xl border-2 border-neutral-300 bg-white active:bg-neutral-200"
+          className="flex h-20 items-center justify-center rounded-xl border-2 border-border bg-surface active:bg-surface-2"
         >
           <Delete className="h-8 w-8" />
         </button>
@@ -128,7 +128,7 @@ export function KioskLoginForm() {
               setPin("");
               setError(null);
             }}
-            className="h-16 flex-1 rounded-2xl border-2 border-neutral-300 text-xl font-semibold text-neutral-600 active:bg-neutral-200"
+            className="h-16 flex-1 rounded-xl border-2 border-border text-xl font-semibold text-text-muted active:bg-surface-2"
           >
             Back / Atras
           </button>
@@ -137,7 +137,7 @@ export function KioskLoginForm() {
           type="button"
           onClick={next}
           disabled={pending || (step === "id" ? clockId.length === 0 : pin.length < 4)}
-          className="h-16 flex-[2] rounded-2xl bg-teal-700 text-2xl font-bold text-white disabled:opacity-40 active:bg-teal-800"
+          className="h-16 flex-[2] rounded-xl bg-brand-700 text-2xl font-bold text-white disabled:opacity-40 active:bg-brand-800"
         >
           {pending ? "..." : step === "id" ? "Next / Siguiente" : "Sign in / Entrar"}
         </button>

@@ -1,11 +1,15 @@
 "use client";
 
 // Auto sign-out for the shared kiosk: any touch/keypress resets the
-// clock; hitting zero calls the logout action. The remaining time is
-// always visible so nobody is surprised.
+// clock; hitting zero clears the session cookie and navigates back to
+// the PIN screen. Navigation is done client-side via the router — a
+// redirect() thrown inside a directly-invoked server action is not
+// reliably honored by every kiosk browser/webview, which is exactly
+// where this runs.
 
 import * as React from "react";
-import { kioskLogoutAction } from "../actions";
+import { useRouter } from "next/navigation";
+import { kioskClearSessionAction } from "../actions";
 
 export function KioskIdleWatcher({
   idleSeconds,
@@ -14,11 +18,14 @@ export function KioskIdleWatcher({
   idleSeconds: number;
   label: string;
 }) {
+  const router = useRouter();
   const [remaining, setRemaining] = React.useState(idleSeconds);
   const firedRef = React.useRef(false);
 
   React.useEffect(() => {
-    const reset = () => setRemaining(idleSeconds);
+    const reset = () => {
+      if (!firedRef.current) setRemaining(idleSeconds);
+    };
     const events: (keyof WindowEventMap)[] = [
       "pointerdown",
       "keydown",
@@ -38,16 +45,23 @@ export function KioskIdleWatcher({
   React.useEffect(() => {
     if (remaining === 0 && !firedRef.current) {
       firedRef.current = true;
-      void kioskLogoutAction();
+      void (async () => {
+        try {
+          await kioskClearSessionAction();
+        } finally {
+          router.replace("/kiosk");
+          router.refresh();
+        }
+      })();
     }
-  }, [remaining]);
+  }, [remaining, router]);
 
   return (
     <p
       className={
         remaining <= 15
-          ? "text-base font-semibold text-red-700"
-          : "text-base text-neutral-500"
+          ? "text-base font-semibold text-danger-700"
+          : "text-base text-text-muted"
       }
     >
       {label} {remaining}s
