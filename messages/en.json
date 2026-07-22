@@ -371,7 +371,18 @@
       "languageHint": "Switches the language on this device immediately. Your saved preference (above) is what other devices use until they switch too.",
       "payTypeHourly": "Hourly",
       "payTypeSalaried": "Salaried",
-      "payTypeFlatTask": "Flat-task"
+      "payTypeFlatTask": "Flat-task",
+      "kioskPinTitle": "Warehouse kiosk PIN",
+      "kioskPinUnsetHint": "Set a 4-6 digit PIN to sign in at the warehouse kiosk with your clock ID.",
+      "kioskPinSetHint": "Your kiosk PIN is set. Enter a new one below to change it.",
+      "kioskPinNew": "New PIN",
+      "kioskPinConfirm": "Repeat PIN",
+      "kioskPinMismatch": "The two PINs do not match.",
+      "kioskPinInvalid": "PIN must be 4-6 digits.",
+      "kioskPinSave": "Set PIN",
+      "kioskPinReplace": "Change PIN",
+      "kioskPinSaving": "Saving...",
+      "kioskPinSaved": "PIN saved. Use it at the kiosk with your clock ID."
     },
     "notifications": {
       "back": "Back",

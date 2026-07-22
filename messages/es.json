@@ -371,7 +371,18 @@
       "languageHint": "Cambia el idioma en este dispositivo de inmediato. Su preferencia guardada (arriba) es la que usan otros dispositivos hasta que también se cambien.",
       "payTypeHourly": "Por hora",
       "payTypeSalaried": "Asalariado",
-      "payTypeFlatTask": "Por tarea"
+      "payTypeFlatTask": "Por tarea",
+      "kioskPinTitle": "PIN del kiosco del almacen",
+      "kioskPinUnsetHint": "Cree un PIN de 4-6 digitos para entrar al kiosco del almacen con su numero de reloj.",
+      "kioskPinSetHint": "Su PIN del kiosco ya esta configurado. Ingrese uno nuevo para cambiarlo.",
+      "kioskPinNew": "Nuevo PIN",
+      "kioskPinConfirm": "Repita el PIN",
+      "kioskPinMismatch": "Los dos PIN no coinciden.",
+      "kioskPinInvalid": "El PIN debe tener de 4 a 6 digitos.",
+      "kioskPinSave": "Crear PIN",
+      "kioskPinReplace": "Cambiar PIN",
+      "kioskPinSaving": "Guardando...",
+      "kioskPinSaved": "PIN guardado. Uselo en el kiosco con su numero de reloj."
     },
     "notifications": {
       "back": "Atrás",

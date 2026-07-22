@@ -25,6 +25,7 @@ import { signOutAction } from "@/components/admin/sign-out-action";
 import { LanguageSwitcher } from "@/components/admin/language-switcher";
 import { resolveLocale } from "@/lib/i18n";
 import { ProfileForm } from "./profile-form";
+import { KioskPinForm } from "./kiosk-pin-form";
 import { PhotoUpload } from "./photo-upload";
 
 export default async function EmployeeProfile() {
@@ -129,6 +130,8 @@ export default async function EmployeeProfile() {
       </Card>
 
       <ProfileForm employee={employee} />
+
+      <KioskPinForm pinSet={Boolean(employee.kioskPinHash)} />
 
       {/* Per-device language switcher. The "saved" preference (set above)
           is what new devices use; this overrides only the current one. */}

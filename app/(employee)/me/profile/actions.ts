@@ -1,9 +1,14 @@
 "use server";
 
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth-guards";
 import { updateEmployee } from "@/lib/db/queries/employees";
+import { db } from "@/lib/db";
+import { employees } from "@/lib/db/schema";
+import { hashPassword } from "@/lib/auth";
+import { writeAudit } from "@/lib/db/audit";
 
 const schema = z.object({
   displayName: z.string().min(1).max(120),
@@ -40,4 +45,45 @@ export async function saveProfileAction(
   );
   revalidatePath("/me/profile");
   revalidatePath("/", "layout"); // refresh i18n locale on next render
+}
+
+const kioskPinSchema = z.object({
+  pin: z.string().regex(/^\d{4,6}$/),
+  pinConfirm: z.string(),
+});
+
+/**
+ * Employee self-service kiosk PIN. The employee is already authenticated
+ * in their portal session, so no current-PIN check is needed; the hash
+ * lands in the same employees.kiosk_pin_hash the admin form writes.
+ * Audited without the hash in the payload.
+ */
+export async function setKioskPinAction(
+  formData: FormData,
+): Promise<{ error?: string; ok?: true }> {
+  const session = await requireSession();
+  if (!session.user.employeeId) return { error: "Account not linked." };
+  const parsed = kioskPinSchema.safeParse({
+    pin: formData.get("pin"),
+    pinConfirm: formData.get("pinConfirm"),
+  });
+  if (!parsed.success) return { error: "PIN_INVALID" };
+  if (parsed.data.pin !== parsed.data.pinConfirm) {
+    return { error: "PIN_MISMATCH" };
+  }
+  const kioskPinHash = await hashPassword(parsed.data.pin);
+  await db
+    .update(employees)
+    .set({ kioskPinHash, updatedAt: new Date() })
+    .where(eq(employees.id, session.user.employeeId));
+  await writeAudit({
+    actorId: session.user.id,
+    actorRole: session.user.role,
+    action: "employee.kiosk_pin.set",
+    targetType: "Employee",
+    targetId: session.user.employeeId,
+    after: { source: "employee_profile" },
+  });
+  revalidatePath("/me/profile");
+  return { ok: true };
 }
