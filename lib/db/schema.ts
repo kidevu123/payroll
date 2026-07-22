@@ -303,6 +303,16 @@ export const employees = pgTable(
      * Surfaces as an "Upload paystub" slot on the period detail.
      */
     requiresW2Upload: boolean("requires_w2_upload").notNull().default(false),
+    /**
+     * Zoho Books account names for this employee's paystub expense pushes.
+     * When null, the push tries "Employee Payroll-<first name>" for the
+     * expense account and "Business Checking" for paid-through, falling
+     * back to the org defaults when no chart account matches. Names are
+     * resolved against the target org's chart of accounts at push time
+     * (case-insensitive, bracketed codes ignored).
+     */
+    zohoExpenseAccount: text("zoho_expense_account"),
+    zohoPaidThrough: text("zoho_paid_through"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

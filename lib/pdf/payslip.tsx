@@ -211,7 +211,10 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
         </View>
         {data.days.map((d, i) => (
           <View key={d.date} style={[styles.tr, i % 2 ? styles.trAlt : {}]}>
-            <Text style={styles.cDate}>{formatDateMDY(d.date)}</Text>
+            <Text style={styles.cDate}>
+              {formatDateMDY(d.date)}
+              {d.date < data.period.startDate ? " *" : ""}
+            </Text>
             <Text style={styles.cIn}>{d.inTime ?? ""}</Text>
             <Text style={styles.cOut}>{d.outTime ?? ""}</Text>
             <Text style={[styles.cHours, d.isOvertime ? styles.ot : {}]}>
@@ -223,6 +226,13 @@ export function PayslipBody({ data }: { data: PayslipDocInput }) {
           </View>
         ))}
       </View>
+
+      {data.days.some((d) => d.date < data.period.startDate) ? (
+        <Text style={styles.meta}>
+          * Back pay — day worked in an earlier week that was already paid
+          out; included in this period&apos;s pay.
+        </Text>
+      ) : null}
 
       {data.taskPay.length > 0 ? (
         <View style={styles.taskTable}>

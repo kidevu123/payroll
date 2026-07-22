@@ -55,6 +55,14 @@ const createSchema = z.object({
     .union([z.string().max(64), z.literal("").transform(() => null)])
     .nullable()
     .optional(),
+  zohoExpenseAccount: z
+    .union([z.string().max(120), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+  zohoPaidThrough: z
+    .union([z.string().max(120), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function createEmployeeAction(
@@ -76,6 +84,8 @@ export async function createEmployeeAction(
     notes: formData.get("notes") || null,
     requiresW2Upload: formData.get("requiresW2Upload") || "0",
     ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
+    zohoExpenseAccount: formData.get("zohoExpenseAccount") || null,
+    zohoPaidThrough: formData.get("zohoPaidThrough") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -95,6 +105,8 @@ export async function createEmployeeAction(
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
+      zohoExpenseAccount: d.zohoExpenseAccount ?? null,
+      zohoPaidThrough: d.zohoPaidThrough ?? null,
       // Prefer the dollar field; fall back to cents for legacy callers.
       ...(d.initialHourlyRateDollars !== undefined && d.initialHourlyRateDollars !== null
         ? { initialHourlyRateCents: Math.round(d.initialHourlyRateDollars * 100) }
@@ -140,6 +152,14 @@ const updateSchema = z.object({
     .union([z.string().max(64), z.literal("").transform(() => null)])
     .nullable()
     .optional(),
+  zohoExpenseAccount: z
+    .union([z.string().max(120), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
+  zohoPaidThrough: z
+    .union([z.string().max(120), z.literal("").transform(() => null)])
+    .nullable()
+    .optional(),
 });
 
 export async function updateEmployeeAction(
@@ -163,6 +183,8 @@ export async function updateEmployeeAction(
     notes: formData.get("notes") || null,
     requiresW2Upload: formData.get("requiresW2Upload") || "0",
     ngtecoEmployeeRef: formData.get("ngtecoEmployeeRef") || null,
+    zohoExpenseAccount: formData.get("zohoExpenseAccount") || null,
+    zohoPaidThrough: formData.get("zohoPaidThrough") || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -221,6 +243,8 @@ export async function updateEmployeeAction(
       notes: d.notes ?? null,
       requiresW2Upload: d.requiresW2Upload === "1",
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
+      zohoExpenseAccount: d.zohoExpenseAccount ?? null,
+      zohoPaidThrough: d.zohoPaidThrough ?? null,
     },
     { id: session.user.id, role: session.user.role },
   );

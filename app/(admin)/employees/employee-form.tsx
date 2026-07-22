@@ -380,6 +380,37 @@ export function EmployeeForm(props: Props) {
         // Submit a hidden "0" so legacy data flips off if it was on.
         <input type="hidden" name="requiresW2Upload" value="0" />
       )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="zohoExpenseAccount">
+            Zoho expense account (paystub pushes)
+          </Label>
+          <Input
+            id="zohoExpenseAccount"
+            name="zohoExpenseAccount"
+            defaultValue={e?.zohoExpenseAccount ?? ""}
+            placeholder={`Employee Payroll-${(e?.preferredName ?? e?.displayName ?? "Name").trim().split(/\s+/)[0]}`}
+          />
+          <p className="text-xs text-text-muted">
+            Blank uses the &quot;Employee Payroll-&lt;first name&gt;&quot;
+            convention, falling back to the org default account when no
+            match exists in Zoho.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="zohoPaidThrough">Zoho paid through</Label>
+          <Input
+            id="zohoPaidThrough"
+            name="zohoPaidThrough"
+            defaultValue={e?.zohoPaidThrough ?? ""}
+            placeholder="Business Checking"
+          />
+          <p className="text-xs text-text-muted">
+            Blank uses Business Checking, falling back to the org default
+            when that account is missing in Zoho.
+          </p>
+        </div>
+      </div>
       {scheduleWarning && (
         <p className="text-sm text-warning-800 bg-warning-50 border border-warning-200 rounded-card px-3 py-2">
           {scheduleWarning}

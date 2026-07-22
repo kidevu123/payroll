@@ -4,7 +4,12 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth-guards";
-import { createPunch, editPunch, voidPunch } from "@/lib/db/queries/punches";
+import {
+  createBackPayPunch,
+  createPunch,
+  editPunch,
+  voidPunch,
+} from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { wallClockToUtc, isBareWallClock } from "@/lib/time/wall-clock";
 import { buildTimeEditorHref } from "@/lib/time/grid-links";
@@ -151,6 +156,71 @@ export async function createPunchAction(
       returnTo,
     }),
   );
+}
+
+const backPaySchema = z.object({
+  employeeId: z.string().uuid(),
+  workDate: z.string().date(),
+  clockIn: z.string().regex(ISO_DATETIME_RE, "clockIn must be ISO datetime"),
+  clockOut: z.string().regex(ISO_DATETIME_RE, "clockOut must be ISO datetime"),
+  reason: z.string().min(1).max(500),
+});
+
+/**
+ * Record a shift from an already-PAID week as back pay in the employee's
+ * current period. Entered from the day editor when the period is paid —
+ * the punch keeps its true worked timestamps, the money lands in the
+ * next run, and paid history stays frozen.
+ */
+export async function createBackPayPunchAction(
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  const parsed = backPaySchema.safeParse({
+    employeeId: formData.get("employeeId"),
+    workDate: formData.get("workDate"),
+    clockIn: formData.get("clockIn"),
+    clockOut: formData.get("clockOut"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const clockInD = await parsePunchInput(parsed.data.clockIn);
+  const clockOutD = await parsePunchInput(parsed.data.clockOut);
+  if (!clockInD) return { error: "Invalid clock-in." };
+  if (!clockOutD) return { error: "Invalid clock-out." };
+  const spanErr = validatePunchSpan(clockInD, clockOutD);
+  if (spanErr) return { error: spanErr };
+  try {
+    await createBackPayPunch(
+      {
+        employeeId: parsed.data.employeeId,
+        clockIn: clockInD,
+        clockOut: clockOutD,
+        workDate: parsed.data.workDate,
+        reason: parsed.data.reason,
+      },
+      { id: session.user.id, role: session.user.role },
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PERIOD_PAID") {
+      return {
+        error:
+          "Today's pay period is already paid too — unmark it as paid first.",
+      };
+    }
+    return {
+      error: err instanceof Error ? err.message : "Could not add back pay.",
+    };
+  }
+  revalidatePath("/time");
+  revalidatePath("/payroll");
+  const returnTo =
+    typeof formData.get("returnTo") === "string"
+      ? String(formData.get("returnTo"))
+      : undefined;
+  redirect(returnTo || "/time");
 }
 
 const editSchema = z.object({
