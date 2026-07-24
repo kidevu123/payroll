@@ -1,10 +1,18 @@
-// Admin period report — compact 4-column layout. Owner ask:
-// "i want the PDF report to be max 2 pages so i can print it front
-// and back in a single page". Tuned for ~22 employees on Letter
-// portrait: page 1 = payroll summary table (one row per employee,
-// shift subtotals + grand total). Page 2 = per-employee detail
-// blocks in a 4-col grid, each block has the employee header,
-// day-by-day rows, totals, and a signature line.
+// Admin period report — "payroll approval" redesign (owner reference PDF).
+//
+// Landscape LETTER, two-page target for ~20 employees. Layout, top to bottom:
+//   1. Fixed navy running header band (wordmark + cadence title, period range
+//      + subtitle, page N/M) — repeats on every page.
+//   2. Four KPI cards: employees, total hours, exact payroll, approved payroll.
+//   3. Payroll roster — two-column ID / Employee / Hrs / Exact / Pay table.
+//   4. Employee detail — a 4-column grid of per-person cards with a navy header
+//      bar, day-by-day punch rows (worked shifts highlighted teal, "No punch"
+//      days muted), exact + approved totals, and a sign/date line.
+//   5. Fixed footer (generated date + confidential + page).
+//
+// The renderer drives both the roster and the detail grid from the SAME
+// data.employees order so the two always agree row-for-row. Money stays
+// integer cents until the final format; hours honor the configured decimals.
 
 import {
   Document,
@@ -16,255 +24,305 @@ import {
 import type { AdminReportInput } from "./types";
 import { formatMoney } from "@/lib/utils";
 
-const PAGE_PADDING = 16;
+const NAVY = "#16233b";
+const NAVY_SOFT = "#334155";
+const GOLD = "#c8971f";
+const INK = "#0f172a";
+const MUTED = "#64748b";
+const SUBTLE = "#94a3b8";
+const HAIRLINE = "#e6ebf2";
+const CARD_BORDER = "#dbe4ee";
 
-// Single typeface throughout (Helvetica + Helvetica-Bold). The
-// previous version mixed Helvetica with Courier for numerics, which
-// looks dated and ransom-note-y on a payroll PDF. Numbers stay
-// right-aligned and tabular via consistent column widths — modern
-// payroll software does the same.
+const PAGE_PADDING = 22;
+const HEADER_H = 52;
+
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18,
+    paddingTop: HEADER_H + 12,
+    paddingBottom: 26,
     paddingHorizontal: PAGE_PADDING,
-    paddingBottom: 18,
     fontSize: 7,
     fontFamily: "Helvetica",
-    color: "#0f172a",
+    color: INK,
   },
-  topRule: {
+
+  // ── Fixed running header band ──────────────────────────────────────────
+  headerBand: {
     position: "absolute",
-    top: 12,
-    left: PAGE_PADDING,
-    right: PAGE_PADDING,
-    height: 1.5,
-    backgroundColor: "#ede9fe",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_H,
+    backgroundColor: NAVY,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: PAGE_PADDING,
   },
-  reportLabel: {
-    position: "absolute",
-    top: 34,
-    left: PAGE_PADDING,
+  headerLeft: { flex: 1, justifyContent: "center" },
+  headerWordmark: {
     fontSize: 7,
     fontFamily: "Helvetica-Bold",
-    color: "#0f766e",
+    letterSpacing: 1.5,
   },
-  pagePill: {
-    position: "absolute",
-    top: 22,
-    right: PAGE_PADDING,
-    borderWidth: 0.75,
-    borderColor: "#c4b5fd",
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    fontSize: 7,
-    color: "#0f172a",
-    backgroundColor: "#f5f3ff",
-  },
-  summaryTitle: {
+  headerTitle: {
     fontSize: 16,
     fontFamily: "Helvetica-Bold",
-    textAlign: "center",
-    marginTop: 0,
-    marginBottom: 2,
+    color: "#ffffff",
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
-  summaryMeta: {
-    fontSize: 8,
-    color: "#64748b",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  table: {
-    borderWidth: 0.5,
-    borderColor: "#cbd5e1",
-    borderRadius: 5,
-    marginBottom: 10,
-    padding: 5,
-  },
-  summaryBand: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#ede9fe",
-    borderRadius: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginBottom: 10,
-  },
-  summaryBandTitle: {
-    fontSize: 8,
+  headerCenter: { flex: 1.2, alignItems: "center", justifyContent: "center" },
+  headerRange: {
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+    letterSpacing: 0.5,
   },
-  summaryBandTotal: {
-    fontSize: 8,
+  headerSub: {
+    fontSize: 7.5,
+    color: "#a9b6c8",
+    marginTop: 3,
+    letterSpacing: 0.3,
+  },
+  headerRight: { flex: 1, alignItems: "flex-end", justifyContent: "center" },
+  headerPage: {
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
-    color: "#0f766e",
+    color: "#cdd6e4",
+    letterSpacing: 0.5,
   },
-  summaryColumns: {
-    flexDirection: "row",
-  },
-  summaryColumn: {
-    width: "50%",
-    paddingHorizontal: 4,
-  },
-  th: {
-    flexDirection: "row",
-    backgroundColor: "#f8fafc",
-    paddingVertical: 2,
-    paddingHorizontal: 3,
-    borderBottomWidth: 0.5,
-    borderColor: "#e2e8f0",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 6.25,
-    color: "#0f766e",
-  },
-  tr: {
-    flexDirection: "row",
-    paddingVertical: 1.5,
-    paddingHorizontal: 3,
-    borderBottomWidth: 0.25,
-    borderColor: "#eef2f7",
-  },
-  shiftSubtotal: {
-    flexDirection: "row",
-    paddingVertical: 2,
-    paddingHorizontal: 5,
-    backgroundColor: "#fff7ed",
-    borderBottomWidth: 0.5,
-    borderColor: "#cbd5e1",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 7,
-  },
-  grandTotal: {
-    flexDirection: "row",
-    paddingVertical: 2.5,
-    paddingHorizontal: 5,
-    borderTopWidth: 1,
-    borderColor: "#0f172a",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 8,
-  },
-  cId: { width: 28 },
-  cName: { flex: 2.4, fontSize: 7 },
-  cShift: { width: 50 },
-  cHours: { width: 38, textAlign: "right", paddingRight: 4 },
-  cPay: { width: 48, textAlign: "right", paddingRight: 4, color: "#475569" },
-  // Rounded Pay = what the employee actually receives. Owner ask:
-  // "why wouldnt you bold rounded pay since thats what theyd actually
-  // receive". Bold weight + brand color + slightly larger for the
-  // header AND every row of this column.
-  cRounded: {
-    width: 42,
-    textAlign: "right",
-    fontFamily: "Helvetica-Bold",
-  },
-  // Per-employee detail block (rendered in a 4-col grid for 2-page fit).
-  breakdownTitle: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    marginTop: 4,
-    marginBottom: 4,
-    color: "#475569",
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginHorizontal: -2,
-  },
-  block: {
-    width: "25%",
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-  },
-  blockInner: {
+
+  // ── KPI cards ──────────────────────────────────────────────────────────
+  kpiRow: { flexDirection: "row", marginBottom: 8 },
+  kpiCard: {
+    flex: 1,
     borderWidth: 0.75,
-    borderColor: "#dbe4f0",
-    borderRadius: 5,
-    padding: 5,
-    minHeight: 132,
+    borderColor: CARD_BORDER,
+    borderRadius: 6,
+    backgroundColor: "#ffffff",
+    paddingVertical: 7,
+    paddingRight: 10,
+    paddingLeft: 14,
+    position: "relative",
   },
-  blockHeader: {
+  kpiAccent: {
+    position: "absolute",
+    left: 6,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 2,
+  },
+  kpiLabel: {
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
+    color: MUTED,
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  kpiValue: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    color: NAVY,
+  },
+
+  // ── Roster ─────────────────────────────────────────────────────────────
+  rosterCard: {
+    borderWidth: 0.75,
+    borderColor: CARD_BORDER,
+    borderRadius: 6,
+    backgroundColor: "#ffffff",
+    padding: 8,
+    marginBottom: 9,
+  },
+  rosterHead: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "baseline",
-    paddingVertical: 5,
-    paddingHorizontal: 6,
     marginBottom: 5,
-    borderRadius: 4,
   },
-  blockName: {
-    fontSize: 7,
+  rosterTitle: {
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    flex: 1,
+    color: NAVY,
+    letterSpacing: 0.6,
   },
-  blockMeta: {
-    fontSize: 6,
-    color: "#64748b",
-  },
-  blockTable: {
-    marginBottom: 2,
-  },
-  blockTr: {
+  rosterTotals: { fontSize: 8.5, fontFamily: "Helvetica-Bold" },
+  rosterCols: { flexDirection: "row" },
+  rosterCol: { width: "50%", paddingHorizontal: 4 },
+  rosterTh: {
     flexDirection: "row",
+    backgroundColor: "#f4f7fb",
+    borderRadius: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    marginBottom: 1,
+  },
+  rosterThText: {
     fontSize: 6,
-    paddingVertical: 0.75,
+    fontFamily: "Helvetica-Bold",
+    color: MUTED,
+    letterSpacing: 0.6,
   },
-  blockTrAlt: {
-    backgroundColor: "#fafafa",
+  rosterTr: {
+    flexDirection: "row",
+    paddingVertical: 1.3,
+    paddingHorizontal: 4,
+    borderBottomWidth: 0.5,
+    borderColor: HAIRLINE,
   },
-  // Per-day row column widths. All cells share the page font; right-
-  // aligned numeric columns + tabular widths keep the table grid tidy
-  // without resorting to a monospace face.
-  bcDate: { width: "24%" },
-  bcIn: { width: "20%" },
-  bcOut: { width: "20%" },
-  bcHours: { width: "16%", textAlign: "right", paddingRight: 4 },
-  bcPay: { width: "20%", textAlign: "right" },
-  blockTotalsRow: {
+  rcId: { width: 46, color: SUBTLE, paddingRight: 3 },
+  rcName: { flex: 1, color: INK },
+  rcHrs: { width: 40, textAlign: "right", color: MUTED },
+  rcExact: { width: 48, textAlign: "right", color: MUTED },
+  rcPay: {
+    width: 40,
+    textAlign: "right",
+    fontFamily: "Helvetica-Bold",
+    color: NAVY,
+  },
+
+  // ── Detail section ─────────────────────────────────────────────────────
+  detailHead: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: 1.5,
-    borderTopWidth: 0.5,
-    borderColor: "#e2e8f0",
-    fontSize: 6.5,
+    alignItems: "baseline",
+    marginBottom: 6,
   },
-  blockTotalLabel: {
+  detailTitle: {
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
+    color: NAVY,
+    letterSpacing: 0.8,
   },
-  // Two stacked lines: Signature ___________  Date __________ .
-  // Owner ask: "add date next to signature, it needs to look better".
-  blockSigRow: {
+  detailHint: { fontSize: 7, color: SUBTLE },
+
+  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  cardOuter: { width: "25%", paddingHorizontal: 4, marginBottom: 6 },
+  card: {
+    borderWidth: 0.75,
+    borderColor: CARD_BORDER,
+    borderRadius: 5,
+    overflow: "hidden",
+    backgroundColor: "#ffffff",
+  },
+  cardHeader: {
+    backgroundColor: NAVY,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+  },
+  cardName: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+    flex: 1,
+  },
+  cardId: { fontSize: 6.5, color: "#9fb0c6", marginLeft: 4 },
+  cardBody: { paddingHorizontal: 7, paddingTop: 4, paddingBottom: 5 },
+
+  rateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 0.5,
+    borderColor: HAIRLINE,
+    paddingBottom: 2,
+    marginBottom: 1,
+  },
+  rate: { fontSize: 7, fontFamily: "Helvetica-Bold", color: NAVY, flex: 1 },
+  colHead: { fontSize: 5.5, fontFamily: "Helvetica-Bold", color: SUBTLE, letterSpacing: 0.4 },
+
+  dayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 1.1,
+    borderRadius: 2,
+  },
+  dayRowWorked: { backgroundColor: "#e8f7f2" },
+  cDate: { width: "22%", fontSize: 6.5, color: MUTED },
+  cDateWorked: { fontFamily: "Helvetica-Bold", color: INK },
+  cIn: { width: "19%", fontSize: 6.5, color: INK },
+  cOut: { width: "19%", fontSize: 6.5, color: INK },
+  cHrs: { width: "18%", fontSize: 6.5, textAlign: "right", color: INK },
+  cPay: { width: "22%", fontSize: 6.5, textAlign: "right", color: INK },
+  cHrsWorked: { fontFamily: "Helvetica-Bold" },
+  cPayWorked: { fontFamily: "Helvetica-Bold", color: NAVY },
+  noPunch: { color: SUBTLE },
+  taskRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 1.4,
+  },
+  taskLabel: { fontSize: 6, color: MUTED, flex: 1 },
+  taskAmt: { fontSize: 6, fontFamily: "Helvetica-Bold", color: NAVY },
+
+  totalsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 0.75,
+    borderColor: "#cbd5e1",
+    marginTop: 3,
+    paddingTop: 3,
+  },
+  totalsLabel: { fontSize: 6, fontFamily: "Helvetica-Bold", color: MUTED, letterSpacing: 0.5 },
+  totalsExact: { fontSize: 8, fontFamily: "Helvetica-Bold", color: INK, marginLeft: 3 },
+  totalsPayLabel: { fontSize: 6, fontFamily: "Helvetica-Bold", color: MUTED, letterSpacing: 0.5 },
+
+  signRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginTop: 4,
-    fontSize: 5.5,
-    color: "#64748b",
+    marginTop: 5,
   },
-  sigBlank: {
+  signLabel: { fontSize: 5.5, fontFamily: "Helvetica-Bold", color: SUBTLE, letterSpacing: 0.6 },
+  signBlank: {
     flex: 1,
     borderBottomWidth: 0.5,
-    borderColor: "#94a3b8",
-    height: 8,
-    marginHorizontal: 2,
+    borderColor: "#b6c2d3",
+    height: 7,
+    marginHorizontal: 3,
   },
   dateBlank: {
-    width: 36,
+    width: 42,
     borderBottomWidth: 0.5,
-    borderColor: "#94a3b8",
-    height: 8,
-    marginLeft: 2,
+    borderColor: "#b6c2d3",
+    height: 7,
+    marginLeft: 3,
   },
+
+  // ── Fixed footer ───────────────────────────────────────────────────────
   footer: {
     position: "absolute",
-    bottom: 12,
+    bottom: 10,
     left: PAGE_PADDING,
     right: PAGE_PADDING,
-    fontSize: 7,
-    color: "#94a3b8",
+    borderTopWidth: 0.5,
+    borderColor: HAIRLINE,
+    paddingTop: 4,
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  footerText: { fontSize: 6.5, color: SUBTLE, letterSpacing: 0.3 },
+  footerRight: { fontSize: 6.5, color: MUTED, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
 });
+
+const MONTHS = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
+const MONTHS_LONG = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const ROUNDING_LABEL: Record<string, string> = {
+  NONE: "exact payroll",
+  NEAREST_DOLLAR: "nearest-dollar payroll",
+  NEAREST_QUARTER: "nearest-quarter payroll",
+  NEAREST_FIFTEEN_MIN_HOURS: "15-minute rounding",
+};
 
 function moneyWhole(cents: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -279,15 +337,15 @@ function hrs(h: number, decimals: number): string {
   return h.toFixed(decimals);
 }
 
+/** "2026-07-20" -> "07/20" */
 function fmtDate(iso: string): string {
-  // "2026-04-27" -> "04/27"
   const m = iso.match(/^\d{4}-(\d{2})-(\d{2})/);
   return m ? `${m[1]}/${m[2]}` : iso;
 }
 
+/** "06:08:34" -> "6:08a" */
 function fmtTime(t: string | undefined): string {
-  if (!t) return "—";
-  // "06:08:34" -> "6:08a"
+  if (!t) return "";
   const m = t.match(/^(\d{2}):(\d{2})/);
   if (!m) return t;
   const h = parseInt(m[1]!, 10);
@@ -296,85 +354,130 @@ function fmtTime(t: string | undefined): string {
   return `${h12}:${m[2]}${ampm}`;
 }
 
-function splitSummaryRows<T>(rows: T[]): [T[], T[]] {
-  const midpoint = Math.ceil(rows.length / 2);
-  return [rows.slice(0, midpoint), rows.slice(midpoint)];
+/** "2026-07-20","2026-07-26" -> "JUL 20 - JUL 26, 2026" */
+function fmtRange(startIso: string, endIso: string): string {
+  const s = startIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const e = endIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!s || !e) return `${startIso} - ${endIso}`;
+  const sm = MONTHS[parseInt(s[2]!, 10) - 1];
+  const em = MONTHS[parseInt(e[2]!, 10) - 1];
+  const sd = parseInt(s[3]!, 10);
+  const ed = parseInt(e[3]!, 10);
+  return `${sm} ${sd} - ${em} ${ed}, ${e[1]}`;
 }
 
+/** "2026-07-24T18:46:37Z" -> "Jul 24, 2026" */
+function fmtGenerated(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
+function splitHalf<T>(rows: T[]): [T[], T[]] {
+  const mid = Math.ceil(rows.length / 2);
+  return [rows.slice(0, mid), rows.slice(mid)];
+}
+
+type Employee = AdminReportInput["employees"][number];
+
 export function AdminReport({ data }: { data: AdminReportInput }) {
+  const brand = data.company.brandColorHex || "#0f766e";
+  const dp = data.rules.hoursDecimalPlaces;
+  const locale = data.company.locale;
+  const employees = data.employees;
+
   let grandHours = 0;
   let grandGrossCents = 0;
   let grandRoundedCents = 0;
-  for (const e of data.employees) {
+  for (const e of employees) {
     grandHours += e.totals.hours;
     grandGrossCents += e.totals.grossCents;
     grandRoundedCents += e.totals.roundedCents;
   }
 
-  const brand = data.company.brandColorHex;
-  const sortedEmployees = data.employees
-    .slice()
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
-  const [leftSummary, rightSummary] = splitSummaryRows(sortedEmployees);
+  const title = `${data.scheduleLabel ? `${data.scheduleLabel} ` : ""}PAYROLL`;
+  const subtitle = `${employees.length} employee${employees.length === 1 ? "" : "s"}  |  ${
+    ROUNDING_LABEL[data.rules.rounding] ?? "payroll"
+  }`;
+  const range = fmtRange(data.period.startDate, data.period.endDate);
+  const generated = fmtGenerated(data.generatedAt);
+  const totalsLine = `Exact ${formatMoney(grandGrossCents, locale)}  |  Approved ${moneyWhole(
+    grandRoundedCents,
+    locale,
+  )}`;
+
+  const kpis: { label: string; value: string; accent: string }[] = [
+    { label: "EMPLOYEES", value: String(employees.length), accent: brand },
+    { label: "TOTAL HOURS", value: hrs(grandHours, dp), accent: brand },
+    { label: "EXACT PAYROLL", value: formatMoney(grandGrossCents, locale), accent: brand },
+    { label: "APPROVED PAYROLL", value: moneyWhole(grandRoundedCents, locale), accent: GOLD },
+  ];
+
+  const [leftRoster, rightRoster] = splitHalf(employees);
 
   return (
-    <Document
-      title={`Admin Report ${data.period.startDate} to ${data.period.endDate}`}
-    >
+    <Document title={`Payroll ${data.period.startDate} to ${data.period.endDate}`}>
       <Page size="LETTER" orientation="landscape" style={styles.page} wrap>
-        <View style={styles.topRule} fixed />
-        <Text style={styles.reportLabel} fixed>Admin Report</Text>
-        <Text
-          style={styles.pagePill}
-          fixed
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
-        />
-        <Text style={[styles.summaryTitle, { color: brand }]}>
-          {data.company.name} — Payroll {data.period.startDate} to {data.period.endDate}
-        </Text>
-        <Text style={styles.summaryMeta}>
-          {data.employees.length} employee{data.employees.length === 1 ? "" : "s"} ·
-          rounding {data.rules.rounding.toLowerCase().replace(/_/g, " ")} ·
-          generated {data.generatedAt}
-        </Text>
-
-        {/* Owner ask: drop the Shift column + Day/Unassigned subtotals
-            and let the page run landscape so the summary stays
-            single-page. Employees are now a flat alphabetical list
-            with one grand-total row at the end. */}
-        <View style={styles.table}>
-          <View style={styles.summaryBand}>
-            <Text style={styles.summaryBandTitle}>Payroll summary</Text>
-            <Text style={styles.summaryBandTotal}>
-              GRAND TOTAL: {hrs(grandHours, data.rules.hoursDecimalPlaces)} hrs ·{" "}
-              {formatMoney(grandGrossCents, data.company.locale)} · Rounded{" "}
-              {moneyWhole(grandRoundedCents, data.company.locale)}
+        {/* Running header band */}
+        <View style={styles.headerBand} fixed>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.headerWordmark, { color: brand }]}>
+              {data.company.name.toUpperCase()}
             </Text>
+            <Text style={styles.headerTitle}>{title}</Text>
           </View>
-          <View style={styles.summaryColumns}>
-            {[leftSummary, rightSummary].map((rows, columnIndex) => (
-              <View key={`summary-col-${columnIndex}`} style={styles.summaryColumn}>
-                <View style={styles.th}>
-                  <Text style={styles.cId}>ID</Text>
-                  <Text style={styles.cName}>Employee</Text>
-                  <Text style={styles.cHours}>Hrs</Text>
-                  <Text style={styles.cPay}>Total</Text>
-                  <Text style={styles.cRounded}>Pay</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerRange}>{range}</Text>
+            <Text style={styles.headerSub}>{subtitle}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text
+              style={styles.headerPage}
+              render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
+            />
+          </View>
+        </View>
+
+        {/* KPI cards */}
+        <View style={styles.kpiRow}>
+          {kpis.map((k, i) => (
+            <View
+              key={k.label}
+              style={[styles.kpiCard, i < kpis.length - 1 ? { marginRight: 10 } : {}]}
+            >
+              <View style={[styles.kpiAccent, { backgroundColor: k.accent }]} />
+              <Text style={styles.kpiLabel}>{k.label}</Text>
+              <Text style={styles.kpiValue}>{k.value}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Payroll roster */}
+        <View style={styles.rosterCard}>
+          <View style={styles.rosterHead}>
+            <Text style={styles.rosterTitle}>PAYROLL ROSTER</Text>
+            <Text style={[styles.rosterTotals, { color: brand }]}>{totalsLine}</Text>
+          </View>
+          <View style={styles.rosterCols}>
+            {[leftRoster, rightRoster].map((col, ci) => (
+              <View key={`rc-${ci}`} style={styles.rosterCol}>
+                <View style={styles.rosterTh}>
+                  <Text style={[styles.rosterThText, styles.rcId]}>ID</Text>
+                  <Text style={[styles.rosterThText, styles.rcName]}>EMPLOYEE</Text>
+                  <Text style={[styles.rosterThText, styles.rcHrs]}>HRS</Text>
+                  <Text style={[styles.rosterThText, styles.rcExact]}>EXACT</Text>
+                  <Text style={[styles.rosterThText, styles.rcPay]}>PAY</Text>
                 </View>
-                {rows.map((r, i) => (
-                  <View key={`row-${columnIndex}-${i}`} style={styles.tr}>
-                    <Text style={styles.cId}>{r.legacyId ?? ""}</Text>
-                    <Text style={styles.cName}>{r.displayName}</Text>
-                    <Text style={styles.cHours}>
-                      {hrs(r.totals.hours, data.rules.hoursDecimalPlaces)}
+                {col.map((e, ri) => (
+                  <View key={`r-${ci}-${ri}`} style={styles.rosterTr}>
+                    <Text style={styles.rcId}>{e.legacyId ?? "—"}</Text>
+                    <Text style={styles.rcName}>{e.displayName}</Text>
+                    <Text style={styles.rcHrs}>{hrs(e.totals.hours, dp)}</Text>
+                    <Text style={styles.rcExact}>
+                      {formatMoney(e.totals.grossCents, locale)}
                     </Text>
-                    <Text style={styles.cPay}>
-                      {formatMoney(r.totals.grossCents, data.company.locale)}
-                    </Text>
-                    <Text style={styles.cRounded}>
-                      {moneyWhole(r.totals.roundedCents, data.company.locale)}
+                    <Text style={styles.rcPay}>
+                      {moneyWhole(e.totals.roundedCents, locale)}
                     </Text>
                   </View>
                 ))}
@@ -383,105 +486,136 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
           </View>
         </View>
 
-        <Text style={[styles.breakdownTitle, { color: brand }]}>
-          Detailed breakdown by employee
-        </Text>
-
-        {/* 3-column grid of employee blocks. wrap=true on the page +
-            wrap=false on the block lets blocks flow to subsequent
-            pages without splitting individual blocks. */}
+        {/* Employee detail */}
+        <View style={styles.detailHead}>
+          <Text style={styles.detailTitle}>EMPLOYEE DETAIL</Text>
+          <Text style={styles.detailHint}>Worked shifts highlighted in teal</Text>
+        </View>
         <View style={styles.grid}>
-          {data.employees.map((e, idx) => (
-            <View key={`emp-${idx}`} style={styles.block} wrap={false}>
-              <View style={styles.blockInner}>
-                <View
-                  style={[
-                    styles.blockHeader,
-                    { backgroundColor: idx % 2 === 0 ? "#e7f8f3" : "#f1e9ff" },
-                  ]}
-                >
-                  <Text style={styles.blockName}>{e.displayName}</Text>
-                  {e.legacyId && (
-                    <Text style={styles.blockMeta}>#{e.legacyId}</Text>
-                  )}
-                </View>
-                <Text style={styles.blockMeta}>
-                  {e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
-                    ? `${formatMoney(e.hourlyRateCents, data.company.locale)}/hr`
-                    : ""}
-                </Text>
-
-                <View style={[styles.blockTable, { marginTop: 3 }]}>
-                  {e.days.map((d) => (
-                    <View
-                      key={d.date}
-                      style={[
-                        styles.blockTr,
-                        d.missing ? { backgroundColor: "#fef3c7" } : {},
-                      ]}
-                    >
-                      <Text style={styles.bcDate}>{fmtDate(d.date)}</Text>
-                      {d.missing ? (
-                        <>
-                          <Text
-                            style={[
-                              styles.bcIn,
-                              { color: "#92400e", fontFamily: "Helvetica" },
-                            ]}
-                          >
-                            (no record)
-                          </Text>
-                          <Text style={styles.bcOut} />
-                          <Text style={styles.bcHours}>—</Text>
-                          <Text style={styles.bcPay}>—</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text style={styles.bcIn}>{fmtTime(d.inTime)}</Text>
-                          <Text style={styles.bcOut}>{fmtTime(d.outTime)}</Text>
-                          <Text style={styles.bcHours}>
-                            {hrs(d.hours, data.rules.hoursDecimalPlaces)}
-                          </Text>
-                          <Text style={styles.bcPay}>
-                            {formatMoney(d.cents, data.company.locale)}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  ))}
-                </View>
-
-                <View style={styles.blockTotalsRow}>
-                  <Text style={styles.blockTotalLabel}>
-                    {formatMoney(e.totals.grossCents, data.company.locale)}
-                  </Text>
-                  <Text style={{ fontFamily: "Helvetica-Bold", color: brand }}>
-                    {formatMoney(e.totals.roundedCents, data.company.locale)}
-                  </Text>
-                </View>
-
-                <View style={styles.blockSigRow}>
-                  <Text>Signature</Text>
-                  <View style={styles.sigBlank} />
-                  <Text>Date</Text>
-                  <View style={styles.dateBlank} />
-                </View>
-              </View>
+          {employees.map((e, i) => (
+            <View key={`emp-${i}`} style={styles.cardOuter} wrap={false}>
+              <DetailCard employee={e} dp={dp} locale={locale} brand={brand} />
             </View>
           ))}
         </View>
 
+        {/* Running footer */}
         <View style={styles.footer} fixed>
-          <Text>
-            {data.company.name} · {data.period.startDate} to {data.period.endDate}
+          <Text style={styles.footerText}>
+            Generated {generated}  |  Admin payroll approval
           </Text>
           <Text
-            render={({ pageNumber, totalPages }) =>
-              `Page ${pageNumber} / ${totalPages}`
-            }
+            style={styles.footerRight}
+            render={({ pageNumber }) => `CONFIDENTIAL  |  PAGE ${pageNumber}`}
           />
         </View>
       </Page>
     </Document>
+  );
+}
+
+function DetailCard({
+  employee,
+  dp,
+  locale,
+  brand,
+}: {
+  employee: Employee;
+  dp: number;
+  locale: string;
+  brand: string;
+}) {
+  const rate =
+    employee.hourlyRateCents !== null && employee.hourlyRateCents !== undefined
+      ? `${formatMoney(employee.hourlyRateCents, locale)}/hr`
+      : "";
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardName}>{employee.displayName}</Text>
+        {employee.legacyId ? (
+          <Text style={styles.cardId}>#{employee.legacyId}</Text>
+        ) : null}
+      </View>
+      <View style={styles.cardBody}>
+        <View style={styles.rateRow}>
+          <Text style={styles.rate}>{rate}</Text>
+          <Text style={[styles.colHead, styles.cIn]}>IN</Text>
+          <Text style={[styles.colHead, styles.cOut]}>OUT</Text>
+          <Text style={[styles.colHead, styles.cHrs]}>HRS</Text>
+          <Text style={[styles.colHead, styles.cPay]}>PAY</Text>
+        </View>
+
+        {employee.days.map((d) => {
+          const worked = !d.missing;
+          return (
+            <View
+              key={d.date}
+              style={[styles.dayRow, worked ? styles.dayRowWorked : {}]}
+            >
+              <Text style={[styles.cDate, worked ? styles.cDateWorked : {}]}>
+                {fmtDate(d.date)}
+              </Text>
+              {worked ? (
+                <>
+                  <Text style={styles.cIn}>{fmtTime(d.inTime)}</Text>
+                  <Text style={styles.cOut}>{fmtTime(d.outTime)}</Text>
+                  <Text style={[styles.cHrs, styles.cHrsWorked]}>
+                    {hrs(d.hours, dp)}
+                  </Text>
+                  <Text style={[styles.cPay, styles.cPayWorked]}>
+                    {formatMoney(d.cents, locale)}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.cIn, styles.noPunch]}>No punch</Text>
+                  <Text style={styles.cOut} />
+                  <Text style={styles.cHrs} />
+                  <Text style={[styles.cPay, styles.noPunch]}>-</Text>
+                </>
+              )}
+            </View>
+          );
+        })}
+
+        {employee.taskPay.map((t, ti) => (
+          <View key={`task-${ti}`} style={styles.taskRow}>
+            <Text style={styles.taskLabel}>{t.description || "Task pay"}</Text>
+            <Text style={styles.taskAmt}>{formatMoney(t.amountCents, locale)}</Text>
+          </View>
+        ))}
+
+        <View style={styles.totalsRow}>
+          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+            <Text style={styles.totalsLabel}>EXACT</Text>
+            <Text style={styles.totalsExact}>
+              {formatMoney(employee.totals.grossCents, locale)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+            <Text style={styles.totalsPayLabel}>PAY</Text>
+            <Text
+              style={{
+                fontSize: 10,
+                fontFamily: "Helvetica-Bold",
+                color: brand,
+                marginLeft: 3,
+              }}
+            >
+              {moneyWhole(employee.totals.roundedCents, locale)}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.signRow}>
+          <Text style={styles.signLabel}>SIGN</Text>
+          <View style={styles.signBlank} />
+          <Text style={styles.signLabel}>DATE</Text>
+          <View style={styles.dateBlank} />
+        </View>
+      </View>
+    </View>
   );
 }

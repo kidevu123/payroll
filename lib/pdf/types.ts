@@ -122,6 +122,12 @@ export type AdminReportInput = {
     brandColorHex: string;
     locale: string;
   };
+  /**
+   * Cadence word for the report header ("WEEKLY", "BI-WEEKLY", "SEMI-MONTHLY",
+   * "MONTHLY"). Optional so tests and legacy callers can omit it; the renderer
+   * falls back to a bare "PAYROLL" title.
+   */
+  scheduleLabel?: string;
   period: { startDate: string; endDate: string };
   rules: {
     rounding: string;
