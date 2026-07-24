@@ -18,6 +18,10 @@ git push origin "$BRANCH"
 SHA=$(git rev-parse HEAD)
 echo "==> Target SHA: $SHA"
 
+echo "==> Pausing pull-timer (avoids concurrent compose runs)"
+ssh "$PROXMOX" pct exec "$CTID" -- systemctl stop payroll-deploy.timer || true
+trap 'ssh "$PROXMOX" pct exec "$CTID" -- systemctl start payroll-deploy.timer || true' EXIT
+
 echo "==> Deploying on LXC $CTID ($APP_DIR)"
 ssh "$PROXMOX" pct exec "$CTID" -- bash -c "'
 set -e
