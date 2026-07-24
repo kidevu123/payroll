@@ -103,7 +103,7 @@ If you hit something that you genuinely can't decide between two reasonable opti
 
 - GitHub repo: `kidevu123/payroll`. Owner has full access. Branch in flight: `rebuild/foundation`.
 - Proxmox host: `root@192.168.1.190`. The payroll LXC is `120` (referred to as LX120). Enter with `pct enter 120`.
-- Deploy mechanism: a systemd timer in the LXC runs `deploy/lxc/payroll-deploy.service` every 60 seconds. It does `git fetch && git reset --hard origin/<branch>` and rebuilds + recreates the docker compose stack only if HEAD changed. The branch it tracks lives in `/etc/systemd/system/payroll-deploy.service.d/override.conf` as `PAYROLL_BRANCH`.
+- Deploy mechanism: a systemd timer in the LXC runs `deploy/lxc/payroll-deploy.service` every 60 seconds. For an immediate, watched deploy run `./deploy.sh` from the repo root (push + `systemctl start payroll-deploy.service` + health/SHA verification; systemd serializes runs so it cannot race the timer). It does `git fetch && git reset --hard origin/<branch>` and rebuilds + recreates the docker compose stack only if HEAD changed. The branch it tracks lives in `/etc/systemd/system/payroll-deploy.service.d/override.conf` as `PAYROLL_BRANCH`.
 
 ## Common bash recipes
 
