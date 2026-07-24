@@ -6,6 +6,7 @@ import { getCompanySettings } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
 import { resolveLocale, messagesFor } from "@/lib/i18n";
 import { DeployVersionGuard } from "@/components/deploy-version-guard";
+import { PdfViewerProvider } from "@/components/domain/pdf-viewer";
 
 /**
  * Cache-busted icon links keyed off the uploaded favicon's mtime. Forces
@@ -90,7 +91,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DeployVersionGuard />
-          {children}
+          <PdfViewerProvider>{children}</PdfViewerProvider>
         </NextIntlClientProvider>
       </body>
     </html>

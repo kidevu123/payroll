@@ -865,14 +865,18 @@ function PeriodLine({
                   className="h-9 w-9 p-0"
                   title={docs.length === 1 ? "View paystub" : "Manage paystubs"}
                 >
-                  <Link
-                    href={docs.length === 1 ? `/api/payroll-docs/${docs[0]!.id}` : "/salaried"}
-                    {...(docs.length === 1
-                      ? { target: "_blank", rel: "noopener" }
-                      : {})}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
+                  {docs.length === 1 ? (
+                    <PdfLink
+                      href={`/api/payroll-docs/${docs[0]!.id}`}
+                      filename={`paystub-${docs[0]!.employeeName}.pdf`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </PdfLink>
+                  ) : (
+                    <Link href="/salaried">
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  )}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -889,13 +893,12 @@ function PeriodLine({
                     <DropdownMenuLabel>Paystubs</DropdownMenuLabel>
                     {docs.map((d) => (
                       <DropdownMenuItem key={d.id} asChild>
-                        <Link
+                        <PdfLink
                           href={`/api/payroll-docs/${d.id}`}
-                          target="_blank"
-                          rel="noopener"
+                          filename={`paystub-${d.employeeName}.pdf`}
                         >
                           <Eye className="h-3.5 w-3.5" /> View {d.employeeName}
-                        </Link>
+                        </PdfLink>
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />

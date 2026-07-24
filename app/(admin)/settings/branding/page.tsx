@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Download, BookOpen } from "lucide-react";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { getSetting } from "@/lib/settings/runtime";
 import { BrandingForm } from "./branding-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,9 +36,9 @@ export default async function Page() {
             renders tasteful placeholders when files are missing.
           </p>
           <Button asChild>
-            <Link href="/api/guides/employee" target="_blank" rel="noopener">
+            <PdfLink href="/api/guides/employee" filename="employee-guide.pdf">
               <Download className="h-4 w-4" /> Download employee guide
-            </Link>
+            </PdfLink>
           </Button>
         </CardContent>
       </Card>

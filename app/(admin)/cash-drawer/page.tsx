@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { DepositForm, WithdrawForm, PettyCashForm, LedgerRowActions } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -232,16 +233,15 @@ export default async function CashDrawerPage() {
                       <td className="px-4 py-2 text-xs text-text-muted">
                         {entry.notes ?? ""}
                         {entry.receiptPath && (
-                          <a
+                          <PdfLink
                             href={`/cash-drawer/receipt/${entry.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            filename={`receipt-${entry.id}`}
                             className="ml-1.5 inline-flex items-center gap-0.5 text-brand-700 underline-offset-2 hover:underline"
                             title="View uploaded receipt"
                           >
                             <Paperclip className="h-3 w-3" />
                             receipt
-                          </a>
+                          </PdfLink>
                         )}
                         {createdByEmail && (
                           <span className="block text-[10px] text-text-subtle mt-0.5">
