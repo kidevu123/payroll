@@ -32,18 +32,13 @@ import {
 } from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
-import { formatHoursMinutes, formatTimeShort, localMidnightUtc } from "@/lib/utils";
+import { formatHoursMinutes, formatTimeShort, localMidnightUtc, addDaysIso } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
 import { MissedPunchRailCard } from "@/components/domain/missed-punch-rail-card";
 import { companyDayIso } from "@/lib/time/company-day";
 
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

@@ -27,6 +27,7 @@ import {
   listPendingTimeOffRequests,
 } from "@/lib/db/queries/requests";
 import { getSetting } from "@/lib/settings/runtime";
+import { addDaysIso } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Serializable output shapes (all consumed by "use client" chart components)
@@ -174,11 +175,6 @@ function longDate(iso: string): string {
 }
 
 /** ISO date `n` days before the given ISO date (UTC math). */
-function addDaysIso(iso: string, deltaDays: number): string {
-  const [y, m, d] = iso.split("-").map(Number) as [number, number, number];
-  const dt = new Date(Date.UTC(y, m - 1, d + deltaDays));
-  return dt.toISOString().slice(0, 10);
-}
 
 /** "Compared to Jun 9 – Jun 15, 2026" — the 7-day window ending yesterday. */
 function priorWeekCompareLabel(todayIso: string): string {

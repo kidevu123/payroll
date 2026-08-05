@@ -20,7 +20,7 @@ import { employees, punches, payPeriods } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
 import { normalizeRef } from "@/lib/ngteco/normalize-ref";
-import { localMidnightUtc } from "@/lib/utils";
+import { localMidnightUtc, addDaysIso } from "@/lib/utils";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
@@ -67,11 +67,6 @@ export function localDayBoundsForPollImport(
   return { dayStart, dayEnd };
 }
 
-function addDaysIso(dayIso: string, days: number): string {
-  const d = new Date(`${dayIso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 /**
  * A punch the importer matched by hash must be left exactly as-is when a human

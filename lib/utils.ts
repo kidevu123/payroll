@@ -71,6 +71,16 @@ export function localMidnightUtc(dateIso: string, tz: string): Date {
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) + offsetMs);
 }
 
+/**
+ * Add whole days to a YYYY-MM-DD date string, UTC-safe (no DST drift).
+ * Canonical home for the helper that used to be re-implemented in four
+ * modules (poll-importer, dashboard-metrics, kiosk pay, admin time).
+ */
+export function addDaysIso(dateIso: string, days: number): string {
+  const [y, m, d] = dateIso.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 /** "8h 36m" style — ignores values < 1 minute. */
 export function formatHoursMinutes(hours: number): string {
   if (!isFinite(hours) || hours <= 0) return "0h";

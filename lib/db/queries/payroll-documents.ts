@@ -2,7 +2,7 @@
 // when the employee's pay is prepared externally (accountant) and the admin
 // uploads the resulting PDF/image for the employee to view.
 
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   payrollPeriodDocuments,
@@ -190,4 +190,34 @@ export async function listEmployeeVisibleDocs(
       ),
     )
     .orderBy(desc(payrollPeriodDocuments.uploadedAt));
+}
+
+/**
+ * Batch variant of listEmployeeVisibleDocs: one query for the whole roster
+ * instead of one per employee (the /payroll and /salaried pages previously
+ * fanned out N parallel queries). Returns a map keyed by employee id; every
+ * requested id is present, employees with no docs map to [].
+ */
+export async function listVisibleDocsByEmployee(
+  employeeIds: string[],
+): Promise<Map<string, PayrollPeriodDocument[]>> {
+  const byEmployee = new Map<string, PayrollPeriodDocument[]>(
+    employeeIds.map((id) => [id, []]),
+  );
+  if (employeeIds.length === 0) return byEmployee;
+  const rows = await db
+    .select()
+    .from(payrollPeriodDocuments)
+    .where(
+      and(
+        inArray(payrollPeriodDocuments.employeeId, employeeIds),
+        eq(payrollPeriodDocuments.visibleToEmployee, true),
+        isNull(payrollPeriodDocuments.deletedAt),
+      ),
+    )
+    .orderBy(desc(payrollPeriodDocuments.uploadedAt));
+  for (const row of rows) {
+    byEmployee.get(row.employeeId)?.push(row);
+  }
+  return byEmployee;
 }

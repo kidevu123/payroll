@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
-import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { listVisibleDocsByEmployee } from "@/lib/db/queries/payroll-documents";
 import {
   Card,
   CardContent,
@@ -66,16 +66,15 @@ export default async function SalariedPage() {
     );
   }
 
-  // Pull each salaried employee's docs + a schedule lookup in parallel.
-  const [docsByEmployee, schedules] = await Promise.all([
-    Promise.all(
-      salaried.map(async (e) => ({
-        employee: e,
-        docs: await listEmployeeVisibleDocs(e.id),
-      })),
-    ),
+  // One batch docs query for the whole roster (was N+1) + schedule lookup.
+  const [docsMap, schedules] = await Promise.all([
+    listVisibleDocsByEmployee(salaried.map((e) => e.id)),
     listSchedules(),
   ]);
+  const docsByEmployee = salaried.map((e) => ({
+    employee: e,
+    docs: docsMap.get(e.id) ?? [],
+  }));
 
   const scheduleById = new Map(schedules.map((s) => [s.id, s]));
 
