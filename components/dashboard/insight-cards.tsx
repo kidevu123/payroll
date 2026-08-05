@@ -66,9 +66,9 @@ export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
         </div>
         <span
           className="hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
-          style={{ background: "rgba(139,92,246,0.12)", border: `1px solid ${DASH.border}` }}
+          style={{ background: "rgba(34,211,238,0.12)", border: `1px solid ${DASH.border}` }}
         >
-          <Activity className="h-4 w-4" style={{ color: DASH.violetBright }} />
+          <Activity className="h-4 w-4" style={{ color: DASH.cyanBright }} />
         </span>
       </div>
       <SpendTrendChart data={trend.points} />
@@ -138,7 +138,7 @@ export function HeadcountCard({
       eyebrow="Headcount"
       value={String(count)}
       icon={Users}
-      accent={DASH.violetBright}
+      accent={DASH.cyanBright}
       href="/employees"
       sub={
         <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: DASH.textFaint }}>
@@ -282,11 +282,11 @@ export function AutomationBanner({
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(139,92,246,0.16)",
+              background: "rgba(34,211,238,0.16)",
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >
-            <Sparkles className="h-5 w-5" style={{ color: DASH.violetBright }} />
+            <Sparkles className="h-5 w-5" style={{ color: DASH.cyanBright }} />
           </span>
           <div>
             <div className="text-sm font-semibold" style={{ color: DASH.text }}>
@@ -305,7 +305,7 @@ export function AutomationBanner({
           eyebrow="Runs this month"
           value={String(automation.runsThisMonth)}
           icon={RefreshCw}
-          accent={DASH.violetBright}
+          accent={DASH.cyanBright}
         />
         <MiniStat
           eyebrow="Open periods"
@@ -331,7 +331,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: compactMoney(kpis.ytdSpendCents),
       sub: "This calendar year",
       icon: Activity,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
     {
       label: "Cost per employee",
@@ -345,7 +345,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: String(kpis.runsThisMonth),
       sub: "Approved or published",
       icon: RefreshCw,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
     {
       label: "Active employees",
@@ -359,7 +359,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: compactMoney(kpis.projectedSpendCents),
       sub: "Estimate from YTD run-rate",
       icon: TrendingUp,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
   ];
 

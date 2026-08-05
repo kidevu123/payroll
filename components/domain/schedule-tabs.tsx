@@ -31,7 +31,7 @@ const ACTIVE_TONE: Record<ScheduleTab, string> = {
   weekly:
     "bg-blue-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   semi:
-    "bg-purple-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
+    "bg-cyan-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   monthly:
     "bg-amber-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
   salaried:

@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderStyle: "dashed",
     borderColor: "#c4b5fd",
-    color: "#0f766e",
+    color: "#067049",
   },
   tr: {
     flexDirection: "row",

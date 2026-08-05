@@ -8,7 +8,7 @@
 // raw hex), the whole surface flips light/dark with zero component edits.
 //
 // Inline styles (`style={{ background: DASH.surface }}`) and recharts string
-// props (`stroke={CHART.violet}`) both accept `var(--x)` — it resolves in the
+// props (`stroke={CHART.cyan}`) both accept `var(--x)` — it resolves in the
 // CSS cascade and in SVG attributes.
 
 export const DASH = {
@@ -31,9 +31,9 @@ export const DASH = {
   textFaint: "var(--dash-text-faint)",
 
   // Accents
-  violet: "var(--dash-violet)",
-  violetBright: "var(--dash-violet-bright)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  cyanBright: "var(--dash-cyan-bright)",
+  blue: "var(--dash-blue)",
   emerald: "var(--dash-emerald)",
   emeraldDim: "var(--dash-emerald-dim)",
   rose: "var(--dash-rose)",
@@ -42,9 +42,10 @@ export const DASH = {
 
 /** Chart-specific colors. recharts accepts `var(--x)` in stroke/fill/stop. */
 export const CHART = {
-  violet: DASH.violet,
-  violetBright: DASH.violetBright,
+  cyan: DASH.cyan,
+  cyanBright: DASH.cyanBright,
   emerald: DASH.emerald,
+  emeraldDim: DASH.emeraldDim,
   grid: "var(--dash-chart-grid)",
   axis: "var(--dash-chart-axis)",
   tooltipBg: "var(--dash-surface-raised)",

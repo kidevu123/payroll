@@ -12,7 +12,7 @@ export async function saveCompany(formData: FormData): Promise<{ error?: string 
     name: formData.get("name"),
     address: formData.get("address") ?? "",
     logoPath: current.logoPath,
-    brandColorHex: formData.get("brandColorHex") ?? "#0f766e",
+    brandColorHex: formData.get("brandColorHex") ?? "#067049",
     timezone: formData.get("timezone") ?? "America/New_York",
     locale: formData.get("locale") ?? "en-US",
   });

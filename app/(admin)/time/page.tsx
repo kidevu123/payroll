@@ -371,10 +371,10 @@ const MOBILE_STATUS: Record<CellState, { label: string; color: string }> = {
   missed: { label: "Missing", color: "var(--dash-rose)" },
   future: { label: "—", color: "var(--dash-text-faint)" },
   inactive: { label: "Inactive", color: "var(--dash-text-faint)" },
-  pto: { label: "PTO", color: "var(--dash-indigo)" },
-  sick: { label: "Sick", color: "var(--dash-indigo)" },
+  pto: { label: "PTO", color: "var(--dash-blue)" },
+  sick: { label: "Sick", color: "var(--dash-blue)" },
   unpaid: { label: "Unpaid", color: "var(--dash-text-faint)" },
-  other: { label: "Time off", color: "var(--dash-indigo)" },
+  other: { label: "Time off", color: "var(--dash-blue)" },
 };
 
 function timeInitials(name: string): string {
@@ -799,9 +799,9 @@ export default async function TimePage({
       {/* KPI row — five attendance metrics (matches #57). */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
         <KpiCard icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
-        <KpiCard icon={Users} tone="indigo" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
+        <KpiCard icon={Users} tone="blue" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
         <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
-        <KpiCard icon={CalendarX2} tone="violet" value={openNow} label="Open shifts" sub="In progress now" />
+        <KpiCard icon={CalendarX2} tone="cyan" value={openNow} label="Open shifts" sub="In progress now" />
         <KpiCard icon={TimerReset} tone="rose" value={overtimeRisk} label="Overtime risk" sub={overtimeRisk > 0 ? "Review needed" : "On track"} />
       </div>
 
@@ -897,8 +897,8 @@ export default async function TimePage({
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
                     style={{
-                      background: "color-mix(in srgb, var(--dash-violet) 16%, transparent)",
-                      color: "var(--dash-violet)",
+                      background: "color-mix(in srgb, var(--dash-cyan) 16%, transparent)",
+                      color: "var(--dash-cyan)",
                     }}
                   >
                     {timeInitials(e.displayName)}
@@ -1221,9 +1221,9 @@ function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string 
 
 const KPI_TONE: Record<string, string> = {
   emerald: "var(--dash-emerald)",
-  indigo: "var(--dash-indigo)",
+  blue: "var(--dash-blue)",
   amber: "var(--dash-amber)",
-  violet: "var(--dash-violet)",
+  cyan: "var(--dash-cyan)",
   rose: "var(--dash-rose)",
 };
 
@@ -1264,7 +1264,7 @@ const SUMMARY_SEGMENTS: { key: string; label: string; color: string }[] = [
   { key: "present", label: "Present", color: "var(--dash-emerald)" },
   { key: "incomplete", label: "Incomplete", color: "var(--dash-amber)" },
   { key: "missing", label: "Missing", color: "var(--dash-rose)" },
-  { key: "timeOff", label: "Time off", color: "var(--dash-indigo)" },
+  { key: "timeOff", label: "Time off", color: "var(--dash-blue)" },
   { key: "unpaid", label: "Unpaid", color: "var(--dash-text-faint)" },
 ];
 
@@ -1337,7 +1337,7 @@ function ExceptionsQueueCard({
   const rows = [
     { label: "Missing punches", value: missing, color: "var(--dash-rose)" },
     { label: "Unpaired punches", value: unpaired, color: "var(--dash-amber)" },
-    { label: "Open shifts", value: openShifts, color: "var(--dash-violet)" },
+    { label: "Open shifts", value: openShifts, color: "var(--dash-cyan)" },
   ];
   return (
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
@@ -1432,7 +1432,7 @@ function LaborHoursCard({
         </div>
       </dl>
       <div className="mt-2">
-        <Sparkline data={spark} color="var(--dash-violet)" />
+        <Sparkline data={spark} color="var(--dash-cyan)" />
       </div>
     </div>
   );
@@ -1447,8 +1447,8 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
         <span
           className="rounded px-1 text-[11px] font-bold uppercase tracking-wide"
           style={{
-            background: "color-mix(in srgb, var(--dash-violet) 18%, transparent)",
-            color: "var(--dash-violet)",
+            background: "color-mix(in srgb, var(--dash-cyan) 18%, transparent)",
+            color: "var(--dash-cyan)",
           }}
         >
           Beta

@@ -2,7 +2,7 @@
 // mock: four overview tiles (all real metrics — no open-rate, we don't
 // track reads), the History card with a centered first-run empty state,
 // then a three-card row of Saved templates / Recent recipients / Best
-// practice. The header CTA uses the dark shell's violet accent.
+// practice. The header CTA uses the dark shell's brand accent.
 
 import Link from "next/link";
 import {

@@ -17,7 +17,7 @@ const TYPE_COLORS: Record<string, string> = {
   SICK: "bg-warning-50 text-warning-800 border-warning-200",
   UNPAID: "bg-surface-2 text-text-muted border-border",
   OTHER:
-    "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/40",
+    "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40",
 };
 
 function fmtMonthYear(d: Date, locale: string): string {

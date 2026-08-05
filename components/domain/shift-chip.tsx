@@ -15,7 +15,7 @@ export function ShiftChip({
   archived?: boolean;
   className?: string;
 }) {
-  const color = colorHex ?? "#0f766e";
+  const color = colorHex ?? "#067049";
   return (
     <span
       className={cn(

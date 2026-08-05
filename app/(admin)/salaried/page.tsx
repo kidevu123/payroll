@@ -117,14 +117,14 @@ export default async function SalariedPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SalariedStat
           icon={Users}
-          tone="violet"
+          tone="cyan"
           value={salaried.length}
           label="Salaried employees"
           sub="Active this month"
         />
         <SalariedStat
           icon={FileText}
-          tone="indigo"
+          tone="blue"
           value={totalDocs}
           label="Documents uploaded"
           sub="All paystubs on file"
@@ -233,8 +233,8 @@ export default async function SalariedPage() {
 // KPI stat tile for the Salaried header (matches #65). Tinted icon chip +
 // figure + label + sub; dash-palette tones flip correctly in light & dark.
 const SALARIED_TONE: Record<string, string> = {
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
   amber: "var(--dash-amber)",
   emerald: "var(--dash-emerald)",
 };

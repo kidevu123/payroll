@@ -381,7 +381,7 @@ function splitHalf<T>(rows: T[]): [T[], T[]] {
 type Employee = AdminReportInput["employees"][number];
 
 export function AdminReport({ data }: { data: AdminReportInput }) {
-  const brand = data.company.brandColorHex || "#0f766e";
+  const brand = data.company.brandColorHex || "#067049";
   const dp = data.rules.hoursDecimalPlaces;
   const locale = data.company.locale;
   const employees = data.employees;

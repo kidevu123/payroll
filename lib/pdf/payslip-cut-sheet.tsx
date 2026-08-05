@@ -207,7 +207,7 @@ function fmtRange(startIso: string, endIso: string): string {
 }
 
 export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
-  const brand = data.company.brandColorHex || "#0f766e";
+  const brand = data.company.brandColorHex || "#067049";
   const dp = data.rules.hoursDecimalPlaces;
   const locale = data.company.locale;
   const range = fmtRange(data.period.startDate, data.period.endDate);

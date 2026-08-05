@@ -68,8 +68,8 @@ export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props
         <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={CHART.violetBright} stopOpacity={0.45} />
-              <stop offset="100%" stopColor={CHART.violet} stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART.emerald} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={CHART.emeraldDim} stopOpacity={0} />
             </linearGradient>
             <filter id={`${gradientId}-glow`} x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="2.5" result="blur" />
@@ -82,19 +82,19 @@ export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Tooltip
             content={<SparkTooltip />}
-            cursor={{ stroke: CHART.violetBright, strokeOpacity: 0.25 }}
+            cursor={{ stroke: CHART.emerald, strokeOpacity: 0.25 }}
           />
           <Area
             type="monotone"
             dataKey="cents"
-            stroke={CHART.violetBright}
+            stroke={CHART.emerald}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
             filter={`url(#${gradientId}-glow)`}
             dot={false}
             activeDot={{
               r: 3,
-              fill: CHART.violetBright,
+              fill: CHART.emerald,
               stroke: "var(--dash-bg)",
               strokeWidth: 1.5,
             }}

@@ -245,7 +245,7 @@ function PollStatusBarView({
       ? "var(--dash-emerald)"
       : ui.progress === "error"
         ? "var(--dash-rose)"
-        : "var(--dash-violet)";
+        : "var(--dash-cyan)";
   const spinning = ui.phase === "running" || ui.phase === "queued";
 
   return (

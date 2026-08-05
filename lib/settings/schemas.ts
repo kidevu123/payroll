@@ -29,7 +29,7 @@ export const companySchema = z.object({
   brandColorHex: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a 6-digit hex color")
-    .default("#0f766e"),
+    .default("#067049"),
   // IANA timezone validation. Intl.supportedValuesOf("timeZone") was
   // added in Node 18 LTS. Reject "Atlantis/Lemuria" before save instead
   // of letting Intl.DateTimeFormat throw at render time on every page.

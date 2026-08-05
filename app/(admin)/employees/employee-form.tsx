@@ -343,11 +343,11 @@ export function EmployeeForm(props: Props) {
         // Salaried implies W2 upload — no checkbox needed. Hidden field
         // ensures the action receives "1" so the period detail's W2 slot
         // appears unconditionally for salaried staff.
-        <div className="rounded-card border border-purple-200 bg-purple-50/40 p-3 text-sm dark:border-purple-500/40 dark:bg-purple-500/10">
-          <span className="font-medium text-purple-900 dark:text-purple-200">
+        <div className="rounded-card border border-cyan-200 bg-cyan-50/40 p-3 text-sm dark:border-cyan-500/40 dark:bg-cyan-500/10">
+          <span className="font-medium text-cyan-900 dark:text-cyan-200">
             W2 / paystub upload is enabled
           </span>
-          <span className="block text-xs text-purple-800 dark:text-purple-300">
+          <span className="block text-xs text-cyan-800 dark:text-cyan-300">
             Salaried staff are paid externally. Upload their W2 or paystub
             from the Salaried tab; the employee sees it on their Pay tab.
           </span>

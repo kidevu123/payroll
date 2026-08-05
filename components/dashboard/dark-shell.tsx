@@ -158,7 +158,7 @@ export function DashboardDarkShell({
     <div
       className="min-h-dvh"
       style={{
-        background: `radial-gradient(1100px 620px at 78% -8%, rgba(139,92,246,0.10), transparent 60%), ${DASH.bg}`,
+        background: `radial-gradient(1100px 620px at 78% -8%, rgba(52,211,153,0.10), transparent 60%), ${DASH.bg}`,
         color: DASH.text,
       }}
     >
@@ -210,7 +210,7 @@ export function DashboardDarkShell({
             {(badges?.["/notifications"] ?? 0) > 0 ? (
               <span
                 className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums"
-                style={{ background: DASH.violetBright, color: "#0b0b12" }}
+                style={{ background: DASH.emerald, color: "#0b0b12" }}
               >
                 {badges!["/notifications"]}
               </span>
@@ -268,7 +268,7 @@ export function DashboardDarkShell({
               style={{
                 background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
                 color: "#0b0b12",
-                boxShadow: "0 4px 14px -4px rgba(139,92,246,0.7)",
+                boxShadow: "0 4px 14px -4px rgba(52,211,153,0.7)",
               }}
             >
               {company.name.slice(0, 1).toLowerCase()}
@@ -335,18 +335,18 @@ export function DashboardDarkShell({
           <div
             className="rounded-xl p-3.5"
             style={{
-              background: "linear-gradient(160deg, rgba(139,92,246,0.16), rgba(139,92,246,0.04))",
+              background: "linear-gradient(160deg, rgba(52,211,153,0.16), rgba(52,211,153,0.04))",
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" style={{ color: DASH.violetBright }} aria-hidden />
+              <Sparkles className="h-4 w-4" style={{ color: DASH.emerald }} aria-hidden />
               <span className="text-[13px] font-bold" style={{ color: DASH.text }}>
                 {company.name} Intelligence
               </span>
               <span
                 className="rounded px-1.5 py-px text-[11px] font-bold uppercase tracking-wide"
-                style={{ background: "rgba(139,92,246,0.25)", color: DASH.violetBright }}
+                style={{ background: "rgba(52,211,153,0.25)", color: DASH.emerald }}
               >
                 Beta
               </span>
@@ -357,7 +357,7 @@ export function DashboardDarkShell({
             <Link
               href="/assistant"
               className="mt-2.5 flex w-full items-center justify-center rounded-lg py-1.5 text-[12px] font-semibold"
-              style={{ background: DASH.violetBright, color: "#0b0b12" }}
+              style={{ background: DASH.emerald, color: "#0b0b12" }}
             >
               Ask {company.name}
             </Link>
@@ -508,7 +508,7 @@ function DarkNavItem({
         )}
         style={
           active
-            ? { background: "rgba(139,92,246,0.16)", color: DASH.text }
+            ? { background: "rgba(52,211,153,0.16)", color: DASH.text }
             : { color: DASH.textMuted }
         }
       >
@@ -516,12 +516,12 @@ function DarkNavItem({
           <span
             aria-hidden
             className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full"
-            style={{ background: DASH.violetBright, boxShadow: "0 0 8px 0 rgba(139,92,246,0.6)" }}
+            style={{ background: DASH.emerald, boxShadow: "0 0 8px 0 rgba(52,211,153,0.6)" }}
           />
         ) : null}
         <Icon
           className="h-[18px] w-[18px] shrink-0"
-          style={{ color: active ? DASH.violetBright : DASH.textFaint }}
+          style={{ color: active ? DASH.emerald : DASH.textFaint }}
           strokeWidth={active ? 2 : 1.75}
           aria-hidden
         />
@@ -531,11 +531,11 @@ function DarkNavItem({
             <span
               aria-hidden
               className="lg:hidden absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-              style={{ background: DASH.violetBright }}
+              style={{ background: DASH.emerald }}
             />
             <span
               className="hidden lg:inline rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums"
-              style={{ background: "rgba(139,92,246,0.3)", color: DASH.violetBright }}
+              style={{ background: "rgba(52,211,153,0.3)", color: DASH.emerald }}
             >
               {badge}
             </span>
