@@ -752,7 +752,7 @@ function PreviewRow({
               </span>
             )}
             {row.payType === "SALARIED" && (
-              <span className="rounded-input bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-800 dark:bg-purple-500/15 dark:text-purple-300">
+              <span className="rounded-input bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-300">
                 Salaried — paystub upload only
               </span>
             )}

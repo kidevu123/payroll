@@ -201,7 +201,7 @@ export function Topbar({
             >
               <span
                 aria-hidden
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-[11px] font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3px_rgb(15_118_110_/_0.3)]"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-[11px] font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3px_rgb(6_112_73_/_0.3)]"
               >
                 {initials}
               </span>
@@ -224,7 +224,7 @@ export function Topbar({
                 <div className="px-4 py-3 border-b border-border/70 flex items-center gap-3">
                   <span
                     aria-hidden
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-xs font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3.5px_rgb(15_118_110_/_0.3)]"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-600 to-brand-800 text-brand-fg text-xs font-bold tracking-tight shadow-[0_0_0_2px_rgb(255_255_255),0_0_0_3.5px_rgb(6_112_73_/_0.3)]"
                   >
                     {initials}
                   </span>

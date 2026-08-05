@@ -50,7 +50,7 @@ export function ReportsKpis({ ytd }: { ytd: ReportsOverview["ytd"] }) {
   const deductions = Math.max(0, ytd.totalGrossCents - ytd.totalNetCents);
   return (
     <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <KpiCard label="Gross pay" icon={DollarSign} accent="#a78bfa" sub="Year to date">
+      <KpiCard label="Gross pay" icon={DollarSign} accent="#34d399" sub="Year to date">
         <MoneyDisplay cents={ytd.totalGrossCents} monospace={false} />
       </KpiCard>
       <KpiCard label="Net pay" icon={Wallet} accent="#34d399" sub="Year to date">

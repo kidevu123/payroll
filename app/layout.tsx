@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, DM_Mono } from "next/font/google";
+import {
+  Instrument_Sans,
+  Bricolage_Grotesque,
+  IBM_Plex_Mono,
+} from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
@@ -39,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // API hard-codes the value at build time, so this is the safe default; the
 // runtime style override wins for live theming).
 export const viewport: Viewport = {
-  themeColor: "#0f766e",
+  themeColor: "#067049",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -55,16 +59,22 @@ export const dynamic = "force-dynamic";
 // added an external round-trip to every cold load — the single biggest
 // first-paint cost on the phone. Exposed as CSS variables consumed by the
 // --font-sans / --font-mono tokens in globals.css.
-const inter = Inter({
+const instrument = Instrument_Sans({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-instrument",
 });
-const dmMono = DM_Mono({
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
+  variable: "--font-bricolage",
+});
+const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   display: "swap",
-  variable: "--font-dm-mono",
+  variable: "--font-plex-mono",
 });
 
 export default async function RootLayout({
@@ -86,7 +96,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       style={brandStyle}
-      className={`${inter.variable} ${dmMono.variable}`}
+      className={`${instrument.variable} ${bricolage.variable} ${plexMono.variable}`}
     >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>

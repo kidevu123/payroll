@@ -51,7 +51,7 @@ export async function createOwner(formData: FormData): Promise<{ error?: string 
       name: companyName,
       address: "",
       logoPath: null,
-      brandColorHex: "#0f766e",
+      brandColorHex: "#067049",
       timezone: "America/New_York",
       locale: "en-US",
     },

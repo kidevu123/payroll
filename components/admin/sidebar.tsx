@@ -208,7 +208,7 @@ function SidebarItem({
             ? // Active: richer brand fill with layered inner highlight + stronger left bar
               [
                 "bg-gradient-to-r from-brand-50 to-brand-50/60 text-brand-900",
-                "shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.7),inset_0_0_0_1px_rgb(15_118_110_/_0.12),0_1px_2px_0_rgb(15_118_110_/_0.06)]",
+                "shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.7),inset_0_0_0_1px_rgb(6_112_73_/_0.12),0_1px_2px_0_rgb(6_112_73_/_0.06)]",
               ]
             : "text-text-muted hover:bg-surface-2/80 hover:text-text hover:shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.5)]",
         )}
@@ -217,7 +217,7 @@ function SidebarItem({
         {active ? (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-brand-700 shadow-[0_0_6px_0_rgb(15_118_110_/_0.4)]"
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-brand-700 shadow-[0_0_6px_0_rgb(6_112_73_/_0.4)]"
           />
         ) : null}
         <Icon

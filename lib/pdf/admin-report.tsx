@@ -6,7 +6,7 @@
 //   2. Four KPI cards: employees, total hours, exact payroll, approved payroll.
 //   3. Payroll roster — two-column ID / Employee / Hrs / Exact / Pay table.
 //   4. Employee detail — a 4-column grid of per-person cards with a navy header
-//      bar, day-by-day punch rows (worked shifts highlighted teal, "No punch"
+//      bar, day-by-day punch rows (worked shifts highlighted green, "No punch"
 //      days muted), exact + approved totals, and a sign/date line.
 //   5. Fixed footer (generated date + confidential + page).
 //
@@ -381,7 +381,7 @@ function splitHalf<T>(rows: T[]): [T[], T[]] {
 type Employee = AdminReportInput["employees"][number];
 
 export function AdminReport({ data }: { data: AdminReportInput }) {
-  const brand = data.company.brandColorHex || "#0f766e";
+  const brand = data.company.brandColorHex || "#067049";
   const dp = data.rules.hoursDecimalPlaces;
   const locale = data.company.locale;
   const employees = data.employees;
@@ -489,7 +489,7 @@ export function AdminReport({ data }: { data: AdminReportInput }) {
         {/* Employee detail */}
         <View style={styles.detailHead}>
           <Text style={styles.detailTitle}>EMPLOYEE DETAIL</Text>
-          <Text style={styles.detailHint}>Worked shifts highlighted in teal</Text>
+          <Text style={styles.detailHint}>Worked shifts highlighted in green</Text>
         </View>
         <View style={styles.grid}>
           {employees.map((e, i) => (

@@ -1,5 +1,5 @@
 // Dark cadence card: one per active pay schedule (Monthly / Semi-monthly /
-// Weekly). Shows the current open period total, a violet glowing sparkline of
+// Weekly). Shows the current open period total, a glowing brand sparkline of
 // recent period totals, headcount + hours, a delta vs prior period, an alert
 // chip, and the correct next-step button. Server component — data comes pre-
 // shaped from computeDashboardMetrics; only the chart child is "use client".
@@ -68,7 +68,7 @@ function badgeStyle(badge: string): { color: string; bg: string } {
     case "Approved":
     case "Running":
     case "Awaiting payment":
-      return { color: DASH.violetBright, bg: "rgba(139,92,246,0.14)" };
+      return { color: DASH.cyanBright, bg: "rgba(34,211,238,0.14)" };
     case "Paid":
       return { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" };
     default:
@@ -128,11 +128,11 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           <span
             className="flex h-8 w-8 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(139,92,246,0.14)",
+              background: "rgba(34,211,238,0.14)",
               border: `1px solid ${DASH.border}`,
             }}
           >
-            <Icon className="h-4 w-4" style={{ color: DASH.violetBright }} />
+            <Icon className="h-4 w-4" style={{ color: DASH.cyanBright }} />
           </span>
           <div>
             <div
@@ -205,8 +205,8 @@ export function CadenceCard({ card }: { card: CadenceData }) {
             step.primary
               ? {
                   color: "#0b0b12",
-                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-                  boxShadow: "0 8px 20px -10px rgba(124,58,237,0.7)",
+                  background: "linear-gradient(135deg, #34d399, #059669)",
+                  boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
                 }
               : {
                   color: DASH.text,

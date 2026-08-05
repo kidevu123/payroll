@@ -79,7 +79,7 @@ describe("setSetting (Phase 0.5 regression)", () => {
         name: "Acme Corp",
         address: "",
         logoPath: null,
-        brandColorHex: "#0f766e",
+        brandColorHex: "#067049",
         timezone: "America/New_York",
         locale: "en-US",
       },
@@ -94,14 +94,14 @@ describe("setSetting (Phase 0.5 regression)", () => {
   });
 
   it("audits the prior raw value when a row exists", async () => {
-    storedRow = { value: { name: "Old Name", address: "", logoPath: null, brandColorHex: "#0f766e", timezone: "America/New_York", locale: "en-US" } };
+    storedRow = { value: { name: "Old Name", address: "", logoPath: null, brandColorHex: "#067049", timezone: "America/New_York", locale: "en-US" } };
     await setSetting(
       "company",
       {
         name: "New Name",
         address: "",
         logoPath: null,
-        brandColorHex: "#0f766e",
+        brandColorHex: "#067049",
         timezone: "America/New_York",
         locale: "en-US",
       },
@@ -119,7 +119,7 @@ describe("setSetting (Phase 0.5 regression)", () => {
       setSetting(
         "company",
         // Deliberately invalid: name fails .min(1) at runtime.
-        { name: "", address: "", logoPath: null, brandColorHex: "#0f766e", timezone: "America/New_York", locale: "en-US" },
+        { name: "", address: "", logoPath: null, brandColorHex: "#067049", timezone: "America/New_York", locale: "en-US" },
         { actorId: "00000000-0000-0000-0000-000000000001", actorRole: "OWNER" },
       ),
     ).rejects.toThrow();
@@ -139,7 +139,7 @@ describe("setSetting (Phase 0.5 regression)", () => {
         name: "Acme Corp",
         address: "",
         logoPath: null,
-        brandColorHex: "#0f766e",
+        brandColorHex: "#067049",
         timezone: "America/New_York",
         locale: "en-US",
       },

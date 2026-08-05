@@ -284,7 +284,7 @@ export default async function EmployeeHome() {
         <div className="grid grid-cols-2 items-stretch gap-3">
           <EmpMetric
             icon={Clock}
-            tone="violet"
+            tone="cyan"
             label="Hours this period"
             value={
               <HoursDisplay
@@ -296,7 +296,7 @@ export default async function EmployeeHome() {
           />
           <EmpMetric
             icon={Wallet}
-            tone="indigo"
+            tone="blue"
             label="Estimated pay"
             value={<MoneyDisplay cents={stats.projected} monospace={false} />}
             sub="Based on current hours"
@@ -564,8 +564,8 @@ export default async function EmployeeHome() {
 
 // #71 employee-home metric tile. Tinted icon chip + figure + label + sub.
 const EMP_TONE: Record<string, string> = {
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
   emerald: "var(--dash-emerald)",
   rose: "var(--dash-rose)",
 };

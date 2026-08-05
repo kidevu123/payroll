@@ -16,7 +16,7 @@ const buttonVariants = cva(
         // Primary: solid accent fill, white text, soft Apple-clean shadow.
         // Confident but not loud — hover deepens tone and lifts gently.
         default:
-          "bg-brand-700 text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.08),0_4px_10px_-3px_rgb(15_118_110_/_0.22)] hover:bg-brand-800 hover:shadow-[0_2px_4px_0_rgb(15_23_42_/_0.10),0_6px_14px_-3px_rgb(15_118_110_/_0.28)]",
+          "bg-brand-700 text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.08),0_4px_10px_-3px_rgb(6_112_73_/_0.22)] hover:bg-brand-800 hover:shadow-[0_2px_4px_0_rgb(15_23_42_/_0.10),0_6px_14px_-3px_rgb(6_112_73_/_0.28)]",
         // Secondary: refined surface with hairline border + subtle shadow.
         secondary:
           "bg-surface text-text border border-border shadow-[0_1px_2px_0_rgb(15_23_42_/_0.04)] hover:bg-surface-2 hover:border-border-strong",

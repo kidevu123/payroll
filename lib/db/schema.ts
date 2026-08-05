@@ -222,7 +222,7 @@ export const sessions = pgTable(
 export const shifts = pgTable("shifts", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  colorHex: text("color_hex").notNull().default("#0f766e"),
+  colorHex: text("color_hex").notNull().default("#067049"),
   defaultStart: time("default_start"),
   defaultEnd: time("default_end"),
   sortOrder: integer("sort_order").notNull().default(0),

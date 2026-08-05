@@ -14,7 +14,7 @@ type Props = {
 
 function scoreColor(score: number): string {
   if (score >= 75) return CHART.emerald;
-  if (score >= 50) return CHART.violetBright;
+  if (score >= 50) return CHART.cyanBright;
   return "#fb7185";
 }
 

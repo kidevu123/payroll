@@ -321,18 +321,18 @@ export function SalariedUploadSlot({
               <div
                 className="flex items-center gap-1.5 rounded-input px-2 py-1"
                 style={{
-                  background: "color-mix(in srgb, var(--dash-violet) 12%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--dash-violet) 26%, transparent)",
+                  background: "color-mix(in srgb, var(--dash-cyan) 12%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--dash-cyan) 26%, transparent)",
                 }}
               >
                 <CalendarClock
                   className="h-3 w-3 shrink-0"
-                  style={{ color: "var(--dash-violet)" }}
+                  style={{ color: "var(--dash-cyan)" }}
                   aria-hidden="true"
                 />
                 <span
                   className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: "var(--dash-violet)" }}
+                  style={{ color: "var(--dash-cyan)" }}
                 >
                   {formatRange(inferred.startDate, inferred.endDate)}
                 </span>
@@ -469,8 +469,8 @@ function DocRow({ doc }: { doc: DocLite }) {
                 <span
                   className="inline-flex shrink-0 items-center gap-1 rounded-chip px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
                   style={{
-                    background: "color-mix(in srgb, var(--dash-violet) 15%, transparent)",
-                    color: "var(--dash-violet)",
+                    background: "color-mix(in srgb, var(--dash-cyan) 15%, transparent)",
+                    color: "var(--dash-cyan)",
                   }}
                 >
                   <CalendarClock className="h-3 w-3" />

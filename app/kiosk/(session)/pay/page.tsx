@@ -7,17 +7,12 @@ import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
-import { formatMoney, formatHoursMinutes } from "@/lib/utils";
+import { formatMoney, formatHoursMinutes, addDaysIso } from "@/lib/utils";
 import { listPunches } from "@/lib/db/queries/punches";
 import { companyDayIso } from "@/lib/time/company-day";
 import { getSetting } from "@/lib/settings/runtime";
 import { localMidnightUtc } from "@/lib/utils";
 
-function addDaysIso(iso: string, days: number): string {
-  const d = new Date(`${iso}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 import { kioskAcknowledgePayslipAction } from "../../actions";
 
 export const dynamic = "force-dynamic";

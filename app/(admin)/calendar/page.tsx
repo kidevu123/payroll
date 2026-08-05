@@ -67,10 +67,10 @@ const TYPE_COLORS: Record<string, string> = {
   SICK: "bg-warning-100 text-warning-800 border-warning-200",
   UNPAID: "bg-surface-2 text-text-muted border-border",
   OTHER:
-    "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/40",
+    "bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40",
   // Distinct from time-off bars — heads-up only, no payroll impact.
   // Soft blue says "informational" without competing with the
-  // amber/emerald/violet bars that count toward time-off totals.
+  // amber/emerald/cyan bars that count toward time-off totals.
   SCHEDULE_NOTE: "bg-info-50 text-info-800 border-info-200",
 };
 
@@ -631,8 +631,8 @@ export default async function CalendarPage({
             <CardContent className="grid grid-cols-2 gap-2">
               <OverviewStat tone="emerald" value={approvedCount} label="Approved" sub="Time-off requests" />
               <OverviewStat tone="amber" value={pendingTimeOff.length} label="Pending" sub="Awaiting approval" />
-              <OverviewStat tone="violet" value={peopleOffSet.size} label="People off" sub="This month" />
-              <OverviewStat tone="indigo" value={`${coveragePct}%`} label="Coverage" sub="Across all shifts" />
+              <OverviewStat tone="cyan" value={peopleOffSet.size} label="People off" sub="This month" />
+              <OverviewStat tone="blue" value={`${coveragePct}%`} label="Coverage" sub="Across all shifts" />
             </CardContent>
           </Card>
 
@@ -849,15 +849,15 @@ const TYPE_DOT: Record<string, string> = {
   PERSONAL: "var(--dash-emerald)",
   SICK: "var(--dash-amber)",
   UNPAID: "var(--dash-text-faint)",
-  OTHER: "var(--dash-violet)",
-  SCHEDULE_NOTE: "var(--dash-indigo)",
+  OTHER: "var(--dash-cyan)",
+  SCHEDULE_NOTE: "var(--dash-blue)",
 };
 
 const OVERVIEW_TONE: Record<string, string> = {
   emerald: "var(--dash-emerald)",
   amber: "var(--dash-amber)",
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
 };
 
 function OverviewStat({
@@ -866,7 +866,7 @@ function OverviewStat({
   label,
   sub,
 }: {
-  tone: "emerald" | "amber" | "violet" | "indigo";
+  tone: "emerald" | "amber" | "cyan" | "blue";
   value: string | number;
   label: string;
   sub: string;

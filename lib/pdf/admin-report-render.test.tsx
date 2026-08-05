@@ -42,7 +42,7 @@ const sample: AdminReportInput = {
   company: {
     name: "Milo",
     address: "123 Main St",
-    brandColorHex: "#0f766e",
+    brandColorHex: "#067049",
     locale: "en-US",
   },
   period: { startDate: "2026-05-18", endDate: "2026-05-24" },

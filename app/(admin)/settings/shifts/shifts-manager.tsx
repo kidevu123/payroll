@@ -209,7 +209,7 @@ function ShiftForm({
           id={`color-${shift?.id ?? "new"}`}
           name="colorHex"
           type="color"
-          defaultValue={shift?.colorHex ?? "#0f766e"}
+          defaultValue={shift?.colorHex ?? "#067049"}
         />
       </div>
       <div className="space-y-1">

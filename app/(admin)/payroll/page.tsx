@@ -45,7 +45,7 @@ import {
   type ScheduleTab,
 } from "@/components/domain/schedule-tabs";
 import { listEmployees } from "@/lib/db/queries/employees";
-import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { listVisibleDocsByEmployee } from "@/lib/db/queries/payroll-documents";
 import { SalariedUploadSlot } from "@/app/(admin)/salaried/salaried-upload-slot";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import {
@@ -400,13 +400,14 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
     if (e.payType !== "SALARIED") return false;
     return true; // schedule-aware filter happens below using the join
   });
-  // Pull each salaried employee's docs in parallel.
-  const cards = await Promise.all(
-    salariedExclusive.map(async (e) => ({
-      employee: e,
-      docs: await listEmployeeVisibleDocs(e.id),
-    })),
+  // One batch query for every salaried employee's docs (was N+1).
+  const docsMap = await listVisibleDocsByEmployee(
+    salariedExclusive.map((e) => e.id),
   );
+  const cards = salariedExclusive.map((e) => ({
+    employee: e,
+    docs: docsMap.get(e.id) ?? [],
+  }));
   return (
     <div className="space-y-5">
       {/* Identical header + tabs markup to the non-salaried branch so the

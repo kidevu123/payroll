@@ -48,7 +48,7 @@ function DashAvatar({
   return (
     <span
       aria-hidden="true"
-      style={{ ...dim, background: "rgba(139,92,246,0.18)", color: DASH.violetBright }}
+      style={{ ...dim, background: "rgba(34,211,238,0.18)", color: DASH.cyanBright }}
       className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
     >
       {initialsOf(name)}
@@ -80,7 +80,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
         <Link
           href="/requests"
           className="inline-flex items-center text-[11px] font-medium"
-          style={{ color: DASH.violetBright }}
+          style={{ color: DASH.cyanBright }}
         >
           Open <ChevronRight className="h-3 w-3" aria-hidden="true" />
         </Link>
@@ -98,7 +98,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
             const tone =
               r.kind === "MISSED_PUNCH"
                 ? { color: DASH.rose, bg: "rgba(251,113,133,0.14)", label: "Missed punch" }
-                : { color: DASH.violetBright, bg: "rgba(139,92,246,0.16)", label: "Awaiting" };
+                : { color: DASH.cyanBright, bg: "rgba(34,211,238,0.16)", label: "Awaiting" };
             return (
               <li key={r.id}>
                 <Link
@@ -137,7 +137,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
               <Link
                 href="/requests"
                 className="block rounded-xl px-3 py-1.5 text-center text-[12px] font-medium"
-                style={{ color: DASH.violetBright, background: "rgba(139,92,246,0.08)" }}
+                style={{ color: DASH.cyanBright, background: "rgba(34,211,238,0.08)" }}
               >
                 View all {items.length}
               </Link>
@@ -162,7 +162,7 @@ export type RecentRunItem = {
 
 const RUN_STATE_TONE: Record<string, { color: string; bg: string }> = {
   PUBLISHED: { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" },
-  APPROVED: { color: DASH.violetBright, bg: "rgba(139,92,246,0.14)" },
+  APPROVED: { color: DASH.cyanBright, bg: "rgba(34,211,238,0.14)" },
   AWAITING_ADMIN_REVIEW: { color: DASH.amber, bg: "rgba(251,191,36,0.12)" },
   AWAITING_EMPLOYEE_FIXES: { color: DASH.amber, bg: "rgba(251,191,36,0.12)" },
   FAILED: { color: DASH.rose, bg: "rgba(251,113,133,0.12)" },
@@ -195,7 +195,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
         <Link
           href="/payroll"
           className="inline-flex items-center text-[11px] font-medium"
-          style={{ color: DASH.violetBright }}
+          style={{ color: DASH.cyanBright }}
         >
           All runs <ChevronRight className="h-3 w-3" aria-hidden="true" />
         </Link>
@@ -356,7 +356,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
             icon={Plane}
             label="Approved out"
             count={buckets.approvedOut.length}
-            accent={DASH.violetBright}
+            accent={DASH.cyanBright}
           >
             {buckets.approvedOut.slice(0, MAX).map((e) => (
               <li
@@ -366,7 +366,7 @@ export function TodayCard({ buckets }: { buckets: TodayBuckets }) {
               >
                 <DashAvatar name={e.name} photoUrl={e.photoUrl} size={14} />
                 <span className="min-w-0 flex-1 truncate">{e.name}</span>
-                <span className="shrink-0" style={{ color: DASH.violetBright }}>
+                <span className="shrink-0" style={{ color: DASH.cyanBright }}>
                   {TYPE_LABEL[e.type] ?? e.type}
                 </span>
               </li>

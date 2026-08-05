@@ -7,9 +7,12 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import type { ReportsOverview } from "@/lib/reports/reports-overview";
 
+// Mirrors the cadence colors in components/domain/schedule-tabs.tsx
+// (weekly blue, semi cyan, monthly amber, salaried emerald), brightened
+// for the dark reports canvas.
 const SLICE_COLOR: Record<string, string> = {
-  WEEKLY: "#a78bfa",
-  SEMI: "#6366f1",
+  WEEKLY: "#60a5fa",
+  SEMI: "#22d3ee",
   MONTHLY: "#fbbf24",
   SALARIED: "#34d399",
 };

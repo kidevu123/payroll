@@ -2,7 +2,7 @@
 // mock: four overview tiles (all real metrics — no open-rate, we don't
 // track reads), the History card with a centered first-run empty state,
 // then a three-card row of Saved templates / Recent recipients / Best
-// practice. The header CTA uses the dark shell's violet accent.
+// practice. The header CTA uses the dark shell's brand accent.
 
 import Link from "next/link";
 import {
@@ -134,8 +134,8 @@ export default async function NotificationsPage() {
             className="inline-flex h-10 items-center gap-2 rounded-input px-4 text-sm font-medium"
             style={{
               color: "#0b0b12",
-              background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-              boxShadow: "0 10px 24px -12px rgba(124,58,237,0.7)",
+              background: "linear-gradient(135deg, #34d399, #059669)",
+              boxShadow: "0 10px 24px -12px rgba(5,150,105,0.7)",
             }}
           >
             <Plus className="h-4 w-4" /> Send announcement
@@ -205,7 +205,7 @@ export default async function NotificationsPage() {
                 className="mt-1 inline-flex h-10 items-center gap-2 rounded-input px-4 text-sm font-medium"
                 style={{
                   color: "#0b0b12",
-                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                  background: "linear-gradient(135deg, #34d399, #059669)",
                 }}
               >
                 <Plus className="h-4 w-4" /> Send your first announcement
@@ -354,7 +354,7 @@ export default async function NotificationsPage() {
               <Link
                 href="/notifications/templates/new"
                 className="inline-flex items-center gap-1.5 text-[13px] font-medium hover:underline"
-                style={{ color: "#a78bfa" }}
+                style={{ color: "#34d399" }}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden /> Create new template
               </Link>

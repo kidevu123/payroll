@@ -13,7 +13,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   // Long form ("Milo · <company>") stays as the in-app browser tab title.
   const longName = `Milo · ${company?.name ?? "Payroll"}`;
   const shortName = "Milo";
-  const themeColor = company?.brandColorHex ?? "#0f766e";
+  const themeColor = company?.brandColorHex ?? "#067049";
   const lang = company?.locale?.split("-")[0] ?? "en";
   const v = company?.iconsGeneratedAt ?? "default";
   return {

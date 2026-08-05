@@ -45,7 +45,7 @@ export async function GET(
   const fallbackSize = size === "192" ? 192 : 512;
   const svg = fallbackIconSvg(
     initialsFor(company?.name ?? "Payroll"),
-    company?.brandColorHex ?? "#0f766e",
+    company?.brandColorHex ?? "#067049",
     fallbackSize,
   );
   return new NextResponse(svg, {

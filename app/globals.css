@@ -6,7 +6,7 @@
   the .dark block below), NOT prefers-color-scheme, so `dark:` utilities must
   key off the class — otherwise they'd fire on OS dark mode while the tokens
   (which are class-gated) stayed light. Use `dark:` only for accent colors that
-  have no semantic token (e.g. raw purple/teal chips); prefer the flipping
+  have no semantic token (e.g. raw cyan/amber chips); prefer the flipping
   semantic tokens (success/danger/info/warning) everywhere else.
 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -36,11 +36,13 @@
   /* var(--font-inter) / var(--font-dm-mono) are injected by next/font on
      <html> — self-hosted, no external CSS request. Fallback stack keeps
      real SF Pro on Apple hardware. */
-  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont,
-    "SF Pro Display", "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI",
-    sans-serif;
-  --font-mono: var(--font-dm-mono), "DM Mono", ui-monospace, SFMono-Regular,
-    "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: var(--font-instrument), "Instrument Sans", -apple-system,
+    BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", ui-sans-serif,
+    system-ui, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), "Bricolage Grotesque",
+    var(--font-instrument), -apple-system, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace,
+    SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --text-display: 2.75rem;
   --text-display--line-height: 3rem;
@@ -84,17 +86,18 @@
   --shadow-pop: 0 8px 24px -4px rgb(9 9 11 / 0.18),
     0 0 0 1px rgb(9 9 11 / 0.06);
 
-  /* ── Brand accent ──────────────────────────────────────────────────── */
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
+  /* ── Brand accent (deep emerald — forest-leaning so it stays distinct
+     from the success family, which sits yellower/brighter) ─────────────── */
+  --color-brand-50: #ecfdf4;
+  --color-brand-100: #d2f9e4;
+  --color-brand-200: #a9f0cb;
+  --color-brand-300: #6fe0ab;
+  --color-brand-400: #34c886;
+  --color-brand-500: #12a968;
+  --color-brand-600: #078a54;
+  --color-brand-700: #067049;
+  --color-brand-800: #085a3c;
+  --color-brand-900: #084a33;
   --color-brand-fg: #ffffff;
 
   /* ── Page surfaces ─────────────────────────────────────────────────── */
@@ -167,9 +170,9 @@
   --dash-text: #18181f;
   --dash-text-muted: #5e5e72;
   --dash-text-faint: #8e8ea3;
-  --dash-violet: #7c3aed;
-  --dash-violet-bright: #8b5cf6;
-  --dash-indigo: #6366f1;
+  --dash-cyan: #0e7490;
+  --dash-cyan-bright: #0891b2;
+  --dash-blue: #2563eb;
   --dash-emerald: #059669;
   --dash-emerald-dim: #10b981;
   --dash-rose: #e11d48;
@@ -277,9 +280,9 @@
     --dash-text: #f4f4f8;
     --dash-text-muted: #a1a1b5;
     --dash-text-faint: #6e6e85;
-    --dash-violet: #8b5cf6;
-    --dash-violet-bright: #a78bfa;
-    --dash-indigo: #6366f1;
+    --dash-cyan: #22d3ee;
+    --dash-cyan-bright: #67e8f9;
+    --dash-blue: #60a5fa;
     --dash-emerald: #34d399;
     --dash-emerald-dim: #10b981;
     --dash-rose: #fb7185;
@@ -303,6 +306,14 @@
       0 20px 44px -12px rgb(0 0 0 / 0.78);
     --shadow-pop: 0 12px 32px -6px rgb(0 0 0 / 0.7),
       0 4px 8px -2px rgb(0 0 0 / 0.5);
+}
+
+/* Display faces: the two largest text styles carry the display family so
+   hero numbers and page titles read set-by-hand; body/tables stay on the
+   workhorse sans for legibility. */
+.text-display,
+.text-title {
+  font-family: var(--font-display);
 }
 
 html,
