@@ -92,8 +92,8 @@ export function GreetingHeader({
             className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
             style={{
               color: "#0b0b12",
-              background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-              boxShadow: "0 8px 20px -8px rgba(124,58,237,0.7)",
+              background: "linear-gradient(135deg, #34d399, #059669)",
+              boxShadow: "0 8px 20px -8px rgba(5,150,105,0.7)",
             }}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />

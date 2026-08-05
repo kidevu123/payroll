@@ -205,8 +205,8 @@ export function CadenceCard({ card }: { card: CadenceData }) {
             step.primary
               ? {
                   color: "#0b0b12",
-                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-                  boxShadow: "0 8px 20px -10px rgba(124,58,237,0.7)",
+                  background: "linear-gradient(135deg, #34d399, #059669)",
+                  boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
                 }
               : {
                   color: DASH.text,

@@ -188,7 +188,7 @@ export function DashboardDarkShell({
           <span
             aria-hidden
             className="flex h-6 w-6 items-center justify-center rounded-md text-[13px] font-black"
-            style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+            style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
           >
             {company.name.slice(0, 1).toLowerCase()}
           </span>
@@ -229,7 +229,7 @@ export function DashboardDarkShell({
             <span
               aria-hidden
               className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-              style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+              style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
             >
               {initialsOf(user.name)}
             </span>
@@ -266,7 +266,7 @@ export function DashboardDarkShell({
               aria-hidden
               className="flex h-7 w-7 items-center justify-center rounded-lg text-[15px] font-black"
               style={{
-                background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                background: "linear-gradient(135deg, #34d399, #059669)",
                 color: "#0b0b12",
                 boxShadow: "0 4px 14px -4px rgba(52,211,153,0.7)",
               }}
@@ -400,7 +400,7 @@ export function DashboardDarkShell({
                 <span
                   aria-hidden
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-                  style={{ background: "linear-gradient(135deg, #a78bfa, #7c3aed)", color: "#0b0b12" }}
+                  style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
                 >
                   {initialsOf(user.name)}
                 </span>

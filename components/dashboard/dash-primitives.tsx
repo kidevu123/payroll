@@ -25,7 +25,7 @@ export function DashCard({
         background: DASH.surface,
         border: `1px solid ${DASH.border}`,
         boxShadow: glow
-          ? "0 0 0 1px rgba(139,92,246,0.12), 0 18px 50px -22px rgba(139,92,246,0.30)"
+          ? "0 0 0 1px rgba(52,211,153,0.12), 0 18px 50px -22px rgba(52,211,153,0.30)"
           : "0 10px 34px -24px rgba(0,0,0,0.7)",
       }}
       {...rest}

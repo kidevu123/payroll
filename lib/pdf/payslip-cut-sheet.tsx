@@ -2,7 +2,7 @@
 // cards (owner reference redesign). Each card carries a navy header (MILO
 // wordmark + employee name + ID), a pay-period / hourly-rate row, a punch
 // table (worked days only), and a footer that pairs TOTAL HOURS + GROSS with
-// a teal FINAL PAY chip. Cards have dashed borders so the sheet can be cut
+// a brand-colored FINAL PAY chip. Cards have dashed borders so the sheet can be cut
 // apart, and a fixed min-height + bottom-pinned footer so every card in a row
 // lines up. No page-level header/footer — the cards are the whole document.
 
