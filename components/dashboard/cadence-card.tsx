@@ -104,24 +104,8 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   return (
     <DashCard
       glow={step.primary}
-      className="flex h-full flex-col gap-1 overflow-hidden"
+      className="flex h-full flex-col gap-2 overflow-hidden"
     >
-      {/* Big flowing sparkline that bleeds to the top + right edges, behind
-          the content — matches the reference's prominent wave. */}
-      {hasSpark ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute"
-          style={{ top: "2.1rem", right: "-0.5rem", bottom: "2.4rem", width: "64%" }}
-        >
-          <CadenceSparkline
-            data={card.spark}
-            gradientId={`spark-${card.scheduleId}`}
-            className="h-full"
-          />
-        </div>
-      ) : null}
-
       {/* Header: icon + uppercase cadence name + range, status badge */}
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -160,7 +144,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 min-w-0">
         <Eyebrow>Total pay period</Eyebrow>
         <div
-          className="mt-1 text-[1.2rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+          className="mt-1 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
           style={{ color: DASH.text }}
         >
           {formatMoney(card.totalCents)}
@@ -193,11 +177,27 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         </div>
       </div>
 
-      <div className="flex-1" />
-
+      {/* Sparkline strip: contained, fixed height — recent period totals.
+          Cards without history stay compact instead of reserving a void. */}
+      {hasSpark ? (
+        <div aria-hidden className="relative z-10 -mx-1 h-16">
+          <CadenceSparkline
+            data={card.spark}
+            gradientId={`spark-${card.scheduleId}`}
+            className="h-full"
+          />
+        </div>
+      ) : (
+        <div
+          className="flex h-16 items-center justify-center rounded-lg border border-dashed text-[11px]"
+          style={{ borderColor: DASH.border, color: DASH.textFaint }}
+        >
+          Trend appears after two closed periods
+        </div>
+      )}
 
       {/* Footer: full-width action + alert pill */}
-      <div className="relative z-10 flex items-center gap-2.5">
+      <div className="relative z-10 mt-auto flex items-center gap-2.5">
         <Link
           href={step.href}
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"

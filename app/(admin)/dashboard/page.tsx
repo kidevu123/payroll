@@ -222,7 +222,10 @@ export default async function DashboardPage() {
     // height + overflow-hidden) so tall content, long labels, or browser zoom
     // scroll instead of being clipped. The three data rows flex to fill any
     // leftover space; header/banner/KPI stay fixed. Mobile stacks naturally.
-    <div className="flex flex-col gap-2 lg:min-h-[calc(100dvh-2rem)]">
+    // Content-driven heights: rows size to their cards. The old layout
+    // stretched every row to fill the viewport, which inflated cards with
+    // dead space on tall monitors — the single biggest "template" tell.
+    <div className="flex flex-col gap-3">
       <GreetingHeader
         name={firstName}
         hour={hour}
@@ -232,37 +235,35 @@ export default async function DashboardPage() {
         quickActionLabel={quickActionLabel}
       />
 
-      {/* TOP ROW — cadence cards (equal height) */}
-      <section className="grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-3 lg:flex-1 lg:min-h-0 xl:[grid-template-rows:minmax(min-content,1fr)]">
+      {/* TOP ROW — cadence cards (equalized within the row only) */}
+      <section className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
         {metrics.cadences.map((card) => (
           <CadenceCard key={card.scheduleId} card={card} />
         ))}
       </section>
 
-      {/* SECOND ROW — trend + mini stats + sync + health, all equal height */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-12 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(min-content,1fr)]">
-        <div className="lg:col-span-5">
+      {/* SECOND ROW — trend hero on the left; a dense insight column on the
+          right (stat tiles, health, slim sync strip) that fills the same
+          height with real content instead of stretched voids. */}
+      <section className="grid items-stretch gap-3 lg:grid-cols-12">
+        <div className="lg:col-span-6">
           <TrendCard trend={metrics.trend} />
         </div>
-        <div className="flex flex-col gap-2 lg:col-span-4">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-3 lg:col-span-6">
+          <div className="grid grid-cols-2 gap-3">
             <HeadcountCard count={metrics.headcount} delta={metrics.headcountDelta} />
             <ExceptionsCard count={metrics.exceptions} />
           </div>
-          <div className="flex-1">
-            <SyncCard sync={metrics.sync} />
-          </div>
-        </div>
-        <div className="lg:col-span-3">
           <HealthCard health={metrics.health} />
+          <SyncCard sync={metrics.sync} />
         </div>
       </section>
 
       {/* Automate-more banner + two real stat cards */}
       <AutomationBanner automation={metrics.automation} />
 
-      {/* THIRD ROW — pending / recent / today (equal height) */}
-      <section className="grid items-stretch gap-2 lg:grid-cols-3 lg:flex-1 lg:min-h-0 lg:[grid-template-rows:minmax(min-content,1fr)]">
+      {/* THIRD ROW — pending / recent / today (equal height within the row) */}
+      <section className="grid items-stretch gap-3 lg:grid-cols-3">
         <PendingRequestsCard items={pendingItems} />
         <RecentRunsCard items={recentRuns} />
         <TodayCard buckets={todayBuckets} />

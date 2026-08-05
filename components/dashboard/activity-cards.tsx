@@ -87,7 +87,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
       </div>
       {empty ? (
         <div
-          className="flex flex-1 items-center gap-2 rounded-xl px-3 py-4 text-sm"
+          className="flex items-center gap-2 rounded-xl px-3 py-3 text-sm"
           style={{ background: "rgba(52,211,153,0.08)", color: DASH.emerald }}
         >
           <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> All clear — nothing waiting.
@@ -202,7 +202,7 @@ export function RecentRunsCard({ items }: { items: RecentRunItem[] }) {
       </div>
       {empty ? (
         <div
-          className="flex flex-1 items-center gap-2 rounded-xl px-3 py-4 text-sm"
+          className="flex items-center gap-2 rounded-xl px-3 py-3 text-sm"
           style={{ background: "var(--dash-search)", color: DASH.textMuted }}
         >
           <CalendarClock className="h-4 w-4" aria-hidden="true" /> No runs yet.

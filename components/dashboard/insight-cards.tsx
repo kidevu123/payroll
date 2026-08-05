@@ -195,26 +195,32 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
       : sync.state === "STALE"
         ? "Stale"
         : "Unknown";
+  // Slim status strip: one row — identity, last-sync age, activity
+  // sparkline, state chip. Sync is ambient telemetry, not a hero metric;
+  // it does not deserve a tall card.
   return (
-    <DashCard className="flex h-full flex-col gap-1.5">
-      <div className="flex items-start justify-between">
+    <DashCard className="flex items-center gap-3 py-3">
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
+      >
+        <StateIcon className="h-4 w-4" style={{ color: accent }} />
+      </span>
+      <div className="min-w-0">
         <Eyebrow>NGTeco sync</Eyebrow>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-          style={{ color: accent, background: `${accent}1f` }}
-        >
-          <StateIcon className="h-3 w-3" aria-hidden="true" />
-          {label}
-        </span>
-      </div>
-      <div>
-        <div className="text-sm font-semibold" style={{ color: DASH.text }}>
+        <div className="mt-0.5 truncate text-sm font-semibold" style={{ color: DASH.text }}>
           Last sync {relativeAge(sync.lastSyncAt)}
         </div>
-        <div className="mt-2">
-          <SyncSparkline data={sync.points} />
-        </div>
       </div>
+      <div aria-hidden className="ml-auto hidden h-8 w-36 sm:block">
+        <SyncSparkline data={sync.points} />
+      </div>
+      <span
+        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+        style={{ color: accent, background: `${accent}1f` }}
+      >
+        {label}
+      </span>
     </DashCard>
   );
 }
