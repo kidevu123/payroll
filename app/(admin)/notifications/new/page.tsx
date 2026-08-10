@@ -46,7 +46,7 @@ export default async function NewAnnouncementPage({
         >
           <ArrowLeft className="h-3 w-3" /> Notifications
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-title font-semibold tracking-tight">
           Send announcement
         </h1>
         <p className="text-sm text-text-muted">

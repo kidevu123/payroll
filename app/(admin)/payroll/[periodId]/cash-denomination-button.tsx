@@ -24,7 +24,7 @@ export function CashDenominationButton({
         <Button
           type="button"
           variant="secondary"
-          className="justify-start"
+          size="sm"
           disabled={!hasRows}
         >
           <Banknote className="h-4 w-4" />

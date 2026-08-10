@@ -24,7 +24,7 @@ export default function NewTemplatePage() {
         >
           <ArrowLeft className="h-3 w-3" /> Notifications
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">New template</h1>
+        <h1 className="text-title font-semibold tracking-tight">New template</h1>
         <p className="text-sm text-text-muted">
           Save a reusable starting point. Sending from a template still walks
           through the normal compose flow, so you can adjust the wording and

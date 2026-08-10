@@ -142,7 +142,7 @@ export default async function TimeOffTallyPage({
           >
             <ArrowLeft className="h-3 w-3" /> Reports
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-title font-semibold tracking-tight">
             Time off · {year}
           </h1>
           <p className="text-sm text-text-muted">

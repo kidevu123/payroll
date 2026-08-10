@@ -87,7 +87,7 @@ export default async function PunchesAdmin({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">All punches</h1>
+        <h1 className="text-title font-semibold tracking-tight">All punches</h1>
         <p className="text-sm text-text-muted">
           Manual override surface — search, edit, or void any punch across every period.
           Showing the {filtered.length}{" "}

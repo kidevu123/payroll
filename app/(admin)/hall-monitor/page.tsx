@@ -70,7 +70,7 @@ export default async function HallMonitorPage({
     <div className="space-y-4 max-w-2xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="text-title font-semibold tracking-tight flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5 text-brand" />
             Weekly payroll checklist
           </h1>

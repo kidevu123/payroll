@@ -5,6 +5,15 @@
 // a brand-colored FINAL PAY chip. Cards have dashed borders so the sheet can be cut
 // apart, and a fixed min-height + bottom-pinned footer so every card in a row
 // lines up. No page-level header/footer — the cards are the whole document.
+//
+// Layout note: cards are chunked into explicit 4-card rows and rows into
+// explicit Pages (rows-per-page derived from the tallest card's punch-row
+// count). The previous single flexWrap grid hit react-pdf's broken
+// flex-wrap pagination — it broke pages after two rows (wasting a page of
+// whitespace) and froze card heights mid-measure so the punch table could
+// overlap the FINAL PAY footer. Auto page-breaking (wrap) is avoided even
+// for the row-chunked layout: rows pushed to the next page leave collapsed
+// ghost header strips behind, so pages are emitted deterministically.
 
 import {
   Document,
@@ -24,7 +33,7 @@ const HAIRLINE = "#e6ebf2";
 const ZEBRA = "#f6f8fb";
 const CUT = "#c2ccd9";
 
-const PAGE_PADDING = 16;
+const PAGE_PADDING = 12;
 
 const styles = StyleSheet.create({
   page: {
@@ -35,8 +44,8 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     color: INK,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
-  cell: { width: "25%", paddingHorizontal: 4, marginBottom: 8 },
+  row: { flexDirection: "row", marginHorizontal: -4, marginBottom: 6 },
+  cell: { width: "25%", paddingHorizontal: 4 },
 
   card: {
     borderWidth: 0.75,
@@ -44,7 +53,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderRadius: 5,
     overflow: "hidden",
-    minHeight: 150,
+    minHeight: 130,
     flexDirection: "column",
   },
 
@@ -53,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
+    paddingVertical: 4.5,
     paddingHorizontal: 8,
   },
   headerLeft: { flex: 1 },
@@ -76,7 +85,18 @@ const styles = StyleSheet.create({
   },
 
   // ── Body ──────────────────────────────────────────────────────────────
-  body: { paddingHorizontal: 8, paddingTop: 6, paddingBottom: 6, flex: 1 },
+  // flexGrow (NOT the `flex: 1` shorthand): react-pdf expands `flex: 1` to
+  // flexBasis 0, which makes yoga ignore the body's content height — every
+  // card then renders at exactly minHeight and the punch table overflows
+  // into (and under) the FINAL PAY chip. flexGrow alone keeps the auto
+  // basis so the card grows with its content.
+  body: {
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
+    flexGrow: 1,
+    flexShrink: 0,
+  },
 
   metaRow: {
     flexDirection: "row",
@@ -92,7 +112,7 @@ const styles = StyleSheet.create({
   metaValueRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   metaValue: { fontSize: 8, fontFamily: "Helvetica-Bold", color: NAVY },
 
@@ -100,7 +120,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
     borderRadius: 2,
-    paddingVertical: 2.5,
+    paddingVertical: 2,
     paddingHorizontal: 3,
   },
   thText: {
@@ -111,17 +131,17 @@ const styles = StyleSheet.create({
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 2,
+    paddingVertical: 1.5,
     paddingHorizontal: 3,
     borderRadius: 2,
   },
   trZebra: { backgroundColor: ZEBRA },
 
-  cDate: { width: "25%", fontSize: 6.5 },
-  cIn: { width: "22%", fontSize: 6.5, color: MUTED },
-  cOut: { width: "22%", fontSize: 6.5, color: MUTED },
-  cHrs: { width: "13%", fontSize: 6.5, textAlign: "right" },
-  cPay: { width: "18%", fontSize: 6.5, textAlign: "right" },
+  cDate: { width: "25%", fontSize: 6.5, lineHeight: 1.2 },
+  cIn: { width: "22%", fontSize: 6.5, lineHeight: 1.2, color: MUTED },
+  cOut: { width: "22%", fontSize: 6.5, lineHeight: 1.2, color: MUTED },
+  cHrs: { width: "13%", fontSize: 6.5, lineHeight: 1.2, textAlign: "right" },
+  cPay: { width: "18%", fontSize: 6.5, lineHeight: 1.2, textAlign: "right" },
   cDateBold: { fontFamily: "Helvetica-Bold", color: INK },
   cHrsBold: { fontFamily: "Helvetica-Bold", color: INK },
   cPayBold: { fontFamily: "Helvetica-Bold", color: NAVY },
@@ -144,7 +164,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderTopWidth: 0.5,
     borderColor: HAIRLINE,
-    paddingTop: 5,
+    paddingTop: 4,
   },
   totalsCol: { flex: 1, paddingRight: 6 },
   totalsLine: {
@@ -162,7 +182,7 @@ const styles = StyleSheet.create({
   totalsValue: { fontSize: 8, fontFamily: "Helvetica-Bold", color: NAVY },
   finalChip: {
     borderRadius: 4,
-    paddingVertical: 5,
+    paddingVertical: 4,
     paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -181,7 +201,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
 
-  keep: { fontSize: 5.5, color: SUBTLE, marginTop: 5, letterSpacing: 0.3 },
+  keep: { fontSize: 5.5, color: SUBTLE, marginTop: 3, letterSpacing: 0.3 },
 });
 
 const MONTHS = [
@@ -206,24 +226,57 @@ function fmtRange(startIso: string, endIso: string): string {
   return `${sm} ${parseInt(s[3]!, 10)} - ${em} ${parseInt(e[3]!, 10)}, ${e[1]}`;
 }
 
+const CARDS_PER_ROW = 4;
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+  return out;
+}
+
+/** Whole card rows per landscape-letter page, sized by the tallest card.
+ *  Weekly periods (≤7 punch rows) fit 3 rows; longer cadences get fewer. */
+function rowsPerPage(maxDayRows: number): number {
+  if (maxDayRows <= 7) return 3;
+  if (maxDayRows <= 14) return 2;
+  return 1;
+}
+
 export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
   const brand = data.company.brandColorHex || "#067049";
   const dp = data.rules.hoursDecimalPlaces;
   const locale = data.company.locale;
   const range = fmtRange(data.period.startDate, data.period.endDate);
 
+  const maxDayRows = data.employees.reduce(
+    (m, e) => Math.max(m, e.days.filter((d) => !d.missing && d.hours > 0).length),
+    0,
+  );
+  const rows = chunk(data.employees, CARDS_PER_ROW);
+  const pages = chunk(rows, rowsPerPage(maxDayRows));
+
   return (
     <Document title={`Payslips ${data.period.startDate}`}>
-      <Page size="LETTER" orientation="landscape" style={styles.page} wrap>
-        <View style={styles.grid}>
-          {data.employees.map((e, i) => {
+      {pages.map((pageRows, pageIdx) => (
+      <Page
+        key={pageIdx}
+        size="LETTER"
+        orientation="landscape"
+        style={styles.page}
+        wrap={false}
+      >
+        {pageRows.map((rowEmployees, rowIdx) => (
+          <View key={rowIdx} style={styles.row} wrap={false}>
+            {rowEmployees.map((e, i) => {
             const workedDays = e.days.filter((d) => !d.missing && d.hours > 0);
             const rate =
               e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
                 ? formatMoney(e.hourlyRateCents, locale)
                 : "—";
             return (
-              <View key={i} style={styles.cell} wrap={false}>
+              <View key={i} style={styles.cell}>
                 <View style={styles.card}>
                   <View style={styles.cardHeader}>
                     <View style={styles.headerLeft}>
@@ -318,9 +371,11 @@ export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
                 </View>
               </View>
             );
-          })}
-        </View>
+            })}
+          </View>
+        ))}
       </Page>
+      ))}
     </Document>
   );
 }

@@ -47,7 +47,7 @@ export default async function CashDrawerPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cash drawer</h1>
+          <h1 className="text-title font-semibold tracking-tight">Cash drawer</h1>
           <p className="text-xs text-text-muted mt-0.5">
             On-prem cash reconciliation. Deposits require an invoice number;
             withdrawals are mostly auto-recorded when a payroll period is paid

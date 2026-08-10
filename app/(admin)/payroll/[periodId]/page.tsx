@@ -17,9 +17,11 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -130,7 +132,7 @@ function issueLabel(row: {
   if (row.hoursDrift) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-warning-700"
+        className="inline-flex items-center gap-1 text-warn-700"
         title={`Stored hours (${row.storedHours?.toFixed(2)}h) don't match live punch hours (${row.liveHours?.toFixed(2)}h). Open employee row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
       >
         <AlertTriangle className="h-3 w-3" aria-hidden />
@@ -433,12 +435,12 @@ export default async function PeriodReviewPage({
           bar holds only the state pills + action buttons so it never
           wraps to a second row at common laptop widths (1100-1300px),
           which was the original "buttons all over the place" complaint. */}
-      <div>
+      <div className="space-y-2">
         <PeriodDetailBackButton
           fallbackHref={isAccountant ? "/cash-drawer" : "/payroll"}
         />
-        <h1 className="text-xl font-semibold tracking-tight">
-          {formatRange(
+        <PageHeader
+          title={formatRange(
             period.startDate,
             canonicalEndForScheduleName(
               period.startDate,
@@ -446,7 +448,7 @@ export default async function PeriodReviewPage({
               runSchedule?.name ?? null,
             ),
           )}
-        </h1>
+        />
       </div>
       <div className="rounded-card border border-border bg-surface p-3 shadow-card lg:sticky lg:top-14 lg:z-20 lg:-mx-8 lg:rounded-none lg:border-x-0 lg:bg-page/95 lg:px-8 lg:py-2.5 lg:backdrop-blur lg:shadow-none">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -524,16 +526,15 @@ export default async function PeriodReviewPage({
 
       {!isAccountant && (
         <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-base">Print payroll documents</CardTitle>
-              <p className="mt-1 text-xs text-text-muted">
-                Print these while reviewing this period. Reports keeps the same documents for lookbacks.
-              </p>
-            </div>
+          <CardHeader>
+            <CardTitle className="text-base">Print payroll documents</CardTitle>
+            <CardDescription>
+              Print these while reviewing this period. Reports keeps the same
+              documents for lookbacks.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <Button asChild variant="secondary" className="justify-start">
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary" size="sm">
               <PdfLink
                 href={`/api/payslips/period/${period.id}/signature`}
                 filename="signature-report.pdf"
@@ -541,7 +542,7 @@ export default async function PeriodReviewPage({
                 <Printer className="h-4 w-4" /> Signature report
               </PdfLink>
             </Button>
-            <Button asChild variant="secondary" className="justify-start">
+            <Button asChild variant="secondary" size="sm">
               <PdfLink
                 href={`/api/payroll/${period.id}/payslips-cut-sheet`}
                 filename="payslip-cut-sheet.pdf"
@@ -560,12 +561,12 @@ export default async function PeriodReviewPage({
                 await backupAdminReportToZohoAction(period.id, run?.id ?? null);
               }}
             >
-              <Button type="submit" variant="secondary" className="w-full justify-start">
+              <Button type="submit" variant="secondary" size="sm">
                 <UploadCloud className="h-4 w-4" /> Back up admin report
               </Button>
             </form>
             {run?.pdfPath && (
-              <Button asChild variant="secondary" className="justify-start">
+              <Button asChild variant="secondary" size="sm">
                 <PdfLink
                   href={`/api/reports/${run.id}/pdf`}
                   filename="admin-report.pdf"
@@ -597,67 +598,94 @@ export default async function PeriodReviewPage({
         const nameOf = (id: string) =>
           allEmployees.find((e) => e.id === id)?.displayName ?? "—";
         if (active.length === 0) return null;
+        const buckets = [
+          {
+            key: "acknowledged",
+            label: "Acknowledged",
+            dot: "bg-success-600",
+            count: ackd.length,
+            names: ackd.map((p) => nameOf(p.employeeId)).sort(),
+          },
+          {
+            key: "pending",
+            label: "Pending",
+            dot: "bg-warn-600",
+            count: pending.length,
+            names: pending.map((p) => nameOf(p.employeeId)).sort(),
+          },
+          ...(disputed.length > 0
+            ? [
+                {
+                  key: "disputed",
+                  label: "Disputed",
+                  dot: "bg-danger-600",
+                  count: disputed.length,
+                  names: disputed.map((p) => nameOf(p.employeeId)).sort(),
+                },
+              ]
+            : []),
+        ];
         return (
-          <div className="rounded-card border border-border/70 bg-surface p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-sm font-semibold tracking-tight">
+          <Card>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+              <CardTitle className="text-base">
                 Payslip acknowledgements
-              </h2>
-              <p className="text-xs text-text-muted tabular-nums">
+              </CardTitle>
+              <p className="text-caption text-text-muted tabular-nums">
                 <span className="font-semibold text-success-700">
                   {ackd.length}
                 </span>{" "}
-                /{" "}
-                <span className="text-text">
-                  {active.length}
-                </span>{" "}
-                acknowledged
+                / <span className="text-text">{active.length}</span> acknowledged
                 {disputed.length > 0 ? ` · ${disputed.length} disputed` : ""}
                 {pending.length > 0 ? ` · ${pending.length} pending` : ""}
               </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3 text-xs">
-              <div className="rounded-input border border-success-200/60 bg-success-50/40 p-3">
-                <p className="font-semibold text-success-800 mb-1">
-                  Acknowledged ({ackd.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {ackd.length === 0
-                    ? "—"
-                    : ackd
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className="h-1.5 overflow-hidden rounded-full bg-surface-2"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={active.length}
+                aria-valuenow={ackd.length}
+                aria-label="Payslips acknowledged"
+              >
+                <div
+                  className="h-full rounded-full bg-success-600 transition-[width]"
+                  style={{
+                    width: `${Math.round((ackd.length / active.length) * 100)}%`,
+                  }}
+                />
               </div>
-              <div className="rounded-input border border-warning-200/60 bg-warning-50/40 p-3">
-                <p className="font-semibold text-warning-800 mb-1">
-                  Pending ({pending.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {pending.length === 0
-                    ? "—"
-                    : pending
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {buckets.map((bucket) => (
+                  <div key={bucket.key} className="space-y-2">
+                    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${bucket.dot}`}
+                        aria-hidden
+                      />
+                      {bucket.label}
+                      <span className="tabular-nums">({bucket.count})</span>
+                    </p>
+                    {bucket.names.length === 0 ? (
+                      <p className="text-xs text-text-subtle">—</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {bucket.names.map((name) => (
+                          <span
+                            key={name}
+                            className="inline-flex rounded-chip border border-border/60 bg-surface-2/60 px-2 py-0.5 text-xs text-text-muted"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="rounded-input border border-danger-200/60 bg-danger-50/40 p-3">
-                <p className="font-semibold text-danger-800 mb-1">
-                  Disputed ({disputed.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {disputed.length === 0
-                    ? "—"
-                    : disputed
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
       })()}
 
@@ -715,7 +743,7 @@ export default async function PeriodReviewPage({
           employee twice. */}
       <Card>
         <CardHeader>
-          <CardTitle>Employee totals</CardTitle>
+          <CardTitle className="text-base">Employee totals</CardTitle>
         </CardHeader>
         <CardContent>
           {rendered.length === 0 ? (
@@ -756,20 +784,20 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="tabular-nums text-base font-semibold tabular-nums">
+                          <div className="text-base font-semibold tabular-nums">
                             <MoneyDisplay cents={result.roundedCents} />
                           </div>
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
-                            rounded
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                            Rounded
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
                             Hours
                           </div>
-                          <div className="mt-1 tabular-nums font-semibold tabular-nums">
+                          <div className="mt-1 font-semibold tabular-nums">
                             <HoursDisplay
                               hours={result.totalHours}
                               decimals={payRules.hoursDecimalPlaces}
@@ -777,15 +805,15 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
                             Gross
                           </div>
-                          <div className="mt-1 tabular-nums font-semibold tabular-nums">
+                          <div className="mt-1 font-semibold tabular-nums">
                             <MoneyDisplay cents={result.grossCents} />
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
                             Issues
                           </div>
                           <div className="mt-1 truncate text-xs">
@@ -831,7 +859,7 @@ export default async function PeriodReviewPage({
               <div className="rounded-card border border-border bg-surface-2 p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">Employee subtotal</span>
-                  <span className="tabular-nums font-semibold tabular-nums">
+                  <span className="font-semibold tabular-nums">
                     <MoneyDisplay cents={totals.rounded} />
                   </span>
                 </div>
@@ -857,7 +885,7 @@ export default async function PeriodReviewPage({
 
             <div className="hidden space-y-0.5 overflow-x-auto md:block">
               <div className="min-w-[760px]">
-              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
@@ -904,7 +932,7 @@ export default async function PeriodReviewPage({
                             ) : null}
                           </div>
                         </div>
-	                        <span className="text-right tabular-nums">
+                        <span className="text-right tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
@@ -974,10 +1002,10 @@ export default async function PeriodReviewPage({
                   </div>
                   <div></div>
                 </div>
-	              )}
-	            </div>
-	            </div>
-	            </>
+              )}
+            </div>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1096,12 +1124,12 @@ function PunchSubTable({
   return (
     <div className="overflow-x-auto px-3 pb-3 pt-1 md:px-9">
       <table className="min-w-[22rem] text-xs md:min-w-full">
-        <thead className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle border-b border-border/60">
           <tr>
-            <th className="py-1 pr-3 font-medium">Day</th>
-            <th className="py-1 px-3 font-medium">In</th>
-            <th className="py-1 px-3 font-medium">Out</th>
-            <th className="py-1 px-3 font-medium text-right">Hours</th>
+            <th className="py-1 pr-3 font-semibold">Day</th>
+            <th className="py-1 px-3 font-semibold">In</th>
+            <th className="py-1 px-3 font-semibold">Out</th>
+            <th className="py-1 px-3 font-semibold text-right">Hours</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/40">

@@ -27,7 +27,7 @@ export default async function AddRatePage({
         </Link>
       </Button>
       <div>
-        <h1 className="text-2xl font-semibold">Add rate change</h1>
+        <h1 className="text-title font-semibold tracking-tight">Add rate change</h1>
         <p className="text-sm text-text-muted">
           Past-dated effective dates are allowed for corrections. The reason
           appears in the audit log.

@@ -21,7 +21,7 @@ export default async function WipePunchesPage() {
         </Link>
       </Button>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-title font-semibold tracking-tight">
           Data cleanup
         </h1>
         <p className="text-sm text-text-muted">

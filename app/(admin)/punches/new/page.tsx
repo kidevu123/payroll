@@ -32,7 +32,7 @@ export default async function ManualPunchPage() {
         </Button>
       </div>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+        <h1 className="text-title font-semibold tracking-tight flex items-center gap-2">
           <Plus className="h-6 w-6 text-brand-700" /> Add manual punch
         </h1>
         <p className="text-sm text-text-muted">

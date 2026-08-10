@@ -1,5 +1,19 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// Teach tailwind-merge our custom type-scale utilities. Without this it
+// classifies `text-title` / `text-display` / etc. as text COLORS, so
+// `cn("text-title", ..., "text-text")` silently drops the size class —
+// which is why PageHeader titles were rendering at the 16px default.
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        { text: ["display", "title", "heading", "body", "caption"] },
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

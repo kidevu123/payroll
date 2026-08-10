@@ -33,7 +33,7 @@ export default async function NgtecoRunDetail({
         </Link>
       </Button>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold tabular-nums">{run.id}</h1>
+        <h1 className="text-title font-semibold tracking-tight tabular-nums">{run.id}</h1>
         <StatusPill status={run.state as never} />
       </div>
       <p className="text-sm text-text-muted">

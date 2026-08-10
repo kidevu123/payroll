@@ -24,7 +24,7 @@ export default async function NgtecoRunsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">NGTeco runs</h1>
+        <h1 className="text-title font-semibold tracking-tight">NGTeco runs</h1>
         <p className="text-sm text-text-muted">
           Last {runs.length} import attempts, newest first.
         </p>

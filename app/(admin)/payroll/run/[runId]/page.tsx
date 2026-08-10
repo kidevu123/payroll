@@ -175,7 +175,7 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-xl font-semibold tabular-nums">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-title font-semibold tracking-tight tabular-nums">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">

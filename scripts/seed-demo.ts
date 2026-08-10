@@ -164,7 +164,10 @@ async function main() {
           endDate: bounds.endDate,
           state: state as "OPEN" | "LOCKED",
         })
-        .onConflictDoNothing({ target: payPeriods.startDate })
+        // No conflict target: the unique index on start_date was dropped when
+        // multi-schedule periods landed (same start date can exist per
+        // schedule), so a targeted arbiter now throws at plan time.
+        .onConflictDoNothing()
         .returning();
       if (row) periodRows.push({ id: row.id, startDate: row.startDate, endDate: row.endDate, state: row.state });
     }

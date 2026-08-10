@@ -75,7 +75,7 @@ export default async function ReportsPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+          <h1 className="text-title font-semibold tracking-tight">Reports</h1>
           <p className="mt-1 text-sm text-text-muted">
             Payroll insights, compliance visibility, and historical runs.
           </p>
