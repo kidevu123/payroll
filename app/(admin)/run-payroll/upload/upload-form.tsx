@@ -326,7 +326,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                 employees won&apos;t get a payslip even if their hours are in
                 the CSV.
               </p>
-              <ul className="divide-y divide-border max-h-96 overflow-y-auto rounded border border-border bg-surface">
+              <ul className="divide-y divide-border/60 max-h-96 overflow-y-auto rounded border border-border bg-surface">
                 {preview.employees.map((e) => (
                   <PreviewRow
                     key={e.ngtecoRef}

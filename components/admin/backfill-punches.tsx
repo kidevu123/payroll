@@ -80,7 +80,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
                 key={p.daysBack}
                 type="button"
                 onClick={() => run(p.daysBack)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-2 transition-colors"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-2/40 transition-colors"
               >
                 {p.label}
               </button>

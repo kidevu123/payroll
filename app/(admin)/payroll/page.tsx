@@ -260,7 +260,7 @@ export default async function PayrollPage({
               return (
                 <div
                   key={p.id}
-                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-1 focus-within:ring-2 focus-within:ring-brand-700/60 ${rowAccent}`}
+                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2/40 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-1 focus-within:ring-2 focus-within:ring-brand-700/60 ${rowAccent}`}
                 >
                   {/* Stretched link: the whole row is the click/hover target
                       (after:inset-0), while the delete button sits above it

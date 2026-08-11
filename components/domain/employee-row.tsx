@@ -35,7 +35,7 @@ export function EmployeeRow({ employee, shift, href, className }: EmployeeRowPro
       {...wrapperProps}
       className={cn(
         "group relative flex min-h-[44px] items-center gap-3 px-4 py-2 text-sm transition-colors",
-        href && "cursor-pointer hover:bg-surface-2",
+        href && "cursor-pointer hover:bg-surface-2/40",
         className,
       )}
     >

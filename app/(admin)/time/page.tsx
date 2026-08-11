@@ -731,7 +731,7 @@ export default async function TimePage({
             {adjacent.prevId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.prevId })}`}
-                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2/40 text-text-muted hover:text-text transition-colors"
                 aria-label="Previous period"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -754,7 +754,7 @@ export default async function TimePage({
             {adjacent.nextId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.nextId })}`}
-                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2 text-text-muted hover:text-text transition-colors"
+                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2/40 text-text-muted hover:text-text transition-colors"
                 aria-label="Next period"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -768,7 +768,7 @@ export default async function TimePage({
                 page auto-selects today's period for this schedule). */}
             <Link
               href={`/time${tab !== "all" ? `?schedule=${tab}` : ""}`}
-              className="ml-1 h-6 inline-flex items-center rounded px-2 text-micro uppercase text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+              className="ml-1 h-6 inline-flex items-center rounded px-2 text-micro uppercase text-text-muted hover:bg-surface-2/40 hover:text-text transition-colors"
             >
               Today
             </Link>
@@ -980,9 +980,9 @@ export default async function TimePage({
             {employees.map((e) => (
               <tr
                 key={e.id}
-                className="border-t border-border/40 group hover:bg-surface-2/30 transition-colors"
+                className="border-t border-border/40 group hover:bg-surface-2/40 transition-colors"
               >
-                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/80 px-4 py-2 font-medium text-body whitespace-nowrap border-r border-border/40 transition-colors">
+                <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-2/40 px-4 py-2 font-medium text-body whitespace-nowrap border-r border-border/40 transition-colors">
                   <Link
                     href={`/employees/${e.id}`}
                     className="text-text hover:text-brand-700 hover:underline underline-offset-2 transition-colors"
@@ -1460,7 +1460,7 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
       {overtimeRisk > 0 && (
         <Link
           href="/time"
-          className="mt-2.5 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2"
+          className="mt-2.5 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2/40"
         >
           Review overtime risk <ChevronRight className="h-3.5 w-3.5" />
         </Link>

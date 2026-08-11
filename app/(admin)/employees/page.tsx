@@ -64,7 +64,7 @@ export default async function EmployeesPage({
   const currentShift = params.shift ?? "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <EmployeesPageHeader
         shownCount={employees.length}
         livingCount={livingCount}
@@ -181,7 +181,7 @@ function PillToggle({
         "inline-flex items-center gap-1.5 rounded-chip px-2.5 h-8 font-medium tracking-tight transition-colors",
         active
           ? "bg-brand-700 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]"
-          : "text-text-muted hover:bg-surface-2 hover:text-text",
+          : "text-text-muted hover:bg-surface-2/40 hover:text-text",
       )}
     >
       {label}

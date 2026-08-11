@@ -46,7 +46,7 @@ export function ReasonField({
               "min-h-11 rounded-chip border px-3 py-2 text-sm transition-colors",
               value === reason
                 ? "border-brand-300 bg-brand-50 font-medium text-brand-900"
-                : "border-border bg-surface text-text hover:bg-surface-2",
+                : "border-border bg-surface text-text hover:bg-surface-2/40",
             )}
           >
             {reason}

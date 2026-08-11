@@ -30,7 +30,7 @@ export default async function DbBrowserPage({
   const tablesResult = await listTablesAction();
   if ("error" in tablesResult) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <h1 className="text-title tracking-tight antialiased text-text">Database</h1>
         <div className="rounded-card border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700">
           <AlertTriangle className="inline h-4 w-4 mr-1" /> {tablesResult.error}
@@ -51,7 +51,7 @@ export default async function DbBrowserPage({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text flex items-center gap-2">
@@ -70,7 +70,7 @@ export default async function DbBrowserPage({
           aria-label="Tables"
           className="rounded-card border border-border bg-surface lg:sticky lg:top-4 self-start max-h-[80vh] overflow-y-auto"
         >
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-border/60 text-sm">
             {tables.map((t) => {
               const active = t.name === tableName;
               return (
@@ -80,7 +80,7 @@ export default async function DbBrowserPage({
                     className={`flex items-center justify-between gap-2 px-3 py-2 ${
                       active
                         ? "bg-brand-50 text-brand-700 font-medium"
-                        : "text-text-muted hover:bg-surface-2 hover:text-text"
+                        : "text-text-muted hover:bg-surface-2/40 hover:text-text"
                     }`}
                   >
                     <span className="font-mono text-xs truncate">{t.name}</span>
@@ -144,7 +144,7 @@ function TableViewer({
   const hasNext = nextOffset < total;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="font-mono text-sm">{tableName}</h2>
@@ -190,7 +190,7 @@ function TableViewer({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border font-mono">
+          <tbody className="divide-y divide-border/60 font-mono">
             {rows.length === 0 ? (
               <tr>
                 <td

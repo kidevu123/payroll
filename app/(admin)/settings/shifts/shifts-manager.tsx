@@ -80,7 +80,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move up"
                     onClick={() => move(i, -1)}
                     disabled={i === 0 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
@@ -89,7 +89,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move down"
                     onClick={() => move(i, 1)}
                     disabled={i === items.length - 1 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>

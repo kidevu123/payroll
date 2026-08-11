@@ -232,7 +232,7 @@ export function CommandPalette({
                             "w-full text-left px-4 py-2 flex items-center gap-3",
                             isActive
                               ? "bg-brand-50 text-brand-800"
-                              : "hover:bg-surface-2 text-text",
+                              : "hover:bg-surface-2/40 text-text",
                           )}
                         >
                           <Icon

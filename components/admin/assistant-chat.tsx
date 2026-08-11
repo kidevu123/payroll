@@ -86,7 +86,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
                       type="button"
                       disabled={!configured || loading}
                       onClick={() => void send(s)}
-                      className="rounded-lg border border-border/70 bg-surface-2/60 px-3 py-1.5 text-left text-[13px] text-text hover:bg-surface-2 disabled:opacity-50"
+                      className="rounded-lg border border-border/70 bg-surface-2/60 px-3 py-1.5 text-left text-[13px] text-text hover:bg-surface-2/40 disabled:opacity-50"
                     >
                       {s}
                     </button>

@@ -85,7 +85,7 @@ export default async function PunchesAdmin({
   const periodById = new Map(periodRows.map((p) => [p.id, p]));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h1 className="text-title tracking-tight antialiased text-text">All punches</h1>
         <p className="text-sm text-text-muted">
@@ -209,7 +209,7 @@ export default async function PunchesAdmin({
                 <tr
                   key={p.id}
                   className={
-                    "hover:bg-surface-2/30 " +
+                    "hover:bg-surface-2/40 " +
                     (p.voidedAt ? "opacity-50 line-through " : "") +
                     (outOfPeriod ? "bg-warning-50/40 " : "")
                   }

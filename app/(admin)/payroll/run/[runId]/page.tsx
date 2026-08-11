@@ -167,7 +167,7 @@ export default async function RunReviewPage({
   const unresolvedAlerts = alerts.filter((a) => !a.resolvedAt).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/payroll">
@@ -204,7 +204,7 @@ export default async function RunReviewPage({
                 <div>Alerts</div>
                 <div>Payslip</div>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {rendered.map(({ employee, result, alerts: eAlerts, payslip }) => {
                   const ePunches = (punchesByE.get(employee.id) ?? []).filter((p) => !p.voidedAt);
                   return (
@@ -350,7 +350,7 @@ export default async function RunReviewPage({
                       <th className="py-2 px-3 font-medium">Reason / details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border/60">
                     {exceptions.slice(0, 50).map((e) => {
                     const raw = (e.rawData ?? {}) as Record<string, unknown>;
                     const reason =
@@ -366,7 +366,7 @@ export default async function RunReviewPage({
                           .join(" · ")
                       : "";
                     return (
-                      <tr key={e.id} className="hover:bg-surface-2/30">
+                      <tr key={e.id} className="hover:bg-surface-2/40">
                         <td className="py-1.5 pr-3 tabular-nums text-xs">{e.type}</td>
                         <td className="py-1.5 px-3 tabular-nums text-xs">
                           {e.ngtecoEmployeeRef ?? "—"}
@@ -449,7 +449,7 @@ function RunPunchTable({
             <th className="py-1 px-3 font-medium text-right">Hours</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/40">
+        <tbody className="divide-y divide-border/60">
           {days.flatMap(([day, ps]) =>
             ps
               .sort((a, b) => {
@@ -466,7 +466,7 @@ function RunPunchTable({
                   : null;
                 const hours = outT ? (outT.getTime() - inT.getTime()) / 3_600_000 : null;
                 return (
-                  <tr key={p.id} className="hover:bg-surface-2/30">
+                  <tr key={p.id} className="hover:bg-surface-2/40">
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0
                         ? new Intl.DateTimeFormat("en-US", {

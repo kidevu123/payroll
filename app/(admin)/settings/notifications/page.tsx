@@ -15,7 +15,7 @@ export default async function Page() {
   const notifications = await getSetting("notifications");
   const configured = vapidConfigured();
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <VapidStatus
         configured={configured}
         publicKeyHint={fingerprint(vapidPublicKey())}

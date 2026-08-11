@@ -47,7 +47,7 @@ export function CashDenominationButton({
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2 hover:text-text sm:h-8 sm:w-8"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2/40 hover:text-text sm:h-8 sm:w-8"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -111,7 +111,7 @@ export function CashDenominationButton({
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/60">
                   {summary.rows.map((row) => (
                     <tr key={row.employeeId}>
                       <td className="px-3 py-2 font-medium">{row.employeeName}</td>

@@ -122,7 +122,7 @@ export function SideRadio({
         "flex min-h-11 cursor-pointer items-center gap-3 rounded-input border bg-surface px-3 py-2.5 text-sm transition-colors",
         checked
           ? "border-brand-300 bg-brand-50 text-brand-900"
-          : "border-border text-text hover:bg-surface-2",
+          : "border-border text-text hover:bg-surface-2/40",
       )}
     >
       <input

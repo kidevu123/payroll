@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function CleanupPage() {
   await requireOwner();
   return (
-    <div className="space-y-4 max-w-3xl">
+    <div className="space-y-5 max-w-3xl">
       <div>
         <h2 className="text-heading font-semibold tracking-tight text-text">Data cleanup</h2>
         <p className="text-xs text-text-muted">

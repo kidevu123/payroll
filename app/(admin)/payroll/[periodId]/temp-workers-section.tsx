@@ -131,7 +131,7 @@ export function TempWorkersSection({
                   <th className="py-2 pl-3 pr-1 font-medium text-right" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {initialEntries.map((e) => (
                   <TempWorkerRow key={e.id} entry={e} locked={locked} />
                 ))}

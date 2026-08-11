@@ -133,7 +133,7 @@ export default async function TimeOffTallyPage({
   const nextYear = year + 1 <= currentYear ? year + 1 : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <Link
@@ -201,7 +201,7 @@ export default async function TimeOffTallyPage({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/60">
               {rows.length === 0 && (
                 <tr>
                   <td

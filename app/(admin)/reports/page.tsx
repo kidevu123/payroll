@@ -72,7 +72,7 @@ export default async function ReportsPage({
   const overview = computeReportsOverview(allReports, ytdRows, currentYear);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text">Reports</h1>

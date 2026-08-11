@@ -25,8 +25,8 @@ export function PayslipPdfActions({
   const downloadUrl = `${url}?download=1`;
   const linkClass =
     layout === "inline"
-      ? "inline-flex items-center gap-1 rounded-input px-1.5 py-0.5 text-[11px] font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0"
-      : "inline-flex items-center gap-1.5 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0";
+      ? "inline-flex items-center gap-1 rounded-input px-1.5 py-0.5 text-[11px] font-medium text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0"
+      : "inline-flex items-center gap-1.5 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0";
 
   const links = (
     <>

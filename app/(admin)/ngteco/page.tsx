@@ -22,7 +22,7 @@ export default async function NgtecoRunsPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h1 className="text-title tracking-tight antialiased text-text">NGTeco runs</h1>
         <p className="text-sm text-text-muted">
@@ -53,7 +53,7 @@ export default async function NgtecoRunsPage() {
                 <th className="px-3 py-2 font-medium text-right" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/60">
               {runs.map((r, i) => {
                 const p = periods[i];
                 return (

@@ -215,7 +215,7 @@ function DocRow({ doc, viewLabel }: { doc: PayslipCardDoc; viewLabel: string }) 
       <PdfLink
         href={`/api/payroll-docs/${doc.id}`}
         filename="paystub.pdf"
-        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0"
+        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0"
       >
         <Download className="h-3 w-3" /> {viewLabel}
       </PdfLink>

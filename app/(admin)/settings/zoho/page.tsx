@@ -26,7 +26,7 @@ export default async function Page() {
   ).toString();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <SetupChecklist
         redirectUri={redirectUri}
         appUrlConfigured={Boolean(appUrlEnv)}

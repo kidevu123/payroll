@@ -6,14 +6,11 @@ import {
   isAccountantPeriodReviewPath,
   type Surface,
 } from "@/lib/auth/role-matrix";
-import { Sidebar } from "@/components/admin/sidebar";
-import { Topbar } from "@/components/admin/topbar";
 import { DashboardDarkShell } from "@/components/dashboard/dark-shell";
 import { getTranslations } from "next-intl/server";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
 import { PollStatusBar, PollStatusProvider } from "@/components/admin/poll-status-provider";
-import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
 import { listEmployees } from "@/lib/db/queries/employees";
@@ -63,10 +60,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // app chrome and never darkens the auth/login pages.
   const themeCookie = (await cookies()).get("milo-theme")?.value;
   const themeClass = themeCookie === "light" ? "" : "dark";
-  // Every admin route now renders the cohesive dark shell (not just the
-  // dashboard). Typed as boolean so the light-shell fallback below stays
-  // valid code; it is no longer reached.
-  const isDashboardRoute: boolean = true;
   if (session.user.role !== "OWNER") {
     if (pathname) {
       // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
@@ -149,128 +142,71 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const commandTargets = [...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS];
 
-  // ── Dashboard: render the cohesive full-screen DARK shell ────────────────
-  // The dashboard is the showcase surface; it gets its own dark sidebar +
-  // canvas instead of the light chrome the rest of the admin app uses.
-  if (isDashboardRoute) {
-    const meEmp = session.user.employeeId
-      ? employees.find((e) => e.id === session.user.employeeId) ?? null
-      : null;
-    const friendlyFromEmail = (email: string): string => {
-      const local = email.split("@")[0] ?? email;
-      const first = local.split(/[._-]+/).filter(Boolean)[0] ?? local;
-      return first.charAt(0).toUpperCase() + first.slice(1);
-    };
-    const displayName = meEmp?.displayName ?? friendlyFromEmail(session.user.email);
-    const roleLabel =
-      session.user.role.charAt(0) + session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
-    const avatarUrl = meEmp
-      ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
-      : null;
-    const tAuth = await getTranslations("auth");
-    // Build/version footer — preserves the SHA + server-time marker the light
-    // shell shows, computed server-side so the time is the server's clock.
-    const shaFull = process.env.NEXT_PUBLIC_GIT_SHA ?? "";
-    const sha = shaFull ? shaFull.slice(0, 7) : "dev";
-    const tz = company?.timezone ?? "America/New_York";
-    const serverTime = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZoneName: "short",
-    }).format(new Date());
-    return (
-      <PollStatusProvider>
-        <div id="admin-root" className={themeClass}>
-          <DashboardDarkShell
-            company={companyForBrand}
-            user={{
-              name: displayName,
-              role: roleLabel,
-              email: session.user.email,
-              avatarUrl,
-            }}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            badges={navBadges}
-            commandTargets={commandTargets}
-            signOutLabel={tAuth("signOut")}
-            footer={{ sha, shaFull, serverTime }}
-          >
-            {/* NGTeco poll progress — shown on every admin page. */}
-            <PollStatusBar />
-            {children}
-          </DashboardDarkShell>
-          {/* Mobile navigation — hands off to the dark shell's icon rail at md. */}
-          <MobileQuickNav
-            company={companyForBrand}
-            currentLocale={locale}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            badges={navBadges}
-            hideFrom="md"
-          />
-          <FeedbackLauncher bottomBarHideFrom="md" />
-        </div>
-      </PollStatusProvider>
-    );
-  }
-
+  // Every admin route renders the cohesive dark shell. (A light Sidebar +
+  // Topbar shell used to live below this as an `if (isDashboardRoute)`
+  // fallback with the flag hardcoded to true — 55 lines of unreachable code
+  // that kept sprouting stale 3.5rem topbar offsets in live pages.)
+  const meEmp = session.user.employeeId
+    ? employees.find((e) => e.id === session.user.employeeId) ?? null
+    : null;
+  const friendlyFromEmail = (email: string): string => {
+    const local = email.split("@")[0] ?? email;
+    const first = local.split(/[._-]+/).filter(Boolean)[0] ?? local;
+    return first.charAt(0).toUpperCase() + first.slice(1);
+  };
+  const displayName = meEmp?.displayName ?? friendlyFromEmail(session.user.email);
+  const roleLabel =
+    session.user.role.charAt(0) + session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
+  const avatarUrl = meEmp
+    ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
+    : null;
+  const tAuth = await getTranslations("auth");
+  // Build/version footer — preserves the SHA + server-time marker the light
+  // shell shows, computed server-side so the time is the server's clock.
+  const shaFull = process.env.NEXT_PUBLIC_GIT_SHA ?? "";
+  const sha = shaFull ? shaFull.slice(0, 7) : "dev";
+  const tz = company?.timezone ?? "America/New_York";
+  const serverTime = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+  }).format(new Date());
   return (
-    <div className="min-h-dvh flex overflow-x-hidden bg-page shell-admin">
-      <Sidebar
-        company={companyForBrand}
-        role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}
-        allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-        badges={navBadges}
-      />
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-        <PollStatusProvider>
-          {/* Bell links to /calendar, so it reflects pending time-off only.
-              Missed-punch reviews surface on the Time nav badge instead. */}
-          <Topbar
-            email={session.user.email}
-            role={session.user.role}
-            unreadCount={timeOffCount}
-            commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
-            company={companyForBrand}
-            currentLocale={locale}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-          />
-          <PollStatusBar offsetForFixedTopbar />
-          <MobileQuickNav
-            company={companyForBrand}
-            currentLocale={locale}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            badges={navBadges}
-          />
-          {/*
-            Mobile spacing math:
-              top    = fixed Topbar (3.5rem) + notch inset. The poll status
-                       bar, when shown, applies its own top offset so it sits
-                       just below the topbar without double-counting here.
-              bottom = fixed bottom tab bar (~3.5rem) + home-indicator inset,
-                       so page content never hides behind the bottom nav.
-            On lg the sidebar + sticky topbar take over and neither fixed
-            mobile bar renders, so we drop to the plain desktop padding.
-          */}
-          <main className="flex-1 min-w-0 px-3 pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-4 lg:p-8 lg:pt-8 lg:pb-8 max-w-screen-2xl w-full mx-auto page-enter">
-            {children}
-          </main>
-          {/*
-            On mobile the footer sits above the fixed bottom tab bar, so give
-            it matching bottom clearance (bar height + home-indicator inset).
-            Desktop has no bottom bar, so the inset collapses to 0 there.
-          */}
-          <AppFooter
-            timezone={company?.timezone ?? "America/New_York"}
-            className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-4"
-          />
-        </PollStatusProvider>
+    <PollStatusProvider>
+      <div id="admin-root" className={themeClass}>
+        <DashboardDarkShell
+          company={companyForBrand}
+          user={{
+            name: displayName,
+            role: roleLabel,
+            email: session.user.email,
+            avatarUrl,
+          }}
+          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          badges={navBadges}
+          commandTargets={commandTargets}
+          signOutLabel={tAuth("signOut")}
+          footer={{ sha, shaFull, serverTime }}
+        >
+          {/* NGTeco poll progress — shown on every admin page. */}
+          <PollStatusBar />
+          {children}
+        </DashboardDarkShell>
+        {/* Mobile navigation — hands off to the dark shell's icon rail at md. */}
+        <MobileQuickNav
+          company={companyForBrand}
+          currentLocale={locale}
+          allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
+          badges={navBadges}
+          hideFrom="md"
+        />
+        <FeedbackLauncher />
       </div>
-      <FeedbackLauncher />
-    </div>
+    </PollStatusProvider>
   );
 }

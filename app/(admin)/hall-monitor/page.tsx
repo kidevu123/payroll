@@ -67,7 +67,7 @@ export default async function HallMonitorPage({
     : [];
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text flex items-center gap-2">

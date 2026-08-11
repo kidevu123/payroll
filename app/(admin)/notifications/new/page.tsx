@@ -38,7 +38,7 @@ export default async function NewAnnouncementPage({
     }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <Link
           href="/notifications"

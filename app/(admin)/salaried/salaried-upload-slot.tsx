@@ -202,7 +202,7 @@ export function SalariedUploadSlot({
   return (
     <div className="space-y-4">
       {docs.length > 0 && (
-        <ul className="divide-y divide-border rounded-card border border-border bg-surface overflow-hidden">
+        <ul className="divide-y divide-border/60 rounded-card border border-border bg-surface overflow-hidden">
           {docs.map((d) => (
             <DocRow key={d.id} doc={d} />
           ))}
@@ -252,7 +252,7 @@ export function SalariedUploadSlot({
             "group flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border border-dashed px-4 py-7 text-center transition-colors",
             dragOver
               ? "border-brand-700 bg-brand-50"
-              : "border-border bg-surface-2/40 hover:border-brand-700/60 hover:bg-surface-2",
+              : "border-border bg-surface-2/40 hover:border-brand-700/60 hover:bg-surface-2/40",
           ].join(" ")}
         >
           <input
@@ -634,7 +634,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
       className={[
         "rounded-chip px-2 py-0.5 tabular-nums text-xs transition-colors",
         liveHasAmount
-          ? "text-text hover:bg-surface-2"
+          ? "text-text hover:bg-surface-2/40"
           : "bg-warning-50 text-warning-700 hover:bg-warning-50/80",
       ].join(" ")}
     >

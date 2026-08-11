@@ -81,7 +81,7 @@ export function ScheduleTabs({
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
                 isActive
                   ? ACTIVE_TONE[t]
-                  : "text-text-muted hover:text-text hover:bg-surface-2",
+                  : "text-text-muted hover:text-text hover:bg-surface-2/40",
               )}
             >
               {LABELS[t]}

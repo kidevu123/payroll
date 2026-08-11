@@ -44,7 +44,7 @@ export default async function CashDrawerPage() {
     .reduce((s, e) => s + Number(e.entry.amountCents), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text">Cash drawer</h1>
@@ -174,7 +174,7 @@ export default async function CashDrawerPage() {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-border/60">
                 {entries.length === 0 ? (
                   <tr>
                     <td colSpan={canManage ? 6 : 5} className="px-4 py-6">

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const company = await getSetting("company");
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <BrandingForm company={company} />
 
       <Card>

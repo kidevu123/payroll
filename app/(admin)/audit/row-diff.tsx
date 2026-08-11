@@ -66,7 +66,7 @@ export function AuditRowDiff({
         disabled={!hasPayload}
         className={cn(
           "w-full flex items-start gap-3 p-3 text-left text-xs",
-          hasPayload ? "hover:bg-surface-2" : "opacity-90 cursor-default",
+          hasPayload ? "hover:bg-surface-2/40" : "opacity-90 cursor-default",
         )}
       >
         <span className="shrink-0 text-text-muted">

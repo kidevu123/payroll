@@ -26,7 +26,7 @@ export default async function NgtecoRunDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Button asChild variant="ghost" size="sm">
         <Link href="/ngteco">
           <ArrowLeft className="h-4 w-4" /> All runs

@@ -49,7 +49,7 @@ export function NotificationsForm({
                   <th className="py-2 px-3 font-medium text-center">Push</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {kinds.map((kind) => {
                   const val = notifications.defaults[kind];
                   if (!val) return null;

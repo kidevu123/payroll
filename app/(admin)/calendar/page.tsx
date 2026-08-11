@@ -289,7 +289,7 @@ export default async function CalendarPage({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text">
@@ -349,7 +349,7 @@ export default async function CalendarPage({
               No approved time-off yet this year.
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border/60">
               {totals.map((r) => (
                 <li
                   key={r.id}
@@ -391,7 +391,7 @@ export default async function CalendarPage({
               No approved time-off in {monthName}.
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border/60">
               {[...approved]
                 .sort((a, b) =>
                   a.startDate < b.startDate

@@ -215,7 +215,7 @@ export function ComposeAnnouncementForm({
                 filtered.map((e) => (
                   <label
                     key={e.id}
-                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-surface-2 cursor-pointer"
+                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-surface-2/40 cursor-pointer"
                   >
                     <input
                       type="checkbox"
@@ -286,7 +286,7 @@ function ModeChip({
       className={`h-8 px-3 rounded-chip border text-xs font-medium transition-colors ${
         active
           ? "border-brand-700 bg-brand-700 text-brand-fg"
-          : "border-border bg-surface text-text-muted hover:bg-surface-2"
+          : "border-border bg-surface text-text-muted hover:bg-surface-2/40"
       }`}
     >
       {label}
@@ -310,7 +310,7 @@ function ToggleChip({
       className={`h-8 px-3 rounded-input border text-xs font-medium transition-colors ${
         active
           ? "border-brand-700 bg-brand-50 text-brand-700"
-          : "border-border bg-surface text-text-muted hover:bg-surface-2"
+          : "border-border bg-surface text-text-muted hover:bg-surface-2/40"
       }`}
     >
       {label}

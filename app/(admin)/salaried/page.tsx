@@ -44,7 +44,7 @@ export default async function SalariedPage() {
 
   if (salaried.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text">Salaried</h1>
           <p className="text-sm text-text-muted">

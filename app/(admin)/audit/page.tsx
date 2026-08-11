@@ -50,7 +50,7 @@ export default async function AuditPage({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-title tracking-tight antialiased text-text">Audit log</h1>

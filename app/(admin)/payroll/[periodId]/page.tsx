@@ -417,7 +417,7 @@ export default async function PeriodReviewPage({
   )}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Sticky action bar — keeps state pill, totals, primary CTAs visible
           even on long period pages. The lock/mark-paid action used to live at
           page bottom, requiring 3000px of scroll on busy weeks. */}
@@ -889,7 +889,7 @@ export default async function PeriodReviewPage({
                 <div className="text-right">Rounded</div>
                 <div className="text-right">Issues</div>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {displayRows.map((row) => {
                   const { employee, result, incomplete, punches } = row;
                   const ePunches = punches.filter((p) => !p.voidedAt);
@@ -1128,7 +1128,7 @@ function PunchSubTable({
             <th className="py-1 px-3 font-semibold text-right">Hours</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/40">
+        <tbody className="divide-y divide-border/60">
           {days.flatMap(([day, ps]) =>
             ps
               .sort((a, b) => {
@@ -1154,7 +1154,7 @@ function PunchSubTable({
                 const isInProgress = isMissingClockOut && day >= today;
                 const isStaleOpen = isMissingClockOut && day < today;
                 return (
-                  <tr key={p.id} className="hover:bg-surface-2/30">
+                  <tr key={p.id} className="hover:bg-surface-2/40">
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0 ? formatDayLabel(day, tz) : ""}
                     </td>

@@ -47,7 +47,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
         {holidays.length === 0 ? (
           <p className="text-sm text-text-muted">No holidays yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-card border border-border bg-surface shadow-sm">
+          <ul className="divide-y divide-border/60 rounded-card border border-border bg-surface shadow-sm">
             {holidays.map((h) => (
               <li
                 key={h.id}

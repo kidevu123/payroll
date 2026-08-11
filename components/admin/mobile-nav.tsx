@@ -228,7 +228,7 @@ function MobileDrawer({
             type="button"
             onClick={onClose}
             aria-label={tNav("closeNavigation")}
-            className="inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2"
+            className="inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2/40"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>
@@ -251,7 +251,7 @@ function MobileDrawer({
                           "flex items-center gap-3 px-3 py-2.5 rounded-input text-sm",
                           active
                             ? "bg-brand-50 text-brand-800 font-medium"
-                            : "text-text-muted hover:bg-surface-2 hover:text-text",
+                            : "text-text-muted hover:bg-surface-2/40 hover:text-text",
                         )}
                       >
                         <Icon className="h-4 w-4 shrink-0" aria-hidden />
@@ -302,7 +302,7 @@ export function MobileNav({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={tNav("openNavigation")}
-        className="lg:hidden inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2"
+        className="lg:hidden inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2/40"
       >
         <Menu className="h-5 w-5" aria-hidden />
       </button>
@@ -386,7 +386,7 @@ export function MobileQuickNav({
                   "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors",
                   active
                     ? "text-brand-800"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",
+                    : "text-text-muted hover:bg-surface-2/40 hover:text-text active:bg-surface-2",
                 )}
               >
                 {active ? (
@@ -417,7 +417,7 @@ export function MobileQuickNav({
               "group relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium leading-tight transition-colors",
               moreActive
                 ? "text-brand-800"
-                : "text-text-muted hover:bg-surface-2 hover:text-text active:bg-surface-2",
+                : "text-text-muted hover:bg-surface-2/40 hover:text-text active:bg-surface-2",
             )}
           >
             {moreActive ? (

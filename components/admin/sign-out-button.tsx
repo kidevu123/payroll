@@ -34,7 +34,7 @@ export function SignOutButton({ label }: { label: string }) {
           window.location.href = "/login";
         });
       }}
-      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-muted hover:bg-surface-2 hover:text-text transition-colors text-left disabled:opacity-60"
+      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-text-muted hover:bg-surface-2/40 hover:text-text transition-colors text-left disabled:opacity-60"
     >
       <LogOut className="h-4 w-4 text-text-subtle" aria-hidden />
       {pending ? "…" : label}

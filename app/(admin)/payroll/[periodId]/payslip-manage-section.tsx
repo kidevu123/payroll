@@ -71,7 +71,7 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
                 <th className="py-2 px-3 font-medium text-right" />
               </tr>
             </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {rows.map((r) => (
                   <PayslipRow key={r.payslip.id} row={r} />
                 ))}
