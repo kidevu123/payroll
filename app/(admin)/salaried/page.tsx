@@ -263,7 +263,7 @@ function SalariedStat({
         </span>
         <div className="min-w-0">
           <div className="text-xs font-medium text-text-muted">{label}</div>
-          <div className="text-xl font-bold leading-tight tabular-nums tracking-tight text-text">
+          <div className="text-metric tabular-nums text-text">
             {value}
           </div>
           <div className="text-[11px] text-text-subtle">{sub}</div>

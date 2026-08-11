@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import {
   Instrument_Sans,
-  Bricolage_Grotesque,
   IBM_Plex_Mono,
 } from "next/font/google";
 import "./globals.css";
@@ -60,16 +59,17 @@ export const dynamic = "force-dynamic";
 // added an external round-trip to every cold load — the single biggest
 // first-paint cost on the phone. Exposed as CSS variables consumed by the
 // --font-sans / --font-mono tokens in globals.css.
+//
+// ONE UI typeface. Headings used to render in Bricolage Grotesque — a
+// deliberately irregular display face — against Instrument Sans body copy.
+// Measured against shadcn/Geist, Vercel, Linear and Stripe: all four set
+// headings and body in the SAME family and separate them with weight and
+// tracking instead. The two-typeface pairing was the loudest reason the app
+// read as inconsistent. Mono is kept, but only for real code artifacts.
 const instrument = Instrument_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-instrument",
-});
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-  display: "swap",
-  variable: "--font-bricolage",
 });
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
@@ -101,7 +101,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       style={brandStyle}
-      className={`${instrument.variable} ${bricolage.variable} ${plexMono.variable}`}
+      className={`${instrument.variable} ${plexMono.variable}`}
     >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>

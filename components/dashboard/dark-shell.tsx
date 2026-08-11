@@ -463,11 +463,17 @@ export function DashboardDarkShell({
           top/bottom fixed bars hide from md up, so their pt/pb offsets reset
           to plain py-4 at the same breakpoint. */}
       <main className="md:pl-16 lg:pl-64 min-h-dvh">
-        {/* Desktop bottom padding clears the fixed FeedbackLauncher (bottom-4
+        {/* Content column caps at 1440px. It was 1800px, which on a wide
+            monitor stretched list rows into a name on the far left and a
+            status chip on the far right with a lake of dead space between.
+            Measured comparison: Stripe docs ~1175, shadcn ~1214, Geist 1220,
+            Linear ~1344.
+
+            Desktop bottom padding clears the fixed FeedbackLauncher (bottom-4
             right-4, z-30). With md:pb-4 the launcher sat directly on top of
             whatever rendered in the canvas's bottom-right corner — on /reports
             that was the primary "Generate custom report" CTA. */}
-        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-4 md:pt-4 md:pb-16 2xl:px-10">
+        <div className="mx-auto w-full max-w-[min(1440px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-4 md:pt-4 md:pb-16 2xl:px-10">
           {children}
         </div>
       </main>

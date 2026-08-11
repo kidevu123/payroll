@@ -38,7 +38,7 @@ function KpiCard({
         <div className="text-micro uppercase text-text-subtle">
           {label}
         </div>
-        <div className="mt-0.5 truncate text-2xl font-semibold leading-tight tracking-tight tabular-nums text-text">
+        <div className="mt-0.5 truncate text-metric tabular-nums text-text">
           {children}
         </div>
         <div className="text-[11px] text-text-subtle">{sub}</div>

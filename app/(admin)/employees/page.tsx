@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Users, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EmployeeRow } from "@/components/domain/employee-row";
+import { EmployeeRow, EmployeeListHeader } from "@/components/domain/employee-row";
 import { cn } from "@/lib/utils";
 import {
   listEmployees,
@@ -148,7 +148,9 @@ export default async function EmployeesPage({
           }
         />
       ) : (
-        <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden divide-y divide-border/60">
+        <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden">
+          <EmployeeListHeader className="border-b border-border/60 bg-surface-2/40" />
+          <div className="divide-y divide-border/60">
           {employees.map((e) => (
             <EmployeeRow
               key={e.id}
@@ -157,6 +159,7 @@ export default async function EmployeesPage({
               href={`/employees/${e.id}`}
             />
           ))}
+          </div>
         </div>
       )}
     </div>

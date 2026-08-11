@@ -65,7 +65,7 @@ export default async function CashDrawerPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={balanceCents} monospace={false} />
             </p>
             <p className="text-[11px] text-text-muted mt-1">
@@ -81,7 +81,7 @@ export default async function CashDrawerPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={totalDeposits} monospace={false} />
             </p>
             {/* Reserved sub-line so this card's baseline matches "On hand". */}
@@ -98,7 +98,7 @@ export default async function CashDrawerPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={totalWithdrawals} monospace={false} />
             </p>
             {/* Reserved sub-line so this card's baseline matches "On hand". */}

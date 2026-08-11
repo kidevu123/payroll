@@ -52,7 +52,7 @@ export function ReportMixDonut({ mix }: { mix: ReportsOverview["mix"] }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold leading-none tabular-nums text-text">
+          <span className="text-metric tabular-nums text-text">
             {mix.total}
           </span>
           <span className="mt-0.5 text-micro uppercase text-text-subtle">
