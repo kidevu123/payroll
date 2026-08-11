@@ -450,7 +450,13 @@ export default async function PeriodReviewPage({
           )}
         />
       </div>
-      <div className="rounded-card border border-border bg-surface p-3 shadow-card lg:sticky lg:top-14 lg:z-20 lg:-mx-8 lg:rounded-none lg:border-x-0 lg:bg-page/95 lg:px-8 lg:py-2.5 lg:backdrop-blur lg:shadow-none">
+      {/* Stays in the content column — same card chrome as every section
+          below it. The old full-bleed treatment (-mx-8, no side borders)
+          read as a stray band floating between the title and the cards.
+          Pins flush to the viewport (top-0): the admin shell has no desktop
+          topbar — the old top-14 assumed one and left a 56px see-through
+          gap above the pinned bar. */}
+      <div className="rounded-card border border-border/70 bg-surface/95 p-3 shadow-card backdrop-blur lg:sticky lg:top-0 lg:z-20 lg:px-4 lg:py-2.5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
               <StatusPill status={period.state} />
