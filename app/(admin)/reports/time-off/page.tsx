@@ -142,7 +142,7 @@ export default async function TimeOffTallyPage({
           >
             <ArrowLeft className="h-3 w-3" /> Reports
           </Link>
-          <h1 className="text-title font-semibold tracking-tight">
+          <h1 className="text-title tracking-tight antialiased text-text">
             Time off · {year}
           </h1>
           <p className="text-sm text-text-muted">
@@ -173,7 +173,7 @@ export default async function TimeOffTallyPage({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{year} totals</CardTitle>
+          <CardTitle>{year} totals</CardTitle>
           <CardDescription className="text-xs">
             Days are calendar days (full-day requests). Schedule note hours
             are partial-day heads-ups — these don&apos;t count toward
@@ -183,7 +183,7 @@ export default async function TimeOffTallyPage({
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm tabular-nums">
-            <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border bg-surface-2/60">
+            <thead className="text-left text-micro uppercase text-text-subtle border-b border-border bg-surface-2/60">
               <tr>
                 <th className="px-3 py-2 font-medium min-w-[10rem] whitespace-nowrap">
                   Employee

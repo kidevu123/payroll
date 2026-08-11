@@ -332,7 +332,7 @@ export default async function EmployeeHome() {
                   {t("latestPayslip")}
                 </p>
                 {latestPayslip.state === "disputed" ? (
-                  <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
+                  <span className="inline-flex items-center gap-1 rounded-chip border border-warning-200/80 bg-warning-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warning-700">
                     <AlertTriangle className="h-3 w-3" aria-hidden />
                     {t("reported")}
                   </span>
@@ -389,7 +389,7 @@ export default async function EmployeeHome() {
                   {t("alertsTitle")}
                 </h3>
                 {alerts.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 border border-warn-200/80 px-1.5 text-[11px] font-medium text-warn-700 tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-50 border border-warning-200/80 px-1.5 text-[11px] font-medium text-warning-700 tabular-nums">
                     {alerts.length}
                   </span>
                 )}

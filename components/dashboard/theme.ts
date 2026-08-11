@@ -38,6 +38,18 @@ export const DASH = {
   emeraldDim: "var(--dash-emerald-dim)",
   rose: "var(--dash-rose)",
   amber: "var(--dash-amber)",
+
+  /**
+   * The shell's primary accent fill + the ink that sits on it. Both follow the
+   * BRAND ramp (lib/brand/ramp.ts), not --dash-*, so changing the owner's
+   * brand color moves the sidebar CTA, avatar chips, and rail buttons with it.
+   * This was a hardcoded `linear-gradient(135deg, #34d399, #059669)` repeated
+   * at 16 call sites, which is why the chrome stayed emerald while
+   * brand-colored buttons elsewhere did not.
+   */
+  accentGradient:
+    "linear-gradient(135deg, var(--color-brand-400), var(--color-brand-600))",
+  onAccent: "var(--dash-on-accent)",
 } as const;
 
 /** Chart-specific colors. recharts accepts `var(--x)` in stroke/fill/stop. */

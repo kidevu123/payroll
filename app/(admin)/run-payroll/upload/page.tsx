@@ -8,7 +8,7 @@ export default async function Page() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-title font-semibold tracking-tight">Upload punch CSV</h1>
+        <h1 className="text-title tracking-tight antialiased text-text">Upload punch CSV</h1>
         <p className="text-sm text-text-muted">
           For backfills or when the NGTeco scraper is offline. Accepts the
           standard NGTeco export shape and a permissive legacy fallback.

@@ -72,11 +72,11 @@ export function PunchRow({
       <div className="text-text-muted">{formatDay(punch.clockIn, timezone)}</div>
       <div className="tabular-nums">
         {ambiguous ? (
-          <span className="text-warning-800 text-xs font-semibold uppercase tracking-wide">
+          <span className="text-warning-800 text-micro uppercase">
             Unpaired
           </span>
         ) : missingIn ? (
-          <span className="text-warning-800 text-xs font-semibold uppercase tracking-wide">
+          <span className="text-warning-800 text-micro uppercase">
             Missing in
           </span>
         ) : (
@@ -95,7 +95,7 @@ export function PunchRow({
         )}
       </div>
       {missingIn || ambiguous ? (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-warning-800">
+        <span className="text-micro uppercase text-warning-800">
           fix
         </span>
       ) : (

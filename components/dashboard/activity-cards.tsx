@@ -289,7 +289,7 @@ function Bucket({
     <section>
       <div className="mb-0.5 flex items-center justify-between">
         <span
-          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 text-micro uppercase"
           style={{ color: accent }}
         >
           <Icon className="h-3 w-3" aria-hidden="true" />

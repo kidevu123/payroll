@@ -8,6 +8,7 @@ import * as React from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { pollNowAction } from "@/app/(admin)/payroll/actions";
 import { usePollStatus } from "@/components/admin/poll-status-provider";
+import { DASH } from "@/components/dashboard/theme";
 
 export function DashboardPollButton() {
   const { startWatching, isActive } = usePollStatus();
@@ -32,8 +33,8 @@ export function DashboardPollButton() {
       disabled={inProgress}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold transition-opacity disabled:opacity-70"
       style={{
-        color: "#0b0b12",
-        background: "linear-gradient(135deg, #34d399, #059669)",
+        color: DASH.onAccent,
+        background: DASH.accentGradient,
         boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
       }}
     >

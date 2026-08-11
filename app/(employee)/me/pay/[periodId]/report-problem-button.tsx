@@ -30,7 +30,7 @@ export function ReportProblemButton({
 
   if (done || alreadyDisputed) {
     return (
-      <div className="inline-flex items-center gap-2 rounded-input border border-warn-200/80 bg-warn-50 px-3 py-2 text-xs font-medium text-warn-700">
+      <div className="inline-flex items-center gap-2 rounded-input border border-warning-200/80 bg-warning-50 px-3 py-2 text-xs font-medium text-warning-700">
         <CircleAlert className="h-3.5 w-3.5" aria-hidden />
         <span>{t("problemNotified")}</span>
       </div>
@@ -44,7 +44,7 @@ export function ReportProblemButton({
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
-        className="text-warn-700 hover:bg-warn-50 hover:text-warn-700"
+        className="text-warning-700 hover:bg-warning-50 hover:text-warning-700"
       >
         <AlertTriangle className="h-4 w-4" /> {t("reportProblem")}
       </Button>
@@ -52,16 +52,16 @@ export function ReportProblemButton({
   }
 
   return (
-    <div className="w-full rounded-card border border-warn-200/80 bg-warn-50/60 p-4 space-y-3">
+    <div className="w-full rounded-card border border-warning-200/80 bg-warning-50/60 p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium tracking-tight text-warn-700 antialiased">
+        <p className="text-sm font-medium tracking-tight text-warning-700 antialiased">
           {t("whatsWrong")}
         </p>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 text-warn-700 hover:bg-warn-50"
+          className="h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 text-warning-700 hover:bg-warning-50"
           onClick={() => {
             setOpen(false);
             setReason("");
@@ -73,7 +73,7 @@ export function ReportProblemButton({
         </Button>
       </div>
       <textarea
-        className="w-full h-24 rounded-input border border-border bg-surface px-3 py-2 text-sm leading-relaxed transition-colors focus-visible:outline-none focus-visible:border-warn-700 focus-visible:ring-2 focus-visible:ring-warn-200"
+        className="w-full h-24 rounded-input border border-border bg-surface px-3 py-2 text-sm leading-relaxed transition-colors focus-visible:outline-none focus-visible:border-warning-700 focus-visible:ring-2 focus-visible:ring-warning-200"
         placeholder={t("problemPlaceholder")}
         value={reason}
         onChange={(e) => setReason(e.target.value)}

@@ -34,7 +34,7 @@ export function VapidStatus({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           {configured ? (
             <>
               <CheckCircle2 className="h-4 w-4 text-success-700" />

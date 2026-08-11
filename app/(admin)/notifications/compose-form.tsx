@@ -226,7 +226,7 @@ export function ComposeAnnouncementForm({
                       className="h-4 w-4"
                     />
                     <span className="flex-1 truncate">{e.displayName}</span>
-                    <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+                    <span className="text-micro uppercase text-text-subtle">
                       {e.payType}
                     </span>
                   </label>

@@ -90,7 +90,7 @@ export async function MissedPunchReviewSummary({
 
       {showOnFile ? (
         <div className="rounded-input border border-border bg-surface-2/50 px-2 py-1.5 space-y-0.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-text-muted">
+          <p className="text-micro uppercase text-text-muted">
             {t("onFile")}
           </p>
           {timeCell(t("clockIn"), ctx.onFileClockIn, false)}
@@ -100,7 +100,7 @@ export async function MissedPunchReviewSummary({
 
       {showProposed ? (
         <div className="rounded-input border border-warning-200 bg-warning-50/60 px-2 py-1.5 space-y-0.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-warning-900">
+          <p className="text-micro uppercase text-warning-900">
             {t("employeeProposes")}
           </p>
           {ctx.proposedClockIn !== null &&

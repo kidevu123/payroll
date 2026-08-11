@@ -8,6 +8,7 @@ import { MoneyDisplay } from "@/components/domain/money-display";
 import { SpendTrendChart } from "@/components/dashboard/charts/lazy";
 import { ReportMixDonut } from "./report-mix-donut-lazy";
 import type { ReportsOverview } from "@/lib/reports/reports-overview";
+import { DASH } from "@/components/dashboard/theme";
 
 function RailCard({
   title,
@@ -79,7 +80,7 @@ export function ReportsRail({ overview }: { overview: ReportsOverview }) {
           <SummaryRow label="Gross pay">
             <MoneyDisplay cents={overview.ytd.totalGrossCents} monospace={false} />
           </SummaryRow>
-          <SummaryRow label="Net pay" accent="#34d399">
+          <SummaryRow label="Net pay" accent={DASH.emerald}>
             <MoneyDisplay cents={overview.ytd.totalNetCents} monospace={false} />
           </SummaryRow>
           <SummaryRow label="Deductions">
@@ -97,7 +98,7 @@ export function ReportsRail({ overview }: { overview: ReportsOverview }) {
         <Link
           href="/dashboard"
           className="mt-3 flex items-center justify-between rounded-input px-1 py-1.5 text-[13px] font-semibold hover:underline"
-          style={{ color: "#34d399" }}
+          style={{ color: DASH.emerald }}
         >
           View detailed analytics
           <span aria-hidden>→</span>
@@ -107,7 +108,7 @@ export function ReportsRail({ overview }: { overview: ReportsOverview }) {
       <Link
         href="/api/reports/csv?type=periods"
         className="flex w-full items-center justify-center gap-2 rounded-card px-4 py-3 text-sm font-semibold"
-        style={{ color: "#0b0b12", background: "linear-gradient(135deg, #34d399, #059669)", boxShadow: "0 10px 24px -12px rgba(5,150,105,0.7)" }}
+        style={{ color: DASH.onAccent, background: DASH.accentGradient, boxShadow: "0 10px 24px -12px rgba(5,150,105,0.7)" }}
       >
         <Sparkles className="h-4 w-4" aria-hidden="true" />
         Generate custom report

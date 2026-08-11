@@ -33,7 +33,7 @@ export function EmployeesPageHeader({
     <div className="space-y-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">Employees</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Employees</h1>
           <p className="text-sm text-text-muted">
             {shownCount} of {livingCount}{" "}
             {livingCount === 1 ? "person" : "people"}

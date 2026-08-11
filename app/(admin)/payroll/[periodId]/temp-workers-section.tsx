@@ -56,7 +56,7 @@ export function TempWorkersSection({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
         <div>
-          <CardTitle className="text-base">Temp / manual labor</CardTitle>
+          <CardTitle>Temp / manual labor</CardTitle>
           <CardDescription>
             One-off contractors, day-labor, or anyone who doesn&apos;t punch in
             but whose pay must roll into this period&apos;s total.
@@ -122,7 +122,7 @@ export function TempWorkersSection({
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Worker</th>
                   <th className="py-2 px-3 font-medium">Description</th>

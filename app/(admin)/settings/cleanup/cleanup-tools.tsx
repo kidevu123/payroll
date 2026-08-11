@@ -549,7 +549,7 @@ function PairSide({
           <code className="font-mono">{side.id.slice(0, 8)}</code>:{" "}
           {side.startDate} → {side.endDate} · {side.state} · {payslips} payslips
           {suggested && (
-            <span className="ml-2 rounded-input bg-warning-200 px-1.5 py-0 text-[10px] font-medium uppercase tracking-wider text-warning-900">
+            <span className="ml-2 rounded-input bg-warning-200 px-1.5 py-0 text-micro uppercase text-warning-900">
               suggested
             </span>
           )}

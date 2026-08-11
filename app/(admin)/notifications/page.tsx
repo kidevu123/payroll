@@ -34,6 +34,7 @@ import { listAnnouncementTemplates } from "@/lib/db/queries/announcement-templat
 import { listEmployees } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
 import { deleteAnnouncementAction, deleteTemplateAction } from "./actions";
+import { DASH } from "@/components/dashboard/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -133,8 +134,8 @@ export default async function NotificationsPage() {
             href="/notifications/new"
             className="inline-flex h-10 items-center gap-2 rounded-input px-4 text-sm font-medium"
             style={{
-              color: "#0b0b12",
-              background: "linear-gradient(135deg, #34d399, #059669)",
+              color: DASH.onAccent,
+              background: DASH.accentGradient,
               boxShadow: "0 10px 24px -12px rgba(5,150,105,0.7)",
             }}
           >
@@ -204,8 +205,8 @@ export default async function NotificationsPage() {
                 href="/notifications/new"
                 className="mt-1 inline-flex h-10 items-center gap-2 rounded-input px-4 text-sm font-medium"
                 style={{
-                  color: "#0b0b12",
-                  background: "linear-gradient(135deg, #34d399, #059669)",
+                  color: DASH.onAccent,
+                  background: DASH.accentGradient,
                 }}
               >
                 <Plus className="h-4 w-4" /> Send your first announcement
@@ -354,7 +355,7 @@ export default async function NotificationsPage() {
               <Link
                 href="/notifications/templates/new"
                 className="inline-flex items-center gap-1.5 text-[13px] font-medium hover:underline"
-                style={{ color: "#34d399" }}
+                style={{ color: DASH.emerald }}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden /> Create new template
               </Link>

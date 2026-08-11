@@ -31,7 +31,7 @@ export default async function TimeOffNew() {
       </Button>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t("title")}</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <TimeOffForm

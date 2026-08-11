@@ -55,7 +55,7 @@ export function ReportMixDonut({ mix }: { mix: ReportsOverview["mix"] }) {
           <span className="text-2xl font-bold leading-none tabular-nums text-text">
             {mix.total}
           </span>
-          <span className="mt-0.5 text-[10px] uppercase tracking-wide text-text-subtle">
+          <span className="mt-0.5 text-micro uppercase text-text-subtle">
             Total
           </span>
         </div>

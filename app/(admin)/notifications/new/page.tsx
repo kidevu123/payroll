@@ -46,7 +46,7 @@ export default async function NewAnnouncementPage({
         >
           <ArrowLeft className="h-3 w-3" /> Notifications
         </Link>
-        <h1 className="text-title font-semibold tracking-tight">
+        <h1 className="text-title tracking-tight antialiased text-text">
           Send announcement
         </h1>
         <p className="text-sm text-text-muted">
@@ -57,7 +57,7 @@ export default async function NewAnnouncementPage({
       </div>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Compose</CardTitle>
+          <CardTitle>Compose</CardTitle>
           <CardDescription className="text-xs">
             Audience preview updates as you change the filter.
           </CardDescription>

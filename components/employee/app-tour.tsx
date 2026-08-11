@@ -212,7 +212,7 @@ export function AppTour({
         style={tooltipStyle}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-brand-700">
+          <p className="text-micro uppercase text-brand-700">
             {stepIdx + 1} / {STEPS.length}
           </p>
           <button

@@ -32,6 +32,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { periodNetCents } from "@/lib/reports/period-net";
+import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
 import { cn } from "@/lib/utils";
 import {
   Download,
@@ -54,7 +55,8 @@ import {
 } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
+import { MicroLabel } from "@/components/ui/typography";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +67,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import {
+  STATUS_CHIP_BASE,
+  statusChipClasses,
+  type StatusTone,
+} from "@/components/domain/status-pill";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import {
   deleteReportAction,
@@ -96,16 +103,6 @@ const MONTH_LONG = [
   "November",
   "December",
 ];
-
-function formatRange(startIso: string, endIso: string): string {
-  if (!startIso || !endIso) return "—";
-  const a = new Date(`${startIso}T12:00:00Z`);
-  const b = new Date(`${endIso}T12:00:00Z`);
-  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
-  const left = `${MONTH_SHORT[a.getUTCMonth()]} ${String(a.getUTCDate()).padStart(2, "0")}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
-  const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
-  return `${left} – ${right}`;
-}
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
@@ -271,11 +268,20 @@ function matchesFilters(
   return true;
 }
 
-/** Shared lg column template — the header row and every period line use the
- *  exact same tracks so the statement reads as one aligned table:
- *  period | schedule | payment | status | gross | net | actions. */
+/** Shared lg column template — the header row, every period line, and the
+ *  month subtotal row use the exact same tracks so the statement reads as one
+ *  aligned table: period | schedule | payment | status | gross | net | actions.
+ *
+ *  The actions track is a FIXED width, not `auto`. Each row is its own grid
+ *  container (there is no subgrid here), so an `auto` track resolved against
+ *  each row's own content: 72px in the header, ~74px in a plain row, ~135px
+ *  when a LOCKED row added its "Pay" button, ~180px mid delete-confirm. Every
+ *  one of those redistributed the remaining six fr tracks differently, so the
+ *  header lined up with nothing and rows didn't line up with each other. A
+ *  fixed track makes all containers resolve identically. */
+const ACTIONS_TRACK = "7.5rem";
 const TABLE_GRID =
-  "lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_auto]";
+  "lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_7.5rem]";
 
 export function ReportsTable({
   reports,
@@ -432,10 +438,12 @@ export function ReportsTable({
       )}
 
       {/* Column legend — mirrors TABLE_GRID so every month card below reads
-          as one continuous, aligned table. Desktop only; mobile rows stack. */}
+          as one continuous, aligned table. Desktop only; mobile rows stack.
+          Padding matches the rows' own box (px-5 + the card's 1px border and
+          3px accent rail) so the two frames share a left edge. */}
       <div
         className={cn(
-          "hidden lg:grid items-center gap-3 px-5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle",
+          "hidden lg:grid items-center gap-3 px-5 text-micro uppercase text-text-subtle",
           TABLE_GRID,
         )}
       >
@@ -445,7 +453,7 @@ export function ReportsTable({
         <span>Status</span>
         <span className="text-right">Gross pay</span>
         <span className="text-right">Net pay</span>
-        <span aria-hidden className="w-[4.5rem]" />
+        <span className="text-right">Actions</span>
       </div>
 
       {months.length === 0 ? (
@@ -597,7 +605,7 @@ function FilterSelect({
 }) {
   return (
     <label className="flex items-center gap-1.5">
-      <span className="hidden text-[10px] font-semibold uppercase tracking-[0.1em] text-text-subtle xl:inline">
+      <span className="hidden text-micro uppercase text-text-subtle xl:inline">
         {label}
       </span>
       <select
@@ -655,16 +663,24 @@ function MonthCard({
       aria-label={month.label}
       className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card transition-shadow hover:shadow-card-strong"
     >
-      {/* Refined month header: an accent tick + confident month label on the
-          left, the month NET subtotal as the right-anchored figure. The NET
-          label is whispered (uppercase micro) so the number does the talking. */}
-      <header className="flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2.5 min-w-0">
+      {/* Month header. On lg it rides TABLE_GRID so the Total gross / Total
+          net figures sit directly above the Gross pay / Net pay columns they
+          total — previously this was a `flex justify-between` cluster pinned
+          to the card's right edge, i.e. floating over the actions column and
+          aligned with nothing. Below lg it falls back to the flex layout. */}
+      <header
+        className={cn(
+          "flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5",
+          "lg:grid lg:items-center lg:gap-3",
+          TABLE_GRID,
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 lg:col-span-4">
           <span
             aria-hidden="true"
             className="h-4 w-1 shrink-0 rounded-full bg-brand-700"
           />
-          <h2 className="text-sm font-semibold tracking-tight text-text">
+          <h2 className="text-subheading tracking-tight text-text">
             {month.label}
           </h2>
           <span className="rounded-chip bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
@@ -678,7 +694,7 @@ function MonthCard({
             )}
           </span>
         </div>
-        <div className="flex items-center gap-5 whitespace-nowrap">
+        <div className="flex items-center gap-5 whitespace-nowrap lg:contents">
           <div
             className="hidden flex-col items-end leading-none sm:flex"
             title={
@@ -687,21 +703,18 @@ function MonthCard({
                 : undefined
             }
           >
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
-              Total gross{grossIncomplete ? "*" : ""}
-            </span>
-            <span className="mt-1 tabular-nums text-base font-semibold text-text-muted">
+            <MicroLabel>Total gross{grossIncomplete ? "*" : ""}</MicroLabel>
+            <span className="mt-1 tabular-nums text-subheading text-text-muted">
               <MoneyDisplay cents={gross} />
             </span>
           </div>
           <div className="flex flex-col items-end leading-none">
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
-              Total net
-            </span>
-            <span className="mt-1 tabular-nums text-base font-semibold text-text">
+            <MicroLabel>Total net</MicroLabel>
+            <span className="mt-1 tabular-nums text-subheading text-text">
               <MoneyDisplay cents={net} />
             </span>
           </div>
+          <span aria-hidden className="hidden lg:block" />
         </div>
       </header>
 
@@ -966,8 +979,9 @@ function PeriodLine({
             <PaymentMethodCell state={periodState} method={periodPaymentMethod} />
           </div>
 
-          {/* 4 · Status */}
-          <div className="hidden min-w-0 flex-wrap items-center gap-1.5 lg:flex">
+          {/* 4 · Status — one chip plus a glyph, on a single line, so every
+              row in the table is the same height. */}
+          <div className="hidden min-w-0 flex-nowrap items-center gap-1.5 lg:flex">
             <StatusCell state={periodState} />
             {!multiRun && soleRun && (
               <VisibilityChip published={soleRun.publishedToPortalAt !== null} />
@@ -1014,18 +1028,22 @@ function PeriodLine({
             ) : null}
           </div>
 
-          {/* 7 · Actions */}
+          {/* 7 · Actions — every control is a 36px square so the cluster is
+              the same width whether or not this period can be paid. A
+              variable-width cluster used to resize the grid's last track per
+              row, dragging all six other columns out of alignment. */}
           <div className="flex items-center justify-end gap-0.5 justify-self-end">
             {canManageReports && periodState === "LOCKED" && (
-              <Button
-                size="sm"
+              <IconButton
                 variant="secondary"
+                sizePx="sm"
                 onClick={() => setPayOpen((v) => !v)}
-                className="h-9 px-2.5 text-[11px] whitespace-nowrap"
-                title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+                aria-label="Pay from cash drawer"
+                title={`Pay from cash drawer — $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+                className="h-9 w-9"
               >
-                <Banknote className="h-3.5 w-3.5" /> Pay
-              </Button>
+                <Banknote className="h-3.5 w-3.5" aria-hidden />
+              </IconButton>
             )}
             {!multiRun && soleRun && (
               <RunActions
@@ -1047,10 +1065,10 @@ function PeriodLine({
 
       {/* Pay-from-drawer dialog (inline, period-level) */}
       {canManageReports && payOpen && periodState === "LOCKED" && (
-        <div className="mt-3 rounded-input border border-warn-200/70 bg-warn-50/50 px-3 py-3">
+        <div className="mt-3 rounded-input border border-warning-200/70 bg-warning-50/50 px-3 py-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-wider text-text-subtle">
+              <p className="text-micro uppercase text-text-subtle">
                 Drawer balance
               </p>
               <p className="tabular-nums text-sm font-semibold">
@@ -1058,7 +1076,7 @@ function PeriodLine({
               </p>
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-wider text-text-subtle">
+              <label className="text-micro uppercase text-text-subtle">
                 Withdraw
               </label>
               <input
@@ -1106,7 +1124,7 @@ function PeriodLine({
                 href={`/payroll/${r.periodId}`}
                 className="flex min-w-0 flex-1 items-baseline gap-1.5 hover:text-brand-700"
               >
-                <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+                <span className="text-micro uppercase text-text-subtle">
                   {r.source.replace(/_/g, " ")}
                 </span>
                 <span className="text-text-subtle">·</span>
@@ -1149,24 +1167,18 @@ function PeriodLine({
 
 /** Period status chip — the mockup's single loud state cue per row.
  *  PAID reads as "Completed"; LOCKED and OPEN stay literal. */
+/** Period state chip. Tones come from the shared status vocabulary so this
+ *  reads identically to the same period's chip on /payroll. */
 function StatusCell({ state }: { state: "OPEN" | "LOCKED" | "PAID" }) {
-  if (state === "PAID") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-success-200/80 bg-success-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-success-700 whitespace-nowrap">
-        <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
-      </span>
-    );
-  }
-  if (state === "LOCKED") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700 whitespace-nowrap">
-        <Lock className="h-3 w-3" aria-hidden /> Locked
-      </span>
-    );
-  }
+  const spec = {
+    PAID: { tone: "success", label: "Completed", Icon: CheckCircle2 },
+    LOCKED: { tone: "warn", label: "Locked", Icon: Lock },
+    OPEN: { tone: "info", label: "Open", Icon: CircleDot },
+  }[state] as { tone: StatusTone; label: string; Icon: typeof Lock };
+  const { Icon } = spec;
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-info-200/80 bg-info-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-info-700 whitespace-nowrap">
-      <CircleDot className="h-3 w-3" aria-hidden /> Open
+    <span className={cn(STATUS_CHIP_BASE, statusChipClasses(spec.tone))}>
+      <Icon className="h-3 w-3" aria-hidden /> {spec.label}
     </span>
   );
 }
@@ -1217,14 +1229,28 @@ function PaymentChip({
 }
 
 /** Portal visibility chip (per run). */
+/**
+ * Employee-visibility indicator. Deliberately a glyph, not a second chip:
+ * two full chips wrapped onto a second line in the status column, so rows
+ * with a publication state stood ~20px taller than rows without and the
+ * table read as ragged.
+ */
 function VisibilityChip({ published }: { published: boolean }) {
-  return published ? (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-800 ring-1 ring-inset ring-success-100 whitespace-nowrap">
-      <CheckCircle2 className="h-2.5 w-2.5" /> Published
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-1.5 py-0.5 text-[10px] font-medium text-warn-800 ring-1 ring-inset ring-warn-200 whitespace-nowrap">
-      <CircleDot className="h-2.5 w-2.5" /> Internal
+  const label = published ? "Visible to employees" : "Internal only";
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={cn(
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+        published ? "text-success-700" : "text-text-subtle",
+      )}
+    >
+      {published ? (
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+      ) : (
+        <CircleDot className="h-3.5 w-3.5" aria-hidden />
+      )}
     </span>
   );
 }

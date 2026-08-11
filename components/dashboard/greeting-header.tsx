@@ -49,14 +49,17 @@ export function GreetingHeader({
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
+        {/* text-title, like every other page title — this was an arbitrary
+            1.3/1.5rem in the BODY font, so the app's landing screen was the
+            one page whose heading matched nothing else. */}
         <h1
-          className="flex items-center gap-2.5 text-[1.3rem] font-bold leading-tight tracking-[-0.02em] sm:text-[1.5rem]"
+          className="flex items-center gap-2.5 text-title tracking-tight antialiased"
           style={{ color: DASH.text }}
         >
           {word}, {name}
           <Icon className="h-6 w-6" style={{ color: DASH.amber }} aria-hidden="true" />
         </h1>
-        <p className="mt-0.5 text-[12px]" style={{ color: DASH.textMuted }}>
+        <p className="mt-1 text-caption" style={{ color: DASH.textMuted }}>
           Here&rsquo;s what&rsquo;s happening with your payroll today.
         </p>
       </div>
@@ -91,8 +94,8 @@ export function GreetingHeader({
             href={quickActionHref}
             className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
             style={{
-              color: "#0b0b12",
-              background: "linear-gradient(135deg, #34d399, #059669)",
+              color: DASH.onAccent,
+              background: DASH.accentGradient,
               boxShadow: "0 8px 20px -8px rgba(5,150,105,0.7)",
             }}
           >

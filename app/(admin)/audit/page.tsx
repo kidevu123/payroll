@@ -53,7 +53,7 @@ export default async function AuditPage({
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">Audit log</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Audit log</h1>
           <p className="text-sm text-text-muted">
             Owner-only. Newest first. Showing {rows.length}.
           </p>

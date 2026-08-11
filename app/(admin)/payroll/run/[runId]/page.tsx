@@ -175,7 +175,7 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-title font-semibold tracking-tight tabular-nums">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-title tracking-tight antialiased text-text tabular-nums">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">
@@ -195,7 +195,7 @@ export default async function RunReviewPage({
             <div className="space-y-0.5 overflow-x-auto">
               <div className="min-w-[860px]">
               {/* Header row — kept in sync with the summary grid below. */}
-              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-micro uppercase text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
@@ -278,7 +278,7 @@ export default async function RunReviewPage({
                     <span className="text-warning-700 text-xs">★</span>
                     <div className="min-w-0">
                       <span className="font-medium truncate">{tw.workerName}</span>
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-warning-700">
+                      <span className="ml-2 text-micro uppercase text-warning-700">
                         Temp
                       </span>
                       {tw.description && (
@@ -343,7 +343,7 @@ export default async function RunReviewPage({
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                  <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                     <tr>
                       <th className="py-2 pr-3 font-medium">Type</th>
                       <th className="py-2 px-3 font-medium">Ref</th>
@@ -441,7 +441,7 @@ function RunPunchTable({
   return (
     <div className="overflow-x-auto px-3 pb-3 pt-1 sm:px-9">
       <table className="min-w-full text-xs">
-        <thead className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-micro uppercase text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-medium">Day</th>
             <th className="py-1 px-3 font-medium">In</th>

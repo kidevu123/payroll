@@ -140,7 +140,7 @@ export function FeedbackLauncher({
 
             {kind === "BUG" && (
               <div>
-                <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider">
+                <label className="text-micro text-text-muted uppercase">
                   Severity
                 </label>
                 <div className="grid grid-cols-4 gap-1.5 mt-1">
@@ -164,7 +164,7 @@ export function FeedbackLauncher({
             )}
 
             <div>
-              <label className="text-[11px] font-medium text-text-muted uppercase tracking-wider">
+              <label className="text-micro text-text-muted uppercase">
                 What happened?
               </label>
               <textarea

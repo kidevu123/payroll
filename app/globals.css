@@ -56,10 +56,29 @@
   --text-heading--line-height: 1.625rem;
   --text-heading--letter-spacing: -0.015em;
   --text-heading--font-weight: 600;
+  /* Card titles and section heads. The scale was missing a step between
+     heading (20px) and body (15px), so 36 of 40 CardTitles hand-overrode
+     themselves to text-base/text-sm and no two cards agreed. */
+  --text-subheading: 1rem;
+  --text-subheading--line-height: 1.375rem;
+  --text-subheading--letter-spacing: -0.011em;
+  --text-subheading--font-weight: 600;
   --text-body: 0.9375rem;
   --text-body--line-height: 1.4rem;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.05rem;
+  /* KPI / hero figures. Replaces nine ad-hoc sizes (text-xl..text-3xl plus
+     arbitrary rem values) used for the same stat-tile role. */
+  --text-metric: 1.5rem;
+  --text-metric--line-height: 1.75rem;
+  --text-metric--letter-spacing: -0.02em;
+  --text-metric--font-weight: 600;
+  /* Uppercase eyebrow / column label. Was 32 different recipes across 96
+     sites (3 sizes x 4 weights x 6 tracking values). */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 0.875rem;
+  --text-micro--letter-spacing: 0.12em;
+  --text-micro--font-weight: 600;
 
   /* ── Radii (owner direction Jul 2026: squarer, intentional corners —
      cards read as precise panels, chips as squared tags, matching the
@@ -122,13 +141,6 @@
   --color-success-700: #047857;
   --color-success-800: #065f46;
   --color-success-900: #064e3b;
-  --color-warn-50: #fffbeb;
-  --color-warn-100: #fef3c7;
-  --color-warn-200: #fde68a;
-  --color-warn-600: #d97706;
-  --color-warn-700: #b45309;
-  --color-warn-800: #92400e;
-  --color-warn-900: #78350f;
   --color-danger-50: #fef2f2;
   --color-danger-100: #fee2e2;
   --color-danger-200: #fecaca;
@@ -177,6 +189,10 @@
   --dash-emerald-dim: #10b981;
   --dash-rose: #e11d48;
   --dash-amber: #d97706;
+  /* Ink that sits on top of the brand accent fill (sidebar CTA, avatar
+     chips, rail buttons). Near-black in both themes: the accent is a
+     saturated mid-tone, so white text under-contrasts on it. */
+  --dash-on-accent: #0b0b12;
   --dash-chart-grid: rgba(17, 17, 40, 0.06);
   --dash-chart-axis: #8e8ea3;
   --dash-sidebar: rgba(255, 255, 255, 0.82);
@@ -237,13 +253,6 @@
     --color-success-700: #34d399;
     --color-success-800: #6ee7b7;
     --color-success-900: #a7f3d0;
-    --color-warn-50: #2c1e02;
-    --color-warn-100: #422006;
-    --color-warn-200: #5a3a06;
-    --color-warn-600: #fbbf24;
-    --color-warn-700: #fbbf24;
-    --color-warn-800: #fcd34d;
-    --color-warn-900: #fde68a;
     --color-danger-50: #2c0a0a;
     --color-danger-100: #450a0a;
     --color-danger-200: #5a1414;
@@ -287,6 +296,7 @@
     --dash-emerald-dim: #10b981;
     --dash-rose: #fb7185;
     --dash-amber: #fbbf24;
+    --dash-on-accent: #0b0b12;
     --dash-chart-grid: rgba(255, 255, 255, 0.06);
     --dash-chart-axis: #6e6e85;
     --dash-sidebar: rgba(13, 13, 20, 0.72);

@@ -259,7 +259,7 @@ function FixPunchForm({
       {ambiguous ? (
         <>
           <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
-            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+            <span className="text-micro text-text-muted uppercase">
               On file (time clock)
             </span>
             <p className="mt-1 font-semibold tabular-nums">
@@ -348,7 +348,7 @@ function FixPunchForm({
       ) : closeOut ? (
         <>
           <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
-            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+            <span className="text-micro text-text-muted uppercase">
               On file (time clock)
             </span>
             <p className="mt-1 font-semibold tabular-nums">
@@ -374,7 +374,7 @@ function FixPunchForm({
       ) : missingIn ? (
         <>
           <div className="rounded-input bg-surface px-3 py-2 text-sm border border-border">
-            <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+            <span className="text-micro text-text-muted uppercase">
               On file (time clock)
             </span>
             <p className="mt-1 font-semibold tabular-nums">

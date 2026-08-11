@@ -99,7 +99,7 @@ export default async function EmployeeDay({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">{t("title")}</CardTitle>
+          <CardTitle>{t("title")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {dayPunches.length === 0 ? (

@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar } from "@/components/domain/avatar";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import { statusChipClasses } from "@/components/domain/status-pill";
 import {
   ScheduleTabs,
   parseScheduleTab,
@@ -59,6 +60,7 @@ import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
@@ -220,7 +222,7 @@ export default async function PayrollPage({
           detail page. */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-brand-700" /> Recent periods
           </CardTitle>
           <CardDescription>
@@ -271,7 +273,7 @@ export default async function PayrollPage({
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium tabular-nums tracking-tight">
-                          {p.startDate} – {p.displayEnd}
+                          {formatPeriodRange(p.startDate, p.displayEnd)}
                         </span>
                         <SchedulePill name={p.scheduleName} />
                         <PhaseChip phase={p.phase} />
@@ -332,28 +334,31 @@ function phaseDetail(
  * so "Open" stops meaning three different things.
  */
 function PhaseChip({ phase }: { phase: PeriodPhase }) {
+  // Tones come from the shared status vocabulary (components/domain/status-pill),
+  // so a LOCKED period reads the same here as it does on /reports: in progress
+  // is informational, anything needing the owner's hands is amber.
   const styles: Record<
     PeriodPhase,
     { label: string; className: string; Icon: React.ComponentType<{ className?: string }> }
   > = {
     RUNNING: {
       label: "In progress",
-      className: "bg-success-50 text-success-700 border-success-200/80",
+      className: statusChipClasses("info"),
       Icon: RunningDot,
     },
     NEEDS_PROCESSING: {
       label: "Needs processing",
-      className: "bg-warning-50 text-warning-700 border-warning-200/80",
+      className: statusChipClasses("warn"),
       Icon: CircleAlert,
     },
     AWAITING_PAYMENT: {
       label: "Awaiting payment",
-      className: "bg-info-50 text-info-700 border-info-200/80",
+      className: statusChipClasses("warn"),
       Icon: Banknote,
     },
     UPCOMING: {
       label: "Upcoming",
-      className: "bg-surface-2 text-text-muted border-border/70",
+      className: statusChipClasses("neutral"),
       Icon: CalendarClock,
     },
   };
@@ -459,7 +464,7 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
                   <div className="flex items-start gap-3 min-w-0">
                     <Avatar name={employee.displayName} size="md" />
                     <div className="min-w-0">
-                      <CardTitle className="text-base">
+                      <CardTitle>
                         {employee.displayName}
                       </CardTitle>
                       <CardDescription>

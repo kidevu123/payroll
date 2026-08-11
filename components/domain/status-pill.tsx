@@ -74,12 +74,31 @@ const KIND_CLASSES: Record<Kind, string> = {
   success:
     "bg-success-50 text-success-700 border-success-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
   warn:
-    "bg-warn-50 text-warn-700 border-warn-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
+    "bg-warning-50 text-warning-700 border-warning-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
   danger:
     "bg-danger-50 text-danger-700 border-danger-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
   info:
     "bg-info-50 text-info-700 border-info-200/80 shadow-[inset_0_0_0_1px_rgb(255_255_255_/_0.5)]",
 };
+
+/**
+ * The chip vocabulary, exported so every surface that renders a period state
+ * agrees on it. Before this, /payroll drew "Awaiting payment" as an info-blue
+ * chip while /reports drew the same LOCKED period as an amber "Locked" chip,
+ * and the dashboard hand-rolled a third palette — the same period looked like
+ * three different things depending on where you stood.
+ *
+ * The semantics: info = in progress, nothing to do. warn = action required.
+ * success = done. danger = broken. neutral = inert.
+ */
+export const STATUS_CHIP_BASE =
+  "inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-medium tracking-tight antialiased whitespace-nowrap";
+
+export function statusChipClasses(kind: Kind): string {
+  return KIND_CLASSES[kind];
+}
+
+export type StatusTone = Kind;
 
 export function StatusPill({
   status,

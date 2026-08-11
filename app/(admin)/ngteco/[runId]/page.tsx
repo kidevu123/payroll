@@ -33,7 +33,7 @@ export default async function NgtecoRunDetail({
         </Link>
       </Button>
       <div className="flex items-center gap-3">
-        <h1 className="text-title font-semibold tracking-tight tabular-nums">{run.id}</h1>
+        <h1 className="text-title tracking-tight antialiased text-text tabular-nums">{run.id}</h1>
         <StatusPill status={run.state as never} />
       </div>
       <p className="text-sm text-text-muted">
@@ -94,7 +94,7 @@ function ExceptionCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">
+        <CardTitle>
           {title}{" "}
           <span className="text-sm font-normal text-text-muted">{rows.length}</span>
         </CardTitle>

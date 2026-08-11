@@ -47,7 +47,7 @@ export default async function CashDrawerPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">Cash drawer</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Cash drawer</h1>
           <p className="text-xs text-text-muted mt-0.5">
             On-prem cash reconciliation. Deposits require an invoice number;
             withdrawals are mostly auto-recorded when a payroll period is paid
@@ -59,7 +59,7 @@ export default async function CashDrawerPage() {
       <div className="grid gap-3 sm:grid-cols-3 items-stretch">
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-brand-700" />
               On hand
             </CardTitle>
@@ -75,7 +75,7 @@ export default async function CashDrawerPage() {
         </Card>
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Deposits (lifetime)
             </CardTitle>
@@ -92,7 +92,7 @@ export default async function CashDrawerPage() {
         </Card>
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Withdrawals (lifetime)
             </CardTitle>
@@ -112,7 +112,7 @@ export default async function CashDrawerPage() {
       <div className="grid gap-4 lg:grid-cols-3 items-stretch">
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Add cash to the drawer
             </CardTitle>
@@ -126,7 +126,7 @@ export default async function CashDrawerPage() {
         </Card>
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-brand-700" />
               Petty cash purchase
             </CardTitle>
@@ -140,7 +140,7 @@ export default async function CashDrawerPage() {
         </Card>
         <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Manual withdrawal
             </CardTitle>
@@ -156,13 +156,13 @@ export default async function CashDrawerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Ledger</CardTitle>
+          <CardTitle>Ledger</CardTitle>
           <CardDescription>Newest first.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-surface-2/50 text-[10px] uppercase tracking-wider text-text-muted">
+              <thead className="bg-surface-2/50 text-micro uppercase text-text-muted">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium">Date</th>
                   <th className="text-left px-4 py-2 font-medium">Kind</th>

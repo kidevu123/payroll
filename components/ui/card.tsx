@@ -32,11 +32,15 @@ export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
 );
 CardHeader.displayName = "CardHeader";
 
+// text-subheading (16px), not text-heading (20px): an audit found 36 of 40
+// CardTitles hand-overrode themselves to text-base or text-sm because 20px was
+// too heavy for card scale. 16px is what the majority had converged on, so the
+// token now matches practice and the overrides are gone.
 export const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn("text-heading font-semibold tracking-tight antialiased", className)}
+      className={cn("text-subheading tracking-tight antialiased", className)}
       {...props}
     />
   ),

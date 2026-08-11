@@ -329,11 +329,11 @@ function cellPillClasses(state: CellState): string {
     case "complete":
       return "bg-success-50 text-success-800";
     case "incomplete":
-      return "bg-warn-50 text-warn-800";
+      return "bg-warning-50 text-warning-800";
     case "pto":
       return "bg-success-100/80 text-success-900";
     case "sick":
-      return "bg-warn-100/80 text-warn-900";
+      return "bg-warning-100/80 text-warning-900";
     case "unpaid":
       return "bg-surface-2 text-text-muted";
     case "other":
@@ -349,11 +349,11 @@ function legendDotClass(state: CellState): string {
     case "complete":
       return "bg-success-500";
     case "incomplete":
-      return "bg-warn-500";
+      return "bg-warning-500";
     case "missed":
       return "bg-danger-500";
     case "pto":
-      return "bg-success-400";
+      return "bg-success-500";
     default:
       return "bg-border-strong";
   }
@@ -705,7 +705,7 @@ export default async function TimePage({
       case "UPCOMING":
         return { label: "Upcoming", cls: "bg-brand-50 text-brand-700 border-brand-200/80" };
       case "LOCKED":
-        return { label: "Locked", cls: "bg-warn-50 text-warn-700 border-warn-200/80" };
+        return { label: "Locked", cls: "bg-warning-50 text-warning-700 border-warning-200/80" };
       case "PAID":
         return { label: "Paid", cls: "bg-success-50 text-success-700 border-success-200/80" };
       default:
@@ -719,7 +719,7 @@ export default async function TimePage({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-title font-semibold tracking-tight">Time</h1>
+            <h1 className="text-title tracking-tight antialiased text-text">Time</h1>
             <span
               className={`inline-flex items-center rounded-chip border px-2 py-0.5 text-caption font-semibold uppercase tracking-wider ${stateBadge.cls}`}
             >
@@ -746,7 +746,7 @@ export default async function TimePage({
               <span className="mx-1.5 text-text-subtle">&rarr;</span>
               {lastDay}
               {period.state === "UPCOMING" && (
-                <span className="ml-2.5 text-[11px] font-semibold uppercase tracking-wider text-brand-600">
+                <span className="ml-2.5 text-micro uppercase text-brand-600">
                   live · punches will land here
                 </span>
               )}
@@ -768,7 +768,7 @@ export default async function TimePage({
                 page auto-selects today's period for this schedule). */}
             <Link
               href={`/time${tab !== "all" ? `?schedule=${tab}` : ""}`}
-              className="ml-1 h-6 inline-flex items-center rounded px-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+              className="ml-1 h-6 inline-flex items-center rounded px-2 text-micro uppercase text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
             >
               Today
             </Link>
@@ -834,7 +834,7 @@ export default async function TimePage({
                       : "border-border bg-surface text-text-muted"
                   }`}
                 >
-                  <span className="text-[11px] font-semibold uppercase">{dow}</span>
+                  <span className="text-micro uppercase">{dow}</span>
                   <span className="text-xs font-bold tabular-nums">{dom}</span>
                 </Link>
               );
@@ -944,8 +944,11 @@ export default async function TimePage({
           <div className="hidden lg:block max-h-[72vh] overflow-auto rounded-card border border-border/70 bg-surface shadow-card-strong">
         <table className="min-w-full text-body border-collapse">
           <thead>
-            <tr className="sticky top-0 z-20 border-b border-border/80 bg-surface-2/95 backdrop-blur">
-              <th className="sticky left-0 z-30 bg-surface-2 text-left px-4 py-2.5 text-caption font-semibold text-text-subtle uppercase tracking-widest whitespace-nowrap border-r border-border/50">
+            {/* Below md the shell's fixed top bar owns y=0, so a plain
+                top-0 pinned this header underneath it and it vanished while
+                scrolling on phones. */}
+            <tr className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 border-b border-border/80 bg-surface-2/95 backdrop-blur md:top-0">
+              <th className="sticky left-0 z-30 bg-surface-2 text-left px-4 py-2.5 text-micro text-text-subtle uppercase whitespace-nowrap border-r border-border/50">
                 Employee
               </th>
               {days.map((d) => {
@@ -956,7 +959,7 @@ export default async function TimePage({
                     className={`w-28 py-2.5 px-2 text-center whitespace-nowrap border-b border-border/40 ${isToday ? "bg-brand-50" : "bg-surface-2"}`}
                   >
                     <span className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}>
-                      <span className="text-[11px] font-bold uppercase tracking-widest">
+                      <span className="text-micro uppercase">
                         {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
                           new Date(`${d}T00:00:00Z`),
                         )}
@@ -1130,7 +1133,7 @@ function PunchCellContent({
     return <span className="text-text-subtle/30 text-[11px] select-none">—</span>;
   }
   if (state === "missed") {
-    return <span className="text-danger-400 text-body font-medium">—</span>;
+    return <span className="text-danger-500 text-body font-medium">—</span>;
   }
 
   // Time-off label: compact uppercase badge. min-h matches the two-line
@@ -1152,7 +1155,7 @@ function PunchCellContent({
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide">
+        <span className="text-micro uppercase">
           Unpaired
         </span>
         <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
@@ -1169,7 +1172,7 @@ function PunchCellContent({
       <span
         className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
       >
-        <span className="text-[11px] font-semibold uppercase tracking-wide">
+        <span className="text-micro uppercase">
           Missing in
         </span>
         <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
@@ -1289,7 +1292,7 @@ function TodaySummaryCard({
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Today&rsquo;s summary</h3>
-        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+        <span className="text-micro uppercase text-text-subtle">
           Updated just now
         </span>
       </div>
@@ -1340,7 +1343,7 @@ function ExceptionsQueueCard({
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           Exceptions queue
           {total > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 px-1.5 text-[11px] font-bold text-warn-700">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-50 px-1.5 text-[11px] font-bold text-warning-700">
               {total}
             </span>
           )}
@@ -1406,7 +1409,7 @@ function LaborHoursCard({
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold">Labor hours</h3>
-        <span className="text-[10px] uppercase tracking-wide text-text-subtle">
+        <span className="text-micro uppercase text-text-subtle">
           This pay period
         </span>
       </div>
@@ -1440,7 +1443,7 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
         <Sparkles className="h-3.5 w-3.5 text-brand-700" />
         <h3 className="text-sm font-semibold">Milo insight</h3>
         <span
-          className="rounded px-1 text-[11px] font-bold uppercase tracking-wide"
+          className="rounded px-1 text-micro uppercase"
           style={{
             background: "color-mix(in srgb, var(--dash-cyan) 18%, transparent)",
             color: "var(--dash-cyan)",

@@ -41,7 +41,7 @@ export function NotificationsForm({
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Event</th>
                   <th className="py-2 px-3 font-medium text-center">In-app</th>

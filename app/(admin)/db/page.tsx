@@ -31,7 +31,7 @@ export default async function DbBrowserPage({
   if ("error" in tablesResult) {
     return (
       <div className="space-y-4">
-        <h1 className="text-title font-semibold tracking-tight">Database</h1>
+        <h1 className="text-title tracking-tight antialiased text-text">Database</h1>
         <div className="rounded-card border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700">
           <AlertTriangle className="inline h-4 w-4 mr-1" /> {tablesResult.error}
         </div>
@@ -54,7 +54,7 @@ export default async function DbBrowserPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-title font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="text-title tracking-tight antialiased text-text flex items-center gap-2">
             <Database className="h-6 w-6 text-brand-700" /> Database
           </h1>
           <p className="text-sm text-text-muted">
@@ -177,7 +177,7 @@ function TableViewer({
 
       <div className="overflow-auto rounded-card border border-border bg-surface max-h-[70vh]">
         <table className="min-w-full text-xs">
-          <thead className="sticky top-0 bg-surface-2 text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+          <thead className="sticky top-0 bg-surface-2 text-left text-micro uppercase text-text-subtle border-b border-border">
             <tr>
               {columns.map((c) => (
                 <th key={c.name} className="px-2 py-2 font-medium whitespace-nowrap">

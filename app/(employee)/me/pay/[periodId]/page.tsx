@@ -274,7 +274,7 @@ async function PayslipBody({
       <Card
         className={
           isDisputed
-            ? "relative overflow-hidden before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warn-700/80"
+            ? "relative overflow-hidden before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warning-700/80"
             : undefined
         }
       >
@@ -291,7 +291,7 @@ async function PayslipBody({
               </p>
             </div>
             {isDisputed ? (
-              <span className="inline-flex items-center gap-1.5 rounded-chip border border-warn-200/80 bg-warn-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warn-700">
+              <span className="inline-flex items-center gap-1.5 rounded-chip border border-warning-200/80 bg-warning-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warning-700">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
                 {t("problemReported")}
               </span>
@@ -343,7 +343,7 @@ async function PayslipBody({
           </p>
 
           {discrepancy && (
-            <div className="rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-xs text-warn-700 space-y-1.5 leading-relaxed">
+            <div className="rounded-card border border-warning-200/80 bg-warning-50 p-3.5 text-xs text-warning-700 space-y-1.5 leading-relaxed">
               <p className="font-medium">
                 {t("discrepancyHeading")}
               </p>

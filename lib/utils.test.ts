@@ -2,7 +2,10 @@
 // landing in Phase 1 against /lib/payroll/computePay.
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
+  cn,
   formatMoney,
   formatHours,
   formatTimeShort,
@@ -104,5 +107,49 @@ describe("formatHoursMinutes", () => {
   it("renders mixed h/m without a leading zero", () => {
     expect(formatHoursMinutes(8.6)).toBe("8h 36m");
     expect(formatHoursMinutes(1.25)).toBe("1h 15m");
+  });
+});
+
+
+describe("cn (tailwind-merge type scale)", () => {
+  // The custom type-scale utilities live in the `@theme` block of
+  // globals.css. Stock tailwind-merge classifies `text-<word>` as a text
+  // COLOR, so without the extendTailwindMerge config in utils.ts it drops
+  // the size class whenever a color class follows it — which silently
+  // rendered every PageHeader title at the inherited body size.
+  const SCALE = [
+    "display",
+    "title",
+    "heading",
+    "subheading",
+    "metric",
+    "body",
+    "caption",
+    "micro",
+  ];
+
+  it.each(SCALE)("keeps text-%s when a text color follows it", (step) => {
+    expect(cn(`text-${step}`, "text-text-subtle")).toContain(`text-${step}`);
+    expect(cn(`text-${step}`, "text-text-subtle")).toContain("text-text-subtle");
+  });
+
+  it("still collapses genuinely conflicting sizes", () => {
+    expect(cn("text-body", "text-title")).toBe("text-title");
+    expect(cn("text-sm", "text-micro")).toBe("text-micro");
+  });
+
+  it("still collapses conflicting colors", () => {
+    expect(cn("text-text-subtle", "text-danger-700")).toBe("text-danger-700");
+  });
+
+  it("covers every step declared in globals.css", () => {
+    // Guards the failure mode directly: adding a --text-* token without
+    // registering it in utils.ts reintroduces the dropped-size bug.
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const theme = css.slice(css.indexOf("@theme"), css.indexOf("--radius-card"));
+    const declared = new Set(
+      [...theme.matchAll(/^\s*--text-([a-z]+):\s/gm)].map((m) => m[1]!),
+    );
+    expect([...declared].sort()).toEqual([...SCALE].sort());
   });
 });

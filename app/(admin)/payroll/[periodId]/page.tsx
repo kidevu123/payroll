@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
 import {
   Card,
   CardContent,
@@ -69,17 +70,6 @@ import {
 } from "@/lib/payroll/cash-denominations";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 
-const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function formatRange(startIso: string, endIso: string): string {
-  const a = new Date(`${startIso}T12:00:00Z`);
-  const b = new Date(`${endIso}T12:00:00Z`);
-  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
-  const left = `${MONTH_SHORT[a.getUTCMonth()]} ${String(a.getUTCDate()).padStart(2, "0")}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
-  const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
-  return `${left} – ${right}`;
-}
-
 function formatHm(d: Date | null, tz: string): string {
   if (!d) return "—";
   const dt = d instanceof Date ? d : new Date(d);
@@ -124,7 +114,7 @@ function issueLabel(row: {
 }): React.ReactNode {
   if (row.incomplete > 0) {
     return (
-      <span className="text-warn-700">
+      <span className="text-warning-700">
         {row.incomplete} incomplete
       </span>
     );
@@ -132,7 +122,7 @@ function issueLabel(row: {
   if (row.hoursDrift) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-warn-700"
+        className="inline-flex items-center gap-1 text-warning-700"
         title={`Stored hours (${row.storedHours?.toFixed(2)}h) don't match live punch hours (${row.liveHours?.toFixed(2)}h). Open employee row to inspect; expand to see daily punches. Use "Recompute payslip" on the run page to overwrite stored with live.`}
       >
         <AlertTriangle className="h-3 w-3" aria-hidden />
@@ -533,7 +523,7 @@ export default async function PeriodReviewPage({
       {!isAccountant && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Print payroll documents</CardTitle>
+            <CardTitle>Print payroll documents</CardTitle>
             <CardDescription>
               Print these while reviewing this period. Reports keeps the same
               documents for lookbacks.
@@ -615,7 +605,7 @@ export default async function PeriodReviewPage({
           {
             key: "pending",
             label: "Pending",
-            dot: "bg-warn-600",
+            dot: "bg-warning-600",
             count: pending.length,
             names: pending.map((p) => nameOf(p.employeeId)).sort(),
           },
@@ -634,7 +624,7 @@ export default async function PeriodReviewPage({
         return (
           <Card>
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
-              <CardTitle className="text-base">
+              <CardTitle>
                 Payslip acknowledgements
               </CardTitle>
               <p className="text-caption text-text-muted tabular-nums">
@@ -665,7 +655,7 @@ export default async function PeriodReviewPage({
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {buckets.map((bucket) => (
                   <div key={bucket.key} className="space-y-2">
-                    <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                    <p className="flex items-center gap-1.5 text-micro uppercase text-text-subtle">
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${bucket.dot}`}
                         aria-hidden
@@ -749,7 +739,7 @@ export default async function PeriodReviewPage({
           employee twice. */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Employee totals</CardTitle>
+          <CardTitle>Employee totals</CardTitle>
         </CardHeader>
         <CardContent>
           {rendered.length === 0 ? (
@@ -793,14 +783,14 @@ export default async function PeriodReviewPage({
                           <div className="text-base font-semibold tabular-nums">
                             <MoneyDisplay cents={result.roundedCents} />
                           </div>
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Rounded
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Hours
                           </div>
                           <div className="mt-1 font-semibold tabular-nums">
@@ -811,7 +801,7 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Gross
                           </div>
                           <div className="mt-1 font-semibold tabular-nums">
@@ -819,7 +809,7 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Issues
                           </div>
                           <div className="mt-1 truncate text-xs">
@@ -891,7 +881,7 @@ export default async function PeriodReviewPage({
 
             <div className="hidden space-y-0.5 overflow-x-auto md:block">
               <div className="min-w-[760px]">
-              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle border-b border-border">
+              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-micro uppercase text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
@@ -1130,7 +1120,7 @@ function PunchSubTable({
   return (
     <div className="overflow-x-auto px-3 pb-3 pt-1 md:px-9">
       <table className="min-w-[22rem] text-xs md:min-w-full">
-        <thead className="text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-text-subtle border-b border-border/60">
+        <thead className="text-left text-micro uppercase text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-semibold">Day</th>
             <th className="py-1 px-3 font-semibold">In</th>

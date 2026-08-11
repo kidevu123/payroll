@@ -141,7 +141,7 @@ export function Sidebar({
             {/* Section heading: uppercase label flanked by hairline rules */}
             <div className="flex items-center gap-2 px-2 mb-2">
               <span className="flex-1 h-px bg-border/60" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.11em] text-text-subtle/70 shrink-0">
+              <span className="text-micro uppercase text-text-subtle/70 shrink-0">
                 {tNav(sec.headingKey)}
               </span>
               <span className="flex-1 h-px bg-border/60" />
@@ -261,7 +261,7 @@ function SystemStatus({ healthy }: { healthy: boolean }) {
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
           </>
         ) : (
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warn-700" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-warning-700" />
         )}
       </span>
       <span className="font-medium tracking-tight">{label}</span>

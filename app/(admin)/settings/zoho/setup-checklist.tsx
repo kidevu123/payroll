@@ -39,7 +39,7 @@ export function SetupChecklist({
   return (
     <Card className="border-warning-200/60 bg-warning-50/30">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2">
           Zoho self-client setup
         </CardTitle>
         <CardDescription>

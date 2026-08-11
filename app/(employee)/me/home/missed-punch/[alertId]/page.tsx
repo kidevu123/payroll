@@ -101,7 +101,7 @@ export default async function MissedPunchFixPage({
       </Button>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex min-w-0 flex-wrap items-center gap-2">
+          <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
             {alert.date} <ExceptionBadge issue={alert.issue} />
           </CardTitle>
         </CardHeader>

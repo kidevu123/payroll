@@ -24,7 +24,7 @@ export default async function NgtecoRunsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-title font-semibold tracking-tight">NGTeco runs</h1>
+        <h1 className="text-title tracking-tight antialiased text-text">NGTeco runs</h1>
         <p className="text-sm text-text-muted">
           Last {runs.length} import attempts, newest first.
         </p>
@@ -43,7 +43,7 @@ export default async function NgtecoRunsPage() {
       ) : (
         <div className="overflow-x-auto rounded-card border border-border bg-surface">
           <table className="min-w-full text-sm">
-            <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border bg-surface-2/60">
+            <thead className="text-left text-micro uppercase text-text-subtle border-b border-border bg-surface-2/60">
               <tr>
                 <th className="px-3 py-2 font-medium">Run</th>
                 <th className="px-3 py-2 font-medium">State</th>

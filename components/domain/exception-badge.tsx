@@ -22,22 +22,22 @@ const META: Record<Issue, { key: string; tone: string; Icon: React.ComponentType
   },
   MISSING_IN: {
     key: "missingIn",
-    tone: "bg-warn-50 text-warn-700 border-warn-200",
+    tone: "bg-warning-50 text-warning-700 border-warning-200",
     Icon: AlertCircle,
   },
   MISSING_OUT: {
     key: "missingOut",
-    tone: "bg-warn-50 text-warn-700 border-warn-200",
+    tone: "bg-warning-50 text-warning-700 border-warning-200",
     Icon: Clock3,
   },
   UNPAIRED_PUNCH: {
     key: "unpairedPunch",
-    tone: "bg-warn-50 text-warn-700 border-warn-200",
+    tone: "bg-warning-50 text-warning-700 border-warning-200",
     Icon: AlertCircle,
   },
   SUSPICIOUS_DURATION: {
     key: "suspicious",
-    tone: "bg-warn-50 text-warn-700 border-warn-200",
+    tone: "bg-warning-50 text-warning-700 border-warning-200",
     Icon: AlertTriangle,
   },
   INVERTED_TIMES: {

@@ -46,7 +46,7 @@ export default async function SalariedPage() {
     return (
       <div className="space-y-4">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Salaried</h1>
           <p className="text-sm text-text-muted">
             Salaried employees are paid externally (W2). Upload paystubs here
             and they appear on each employee&apos;s portal under Pay.
@@ -100,7 +100,7 @@ export default async function SalariedPage() {
     <div className="space-y-5">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
-          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Salaried</h1>
           <p className="text-sm text-text-muted">
             Upload and manage W-2 / paystub documents for salaried employees.
           </p>
@@ -188,7 +188,7 @@ export default async function SalariedPage() {
                       ) : (
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-700 ring-1 ring-inset ring-warn-200 underline-offset-2 hover:underline"
+                          className="inline-flex items-center gap-1 rounded-chip bg-warning-50 px-2 py-0.5 text-[10px] font-medium text-warning-700 ring-1 ring-inset ring-warning-200 underline-offset-2 hover:underline"
                         >
                           <CalendarClock className="h-3 w-3" />
                           No schedule — set one

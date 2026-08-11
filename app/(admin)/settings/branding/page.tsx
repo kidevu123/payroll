@@ -16,7 +16,7 @@ export default async function Page() {
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <BookOpen className="h-4 w-4 text-brand-700" aria-hidden />
-          <CardTitle className="text-base">Employee guide PDF</CardTitle>
+          <CardTitle>Employee guide PDF</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-text-muted">

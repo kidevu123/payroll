@@ -91,7 +91,7 @@ export function PayslipCard(props: PayslipCardProps) {
         "transition-shadow duration-200 hover:shadow-card-hover",
         // Disputed: subtle amber inset on the left edge — one strong cue.
         isDisputed &&
-          "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warn-700/80",
+          "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warning-700/80",
         props.className,
       )}
     >
@@ -104,7 +104,7 @@ export function PayslipCard(props: PayslipCardProps) {
               {props.periodEnd}
             </h3>
             {isDisputed ? (
-              <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
+              <span className="inline-flex items-center gap-1 rounded-chip border border-warning-200/80 bg-warning-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warning-700">
                 <AlertTriangle className="h-3 w-3" aria-hidden />
                 {t("problemReported")}
               </span>
@@ -177,7 +177,7 @@ export function PayslipCard(props: PayslipCardProps) {
     <div
       className={cn(
         "rounded-card overflow-hidden border border-border/70 bg-surface shadow-card",
-        isDisputed && "ring-1 ring-warn-200/70",
+        isDisputed && "ring-1 ring-warning-200/70",
         props.className,
       )}
     >

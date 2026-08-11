@@ -106,7 +106,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
 
       {tempPassword && (
         <div className="rounded-card border border-warning-200 bg-warning-50/60 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wider text-warning-800">
+          <p className="text-micro uppercase text-warning-800">
             Temporary password for {tempPassword.label} — share once
           </p>
           <div className="mt-1 flex items-center gap-2">

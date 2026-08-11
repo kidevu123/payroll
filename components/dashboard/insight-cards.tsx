@@ -216,7 +216,7 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
         <SyncSparkline data={sync.points} />
       </div>
       <span
-        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-micro uppercase"
         style={{ color: accent, background: `${accent}1f` }}
       >
         {label}
@@ -383,7 +383,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
             </span>
             <div className="min-w-0">
               <div
-                className="truncate text-[10px] font-semibold uppercase tracking-[0.1em]"
+                className="truncate text-micro uppercase"
                 style={{ color: DASH.textFaint }}
               >
                 {t.label}

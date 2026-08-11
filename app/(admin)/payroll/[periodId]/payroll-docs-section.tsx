@@ -80,7 +80,7 @@ export function PayrollDocsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">W2 / paystub documents</CardTitle>
+        <CardTitle>W2 / paystub documents</CardTitle>
         <CardDescription>
           For employees whose pay is prepared externally (e.g. accountant).
           Upload the document here and the employee will see it under their

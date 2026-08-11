@@ -67,7 +67,7 @@ export default async function NotificationsPage() {
           {configured ? (
             <PushToggle alreadySubscribed={subs.length > 0} />
           ) : (
-            <div className="flex items-start gap-2.5 rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-sm text-warn-700">
+            <div className="flex items-start gap-2.5 rounded-card border border-warning-200/80 bg-warning-50 p-3.5 text-sm text-warning-700">
               <AlertTriangle
                 className="mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden

@@ -236,7 +236,7 @@ function MobileDrawer({
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 overscroll-contain">
           {sections.map((sec) => (
             <div key={sec.headingKey}>
-              <div className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+              <div className="px-3 mb-1.5 text-micro uppercase text-text-subtle">
                 {tNav(sec.headingKey)}
               </div>
               <ul className="space-y-0.5">

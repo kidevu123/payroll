@@ -132,7 +132,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   return (
     <Card className="bg-surface-2 shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Upload className="h-4 w-4 text-brand-700" /> Drop a CSV
         </CardTitle>
       </CardHeader>
@@ -422,7 +422,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                     >
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-name-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-name-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Worker
                           </Label>
                         )}
@@ -442,7 +442,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-amount-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-amount-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Amount $
                           </Label>
                         )}
@@ -465,7 +465,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-hours-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-hours-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Hours (opt)
                           </Label>
                         )}
@@ -488,7 +488,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-desc-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-desc-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Description
                           </Label>
                         )}
@@ -779,7 +779,7 @@ function PreviewRow({
 
       {open && row.unmatched && (
         <div className="mt-2 ml-7 rounded-card border border-warning-200/80 bg-warning-50/60 p-3 space-y-2">
-          <p className="text-[11px] uppercase tracking-wider text-warning-700 font-medium">
+          <p className="text-micro uppercase text-warning-700">
             New employee · ref {row.ngtecoRef}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

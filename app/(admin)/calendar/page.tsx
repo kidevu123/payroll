@@ -292,7 +292,7 @@ export default async function CalendarPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">
+          <h1 className="text-title tracking-tight antialiased text-text">
             Calendar &amp; requests
           </h1>
           <p className="text-sm text-text-muted">
@@ -486,7 +486,7 @@ export default async function CalendarPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-1 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border pb-1 mb-1">
+          <div className="grid grid-cols-7 gap-1 text-micro uppercase text-text-subtle border-b border-border pb-1 mb-1">
             <div>Sun</div>
             <div>Mon</div>
             <div>Tue</div>
@@ -626,7 +626,7 @@ export default async function CalendarPage({
           {/* Month overview — four stat tiles (matches the #58 rail). */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{monthName} overview</CardTitle>
+              <CardTitle>{monthName} overview</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <OverviewStat tone="emerald" value={approvedCount} label="Approved" sub="Time-off requests" />

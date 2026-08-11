@@ -342,7 +342,7 @@ export function SalariedUploadSlot({
                 className={[
                   "text-[10px] leading-tight",
                   inferred.kind === "NONE" || inferred.kind === "ERROR"
-                    ? "text-warn-700"
+                    ? "text-warning-700"
                     : "text-text-subtle",
                 ].join(" ")}
               >
@@ -481,7 +481,7 @@ function DocRow({ doc }: { doc: DocLite }) {
                   No period set
                 </span>
               )}
-              <span className="text-[10px] font-medium uppercase tracking-wide text-text-subtle">
+              <span className="text-micro uppercase text-text-subtle">
                 {KIND_LABEL[doc.kind]}
               </span>
             </p>
@@ -635,7 +635,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
         "rounded-chip px-2 py-0.5 tabular-nums text-xs transition-colors",
         liveHasAmount
           ? "text-text hover:bg-surface-2"
-          : "bg-warn-50 text-warn-700 hover:bg-warn-50/80",
+          : "bg-warning-50 text-warning-700 hover:bg-warning-50/80",
       ].join(" ")}
     >
       {liveHasAmount ? formatMoney(amountCents as number) : "Add net $"}

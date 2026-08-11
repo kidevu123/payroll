@@ -209,7 +209,7 @@ export function Topbar({
                 <span className="text-xs truncate w-full text-text" title={email}>
                   {email}
                 </span>
-                <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+                <span className="text-micro uppercase text-text-subtle">
                   {roleText}
                 </span>
               </span>
@@ -232,7 +232,7 @@ export function Topbar({
                     <div className="text-xs truncate text-text" title={email}>
                       {email}
                     </div>
-                    <div className="mt-0.5 inline-flex items-center rounded-chip border border-border/80 bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-text-muted">
+                    <div className="mt-0.5 inline-flex items-center rounded-chip border border-border/80 bg-surface-2 px-1.5 py-0.5 text-micro uppercase text-text-muted">
                       {roleText}
                     </div>
                   </div>

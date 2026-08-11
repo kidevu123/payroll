@@ -84,9 +84,12 @@ function TrendDot(props: {
   const boxW = 52;
   const boxH = 22;
   const boxX = cx - boxW - 2; // pin to the left of the dot so it never clips
-  // Clamp so a high end-value doesn't push the label off the top of a short
-  // chart; drop it just below the dot if there isn't room above.
-  const boxY = cy - boxH - 10 < 2 ? cy + 8 : cy - boxH - 10;
+  // Clamp to the top edge when a high end-value leaves no room above. Dropping
+  // the label below the dot (the previous fallback) parked it on top of the
+  // month axis labels — an upward trend, which is the common case, always
+  // collided with "Aug". The label is offset horizontally from the dot, so
+  // sitting at the top edge never covers the point itself.
+  const boxY = Math.max(2, cy - boxH - 10);
   return (
     <g>
       <circle cx={cx} cy={cy} r={9} fill={CHART.emerald} fillOpacity={0.16} />

@@ -43,7 +43,7 @@ export default async function ChangeTimeOffPage({
       </Button>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t("changeTitle")}</CardTitle>
+          <CardTitle>{t("changeTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-text-muted">{t("changeApprovalHint")}</p>

@@ -64,7 +64,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-6">
       <header className="page-header-rule pb-4">
-        <h1 className="text-title font-semibold tracking-tight text-text">
+        <h1 className="text-title tracking-tight antialiased text-text">
           Settings
         </h1>
         <p className="text-body text-text-muted mt-1 max-w-2xl">
@@ -99,7 +99,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
           </ul>
           <div className="border-t border-border/60 mx-1" />
           <div>
-            <div className="px-3 mb-1.5 text-caption font-semibold uppercase tracking-widest text-text-subtle">
+            <div className="px-3 mb-1.5 text-micro uppercase text-text-subtle">
               Admin tools
             </div>
             <ul className="space-y-0.5">

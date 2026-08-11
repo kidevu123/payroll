@@ -39,7 +39,7 @@ export function DashCard({
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="text-[11px] font-semibold uppercase tracking-[0.08em]"
+      className="text-micro uppercase"
       style={{ color: DASH.textFaint }}
     >
       {children}

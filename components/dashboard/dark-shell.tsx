@@ -188,7 +188,7 @@ export function DashboardDarkShell({
           <span
             aria-hidden
             className="flex h-6 w-6 items-center justify-center rounded-md text-[13px] font-black"
-            style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
+            style={{ background: DASH.accentGradient, color: DASH.onAccent }}
           >
             {company.name.slice(0, 1).toLowerCase()}
           </span>
@@ -210,7 +210,7 @@ export function DashboardDarkShell({
             {(badges?.["/notifications"] ?? 0) > 0 ? (
               <span
                 className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold tabular-nums"
-                style={{ background: DASH.emerald, color: "#0b0b12" }}
+                style={{ background: DASH.emerald, color: DASH.onAccent }}
               >
                 {badges!["/notifications"]}
               </span>
@@ -229,7 +229,7 @@ export function DashboardDarkShell({
             <span
               aria-hidden
               className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-              style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
+              style={{ background: DASH.accentGradient, color: DASH.onAccent }}
             >
               {initialsOf(user.name)}
             </span>
@@ -266,8 +266,8 @@ export function DashboardDarkShell({
               aria-hidden
               className="flex h-7 w-7 items-center justify-center rounded-lg text-[15px] font-black"
               style={{
-                background: "linear-gradient(135deg, #34d399, #059669)",
-                color: "#0b0b12",
+                background: DASH.accentGradient,
+                color: DASH.onAccent,
                 boxShadow: "0 4px 14px -4px rgba(52,211,153,0.7)",
               }}
             >
@@ -308,7 +308,7 @@ export function DashboardDarkShell({
           {sections.map((sec) => (
             <div key={sec.headingKey}>
               <div
-                className="hidden lg:block px-2 mb-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+                className="hidden lg:block px-2 mb-1.5 text-micro uppercase"
                 style={{ color: DASH.textFaint }}
               >
                 {tNav(sec.headingKey)}
@@ -345,7 +345,7 @@ export function DashboardDarkShell({
                 {company.name} Intelligence
               </span>
               <span
-                className="rounded px-1.5 py-px text-[11px] font-bold uppercase tracking-wide"
+                className="rounded px-1.5 py-px text-micro uppercase"
                 style={{ background: "rgba(52,211,153,0.25)", color: DASH.emerald }}
               >
                 Beta
@@ -357,7 +357,7 @@ export function DashboardDarkShell({
             <Link
               href="/assistant"
               className="mt-2.5 flex w-full items-center justify-center rounded-lg py-1.5 text-[12px] font-semibold"
-              style={{ background: DASH.emerald, color: "#0b0b12" }}
+              style={{ background: DASH.emerald, color: DASH.onAccent }}
             >
               Ask {company.name}
             </Link>
@@ -400,7 +400,7 @@ export function DashboardDarkShell({
                 <span
                   aria-hidden
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
-                  style={{ background: "linear-gradient(135deg, #34d399, #059669)", color: "#0b0b12" }}
+                  style={{ background: DASH.accentGradient, color: DASH.onAccent }}
                 >
                   {initialsOf(user.name)}
                 </span>
@@ -409,7 +409,7 @@ export function DashboardDarkShell({
                 <span className="block truncate text-[13px] font-semibold" style={{ color: DASH.text }}>
                   {user.name}
                 </span>
-                <span className="block truncate text-[10px] uppercase tracking-wide" style={{ color: DASH.textFaint }}>
+                <span className="block truncate text-micro uppercase" style={{ color: DASH.textFaint }}>
                   {user.role}
                 </span>
               </span>
@@ -463,7 +463,11 @@ export function DashboardDarkShell({
           top/bottom fixed bars hide from md up, so their pt/pb offsets reset
           to plain py-4 at the same breakpoint. */}
       <main className="md:pl-16 lg:pl-64 min-h-dvh">
-        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-4 md:pt-4 md:pb-4 2xl:px-10">
+        {/* Desktop bottom padding clears the fixed FeedbackLauncher (bottom-4
+            right-4, z-30). With md:pb-4 the launcher sat directly on top of
+            whatever rendered in the canvas's bottom-right corner — on /reports
+            that was the primary "Generate custom report" CTA. */}
+        <div className="mx-auto w-full max-w-[min(1800px,100%)] px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-4 md:pt-4 md:pb-16 2xl:px-10">
           {children}
         </div>
       </main>

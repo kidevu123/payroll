@@ -96,7 +96,7 @@ export function AuditRowDiff({
       {open && hasPayload && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-border p-3">
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">
+            <div className="text-micro uppercase text-text-muted mb-1">
               Before
             </div>
             <pre className="text-[11px] bg-surface-2 rounded p-2 overflow-auto max-h-72">
@@ -104,7 +104,7 @@ export function AuditRowDiff({
             </pre>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">
+            <div className="text-micro uppercase text-text-muted mb-1">
               After
             </div>
             <pre className="text-[11px] bg-surface-2 rounded p-2 overflow-auto max-h-72">

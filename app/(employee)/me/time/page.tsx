@@ -122,7 +122,7 @@ export default async function EmployeeTime() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t("todayLabel")} · {today}</CardTitle>
+          <CardTitle>{t("todayLabel")} · {today}</CardTitle>
           <CardDescription>
             {t.rich("todaySubtitle", {
               hours: () => (
@@ -206,7 +206,7 @@ export default async function EmployeeTime() {
             return (
               <Card key={wk}>
                 <CardHeader>
-                  <CardTitle className="text-sm">
+                  <CardTitle>
                     {t("weekOf", { date: wk })}
                   </CardTitle>
                 </CardHeader>

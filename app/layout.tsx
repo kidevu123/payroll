@@ -11,6 +11,7 @@ import { assetVersion } from "@/lib/branding/storage";
 import { resolveLocale, messagesFor } from "@/lib/i18n";
 import { DeployVersionGuard } from "@/components/deploy-version-guard";
 import { PdfViewerProvider } from "@/components/domain/pdf-viewer";
+import { brandRampStyle } from "@/lib/brand/ramp";
 
 /**
  * Cache-busted icon links keyed off the uploaded favicon's mtime. Forces
@@ -86,11 +87,15 @@ export default async function RootLayout({
   const locale = await resolveLocale();
   const messages = messagesFor(locale);
 
-  // Brand color is owner-controlled (Setting('company.brandColorHex')).
-  // We expose it as a CSS custom property so any --brand-* consumer picks it up.
-  const brandStyle = company?.brandColorHex
-    ? ({ ["--color-brand-700" as string]: company.brandColorHex } as React.CSSProperties)
-    : undefined;
+  // Brand color is owner-controlled (Setting('company.brandColorHex')). It
+  // seeds the WHOLE ramp — overriding only --color-brand-700 (the previous
+  // behavior) left the other nine shades on the compiled-in emerald, so a
+  // non-emerald brand color split the UI across two accent families: a CTA in
+  // the owner's color with an emerald hover, accent rails in one hue and chip
+  // tints in another.
+  const brandStyle = brandRampStyle(company?.brandColorHex) as
+    | React.CSSProperties
+    | undefined;
 
   return (
     <html

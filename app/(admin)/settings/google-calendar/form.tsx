@@ -47,7 +47,7 @@ export function GoogleCalendarForm({
         }
       >
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             {connected ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-success-700" />

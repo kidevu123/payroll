@@ -133,7 +133,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           </div>
         </div>
         <span
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+          className="rounded-full px-2.5 py-1 text-micro uppercase"
           style={{ color: badge.color, background: badge.bg }}
         >
           {step.badge}
@@ -204,8 +204,8 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           style={
             step.primary
               ? {
-                  color: "#0b0b12",
-                  background: "linear-gradient(135deg, #34d399, #059669)",
+                  color: DASH.onAccent,
+                  background: DASH.accentGradient,
                   boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
                 }
               : {

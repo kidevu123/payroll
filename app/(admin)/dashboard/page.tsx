@@ -36,6 +36,7 @@ import {
 import { listApprovedTimeOffForDate } from "@/lib/db/queries/time-off";
 import { getSetting } from "@/lib/settings/runtime";
 import { requireSession } from "@/lib/auth-guards";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
 
@@ -147,7 +148,7 @@ export default async function DashboardPage() {
       kind: "TIME_OFF" as const,
       ...empMeta(r.employeeId),
       title: "Time off request",
-      subtitle: `${r.startDate} – ${r.endDate}`,
+      subtitle: formatPeriodRange(r.startDate, r.endDate),
     })),
   ];
 
@@ -184,7 +185,7 @@ export default async function DashboardPage() {
       id: r.id,
       href: period ? `/payroll/${period.id}` : `/payroll/run/${r.id}`,
       label: period
-        ? `${period.startDate} – ${period.endDate}`
+        ? formatPeriodRange(period.startDate, period.endDate)
         : `Run ${r.id.slice(0, 8)}`,
       scheduleName: schedule?.name ?? null,
       amountCents: r.totalAmountCents,
