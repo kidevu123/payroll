@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Instrument_Sans,
-  IBM_Plex_Mono,
-} from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { NextIntlClientProvider } from "next-intl";
 import { getCompanySettings } from "@/lib/settings/runtime";
@@ -60,16 +57,22 @@ export const dynamic = "force-dynamic";
 // first-paint cost on the phone. Exposed as CSS variables consumed by the
 // --font-sans / --font-mono tokens in globals.css.
 //
-// ONE UI typeface. Headings used to render in Bricolage Grotesque — a
-// deliberately irregular display face — against Instrument Sans body copy.
-// Measured against shadcn/Geist, Vercel, Linear and Stripe: all four set
-// headings and body in the SAME family and separate them with weight and
-// tracking instead. The two-typeface pairing was the loudest reason the app
-// read as inconsistent. Mono is kept, but only for real code artifacts.
-const instrument = Instrument_Sans({
+// ONE UI typeface, everywhere, at every size.
+//
+// History: headings were set in Bricolage Grotesque (a deliberately irregular
+// display face) over Instrument Sans body copy — the two-family pairing read
+// as a mismatch on every screen. Collapsing to Instrument Sans alone fixed the
+// mismatch but the owner still found it "harsh": Instrument is a tight,
+// squarish grotesque whose small apertures get hard at UI sizes.
+//
+// Inter is the UI-first choice (Linear and most payroll/fintech tools use it):
+// open apertures, a tall x-height that stays legible at 12px, and genuine
+// tabular figures — which matters here because most of this app is columns of
+// money. Mono is kept, but only for real code artifacts.
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-instrument",
+  variable: "--font-ui",
 });
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
@@ -101,7 +104,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       style={brandStyle}
-      className={`${instrument.variable} ${plexMono.variable}`}
+      className={`${inter.variable} ${plexMono.variable}`}
     >
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
