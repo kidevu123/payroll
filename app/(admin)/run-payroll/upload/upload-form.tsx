@@ -132,7 +132,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
   return (
     <Card className="bg-surface-2 shadow-sm">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Upload className="h-4 w-4 text-brand-700" /> Drop a CSV
         </CardTitle>
       </CardHeader>
@@ -326,7 +326,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                 employees won&apos;t get a payslip even if their hours are in
                 the CSV.
               </p>
-              <ul className="divide-y divide-border max-h-96 overflow-y-auto rounded border border-border bg-surface">
+              <ul className="divide-y divide-border/60 max-h-96 overflow-y-auto rounded border border-border bg-surface">
                 {preview.employees.map((e) => (
                   <PreviewRow
                     key={e.ngtecoRef}
@@ -418,11 +418,11 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                   {tempWorkers.map((tw, i) => (
                     <div
                       key={tw.key}
-                      className="grid grid-cols-1 sm:grid-cols-[1.6fr_0.7fr_0.7fr_2fr_auto] gap-2 items-end"
+                      className="grid grid-cols-1 md:grid-cols-[1.6fr_0.7fr_0.7fr_2fr_auto] gap-2 items-end"
                     >
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-name-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-name-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Worker
                           </Label>
                         )}
@@ -442,7 +442,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-amount-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-amount-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Amount $
                           </Label>
                         )}
@@ -460,12 +460,12 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                             )
                           }
                           placeholder="200.00"
-                          className="h-9 text-sm font-mono"
+                          className="h-9 text-sm tabular-nums"
                         />
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-hours-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-hours-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Hours (opt)
                           </Label>
                         )}
@@ -483,12 +483,12 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                             )
                           }
                           placeholder="—"
-                          className="h-9 text-sm font-mono"
+                          className="h-9 text-sm tabular-nums"
                         />
                       </div>
                       <div className="space-y-0.5">
                         {i === 0 && (
-                          <Label htmlFor={`tw-desc-${tw.key}`} className="text-[10px] uppercase tracking-wide text-text-subtle">
+                          <Label htmlFor={`tw-desc-${tw.key}`} className="text-micro uppercase text-text-subtle">
                             Description
                           </Label>
                         )}
@@ -510,6 +510,8 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                         type="button"
                         size="sm"
                         variant="ghost"
+                        aria-label="Remove this temporary worker row"
+                        title="Remove row"
                         onClick={() =>
                           setTempWorkers((prev) => prev.filter((x) => x.key !== tw.key))
                         }
@@ -750,7 +752,7 @@ function PreviewRow({
               </span>
             )}
             {row.payType === "SALARIED" && (
-              <span className="rounded-input bg-purple-100 px-1.5 py-0.5 text-[10px] text-purple-800 dark:bg-purple-500/15 dark:text-purple-300">
+              <span className="rounded-input bg-cyan-100 px-1.5 py-0.5 text-[10px] text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-300">
                 Salaried — paystub upload only
               </span>
             )}
@@ -777,7 +779,7 @@ function PreviewRow({
 
       {open && row.unmatched && (
         <div className="mt-2 ml-7 rounded-card border border-warning-200/80 bg-warning-50/60 p-3 space-y-2">
-          <p className="text-[11px] uppercase tracking-wider text-warning-700 font-medium">
+          <p className="text-micro uppercase text-warning-700">
             New employee · ref {row.ngtecoRef}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -799,7 +801,7 @@ function PreviewRow({
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
                 placeholder="13.50"
-                className="w-full rounded-input border border-border/70 bg-surface px-2.5 h-9 text-sm font-mono tabular-nums"
+                className="w-full rounded-input border border-border/70 bg-surface px-2.5 h-9 text-sm tabular-nums"
                 disabled={pending}
               />
             </label>

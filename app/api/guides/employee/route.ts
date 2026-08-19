@@ -28,7 +28,7 @@ export async function GET(): Promise<Response> {
   const data = {
     company: {
       name: company.name,
-      brandColorHex: company.brandColorHex ?? "#0d9488",
+      brandColorHex: company.brandColorHex ?? "#078a54",
       logoPath: null,
     },
     screenshots: {

@@ -1,4 +1,4 @@
-// Second-row + KPI presentational cards for the dashboard. Pure
+// Second-row + KPI presentational cards for the dark dashboard. Pure
 // presentational; all data pre-shaped by computeDashboardMetrics.
 
 import {
@@ -16,9 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatMoney } from "@/lib/utils";
-import { SpendTrendChart } from "./charts/spend-trend-chart";
-import { SyncSparkline } from "./charts/sync-sparkline";
-import { HealthGauge } from "./charts/health-gauge";
+import { SpendTrendChart, SyncSparkline, HealthGauge } from "./charts/lazy";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DashboardPollButton } from "./dashboard-poll-button";
 import { DASH } from "./theme";
@@ -62,18 +60,15 @@ export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
             </span>
             <Delta pct={trend.deltaPct} className="mb-1.5" />
           </div>
-          <div className="mt-1 text-xs" style={{ color: DASH.textFaint }}>
+          <div className="mt-1 text-[11px]" style={{ color: DASH.textFaint }}>
             Year-to-date payroll spend
           </div>
         </div>
         <span
           className="hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
-          style={{
-            background: "rgba(15,118,110,0.10)",
-            border: `1px solid ${DASH.border}`,
-          }}
+          style={{ background: "rgba(34,211,238,0.12)", border: `1px solid ${DASH.border}` }}
         >
-          <Activity className="h-4 w-4" style={{ color: DASH.violetBright }} />
+          <Activity className="h-4 w-4" style={{ color: DASH.cyanBright }} />
         </span>
       </div>
       <SpendTrendChart data={trend.points} />
@@ -91,10 +86,7 @@ function MiniStat({
 }: {
   eyebrow: string;
   value: string;
-  icon: React.ComponentType<{
-    className?: string;
-    style?: React.CSSProperties;
-  }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   accent: string;
   sub?: React.ReactNode;
   href?: string;
@@ -105,10 +97,7 @@ function MiniStat({
         <Eyebrow>{eyebrow}</Eyebrow>
         <span
           className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{
-            background: "var(--dash-hover)",
-            border: `1px solid ${DASH.border}`,
-          }}
+          style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
         >
           <Icon className="h-4 w-4" style={{ color: accent }} />
         </span>
@@ -130,7 +119,7 @@ function MiniStat({
   return (
     <Link
       href={href}
-      className="block h-full rounded-card transition duration-150 hover:brightness-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40"
+      className="block h-full rounded-xl transition duration-150 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
       {card}
     </Link>
@@ -149,13 +138,10 @@ export function HeadcountCard({
       eyebrow="Headcount"
       value={String(count)}
       icon={Users}
-      accent={DASH.violetBright}
+      accent={DASH.cyanBright}
       href="/employees"
       sub={
-        <span
-          className="inline-flex items-center gap-1.5 text-xs"
-          style={{ color: DASH.textFaint }}
-        >
+        <span className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: DASH.textFaint }}>
           Active employees
           {delta !== null && delta !== 0 ? (
             <span
@@ -183,13 +169,12 @@ export function ExceptionsCard({ count }: { count: number }) {
       href="/hall-monitor"
       sub={
         <span
-          className="inline-flex items-center gap-1 text-xs"
+          className="inline-flex items-center gap-1 text-[11px]"
           style={{ color: clear ? DASH.emerald : DASH.amber }}
         >
           {clear ? (
             <>
-              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> All
-              resolved
+              <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> All resolved
             </>
           ) : (
             "Unresolved alerts"
@@ -210,37 +195,40 @@ export function SyncCard({ sync }: { sync: DashboardMetrics["sync"] }) {
       : sync.state === "STALE"
         ? "Stale"
         : "Unknown";
+  // Slim status strip: one row — identity, last-sync age, activity
+  // sparkline, state chip. Sync is ambient telemetry, not a hero metric;
+  // it does not deserve a tall card.
   return (
-    <DashCard className="flex h-full flex-col gap-1.5">
-      <div className="flex items-start justify-between">
+    <DashCard className="flex items-center gap-3 py-3">
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
+      >
+        <StateIcon className="h-4 w-4" style={{ color: accent }} />
+      </span>
+      <div className="min-w-0">
         <Eyebrow>NGTeco sync</Eyebrow>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide"
-          style={{ color: accent, background: `${accent}1f` }}
-        >
-          <StateIcon className="h-3 w-3" aria-hidden="true" />
-          {label}
-        </span>
-      </div>
-      <div>
-        <div className="text-sm font-semibold" style={{ color: DASH.text }}>
+        <div className="mt-0.5 truncate text-sm font-semibold" style={{ color: DASH.text }}>
           Last sync {relativeAge(sync.lastSyncAt)}
         </div>
-        <div className="mt-2">
-          <SyncSparkline data={sync.points} />
-        </div>
       </div>
+      <div aria-hidden className="ml-auto hidden h-8 w-36 sm:block">
+        <SyncSparkline data={sync.points} />
+      </div>
+      <span
+        className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-micro uppercase"
+        style={{ color: accent, background: `${accent}1f` }}
+      >
+        {label}
+      </span>
     </DashCard>
   );
 }
 
 function healthLabel(score: number): { word: string; caption: string } {
-  if (score >= 90)
-    return { word: "Excellent", caption: "Everything looks great!" };
-  if (score >= 75)
-    return { word: "Good", caption: "Healthy with minor items." };
-  if (score >= 50)
-    return { word: "Fair", caption: "A few things need attention." };
+  if (score >= 90) return { word: "Excellent", caption: "Everything looks great!" };
+  if (score >= 75) return { word: "Good", caption: "Healthy with minor items." };
+  if (score >= 50) return { word: "Fair", caption: "A few things need attention." };
   return { word: "Needs attention", caption: "Several items to resolve." };
 }
 
@@ -252,10 +240,7 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
         <div className="flex w-28 flex-col items-center">
           <HealthGauge score={health.score} />
-          <div
-            className="-mt-1 text-[12px] font-semibold"
-            style={{ color: DASH.emerald }}
-          >
+          <div className="-mt-1 text-[12px] font-semibold" style={{ color: DASH.emerald }}>
             {word}
           </div>
         </div>
@@ -263,7 +248,7 @@ export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
           {health.checklist.map((item: HealthChecklistItem) => (
             <li
               key={item.key}
-              className="flex items-center gap-2 text-xs"
+              className="flex items-center gap-2 text-[11px]"
               style={{ color: item.ok ? DASH.textMuted : DASH.textFaint }}
             >
               {item.ok ? (
@@ -303,22 +288,18 @@ export function AutomationBanner({
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(15,118,110,0.12)",
+              background: "rgba(34,211,238,0.16)",
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >
-            <Sparkles
-              className="h-5 w-5"
-              style={{ color: DASH.violetBright }}
-            />
+            <Sparkles className="h-5 w-5" style={{ color: DASH.cyanBright }} />
           </span>
           <div>
             <div className="text-sm font-semibold" style={{ color: DASH.text }}>
               Automate more. Save more time.
             </div>
             <div className="text-[12px]" style={{ color: DASH.textMuted }}>
-              Sync punches from NGTeco and auto-apply rules to eliminate manual
-              work.
+              Sync punches from NGTeco and auto-apply rules to eliminate manual work.
             </div>
           </div>
         </div>
@@ -330,7 +311,7 @@ export function AutomationBanner({
           eyebrow="Runs this month"
           value={String(automation.runsThisMonth)}
           icon={RefreshCw}
-          accent={DASH.violetBright}
+          accent={DASH.cyanBright}
         />
         <MiniStat
           eyebrow="Open periods"
@@ -348,10 +329,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
     label: string;
     value: string;
     sub: string;
-    icon: React.ComponentType<{
-      className?: string;
-      style?: React.CSSProperties;
-    }>;
+    icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
     accent: string;
   }> = [
     {
@@ -359,14 +337,11 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: compactMoney(kpis.ytdSpendCents),
       sub: "This calendar year",
       icon: Activity,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
     {
       label: "Cost per employee",
-      value:
-        kpis.costPerEmployeeCents !== null
-          ? compactMoney(kpis.costPerEmployeeCents)
-          : "—",
+      value: kpis.costPerEmployeeCents !== null ? compactMoney(kpis.costPerEmployeeCents) : "—",
       sub: "YTD ÷ active headcount",
       icon: Wallet,
       accent: DASH.emerald,
@@ -376,7 +351,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: String(kpis.runsThisMonth),
       sub: "Approved or published",
       icon: RefreshCw,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
     {
       label: "Active employees",
@@ -390,28 +365,25 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
       value: compactMoney(kpis.projectedSpendCents),
       sub: "Estimate from YTD run-rate",
       icon: TrendingUp,
-      accent: DASH.violetBright,
+      accent: DASH.cyanBright,
     },
   ];
 
   return (
-    <DashCard className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
+    <DashCard className="grid grid-cols-2 items-stretch gap-x-5 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map((t) => {
         const Icon = t.icon;
         return (
-          <div key={t.label} className="flex items-center gap-2.5">
+          <div key={t.label} className="flex h-full items-center gap-2.5">
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{
-                background: "var(--dash-hover)",
-                border: `1px solid ${DASH.border}`,
-              }}
+              style={{ background: "var(--dash-hover)", border: `1px solid ${DASH.border}` }}
             >
               <Icon className="h-[17px] w-[17px]" style={{ color: t.accent }} />
             </span>
             <div className="min-w-0">
               <div
-                className="truncate text-xs font-semibold uppercase tracking-[0.1em]"
+                className="truncate text-micro uppercase"
                 style={{ color: DASH.textFaint }}
               >
                 {t.label}
@@ -422,10 +394,7 @@ export function KpiBar({ kpis }: { kpis: DashboardMetrics["kpis"] }) {
               >
                 {t.value}
               </div>
-              <div
-                className="truncate text-xs"
-                style={{ color: DASH.textFaint }}
-              >
+              <div className="truncate text-[10px]" style={{ color: DASH.textFaint }}>
                 {t.sub}
               </div>
             </div>

@@ -1,5 +1,30 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// Teach tailwind-merge our custom type-scale utilities. Without this it
+// classifies `text-title` / `text-micro` / etc. as text COLORS, so
+// `cn("text-micro", ..., "text-text-subtle")` silently drops the SIZE class
+// and the element renders at the inherited size. Every step defined in the
+// `@theme` block of globals.css must be listed here — adding a token there
+// without adding it here reintroduces the bug.
+const TYPE_SCALE = [
+  "display",
+  "title",
+  "heading",
+  "subheading",
+  "metric",
+  "body",
+  "caption",
+  "micro",
+] as const;
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: [...TYPE_SCALE] }],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -69,6 +94,16 @@ export function localMidnightUtc(dateIso: string, tz: string): Date {
   // UTC offset in ms = (12:00 UTC - local noon). For UTC-4: +4h. For UTC+5: -5h.
   const offsetMs = (12 * 60 - (localH * 60 + localMin)) * 60 * 1000;
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) + offsetMs);
+}
+
+/**
+ * Add whole days to a YYYY-MM-DD date string, UTC-safe (no DST drift).
+ * Canonical home for the helper that used to be re-implemented in four
+ * modules (poll-importer, dashboard-metrics, kiosk pay, admin time).
+ */
+export function addDaysIso(dateIso: string, days: number): string {
+  const [y, m, d] = dateIso.split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
 /** "8h 36m" style — ignores values < 1 minute. */

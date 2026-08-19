@@ -36,7 +36,7 @@ export async function createShift(
       .insert(shifts)
       .values({
         name: input.name,
-        colorHex: input.colorHex ?? "#0f766e",
+        colorHex: input.colorHex ?? "#067049",
         defaultStart: input.defaultStart ?? null,
         defaultEnd: input.defaultEnd ?? null,
         sortOrder: nextOrder,

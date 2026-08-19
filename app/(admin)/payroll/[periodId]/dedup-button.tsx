@@ -50,7 +50,7 @@ export function DedupPunchesButton({
           {details.map((cluster) => (
             <details
               key={`${cluster.employeeId}-${cluster.keepPunchId}`}
-              className="rounded-input border border-warn-300 bg-surface-2 px-3 py-2"
+              className="rounded-input border border-warning-200 bg-surface-2 px-3 py-2"
             >
               <summary className="cursor-pointer text-xs font-medium text-warning-900">
                 {cluster.employeeName} · {cluster.localDate} ·{" "}
@@ -74,10 +74,10 @@ export function DedupPunchesButton({
                         <td className="py-1.5 pr-3 font-medium">
                           {row.willKeep ? "Keep" : "Void"}
                         </td>
-                        <td className="py-1.5 pr-3 font-mono">{shortId(row.id)}</td>
+                        <td className="py-1.5 pr-3 tabular-nums">{shortId(row.id)}</td>
                         <td className="py-1.5 pr-3">{row.source}</td>
                         <td className="py-1.5 pr-3">{row.localTimeRange}</td>
-                        <td className="py-1.5 pr-3 text-right font-mono tabular-nums">
+                        <td className="py-1.5 pr-3 text-right tabular-nums">
                           {row.durationHours}
                         </td>
                       </tr>

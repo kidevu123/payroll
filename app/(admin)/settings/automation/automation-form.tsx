@@ -75,11 +75,10 @@ export function AutomationForm({ automation }: { automation: AutomationSettings 
               <Label htmlFor="punchPollEnabled">Real-time NGTeco punch poll</Label>
             </div>
             <p className="text-xs text-text-muted">
-              When on, the worker pulls every individual punch off NGTeco&apos;s
-              View Attendance Punch view on a short interval. Pairs in/out
-              automatically and lands them on the current pay period — so
-              /me/time stays approximately live instead of waiting for the
-              weekly aggregator. Default: every 15 minutes.
+              When on, the worker pulls punches through NGTeco&apos;s REST API
+              (browserless, about two seconds per poll — no Chromium session).
+              Pairs in/out automatically and lands them on the current pay
+              period, so /me/time stays approximately live. Default: hourly.
             </p>
             <CronPicker
               name="punchPollCron"

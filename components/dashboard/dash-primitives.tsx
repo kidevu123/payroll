@@ -1,6 +1,4 @@
-// Shared dashboard presentational primitives. Pure, no data access. These use
-// the same radius and elevation language as the rest of the admin app so the
-// dashboard feels like the product home, not a separate showcase surface.
+// Shared dashboard presentational primitives. Pure, no data access.
 
 import * as React from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
@@ -25,8 +23,8 @@ export function DashCard({
         background: DASH.surface,
         border: `1px solid ${DASH.border}`,
         boxShadow: glow
-          ? "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 14px 30px -22px rgb(15 118 110 / 0.35)"
-          : "0 1px 2px 0 rgb(15 23 42 / 0.05), 0 10px 24px -22px rgb(15 23 42 / 0.45)",
+          ? "0 0 0 1px rgba(52,211,153,0.12), 0 18px 50px -22px rgba(52,211,153,0.30)"
+          : "0 10px 34px -24px rgba(0,0,0,0.7)",
       }}
       {...rest}
     >
@@ -58,7 +56,7 @@ export function Delta({
   if (pct === null) {
     return (
       <span
-        className={cn("text-xs font-medium", className)}
+        className={cn("text-[11px] font-medium", className)}
         style={{ color: DASH.textFaint }}
       >
         —
@@ -72,7 +70,7 @@ export function Delta({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+        "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
         className,
       )}
       style={{ color, background: bg }}

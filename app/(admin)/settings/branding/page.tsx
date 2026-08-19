@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Download, BookOpen } from "lucide-react";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { getSetting } from "@/lib/settings/runtime";
 import { BrandingForm } from "./branding-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,13 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const company = await getSetting("company");
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <BrandingForm company={company} />
 
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <BookOpen className="h-4 w-4 text-brand-700" aria-hidden />
-          <CardTitle className="text-base">Employee guide PDF</CardTitle>
+          <CardTitle>Employee guide PDF</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-text-muted">
@@ -36,9 +36,9 @@ export default async function Page() {
             renders tasteful placeholders when files are missing.
           </p>
           <Button asChild>
-            <Link href="/api/guides/employee" target="_blank" rel="noopener">
+            <PdfLink href="/api/guides/employee" filename="employee-guide.pdf">
               <Download className="h-4 w-4" /> Download employee guide
-            </Link>
+            </PdfLink>
           </Button>
         </CardContent>
       </Card>

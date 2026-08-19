@@ -41,7 +41,13 @@ import { localMidnightUtc } from "@/lib/utils";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 export type Actor = {
-  id: string;
+  /**
+   * users.id of the acting account, or null for actors without a user row
+   * (kiosk sign-ins are keyed to the employee, not a user). Every column
+   * this lands in (audit actor_id, resolved_by_id, edited_by_id) is a
+   * nullable FK to users.
+   */
+  id: string | null;
   role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 
@@ -154,6 +160,27 @@ export async function listPendingMissedPunchRequestsForReview(
   });
 }
 
+/**
+ * Dates (YYYY-MM-DD) with a PENDING missed-punch request for the
+ * employee. Drives the "office is reviewing" state on every surface
+ * that would otherwise keep prompting the employee to fix a day they
+ * already reported (home alert card, day page, alert form, kiosk).
+ */
+export async function listPendingMissedPunchDatesForEmployee(
+  employeeId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ date: missedPunchRequests.date })
+    .from(missedPunchRequests)
+    .where(
+      and(
+        eq(missedPunchRequests.employeeId, employeeId),
+        eq(missedPunchRequests.status, "PENDING"),
+      ),
+    );
+  return rows.map((r) => r.date);
+}
+
 export async function getMissedPunchRequest(id: string): Promise<MissedPunchRequest | null> {
   const [row] = await db
     .select()
@@ -162,29 +189,50 @@ export async function getMissedPunchRequest(id: string): Promise<MissedPunchRequ
   return row ?? null;
 }
 
+/** Thrown when the employee already has a PENDING fix request for the date.
+ *  Actions surface `.message` directly — keep it employee-friendly. */
+export class DuplicatePendingRequestError extends Error {
+  constructor(date: string) {
+    super(
+      `You already have a pending fix request for ${date}. An admin will review it — no need to submit again.`,
+    );
+    this.name = "DuplicatePendingRequestError";
+  }
+}
+
 export async function createMissedPunchRequest(
   input: NewMissedPunchRequest,
   actor: Actor,
 ): Promise<MissedPunchRequest> {
   return db.transaction(async (tx) => {
-    if (input.alertId) {
-      const [existing] = await tx
-        .select()
-        .from(missedPunchRequests)
-        .where(
-          and(
-            eq(missedPunchRequests.alertId, input.alertId),
-            eq(missedPunchRequests.status, "PENDING"),
-          ),
-        )
-        .limit(1);
-      if (existing) return existing;
-    }
+    // One PENDING request per employee per date, regardless of which flow
+    // (alert-driven or ad-hoc report) filed it. The partial unique index
+    // missed_requests_pending_unique enforces the same rule against races.
+    const [existing] = await tx
+      .select()
+      .from(missedPunchRequests)
+      .where(
+        and(
+          eq(missedPunchRequests.employeeId, input.employeeId),
+          eq(missedPunchRequests.date, input.date),
+          eq(missedPunchRequests.status, "PENDING"),
+        ),
+      )
+      .limit(1);
+    if (existing) throw new DuplicatePendingRequestError(input.date);
 
-    const [row] = await tx
-      .insert(missedPunchRequests)
-      .values(input)
-      .returning();
+    let row: MissedPunchRequest | undefined;
+    try {
+      [row] = await tx.insert(missedPunchRequests).values(input).returning();
+    } catch (err) {
+      // Race backstop: two parallel submissions both passed the check above;
+      // the unique index rejected the loser. Same friendly message.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("missed_requests_pending_unique")) {
+        throw new DuplicatePendingRequestError(input.date);
+      }
+      throw err;
+    }
     if (!row) throw new Error("createMissedPunchRequest: insert returned no row");
     await writeAudit(
       {
@@ -274,17 +322,15 @@ export async function approveMissedPunchRequest(
         .limit(1);
       periodId = matchingPeriod?.id ?? periodId;
     }
-    // Refuse to write a punch into an already-PAID period — approving a
-    // missed-punch into closed payroll would silently change paid history.
+    // A PAID target period is never reopened. Instead of refusing the
+    // approval outright (the old behavior), the request is resolved as
+    // BACK PAY: the shift keeps its true timestamps but the punch lands
+    // in the employee's current period — see the branch below.
     const [resolvedPeriod] = await tx
       .select({ state: payPeriods.state })
       .from(payPeriods)
       .where(eq(payPeriods.id, periodId));
-    if (resolvedPeriod?.state === "PAID") {
-      throw new Error(
-        "This pay period is already paid. Unmark it as paid before approving punch changes.",
-      );
-    }
+    const targetPeriodPaid = resolvedPeriod?.state === "PAID";
     const [alert] = before.alertId
       ? await tx
           .select({ issue: missedPunchAlerts.issue })
@@ -292,31 +338,92 @@ export async function approveMissedPunchRequest(
           .where(eq(missedPunchAlerts.id, before.alertId))
       : [];
 
+    // One snapshot of the period's punches backs every resolution path
+    // below. It also feeds issue inference: ad-hoc reports carry no alert,
+    // so what the employee was fixing (unpaired punch, missing clock-in)
+    // is recovered from the punches on file — without this, an alertless
+    // request fell through to the insert fallback and left the unpaired
+    // punch behind next to a duplicate open punch.
+    const dayPunches = await tx
+      .select()
+      .from(punches)
+      .where(
+        and(
+          eq(punches.employeeId, before.employeeId),
+          eq(punches.periodId, periodId),
+          isNull(punches.voidedAt),
+        ),
+      );
+    const dayKeyFn = (d: Date) => dayFmt.format(d);
+    const ctx = buildMissedPunchReviewContext(
+      before,
+      alert?.issue,
+      dayPunches,
+      dayKeyFn,
+    );
+
     let punch;
-    if (alert?.issue === "UNPAIRED_PUNCH") {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
+    if (targetPeriodPaid) {
+      // Back pay: build the full worked span from claimed + on-file times
+      // (a single-sided claim completes against the paid week's on-file
+      // punch, which was paid as zero hours) and insert it into the
+      // period covering TODAY. Paid history stays untouched.
+      const backIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
+      const backOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
+      if (!backIn || !backOut || backOut.getTime() <= backIn.getTime()) {
+        throw new Error(
+          "That week is already paid, so this request must resolve to a full shift (clock-in and clock-out) to be paid as back pay. Reject it and ask the employee to re-submit with the missing time, or add the back-pay punch from the day editor.",
         );
+      }
+      const { resolvePeriodIdForEmployeeDay } = await import(
+        "./pay-periods"
+      );
+      const { backPayNote } = await import("@/lib/punches/backpay");
+      const todayIso = dayFmt.format(new Date());
+      const backPeriodId = await resolvePeriodIdForEmployeeDay(
+        before.employeeId,
+        todayIso,
+      );
+      if (!backPeriodId) {
+        throw new Error(
+          "No pay period covers today for this employee — open one before approving this as back pay.",
+        );
+      }
+      const [backPeriod] = await tx
+        .select({ state: payPeriods.state })
+        .from(payPeriods)
+        .where(eq(payPeriods.id, backPeriodId));
+      if (backPeriod?.state === "PAID") {
+        throw new Error(
+          "Today's pay period is already paid as well — unmark it as paid before approving.",
+        );
+      }
+      const [inserted] = await tx
+        .insert(punches)
+        .values({
+          employeeId: before.employeeId,
+          periodId: backPeriodId,
+          clockIn: backIn,
+          clockOut: backOut,
+          source: "MISSED_PUNCH_APPROVED",
+          notes: backPayNote(before.date, `From request ${before.id}.`),
+        })
+        .returning();
+      if (!inserted) {
+        throw new Error("approveMissedPunchRequest: back-pay insert empty");
+      }
+      punch = inserted;
+      // The request now belongs to the period that pays it.
+      periodId = backPeriodId;
+    }
+
+    if (!punch && ctx.issue === "UNPAIRED_PUNCH") {
       const unpaired = dayPunches.find(
         (p) =>
           dayFmt.format(p.clockIn) === before.date &&
           isAmbiguousSinglePunch(p),
       );
       if (unpaired) {
-        const dayKeyFn = (d: Date) => dayFmt.format(d);
-        const ctx = buildMissedPunchReviewContext(
-          before,
-          "UNPAIRED_PUNCH",
-          dayPunches,
-          dayKeyFn,
-        );
         let nextClockIn = ctx.proposedClockIn ?? ctx.onFileClockIn;
         let nextClockOut = ctx.proposedClockOut ?? ctx.onFileClockOut;
         if (
@@ -363,20 +470,11 @@ export async function approveMissedPunchRequest(
     }
 
     if (
-      alert?.issue === "MISSING_IN" &&
+      !punch &&
+      ctx.issue === "MISSING_IN" &&
       before.claimedClockIn &&
       !before.claimedClockOut
     ) {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
-        );
       const sentinel = dayPunches.find(
         (p) =>
           dayFmt.format(p.clockIn) === before.date &&
@@ -400,17 +498,7 @@ export async function approveMissedPunchRequest(
       }
     }
 
-    if (before.claimedClockOut) {
-      const dayPunches = await tx
-        .select()
-        .from(punches)
-        .where(
-          and(
-            eq(punches.employeeId, before.employeeId),
-            eq(punches.periodId, periodId),
-            isNull(punches.voidedAt),
-          ),
-        );
+    if (!punch && before.claimedClockOut) {
       const forDay = punchesForCalendarDay(dayPunches, claimedDay, dayFmt.format);
       const openPunchForRequestDate = findOpenPunchOnDay(
         forDay,

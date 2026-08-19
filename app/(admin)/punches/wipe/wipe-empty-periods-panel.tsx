@@ -34,8 +34,8 @@ export function WipeEmptyPeriodsPanel() {
   }
 
   return (
-    <div className="rounded-card border border-warn-200 bg-warn-50 p-4 space-y-3">
-      <h3 className="font-semibold text-warn-700 flex items-center gap-2">
+    <div className="rounded-card border border-warning-200 bg-warning-50 p-4 space-y-3">
+      <h3 className="font-semibold text-warning-700 flex items-center gap-2">
         <CalendarMinus className="h-4 w-4" /> Wipe empty open pay periods
       </h3>
       <p className="text-xs text-text-muted">

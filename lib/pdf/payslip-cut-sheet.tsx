@@ -1,6 +1,19 @@
-// Cuttable payslip sheet — compact 4-column landscape cards. Matches the
-// owner's reference: title band, page pill, numbered employee cards, daily
-// rows, total hours/gross, and a large rounded Pay amount.
+// Cuttable payslip sheet — 4-up landscape grid of self-contained payslip
+// cards (owner reference redesign). Each card carries a navy header (MILO
+// wordmark + employee name + ID), a pay-period / hourly-rate row, a punch
+// table (worked days only), and a footer that pairs TOTAL HOURS + GROSS with
+// a brand-colored FINAL PAY chip. Cards have dashed borders so the sheet can be cut
+// apart, and a fixed min-height + bottom-pinned footer so every card in a row
+// lines up. No page-level header/footer — the cards are the whole document.
+//
+// Layout note: cards are chunked into explicit 4-card rows and rows into
+// explicit Pages (rows-per-page derived from the tallest card's punch-row
+// count). The previous single flexWrap grid hit react-pdf's broken
+// flex-wrap pagination — it broke pages after two rows (wasting a page of
+// whitespace) and froze card heights mid-measure so the punch table could
+// overlap the FINAL PAY footer. Auto page-breaking (wrap) is avoided even
+// for the row-chunked layout: rows pushed to the next page leave collapsed
+// ghost header strips behind, so pages are emitted deterministically.
 
 import {
   Document,
@@ -12,301 +25,357 @@ import {
 import type { AdminReportInput } from "./types";
 import { formatMoney } from "@/lib/utils";
 
-const PAGE_PADDING = 14;
+const NAVY = "#16233b";
+const INK = "#0f172a";
+const MUTED = "#64748b";
+const SUBTLE = "#94a3b8";
+const HAIRLINE = "#e6ebf2";
+const ZEBRA = "#f6f8fb";
+const CUT = "#c2ccd9";
+
+const PAGE_PADDING = 12;
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18,
+    paddingTop: PAGE_PADDING,
     paddingHorizontal: PAGE_PADDING,
-    paddingBottom: 16,
+    paddingBottom: PAGE_PADDING,
     fontSize: 6.5,
     fontFamily: "Helvetica",
-    color: "#0f172a",
+    color: INK,
   },
-  pagePill: {
-    position: "absolute",
-    top: 16,
-    right: PAGE_PADDING,
-    borderWidth: 0.75,
-    borderColor: "#c4b5fd",
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    fontSize: 7,
-    color: "#0f172a",
-    backgroundColor: "#f5f3ff",
-  },
-  // Header band at the top of page 1.
-  header: {
-    flexDirection: "column",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 15,
-    fontFamily: "Helvetica-Bold",
-  },
-  headerMeta: {
-    fontSize: 8,
-    color: "#475569",
-    marginTop: 1,
-  },
-  // 4-col grid of payslip cards.
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  cell: {
-    width: "25%",
-    padding: 3,
-  },
+  row: { flexDirection: "row", marginHorizontal: -4, marginBottom: 6 },
+  cell: { width: "25%", paddingHorizontal: 4 },
+
   card: {
-    borderWidth: 0.5,
-    borderColor: "#dbe4f0",
-    borderRadius: 4,
-    padding: 6,
-    minHeight: 142,
+    borderWidth: 0.75,
+    borderColor: CUT,
+    borderStyle: "dashed",
+    borderRadius: 5,
+    overflow: "hidden",
+    minHeight: 130,
+    flexDirection: "column",
   },
-  // Header row: name (bold) + ID, second row: period + rate.
-  row: {
+
+  // ── Card header (navy) ────────────────────────────────────────────────
+  cardHeader: {
+    backgroundColor: NAVY,
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems: "center",
+    paddingVertical: 4.5,
+    paddingHorizontal: 8,
+  },
+  headerLeft: { flex: 1 },
+  wordmark: {
+    fontSize: 6,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.2,
+    marginBottom: 2,
   },
   name: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontFamily: "Helvetica-Bold",
-  },
-  badge: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginRight: 5,
-    paddingTop: 3,
-    fontSize: 7,
-    textAlign: "center",
-    fontFamily: "Helvetica-Bold",
-    color: "#5b21b6",
-    backgroundColor: "#ddd6fe",
+    color: "#ffffff",
   },
   id: {
     fontSize: 7,
-    color: "#475569",
+    color: "#9fb0c6",
+    fontFamily: "Helvetica-Bold",
     marginLeft: 4,
   },
-  metaLine: {
-    fontSize: 6.25,
-    color: "#64748b",
-    marginTop: 1,
+
+  // ── Body ──────────────────────────────────────────────────────────────
+  // flexGrow (NOT the `flex: 1` shorthand): react-pdf expands `flex: 1` to
+  // flexBasis 0, which makes yoga ignore the body's content height — every
+  // card then renders at exactly minHeight and the punch table overflows
+  // into (and under) the FINAL PAY chip. flexGrow alone keeps the auto
+  // basis so the card grows with its content.
+  body: {
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    paddingBottom: 6,
+    flexGrow: 1,
+    flexShrink: 0,
+  },
+
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 1,
+  },
+  metaLabel: {
+    fontSize: 5.5,
+    fontFamily: "Helvetica-Bold",
+    color: SUBTLE,
+    letterSpacing: 0.6,
+  },
+  metaValueRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 4,
   },
-  // Daily table.
+  metaValue: { fontSize: 8, fontFamily: "Helvetica-Bold", color: NAVY },
+
   th: {
     flexDirection: "row",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 2,
     paddingVertical: 2,
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
+  },
+  thText: {
+    fontSize: 5.5,
     fontFamily: "Helvetica-Bold",
-    fontSize: 6,
-    borderBottomWidth: 0.5,
-    borderTopWidth: 0.5,
-    borderStyle: "dashed",
-    borderColor: "#c4b5fd",
-    color: "#0f766e",
+    color: MUTED,
+    letterSpacing: 0.5,
   },
   tr: {
     flexDirection: "row",
-    paddingVertical: 1.2,
-    paddingHorizontal: 2,
-    borderBottomWidth: 0.25,
-    borderColor: "#edf2f7",
+    paddingVertical: 1.5,
+    paddingHorizontal: 3,
+    borderRadius: 2,
   },
-  cDate: { width: "23%", fontFamily: "Courier" },
-  cIn: { width: "22%", fontFamily: "Courier", textAlign: "center" },
-  cOut: { width: "22%", fontFamily: "Courier", textAlign: "center" },
-  cHours: { width: "13%", fontFamily: "Courier", textAlign: "right" },
-  cPay: { width: "20%", fontFamily: "Courier", textAlign: "right" },
-  // Totals.
-  totalsBlock: {
-    marginTop: 4,
-    paddingTop: 4,
+  trZebra: { backgroundColor: ZEBRA },
+
+  cDate: { width: "25%", fontSize: 6.5, lineHeight: 1.2 },
+  cIn: { width: "22%", fontSize: 6.5, lineHeight: 1.2, color: MUTED },
+  cOut: { width: "22%", fontSize: 6.5, lineHeight: 1.2, color: MUTED },
+  cHrs: { width: "13%", fontSize: 6.5, lineHeight: 1.2, textAlign: "right" },
+  cPay: { width: "18%", fontSize: 6.5, lineHeight: 1.2, textAlign: "right" },
+  cDateBold: { fontFamily: "Helvetica-Bold", color: INK },
+  cHrsBold: { fontFamily: "Helvetica-Bold", color: INK },
+  cPayBold: { fontFamily: "Helvetica-Bold", color: NAVY },
+
+  taskRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+  },
+  taskLabel: { fontSize: 6, color: MUTED, flex: 1 },
+  taskAmt: { fontSize: 6, fontFamily: "Helvetica-Bold", color: NAVY },
+
+  spacer: { flexGrow: 1, minHeight: 4 },
+
+  // ── Footer: totals + final pay chip ───────────────────────────────────
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
     borderTopWidth: 0.5,
-    borderStyle: "dashed",
-    borderColor: "#c4b5fd",
+    borderColor: HAIRLINE,
+    paddingTop: 4,
   },
-  totalLine: {
+  totalsCol: { flex: 1, paddingRight: 6 },
+  totalsLine: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 1,
+    alignItems: "baseline",
+    marginBottom: 2,
   },
-  // Owner ask: bold Rounded Pay (the amount actually paid) and
-  // de-emphasize the gross "Total". Total stays visible as a
-  // breakdown line but Rounded Pay is now the headline.
-  totalLabel: { fontSize: 7, color: "#64748b" },
-  totalValue: {
-    fontSize: 7,
-    fontFamily: "Helvetica",
-    textAlign: "right",
-    color: "#64748b",
-  },
-  roundedLabel: {
-    fontSize: 9,
+  totalsLabel: {
+    fontSize: 5.5,
     fontFamily: "Helvetica-Bold",
-    color: "#0f172a",
+    color: SUBTLE,
+    letterSpacing: 0.3,
+    width: 52,
   },
-  roundedValue: {
-    fontSize: 10,
+  totalsValue: { fontSize: 8, fontFamily: "Helvetica-Bold", color: NAVY },
+  finalChip: {
+    borderRadius: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 64,
+  },
+  finalLabel: {
+    fontSize: 5.5,
     fontFamily: "Helvetica-Bold",
-    textAlign: "right",
+    color: "#ffffff",
+    letterSpacing: 0.8,
+    marginBottom: 1,
   },
-  empty: { color: "#94a3b8" },
-  footer: {
-    position: "absolute",
-    bottom: 8,
-    left: PAGE_PADDING,
-    right: PAGE_PADDING,
-    fontSize: 6,
-    color: "#94a3b8",
-    flexDirection: "row",
-    justifyContent: "space-between",
+  finalValue: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
   },
+
+  keep: { fontSize: 5.5, color: SUBTLE, marginTop: 3, letterSpacing: 0.3 },
 });
 
-function formatDateMDY(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  return `${m}/${d}/${y}`;
+const MONTHS = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
+
+/** "2026-07-22" -> "07/22/26" */
+function fmtDateMDY(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return iso;
+  return `${m[2]}/${m[3]}/${m[1]!.slice(2)}`;
 }
 
-function rateLine(
-  data: AdminReportInput,
-  emp: AdminReportInput["employees"][number],
-): string {
-  const parts: string[] = [];
-  parts.push(
-    `Pay Period: ${data.period.startDate} to ${data.period.endDate}`,
-  );
-  if (emp.hourlyRateCents != null) {
-    parts.push(`Hourly Rate: ${formatMoney(emp.hourlyRateCents, data.company.locale)}`);
+/** "2026-07-20","2026-07-26" -> "JUL 20 - JUL 26, 2026" */
+function fmtRange(startIso: string, endIso: string): string {
+  const s = startIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const e = endIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!s || !e) return `${startIso} - ${endIso}`;
+  const sm = MONTHS[parseInt(s[2]!, 10) - 1];
+  const em = MONTHS[parseInt(e[2]!, 10) - 1];
+  return `${sm} ${parseInt(s[3]!, 10)} - ${em} ${parseInt(e[3]!, 10)}, ${e[1]}`;
+}
+
+const CARDS_PER_ROW = 4;
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
   }
-  return parts.join("    ");
+  return out;
+}
+
+/** Whole card rows per landscape-letter page, sized by the tallest card.
+ *  Weekly periods (≤7 punch rows) fit 3 rows; longer cadences get fewer. */
+function rowsPerPage(maxDayRows: number): number {
+  if (maxDayRows <= 7) return 3;
+  if (maxDayRows <= 14) return 2;
+  return 1;
 }
 
 export function PayslipCutSheet({ data }: { data: AdminReportInput }) {
+  const brand = data.company.brandColorHex || "#067049";
+  const dp = data.rules.hoursDecimalPlaces;
+  const locale = data.company.locale;
+  const range = fmtRange(data.period.startDate, data.period.endDate);
+
+  const maxDayRows = data.employees.reduce(
+    (m, e) => Math.max(m, e.days.filter((d) => !d.missing && d.hours > 0).length),
+    0,
+  );
+  const rows = chunk(data.employees, CARDS_PER_ROW);
+  const pages = chunk(rows, rowsPerPage(maxDayRows));
+
   return (
-    <Document title={`Employee Payslips ${data.period.startDate}`}>
-      <Page size="LETTER" orientation="landscape" style={styles.page}>
-        <Text
-          style={styles.pagePill}
-          fixed
-          render={({ pageNumber, totalPages }) =>
-            `Page ${pageNumber} of ${totalPages}`
-          }
-        />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>
-            Employee Payslips - {data.period.startDate} to {data.period.endDate}
-          </Text>
-          <Text style={styles.headerMeta}>
-            Found {data.employees.length}{" "}
-            {data.employees.length === 1 ? "employee payslip" : "employee payslips"}
-          </Text>
-        </View>
-        <View style={styles.grid}>
-          {data.employees.map((e, i) => (
-            <View key={i} style={styles.cell} wrap={false}>
-              <View
-                style={[
-                  styles.card,
-                  { borderColor: data.company.brandColorHex },
-                ]}
-              >
-                <View style={styles.row}>
-                  <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                    <Text style={styles.badge}>{i + 1}</Text>
-                    <Text style={styles.name}>{e.displayName}</Text>
-                  </View>
-                  {e.legacyId ? <Text style={styles.id}>ID: {e.legacyId}</Text> : null}
-                </View>
-                <Text style={styles.metaLine}>{rateLine(data, e)}</Text>
-
-                <View style={styles.th}>
-                  <Text style={styles.cDate}>Date</Text>
-                  <Text style={styles.cIn}>In</Text>
-                  <Text style={styles.cOut}>Out</Text>
-                  <Text style={styles.cHours}>Hours</Text>
-                  <Text style={styles.cPay}>Pay</Text>
-                </View>
-                {e.days
-                  .filter((d) => !d.missing && d.hours > 0)
-                  .map((d) => (
-                    <View key={d.date} style={styles.tr}>
-                      <Text style={styles.cDate}>{formatDateMDY(d.date)}</Text>
-                      <Text
-                        style={[styles.cIn, !d.inTime ? styles.empty : {}]}
-                      >
-                        {d.inTime ?? "—"}
+    <Document title={`Payslips ${data.period.startDate}`}>
+      {pages.map((pageRows, pageIdx) => (
+      <Page
+        key={pageIdx}
+        size="LETTER"
+        orientation="landscape"
+        style={styles.page}
+        wrap={false}
+      >
+        {pageRows.map((rowEmployees, rowIdx) => (
+          <View key={rowIdx} style={styles.row} wrap={false}>
+            {rowEmployees.map((e, i) => {
+            const workedDays = e.days.filter((d) => !d.missing && d.hours > 0);
+            const rate =
+              e.hourlyRateCents !== null && e.hourlyRateCents !== undefined
+                ? formatMoney(e.hourlyRateCents, locale)
+                : "—";
+            return (
+              <View key={i} style={styles.cell}>
+                <View style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.headerLeft}>
+                      <Text style={[styles.wordmark, { color: brand }]}>
+                        {data.company.name.toUpperCase()}
                       </Text>
-                      <Text
-                        style={[styles.cOut, !d.outTime ? styles.empty : {}]}
-                      >
-                        {d.outTime ?? "—"}
-                      </Text>
-                      <Text style={styles.cHours}>
-                        {d.hours.toFixed(data.rules.hoursDecimalPlaces)}
-                      </Text>
-                      <Text style={styles.cPay}>
-                        {formatMoney(d.cents, data.company.locale)}
-                      </Text>
+                      <Text style={styles.name}>{e.displayName}</Text>
                     </View>
-                  ))}
+                    {e.legacyId ? (
+                      <Text style={styles.id}>ID {e.legacyId}</Text>
+                    ) : null}
+                  </View>
 
-                {e.taskPay.length > 0
-                  ? e.taskPay.map((t, j) => (
-                      <View key={`task-${j}`} style={styles.tr}>
-                        <Text style={[styles.cDate, { width: "55%" }]}>
-                          {t.description}
+                  <View style={styles.body}>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaLabel}>PAY PERIOD</Text>
+                      <Text style={styles.metaLabel}>HOURLY RATE</Text>
+                    </View>
+                    <View style={styles.metaValueRow}>
+                      <Text style={styles.metaValue}>{range}</Text>
+                      <Text style={styles.metaValue}>{rate}</Text>
+                    </View>
+
+                    <View style={styles.th}>
+                      <Text style={[styles.thText, styles.cDate]}>DATE</Text>
+                      <Text style={[styles.thText, styles.cIn]}>IN</Text>
+                      <Text style={[styles.thText, styles.cOut]}>OUT</Text>
+                      <Text style={[styles.thText, styles.cHrs]}>HRS</Text>
+                      <Text style={[styles.thText, styles.cPay]}>PAY</Text>
+                    </View>
+                    {workedDays.map((d, ri) => (
+                      <View
+                        key={d.date}
+                        style={[styles.tr, ri % 2 === 1 ? styles.trZebra : {}]}
+                      >
+                        <Text style={[styles.cDate, styles.cDateBold]}>
+                          {fmtDateMDY(d.date)}
                         </Text>
-                        <Text
-                          style={[
-                            styles.cPay,
-                            { width: "45%", marginLeft: "auto" },
-                          ]}
-                        >
-                          {formatMoney(t.amountCents, data.company.locale)}
+                        <Text style={styles.cIn}>{d.inTime ?? "—"}</Text>
+                        <Text style={styles.cOut}>{d.outTime ?? "—"}</Text>
+                        <Text style={[styles.cHrs, styles.cHrsBold]}>
+                          {d.hours.toFixed(dp)}
+                        </Text>
+                        <Text style={[styles.cPay, styles.cPayBold]}>
+                          {formatMoney(d.cents, locale)}
                         </Text>
                       </View>
-                    ))
-                  : null}
+                    ))}
 
-                <View style={styles.totalsBlock}>
-                  <View style={styles.totalLine}>
-                    <Text style={styles.totalLabel}>
-                      Total Hours: {e.totals.hours.toFixed(2)} · gross{" "}
-                      {formatMoney(e.totals.grossCents, data.company.locale)}
-                    </Text>
-                    <Text style={styles.totalValue} />
-                  </View>
-                  <View style={styles.totalLine}>
-                    <Text style={styles.roundedLabel}>Pay:</Text>
-                    <Text
-                      style={[
-                        styles.roundedValue,
-                        { color: data.company.brandColorHex },
-                      ]}
-                    >
-                      {formatMoney(e.totals.roundedCents, data.company.locale)}
-                    </Text>
+                    {e.taskPay.map((t, j) => (
+                      <View key={`task-${j}`} style={styles.taskRow}>
+                        <Text style={styles.taskLabel}>
+                          {t.description || "Task pay"}
+                        </Text>
+                        <Text style={styles.taskAmt}>
+                          {formatMoney(t.amountCents, locale)}
+                        </Text>
+                      </View>
+                    ))}
+
+                    <View style={styles.spacer} />
+
+                    <View style={styles.footerRow}>
+                      <View style={styles.totalsCol}>
+                        <View style={styles.totalsLine}>
+                          <Text style={styles.totalsLabel}>TOTAL HOURS</Text>
+                          <Text style={styles.totalsValue}>
+                            {e.totals.hours.toFixed(dp)}
+                          </Text>
+                        </View>
+                        <View style={styles.totalsLine}>
+                          <Text style={styles.totalsLabel}>GROSS</Text>
+                          <Text style={styles.totalsValue}>
+                            {formatMoney(e.totals.grossCents, locale)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={[styles.finalChip, { backgroundColor: brand }]}>
+                        <Text style={styles.finalLabel}>FINAL PAY</Text>
+                        <Text style={styles.finalValue}>
+                          {new Intl.NumberFormat(locale, {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(e.totals.roundedCents / 100)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.keep}>Keep for your records</Text>
                   </View>
                 </View>
               </View>
-            </View>
-          ))}
-        </View>
-        <View style={styles.footer} fixed>
-          <Text>{data.company.name}</Text>
-          <Text>Generated {data.generatedAt}</Text>
-        </View>
+            );
+            })}
+          </View>
+        ))}
       </Page>
+      ))}
     </Document>
   );
 }

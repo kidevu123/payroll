@@ -15,8 +15,18 @@
 // absent here. The owner only uses this page to sync punches and to step into
 // a period's detail — keep it ruthlessly simple.
 
+import type React from "react";
 import Link from "next/link";
-import { Wallet, Upload, Briefcase, Pencil, ChevronRight } from "lucide-react";
+import {
+  Wallet,
+  Upload,
+  Briefcase,
+  Pencil,
+  ChevronRight,
+  CircleAlert,
+  Banknote,
+  CalendarClock,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -27,8 +37,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar } from "@/components/domain/avatar";
-import { StatusPill } from "@/components/domain/status-pill";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import { statusChipClasses } from "@/components/domain/status-pill";
 import {
   ScheduleTabs,
   parseScheduleTab,
@@ -36,13 +46,21 @@ import {
   type ScheduleTab,
 } from "@/components/domain/schedule-tabs";
 import { listEmployees } from "@/lib/db/queries/employees";
-import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { listVisibleDocsByEmployee } from "@/lib/db/queries/payroll-documents";
 import { SalariedUploadSlot } from "@/app/(admin)/salaried/salaried-upload-slot";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
+import {
+  resolvePeriodPhase,
+  periodProgress,
+  PHASE_PRIORITY,
+  type PeriodPhase,
+} from "@/lib/payroll/period-status";
+import { getSetting } from "@/lib/settings/runtime";
 import { db } from "@/lib/db";
 import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import { PageHeader } from "@/components/ui/page-header";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
@@ -68,7 +86,7 @@ export default async function PayrollPage({
     return <SalariedTabBody currentTab={tab} />;
   }
 
-  const [openPeriods, lastPoll] = await Promise.all([
+  const [openPeriods, lastPoll, company] = await Promise.all([
     (async () => {
       // "Recent periods" = the period(s) the admin still has work to do on.
       // PAID periods are historical — they belong in /reports, not on the
@@ -93,21 +111,61 @@ export default async function PayrollPage({
       return q.orderBy(desc(payPeriods.startDate)).limit(8);
     })(),
     getLastPoll(),
+    getSetting("company").catch(() => null),
   ]);
 
-  // openPeriods is filtered to OPEN+LOCKED only (PAID lives in /reports).
-  const openCount = openPeriods.filter((p) => p.state === "OPEN").length;
-  const lockedCount = openPeriods.filter((p) => p.state === "LOCKED").length;
+  // "Today" in the company timezone — the anchor every phase judgement
+  // hangs off. en-CA yields YYYY-MM-DD, matching the stored date strings.
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: company?.timezone ?? "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
+  // Resolve each period's lifecycle phase up front, then order the list by
+  // urgency: needs-processing first, then locked awaiting payment, then
+  // running, then upcoming. Within a phase, newest first.
+  const periods = openPeriods
+    .map((p) => {
+      const displayEnd = canonicalEndForScheduleName(
+        p.startDate,
+        p.endDate,
+        p.scheduleName,
+      );
+      const phase = resolvePeriodPhase({
+        startDate: p.startDate,
+        endDate: displayEnd,
+        state: p.state,
+        today,
+      });
+      return {
+        ...p,
+        displayEnd,
+        phase,
+        progress: periodProgress(p.startDate, displayEnd, today),
+      };
+    })
+    .sort(
+      (a, b) =>
+        PHASE_PRIORITY[a.phase] - PHASE_PRIORITY[b.phase] ||
+        b.startDate.localeCompare(a.startDate),
+    );
+
+  const phaseCount = (phase: PeriodPhase) =>
+    periods.filter((p) => p.phase === phase).length;
+  const summaryParts = [
+    phaseCount("NEEDS_PROCESSING") > 0
+      ? `${phaseCount("NEEDS_PROCESSING")} to process`
+      : null,
+    phaseCount("AWAITING_PAYMENT") > 0
+      ? `${phaseCount("AWAITING_PAYMENT")} awaiting payment`
+      : null,
+    phaseCount("RUNNING") > 0 ? `${phaseCount("RUNNING")} in progress` : null,
+    phaseCount("UPCOMING") > 0 ? `${phaseCount("UPCOMING")} upcoming` : null,
+  ].filter(Boolean);
   const periodSummary =
-    openCount > 0 || lockedCount > 0
-      ? [
-          openCount > 0 ? `${openCount} open` : null,
-          lockedCount > 0 ? `${lockedCount} locked` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : undefined;
+    summaryParts.length > 0 ? summaryParts.join(" · ") : undefined;
 
   return (
     <div className="space-y-5">
@@ -164,7 +222,7 @@ export default async function PayrollPage({
           detail page. */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-brand-700" /> Recent periods
           </CardTitle>
           <CardDescription>
@@ -179,43 +237,56 @@ export default async function PayrollPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {openPeriods.length === 0 ? (
-            <p className="text-sm text-text-muted">No periods yet.</p>
+          {periods.length === 0 ? (
+            <EmptyState
+              icon={Wallet}
+              title="No periods yet"
+              description="Open and locked pay periods awaiting work will appear here. Paid periods live in Reports."
+            />
           ) : (
-            openPeriods.map((p) => {
-              // Canonical 7-day week for weekly schedules — short uploads
-              // (Mon-Fri) display through Sunday. Centralized in
-              // lib/payroll/period-boundaries.ts so all callsites agree.
-              const displayEnd = canonicalEndForScheduleName(
-                p.startDate,
-                p.endDate,
-                p.scheduleName,
-              );
+            periods.map((p) => {
+              // The left accent bar carries the PHASE, not the cadence — the
+              // owner's ask: tell me at a glance which row is running, which
+              // is done and waiting on me, which is locked. Cadence still
+              // reads from the SchedulePill.
               const rowAccent =
-                p.scheduleKind === "WEEKLY"
-                  ? "before:bg-blue-500"
-                  : p.scheduleKind === "SEMI_MONTHLY"
-                    ? "before:bg-purple-500"
-                    : p.scheduleKind === "MONTHLY"
-                      ? "before:bg-amber-500"
-                      : "before:bg-text/30";
+                p.phase === "NEEDS_PROCESSING"
+                  ? "before:bg-warning-500"
+                  : p.phase === "AWAITING_PAYMENT"
+                    ? "before:bg-info-600"
+                    : p.phase === "RUNNING"
+                      ? "before:bg-success-500"
+                      : "before:bg-text/25";
               return (
                 <div
                   key={p.id}
-                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 ${rowAccent}`}
+                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2/40 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-1 focus-within:ring-2 focus-within:ring-brand-700/60 ${rowAccent}`}
                 >
+                  {/* Stretched link: the whole row is the click/hover target
+                      (after:inset-0), while the delete button sits above it
+                      via z-10 so it stays independently clickable. Keyboard
+                      focus lights the row through focus-within. */}
                   <Link
                     href={`/payroll/${p.id}`}
-                    className="group flex items-center gap-3 font-medium flex-1 min-w-0 pl-1"
+                    className="group flex items-center gap-3 flex-1 min-w-0 pl-1.5 after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:outline-none"
                   >
-                    <span className="tabular-nums">
-                      {p.startDate} – {displayEnd}
-                    </span>
-                    <SchedulePill name={p.scheduleName} />
-                    <StatusPill status={p.state} />
-                    <ChevronRight className="h-4 w-4 text-text-muted ml-auto transition-transform group-hover:translate-x-0.5" />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium tabular-nums tracking-tight">
+                          {formatPeriodRange(p.startDate, p.displayEnd)}
+                        </span>
+                        <SchedulePill name={p.scheduleName} />
+                        <PhaseChip phase={p.phase} />
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        {phaseDetail(p.phase, p.startDate, p.displayEnd, p.progress)}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5" />
                   </Link>
-                  <PeriodDeleteButton periodId={p.id} state={p.state} />
+                  <div className="relative z-10">
+                    <PeriodDeleteButton periodId={p.id} state={p.state} />
+                  </div>
                 </div>
               );
             })
@@ -223,6 +294,94 @@ export default async function PayrollPage({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** "Jul 12" — friendly label for a YYYY-MM-DD date string. */
+function friendlyDate(date: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
+/** One plain-English sentence describing where the period stands. */
+function phaseDetail(
+  phase: PeriodPhase,
+  startDate: string,
+  endDate: string,
+  progress: { day: number; total: number } | null,
+): string {
+  switch (phase) {
+    case "RUNNING":
+      return progress
+        ? `In progress · day ${progress.day} of ${progress.total} · ends ${friendlyDate(endDate)}`
+        : `In progress · ends ${friendlyDate(endDate)}`;
+    case "NEEDS_PROCESSING":
+      return `Ended ${friendlyDate(endDate)} · ready to review and lock`;
+    case "AWAITING_PAYMENT":
+      return "Locked · reviewed and awaiting payment";
+    case "UPCOMING":
+      return `Starts ${friendlyDate(startDate)}`;
+  }
+}
+
+/**
+ * Lifecycle chip — the loud cue on each period row. Same chip anatomy as
+ * StatusPill but keyed to the phase judgement instead of the raw DB state,
+ * so "Open" stops meaning three different things.
+ */
+function PhaseChip({ phase }: { phase: PeriodPhase }) {
+  // Tones come from the shared status vocabulary (components/domain/status-pill),
+  // so a LOCKED period reads the same here as it does on /reports: in progress
+  // is informational, anything needing the owner's hands is amber.
+  const styles: Record<
+    PeriodPhase,
+    { label: string; className: string; Icon: React.ComponentType<{ className?: string }> }
+  > = {
+    RUNNING: {
+      label: "In progress",
+      className: statusChipClasses("info"),
+      Icon: RunningDot,
+    },
+    NEEDS_PROCESSING: {
+      label: "Needs processing",
+      className: statusChipClasses("warn"),
+      Icon: CircleAlert,
+    },
+    AWAITING_PAYMENT: {
+      label: "Awaiting payment",
+      className: statusChipClasses("warn"),
+      Icon: Banknote,
+    },
+    UPCOMING: {
+      label: "Upcoming",
+      className: statusChipClasses("neutral"),
+      Icon: CalendarClock,
+    },
+  };
+  const s = styles[phase];
+  const { Icon } = s;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-medium tracking-tight antialiased ${s.className}`}
+    >
+      <Icon className="h-3 w-3" aria-hidden />
+      {s.label}
+    </span>
+  );
+}
+
+/** Soft pulsing dot for the in-progress chip — motion gated by the global
+ *  prefers-reduced-motion rule in globals.css. */
+function RunningDot({ className }: { className?: string }) {
+  return (
+    <span className={`relative inline-flex items-center justify-center ${className ?? ""}`}>
+      <span className="absolute h-2 w-2 rounded-full bg-success-500/50 animate-ping" />
+      <span className="relative h-1.5 w-1.5 rounded-full bg-success-600" />
+    </span>
   );
 }
 
@@ -246,13 +405,14 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
     if (e.payType !== "SALARIED") return false;
     return true; // schedule-aware filter happens below using the join
   });
-  // Pull each salaried employee's docs in parallel.
-  const cards = await Promise.all(
-    salariedExclusive.map(async (e) => ({
-      employee: e,
-      docs: await listEmployeeVisibleDocs(e.id),
-    })),
+  // One batch query for every salaried employee's docs (was N+1).
+  const docsMap = await listVisibleDocsByEmployee(
+    salariedExclusive.map((e) => e.id),
   );
+  const cards = salariedExclusive.map((e) => ({
+    employee: e,
+    docs: docsMap.get(e.id) ?? [],
+  }));
   return (
     <div className="space-y-5">
       {/* Identical header + tabs markup to the non-salaried branch so the
@@ -304,7 +464,7 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
                   <div className="flex items-start gap-3 min-w-0">
                     <Avatar name={employee.displayName} size="md" />
                     <div className="min-w-0">
-                      <CardTitle className="text-base">
+                      <CardTitle>
                         {employee.displayName}
                       </CardTitle>
                       <CardDescription>

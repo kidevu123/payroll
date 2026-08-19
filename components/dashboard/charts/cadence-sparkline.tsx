@@ -1,6 +1,12 @@
 "use client";
 
-import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  ResponsiveContainer,
+  Tooltip,
+  YAxis,
+} from "recharts";
 import { formatMoney } from "@/lib/utils";
 import { CHART } from "../theme";
 import type { SparkPoint } from "@/lib/payroll/dashboard-metrics";
@@ -29,7 +35,7 @@ function SparkTooltip({
   if (!point) return null;
   return (
     <div
-      className="rounded-md px-2.5 py-1.5 text-xs shadow-lg"
+      className="rounded-md px-2.5 py-1.5 text-[11px] shadow-lg"
       style={{
         background: CHART.tooltipBg,
         border: `1px solid ${CHART.tooltipBorder}`,
@@ -42,11 +48,7 @@ function SparkTooltip({
   );
 }
 
-export function CadenceSparkline({
-  data,
-  gradientId,
-  className = "h-14",
-}: Props) {
+export function CadenceSparkline({ data, gradientId, className = "h-14" }: Props) {
   if (data.length < 2) {
     // Graceful flat baseline instead of a hollow bordered box — keeps the
     // card looking finished when a cadence has no history yet.
@@ -63,35 +65,36 @@ export function CadenceSparkline({
   return (
     <div className={`w-full ${className}`}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={data}
-          margin={{ top: 6, right: 0, bottom: 0, left: 0 }}
-        >
+        <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor={CHART.violetBright}
-                stopOpacity={0.45}
-              />
-              <stop offset="100%" stopColor={CHART.violet} stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART.emerald} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={CHART.emeraldDim} stopOpacity={0} />
             </linearGradient>
+            <filter id={`${gradientId}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
           </defs>
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Tooltip
             content={<SparkTooltip />}
-            cursor={{ stroke: CHART.violetBright, strokeOpacity: 0.25 }}
+            cursor={{ stroke: CHART.emerald, strokeOpacity: 0.25 }}
           />
           <Area
             type="monotone"
             dataKey="cents"
-            stroke={CHART.violetBright}
+            stroke={CHART.emerald}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
+            filter={`url(#${gradientId}-glow)`}
             dot={false}
             activeDot={{
               r: 3,
-              fill: CHART.violetBright,
+              fill: CHART.emerald,
               stroke: "var(--dash-bg)",
               strokeWidth: 1.5,
             }}

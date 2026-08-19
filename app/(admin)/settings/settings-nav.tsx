@@ -64,7 +64,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-6">
       <header className="page-header-rule pb-4">
-        <h1 className="text-title font-semibold tracking-tight text-text">
+        <h1 className="text-title tracking-tight antialiased text-text">
           Settings
         </h1>
         <p className="text-body text-text-muted mt-1 max-w-2xl">
@@ -87,7 +87,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
                       "flex items-center gap-2.5 px-3 py-2 rounded-input text-body border-l-2 transition-colors",
                       active
                         ? "border-brand-700 bg-brand-50/80 text-brand-800 font-medium"
-                        : "border-transparent text-text-muted hover:bg-surface-2 hover:text-text",
+                        : "border-transparent text-text-muted hover:bg-surface-2/40 hover:text-text",
                     )}
                   >
                     <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
@@ -99,7 +99,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
           </ul>
           <div className="border-t border-border/60 mx-1" />
           <div>
-            <div className="px-3 mb-1.5 text-caption font-semibold uppercase tracking-widest text-text-subtle">
+            <div className="px-3 mb-1.5 text-micro uppercase text-text-subtle">
               Admin tools
             </div>
             <ul className="space-y-0.5">
@@ -107,7 +107,7 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-input text-body border-l-2 border-transparent text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-input text-body border-l-2 border-transparent text-text-muted hover:bg-surface-2/40 hover:text-text transition-colors"
                   >
                     <Icon className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                     {label}

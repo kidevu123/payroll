@@ -72,7 +72,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
             role="menu"
             className="absolute right-0 top-9 z-50 w-56 rounded-card border border-border bg-surface shadow-pop overflow-hidden"
           >
-            <div className="px-3 py-2 border-b border-border/70 text-[11px] uppercase tracking-wider text-text-subtle">
+            <div className="px-3 py-2 border-b border-border/70 text-micro uppercase text-text-subtle">
               Re-scan how far back?
             </div>
             {PRESETS.map((p) => (
@@ -80,7 +80,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
                 key={p.daysBack}
                 type="button"
                 onClick={() => run(p.daysBack)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-2 transition-colors"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-2/40 transition-colors"
               >
                 {p.label}
               </button>

@@ -69,7 +69,7 @@ export function PdfRebuildButton() {
         </p>
       </div>
       <textarea
-        className="w-full h-48 rounded-input border border-border bg-surface px-3 py-2 text-xs font-mono"
+        className="w-full h-48 rounded-input border border-border bg-surface px-3 py-2 text-xs tabular-nums"
         placeholder='[{"filename":"admin_report_2026-04-27.pdf","printedPeriod":{"start":"2026-04-27","end":"2026-05-01"},"employees":[...],"tempWorkers":[]}, ...]'
         value={json}
         onChange={(e) => setJson(e.target.value)}

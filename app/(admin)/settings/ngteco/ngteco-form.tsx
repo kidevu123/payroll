@@ -28,8 +28,11 @@ export function NgtecoForm({
       <div className="space-y-3">
         <h2 className="text-heading font-semibold tracking-tight text-text">NGTeco connection</h2>
         <p className="text-xs text-text-muted">
-          Credentials are encrypted at rest with AES-GCM. Plaintext only
-          crosses the boundary the moment a Playwright session opens.
+          Punches sync through NGTeco&apos;s REST API (browserless — a
+          two-second JSON fetch, no Chromium). The headless browser scraper
+          remains only as an automatic fallback if the API call fails.
+          Credentials are encrypted at rest with AES-GCM; plaintext only
+          crosses the boundary the moment a sync runs.
         </p>
           <form
             action={async (form) => {
@@ -84,14 +87,23 @@ export function NgtecoForm({
                   defaultValue={locationId ?? ""}
                 />
               </div>
-              <label className="flex items-center gap-2 self-end pb-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="headless"
-                  defaultChecked={headless}
-                />
-                Run scraper headless
-              </label>
+              <div className="space-y-1">
+                <span className="block text-sm font-medium invisible" aria-hidden>
+                  Headless
+                </span>
+                <label className="flex h-10 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="headless"
+                    defaultChecked={headless}
+                  />
+                  Run fallback scraper headless
+                </label>
+                <p className="text-[11px] text-text-subtle">
+                  Only applies when the API path fails and the browser
+                  fallback kicks in.
+                </p>
+              </div>
             </div>
             {error && <p className="text-sm text-danger-700">{error}</p>}
             {saved && <p className="text-sm text-success-700">Saved.</p>}
@@ -117,11 +129,13 @@ export function NgtecoForm({
             if (result?.error) setError(result.error);
           }}
         >
-          <Button type="submit" disabled={running || !hasCredentials}>
-            <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={running || !hasCredentials}>
+              <Play className="h-4 w-4" /> {running ? "Starting…" : "Run import now"}
+            </Button>
+          </div>
           {!hasCredentials && (
-            <p className="mt-2 text-xs text-text-muted">
+            <p className="mt-2 text-xs text-text-muted text-right">
               Save credentials first.
             </p>
           )}

@@ -29,7 +29,11 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { periodNetCents } from "@/lib/reports/period-net";
+import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
+import { cn } from "@/lib/utils";
 import {
   Download,
   Eye,
@@ -45,10 +49,14 @@ import {
   Scissors,
   Banknote,
   Landmark,
+  Lock,
+  Search,
+  X,
 } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
+import { MicroLabel } from "@/components/ui/typography";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +67,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { SchedulePill } from "@/components/domain/schedule-pill";
+import {
+  STATUS_CHIP_BASE,
+  statusChipClasses,
+  type StatusTone,
+} from "@/components/domain/status-pill";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import {
   deleteReportAction,
@@ -90,16 +103,6 @@ const MONTH_LONG = [
   "November",
   "December",
 ];
-
-function formatRange(startIso: string, endIso: string): string {
-  if (!startIso || !endIso) return "—";
-  const a = new Date(`${startIso}T12:00:00Z`);
-  const b = new Date(`${endIso}T12:00:00Z`);
-  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
-  const left = `${MONTH_SHORT[a.getUTCMonth()]} ${String(a.getUTCDate()).padStart(2, "0")}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
-  const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
-  return `${left} – ${right}`;
-}
 
 function formatDate(d: Date | null | undefined): string {
   if (!d) return "—";
@@ -215,11 +218,77 @@ function monthNet(m: MonthGroup): number {
   return total;
 }
 
+/** Month GROSS subtotal across its periods. */
+function monthGross(m: MonthGroup): number {
+  let total = 0;
+  for (const p of m.periods) total += periodGross(p);
+  return total;
+}
+
+// ── Filter bar state ─────────────────────────────────────────────────────
+// Everything below the schedule select is client-side over rows already in
+// memory — instant, no server round trip. Schedule navigates (?schedule=)
+// because the server merges salaried paystubs per tab.
+
+type StatusFilter = "all" | "PAID" | "LOCKED" | "OPEN";
+type MethodFilter = "all" | "BANK" | "CASH";
+type SortKey = "newest" | "oldest" | "net-desc" | "net-asc";
+
+function groupState(g: GroupedReport): "OPEN" | "LOCKED" | "PAID" {
+  const s = g.runs[0]?.periodState;
+  if (s === "LOCKED" || s === "PAID") return s;
+  // Salaried paystub groups have no run state — an uploaded paystub is a
+  // paid document, so they bucket under PAID.
+  if (g.runs.some((r) => r.isSalariedPaystub)) return "PAID";
+  return "OPEN";
+}
+
+function groupMethod(g: GroupedReport): MethodFilter | null {
+  // Salaried W2 paystubs are paid out via bank transfer (owner directive),
+  // unless their period explicitly recorded a cash-drawer payment.
+  if (g.runs.some((r) => r.isSalariedPaystub)) {
+    return g.runs[0]?.periodPaymentMethod === "CASH" ? "CASH" : "BANK";
+  }
+  if (groupState(g) !== "PAID") return null;
+  return g.runs[0]?.periodPaymentMethod === "CASH" ? "CASH" : "BANK";
+}
+
+function matchesFilters(
+  g: GroupedReport,
+  q: string,
+  status: StatusFilter,
+  method: MethodFilter,
+): boolean {
+  if (status !== "all" && groupState(g) !== status) return false;
+  if (method !== "all" && groupMethod(g) !== method) return false;
+  if (q) {
+    const hay = `${formatRange(g.periodStart, g.periodEnd)} ${g.scheduleName ?? "salaried"}`.toLowerCase();
+    if (!hay.includes(q.toLowerCase())) return false;
+  }
+  return true;
+}
+
+/** Shared lg column template — the header row, every period line, and the
+ *  month subtotal row use the exact same tracks so the statement reads as one
+ *  aligned table: period | schedule | payment | status | gross | net | actions.
+ *
+ *  The actions track is a FIXED width, not `auto`. Each row is its own grid
+ *  container (there is no subgrid here), so an `auto` track resolved against
+ *  each row's own content: 72px in the header, ~74px in a plain row, ~135px
+ *  when a LOCKED row added its "Pay" button, ~180px mid delete-confirm. Every
+ *  one of those redistributed the remaining six fr tracks differently, so the
+ *  header lined up with nothing and rows didn't line up with each other. A
+ *  fixed track makes all containers resolve identically. */
+const ACTIONS_TRACK = "7.5rem";
+const TABLE_GRID =
+  "lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_7.5rem]";
+
 export function ReportsTable({
   reports,
   zohoOrgs,
   drawerBalanceCents = 0,
   canManageReports = true,
+  scheduleTab = "all",
 }: {
   reports: ReportRow[];
   zohoOrgs: ZohoOrganization[];
@@ -227,10 +296,16 @@ export function ReportsTable({
    *  so the operator sees what's available before confirming. */
   drawerBalanceCents?: number;
   canManageReports?: boolean;
+  /** Active ?schedule= tab — drives the schedule select in the filter bar. */
+  scheduleTab?: string;
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
+  const [query, setQuery] = React.useState("");
+  const [status, setStatus] = React.useState<StatusFilter>("all");
+  const [method, setMethod] = React.useState<MethodFilter>("all");
+  const [sort, setSort] = React.useState<SortKey>("newest");
 
   const haute = zohoOrgs.find((o) => /haute/i.test(o.name));
   const boomin = zohoOrgs.find((o) => /boomin/i.test(o.name));
@@ -314,35 +389,238 @@ export function ReportsTable({
     );
   }
 
-  const months = groupByMonth(groupByPeriod(reports));
+  const hasActiveFilters =
+    query !== "" || status !== "all" || method !== "all" || sort !== "newest";
+
+  // Filter periods, then sort. Newest/oldest reorder the whole statement;
+  // net sorts keep the month cohorts but rank periods inside each month.
+  const filtered = groupByPeriod(reports).filter((g) =>
+    matchesFilters(g, query, status, method),
+  );
+  const ordered =
+    sort === "oldest" ? [...filtered].reverse() : filtered;
+  const months = groupByMonth(ordered);
+  if (sort === "net-desc" || sort === "net-asc") {
+    for (const m of months) {
+      m.periods.sort((a, b) =>
+        sort === "net-desc"
+          ? periodNet(b) - periodNet(a)
+          : periodNet(a) - periodNet(b),
+      );
+    }
+  }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      <FilterBar
+        scheduleTab={scheduleTab}
+        query={query}
+        setQuery={setQuery}
+        status={status}
+        setStatus={setStatus}
+        method={method}
+        setMethod={setMethod}
+        sort={sort}
+        setSort={setSort}
+        hasActiveFilters={hasActiveFilters}
+        onClear={() => {
+          setQuery("");
+          setStatus("all");
+          setMethod("all");
+          setSort("newest");
+        }}
+      />
+
       {error && (
         <div className="rounded-card border border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
           {error}
         </div>
       )}
 
-      {months.map((m) => (
-        <MonthCard
-          key={m.key}
-          month={m}
-          busyId={busyId}
-          setError={setError}
-          confirmDelete={confirmDelete}
-          setConfirmDelete={setConfirmDelete}
-          onPush={onPush}
-          onRepush={onRepush}
-          onPublish={onPublish}
-          onDelete={onDelete}
-          haute={haute}
-          boomin={boomin}
-          drawerBalanceCents={drawerBalanceCents}
-          canManageReports={canManageReports}
-        />
-      ))}
+      {/* Column legend — mirrors TABLE_GRID so every month card below reads
+          as one continuous, aligned table. Desktop only; mobile rows stack.
+          Padding matches the rows' own box (px-5 + the card's 1px border and
+          3px accent rail) so the two frames share a left edge. */}
+      <div
+        className={cn(
+          "hidden lg:grid items-center gap-3 px-5 text-micro uppercase text-text-subtle",
+          TABLE_GRID,
+        )}
+      >
+        <span>Pay period</span>
+        <span>Schedule</span>
+        <span>Payment method</span>
+        <span>Status</span>
+        <span className="text-right">Gross pay</span>
+        <span className="text-right">Net pay</span>
+        <span className="text-right">Actions</span>
+      </div>
+
+      {months.length === 0 ? (
+        <div className="rounded-card border border-border/70 bg-surface p-10 text-center text-sm text-text-muted shadow-card">
+          No periods match these filters.
+        </div>
+      ) : (
+        months.map((m) => (
+          <MonthCard
+            key={m.key}
+            month={m}
+            busyId={busyId}
+            setError={setError}
+            confirmDelete={confirmDelete}
+            setConfirmDelete={setConfirmDelete}
+            onPush={onPush}
+            onRepush={onRepush}
+            onPublish={onPublish}
+            onDelete={onDelete}
+            haute={haute}
+            boomin={boomin}
+            drawerBalanceCents={drawerBalanceCents}
+            canManageReports={canManageReports}
+          />
+        ))
+      )}
     </div>
+  );
+}
+
+// ── Filter bar ───────────────────────────────────────────────────────────
+
+const SELECT_CLASS =
+  "h-9 rounded-input border border-border bg-surface px-2.5 text-xs font-medium text-text transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60";
+
+function FilterBar({
+  scheduleTab,
+  query,
+  setQuery,
+  status,
+  setStatus,
+  method,
+  setMethod,
+  sort,
+  setSort,
+  hasActiveFilters,
+  onClear,
+}: {
+  scheduleTab: string;
+  query: string;
+  setQuery: (v: string) => void;
+  status: StatusFilter;
+  setStatus: (v: StatusFilter) => void;
+  method: MethodFilter;
+  setMethod: (v: MethodFilter) => void;
+  sort: SortKey;
+  setSort: (v: SortKey) => void;
+  hasActiveFilters: boolean;
+  onClear: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-card border border-border/70 bg-surface p-2.5 shadow-card">
+      <label className="relative min-w-[10rem] flex-1">
+        <Search
+          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search pay runs..."
+          aria-label="Search pay runs"
+          className="h-9 w-full rounded-input border border-border bg-surface pl-8 pr-2.5 text-xs text-text placeholder:text-text-subtle transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+        />
+      </label>
+      <FilterSelect
+        label="Schedule"
+        value={scheduleTab}
+        onChange={(v) =>
+          router.push(v === "all" ? "/reports" : `/reports?schedule=${v}`)
+        }
+        options={[
+          ["all", "All"],
+          ["weekly", "Weekly"],
+          ["semi-monthly", "Semi-monthly"],
+          ["monthly", "Monthly"],
+          ["salaried", "Salaried"],
+        ]}
+      />
+      <FilterSelect
+        label="Status"
+        value={status}
+        onChange={(v) => setStatus(v as StatusFilter)}
+        options={[
+          ["all", "All"],
+          ["PAID", "Completed"],
+          ["LOCKED", "Locked"],
+          ["OPEN", "Open"],
+        ]}
+      />
+      <FilterSelect
+        label="Payment method"
+        value={method}
+        onChange={(v) => setMethod(v as MethodFilter)}
+        options={[
+          ["all", "All"],
+          ["BANK", "Bank transfer"],
+          ["CASH", "Cash drawer"],
+        ]}
+      />
+      <FilterSelect
+        label="Sort by"
+        value={sort}
+        onChange={(v) => setSort(v as SortKey)}
+        options={[
+          ["newest", "Pay period (desc)"],
+          ["oldest", "Pay period (asc)"],
+          ["net-desc", "Net pay (high)"],
+          ["net-asc", "Net pay (low)"],
+        ]}
+      />
+      {hasActiveFilters && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="h-9 text-xs"
+        >
+          <X className="h-3.5 w-3.5" /> Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <label className="flex items-center gap-1.5">
+      <span className="hidden text-micro uppercase text-text-subtle xl:inline">
+        {label}
+      </span>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={SELECT_CLASS}
+      >
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -371,6 +649,13 @@ function MonthCard({
   ...handlers
 }: { month: MonthGroup } & SharedHandlers) {
   const net = monthNet(month);
+  const gross = monthGross(month);
+  // W2 paystub periods have no gross figure (paystubs carry net only), so a
+  // month containing them under-reports Total gross — flag it rather than
+  // let gross read as smaller than net without explanation.
+  const grossIncomplete = month.periods.some(
+    (p) => periodGross(p) === 0 && periodNet(p) > 0,
+  );
   const runCount = month.periods.reduce((n, p) => n + p.runs.length, 0);
 
   return (
@@ -378,16 +663,24 @@ function MonthCard({
       aria-label={month.label}
       className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card transition-shadow hover:shadow-card-strong"
     >
-      {/* Refined month header: an accent tick + confident month label on the
-          left, the month NET subtotal as the right-anchored figure. The NET
-          label is whispered (uppercase micro) so the number does the talking. */}
-      <header className="flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2.5 min-w-0">
+      {/* Month header. On lg it rides TABLE_GRID so the Total gross / Total
+          net figures sit directly above the Gross pay / Net pay columns they
+          total — previously this was a `flex justify-between` cluster pinned
+          to the card's right edge, i.e. floating over the actions column and
+          aligned with nothing. Below lg it falls back to the flex layout. */}
+      <header
+        className={cn(
+          "flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5",
+          "lg:grid lg:items-center lg:gap-3",
+          TABLE_GRID,
+        )}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 lg:col-span-4">
           <span
             aria-hidden="true"
             className="h-4 w-1 shrink-0 rounded-full bg-brand-700"
           />
-          <h2 className="text-sm font-semibold tracking-tight text-text">
+          <h2 className="text-subheading tracking-tight text-text">
             {month.label}
           </h2>
           <span className="rounded-chip bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
@@ -401,13 +694,27 @@ function MonthCard({
             )}
           </span>
         </div>
-        <div className="flex flex-col items-end leading-none whitespace-nowrap">
-          <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-text-subtle">
-            Month net
-          </span>
-          <span className="mt-1 font-mono tabular-nums text-base font-semibold text-text">
-            <MoneyDisplay cents={net} />
-          </span>
+        <div className="flex items-center gap-5 whitespace-nowrap lg:contents">
+          <div
+            className="hidden flex-col items-end leading-none sm:flex"
+            title={
+              grossIncomplete
+                ? "Partial: W2 paystub periods carry net pay only, so their gross isn't included here."
+                : undefined
+            }
+          >
+            <MicroLabel>Total gross{grossIncomplete ? "*" : ""}</MicroLabel>
+            <span className="mt-1 tabular-nums text-subheading text-text-muted">
+              <MoneyDisplay cents={gross} />
+            </span>
+          </div>
+          <div className="flex flex-col items-end leading-none">
+            <MicroLabel>Total net</MicroLabel>
+            <span className="mt-1 tabular-nums text-subheading text-text">
+              <MoneyDisplay cents={net} />
+            </span>
+          </div>
+          <span aria-hidden className="hidden lg:block" />
         </div>
       </header>
 
@@ -486,6 +793,12 @@ function PeriodLine({
   const paystubRun = group.runs.find((r) => r.isSalariedPaystub);
   if (paystubRun) {
     const docs = paystubRun.paystubDocs ?? [];
+    // Period-attached paystub groups carry the real period id (uuid) —
+    // link back to that period's page. Salaried-tab uploads have only the
+    // synthetic "salaried-paystub:" key and keep linking to /salaried.
+    const rangeHref = group.periodId.startsWith("salaried-paystub:")
+      ? "/salaried"
+      : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
         <span
@@ -493,32 +806,71 @@ function PeriodLine({
           className="absolute inset-y-0 left-0 w-[3px] bg-brand-700 opacity-70 transition-opacity group-hover/row:opacity-100"
         />
         <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-5">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div
+            className={cn(
+              "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2",
+              TABLE_GRID,
+            )}
+          >
+            {/* 1 · Pay period + docs count */}
+            <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 lg:col-span-1">
               <Link
-                href="/salaried"
-                className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
+                href={rangeHref}
+                className="rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
               >
                 {formatRange(group.periodStart, group.periodEnd)}
               </Link>
-              <span className="flex flex-wrap items-center gap-1.5">
-                <SchedulePill name="Salaried" />
-                <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-                  <FileText className="h-3 w-3" /> {docs.length}{" "}
-                  {docs.length === 1 ? "paystub" : "paystubs"}
-                </span>
+              <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
+                <FileText className="h-3 w-3" /> {docs.length}{" "}
+                {docs.length === 1 ? "paystub" : "paystubs"}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-3 sm:justify-end">
-              <div className="flex flex-col items-start leading-none sm:items-end">
-                <span className="font-mono tabular-nums text-xl font-semibold tracking-tight text-text">
-                  <MoneyDisplay cents={net} />
-                </span>
-                <span className="mt-1 font-mono text-[10px] leading-tight tabular-nums text-text-subtle">
-                  W2 net · uploaded paystubs
-                </span>
-              </div>
-              <div className="flex items-center gap-0.5">
+
+            {/* Mobile chip cluster */}
+            <div className="col-span-2 flex flex-wrap items-center gap-1.5 lg:hidden">
+              <SchedulePill name={group.scheduleName ?? "Salaried"} />
+              <StatusCell state="PAID" />
+              <PaymentMethodCell
+                state="PAID"
+                method={group.runs[0]?.periodPaymentMethod ?? "BANK"}
+              />
+            </div>
+
+            {/* 2 · Schedule — salaried staff still ride a real cadence */}
+            <div className="hidden min-w-0 lg:block">
+              <SchedulePill name={group.scheduleName ?? "Salaried"} />
+            </div>
+
+            {/* 3 · Payment method — W2 paystubs pay out via bank transfer */}
+            <div className="hidden min-w-0 lg:flex">
+              <PaymentMethodCell
+                state="PAID"
+                method={group.runs[0]?.periodPaymentMethod ?? "BANK"}
+              />
+            </div>
+
+            {/* 4 · Status */}
+            <div className="hidden min-w-0 lg:flex">
+              <StatusCell state="PAID" />
+            </div>
+
+            {/* 5 · Gross — the W2 paystub carries net only */}
+            <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-subtle lg:block">
+              —
+            </div>
+
+            {/* 6 · Net */}
+            <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
+              <span className="tabular-nums text-base font-semibold tracking-tight text-text">
+                <MoneyDisplay cents={net} />
+              </span>
+              <span className="mt-1 tabular-nums text-[10px] leading-tight tabular-nums text-text-subtle">
+                W2 net · uploaded paystubs
+              </span>
+            </div>
+
+            {/* 7 · Actions */}
+            <div className="flex items-center justify-end gap-0.5 justify-self-end">
                 <Button
                   asChild
                   size="sm"
@@ -526,14 +878,18 @@ function PeriodLine({
                   className="h-9 w-9 p-0"
                   title={docs.length === 1 ? "View paystub" : "Manage paystubs"}
                 >
-                  <Link
-                    href={docs.length === 1 ? `/api/payroll-docs/${docs[0]!.id}` : "/salaried"}
-                    {...(docs.length === 1
-                      ? { target: "_blank", rel: "noopener" }
-                      : {})}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Link>
+                  {docs.length === 1 ? (
+                    <PdfLink
+                      href={`/api/payroll-docs/${docs[0]!.id}`}
+                      filename={`paystub-${docs[0]!.employeeName}.pdf`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </PdfLink>
+                  ) : (
+                    <Link href="/salaried">
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  )}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -550,13 +906,12 @@ function PeriodLine({
                     <DropdownMenuLabel>Paystubs</DropdownMenuLabel>
                     {docs.map((d) => (
                       <DropdownMenuItem key={d.id} asChild>
-                        <Link
+                        <PdfLink
                           href={`/api/payroll-docs/${d.id}`}
-                          target="_blank"
-                          rel="noopener"
+                          filename={`paystub-${d.employeeName}.pdf`}
                         >
                           <Eye className="h-3.5 w-3.5" /> View {d.employeeName}
-                        </Link>
+                        </PdfLink>
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
@@ -568,7 +923,6 @@ function PeriodLine({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            </div>
           </div>
         </div>
       </div>
@@ -588,36 +942,72 @@ function PeriodLine({
         {/* Statement line — stacks on mobile, one aligned row on >=sm. The
             left identity column and the NET hero share a single baseline grid
             so chips sit centered, never floating after the date. */}
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-5">
-          {/* Left identity column: period range, then chips on a consistent
-              centered baseline. min-w-0 lets it truncate before the NET. */}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
-            <Link
-              href={`/payroll/${group.periodId}`}
-              className="rounded-input font-mono text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40"
-            >
-              {formatRange(group.periodStart, canonicalEnd)}
-            </Link>
-            <span className="flex flex-wrap items-center gap-1.5">
-              <SchedulePill name={group.scheduleName} />
-              <PaymentChip state={periodState} method={periodPaymentMethod} />
-              {!multiRun && soleRun && (
-                <VisibilityChip published={soleRun.publishedToPortalAt !== null} />
-              )}
-            </span>
+        {/* Statement line — mobile stacks (range / chips / net+actions);
+            lg lays out on the shared TABLE_GRID so every row's schedule,
+            payment, status, gross and net columns align down the page. */}
+        <div
+          className={cn(
+            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2",
+            TABLE_GRID,
+          )}
+        >
+          {/* 1 · Pay period */}
+          <Link
+            href={`/payroll/${group.periodId}`}
+            className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40 lg:col-span-1"
+          >
+            {formatRange(group.periodStart, canonicalEnd)}
+          </Link>
+
+          {/* Mobile chip cluster (lg gives each its own column) */}
+          <div className="col-span-2 flex flex-wrap items-center gap-1.5 lg:hidden">
+            <SchedulePill name={group.scheduleName} />
+            <StatusCell state={periodState} />
+            <PaymentChip state={periodState} method={periodPaymentMethod} />
+            {!multiRun && soleRun && (
+              <VisibilityChip published={soleRun.publishedToPortalAt !== null} />
+            )}
           </div>
 
-          {/* Right: NET hero + trailing actions. NET is the number that gets
-              paid — large, bold, tabular. Gross + addenda are demoted to a
-              tiny muted line below, clearly subordinate. */}
-          <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <div className="flex flex-col items-start leading-none sm:items-end">
-              <span className="font-mono tabular-nums text-xl font-semibold tracking-tight text-text">
-                <MoneyDisplay cents={net} />
-              </span>
-              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 font-mono text-[10px] leading-tight tabular-nums">
+          {/* 2 · Schedule */}
+          <div className="hidden min-w-0 lg:block">
+            <SchedulePill name={group.scheduleName} />
+          </div>
+
+          {/* 3 · Payment method */}
+          <div className="hidden min-w-0 lg:flex">
+            <PaymentMethodCell state={periodState} method={periodPaymentMethod} />
+          </div>
+
+          {/* 4 · Status — one chip plus a glyph, on a single line, so every
+              row in the table is the same height. */}
+          <div className="hidden min-w-0 flex-nowrap items-center gap-1.5 lg:flex">
+            <StatusCell state={periodState} />
+            {!multiRun && soleRun && (
+              <VisibilityChip published={soleRun.publishedToPortalAt !== null} />
+            )}
+          </div>
+
+          {/* 5 · Gross (own column at lg; folded into the net addenda below lg) */}
+          <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-muted lg:block">
+            {gross > 0 ? (
+              <MoneyDisplay cents={gross} />
+            ) : (
+              <span className="text-text-subtle">—</span>
+            )}
+          </div>
+
+          {/* 6 · Net */}
+          <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
+            <span className="tabular-nums text-base font-semibold tracking-tight text-text">
+              <MoneyDisplay cents={net} />
+            </span>
+            {(gross > 0 && gross !== net) ||
+            group.docNetPayCents > 0 ||
+            group.tempLaborCents > 0 ? (
+              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0 tabular-nums text-[10px] leading-tight tabular-nums lg:justify-end">
                 {gross > 0 && gross !== net && (
-                  <span className="text-text-subtle">
+                  <span className="text-text-subtle lg:hidden">
                     gross <MoneyDisplay cents={gross} monospace={false} />
                   </span>
                 )}
@@ -635,22 +1025,26 @@ function PeriodLine({
                   </span>
                 )}
               </span>
-            </div>
+            ) : null}
+          </div>
 
-            {/* Pay-from-drawer trigger (period-level, LOCKED only) */}
+          {/* 7 · Actions — every control is a 36px square so the cluster is
+              the same width whether or not this period can be paid. A
+              variable-width cluster used to resize the grid's last track per
+              row, dragging all six other columns out of alignment. */}
+          <div className="flex items-center justify-end gap-0.5 justify-self-end">
             {canManageReports && periodState === "LOCKED" && (
-              <Button
-                size="sm"
+              <IconButton
                 variant="secondary"
+                sizePx="sm"
                 onClick={() => setPayOpen((v) => !v)}
-                className="h-9 px-2.5 text-[11px] whitespace-nowrap"
-                title={`Drawer: $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+                aria-label="Pay from cash drawer"
+                title={`Pay from cash drawer — $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+                className="h-9 w-9"
               >
-                <Banknote className="h-3.5 w-3.5" /> Pay
-              </Button>
+                <Banknote className="h-3.5 w-3.5" aria-hidden />
+              </IconButton>
             )}
-
-            {/* Single-run period: actions live here on the period line */}
             {!multiRun && soleRun && (
               <RunActions
                 run={soleRun}
@@ -671,18 +1065,18 @@ function PeriodLine({
 
       {/* Pay-from-drawer dialog (inline, period-level) */}
       {canManageReports && payOpen && periodState === "LOCKED" && (
-        <div className="mt-3 rounded-input border border-warn-200/70 bg-warn-50/50 px-3 py-3">
+        <div className="mt-3 rounded-input border border-warning-200/70 bg-warning-50/50 px-3 py-3">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-wider text-text-subtle">
+              <p className="text-micro uppercase text-text-subtle">
                 Drawer balance
               </p>
-              <p className="font-mono tabular-nums text-sm font-semibold">
+              <p className="tabular-nums text-sm font-semibold">
                 <MoneyDisplay cents={drawerBalanceCents} />
               </p>
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] uppercase tracking-wider text-text-subtle">
+              <label className="text-micro uppercase text-text-subtle">
                 Withdraw
               </label>
               <input
@@ -730,22 +1124,22 @@ function PeriodLine({
                 href={`/payroll/${r.periodId}`}
                 className="flex min-w-0 flex-1 items-baseline gap-1.5 hover:text-brand-700"
               >
-                <span className="text-[10px] uppercase tracking-wider text-text-subtle">
+                <span className="text-micro uppercase text-text-subtle">
                   {r.source.replace(/_/g, " ")}
                 </span>
                 <span className="text-text-subtle">·</span>
-                <span className="font-mono text-xs tabular-nums text-text-muted">
+                <span className="tabular-nums text-xs tabular-nums text-text-muted">
                   {r.id.slice(0, 8)}
                 </span>
                 <span className="truncate text-[11px] text-text-muted">
                   {r.createdByDisplay} ·{" "}
-                  <span className="font-mono tabular-nums">{formatDate(r.postedAt)}</span>
+                  <span className="tabular-nums">{formatDate(r.postedAt)}</span>
                 </span>
               </Link>
               <div className="flex items-center justify-between gap-2 sm:justify-end">
                 <ZohoBadges run={r} haute={haute} boomin={boomin} />
                 <VisibilityChip published={r.publishedToPortalAt !== null} />
-                <span className="min-w-[5rem] text-right font-mono tabular-nums text-sm font-semibold text-text">
+                <span className="min-w-[5rem] text-right tabular-nums text-sm font-semibold text-text">
                   <MoneyDisplay cents={r.amountCents} />
                 </span>
                 <RunActions
@@ -771,7 +1165,52 @@ function PeriodLine({
   );
 }
 
-/** Period payment-method chip (PAID) — bank / drawer / generic. */
+/** Period status chip — the mockup's single loud state cue per row.
+ *  PAID reads as "Completed"; LOCKED and OPEN stay literal. */
+/** Period state chip. Tones come from the shared status vocabulary so this
+ *  reads identically to the same period's chip on /payroll. */
+function StatusCell({ state }: { state: "OPEN" | "LOCKED" | "PAID" }) {
+  const spec = {
+    PAID: { tone: "success", label: "Completed", Icon: CheckCircle2 },
+    LOCKED: { tone: "warn", label: "Locked", Icon: Lock },
+    OPEN: { tone: "info", label: "Open", Icon: CircleDot },
+  }[state] as { tone: StatusTone; label: string; Icon: typeof Lock };
+  const { Icon } = spec;
+  return (
+    <span className={cn(STATUS_CHIP_BASE, statusChipClasses(spec.tone))}>
+      <Icon className="h-3 w-3" aria-hidden /> {spec.label}
+    </span>
+  );
+}
+
+/** Payment-method table cell — quiet icon + text (calm pass: the status
+ *  chip is the single colored element per row; this column just states
+ *  the rail, like the reference mock). */
+function PaymentMethodCell({
+  state,
+  method,
+}: {
+  state: "OPEN" | "LOCKED" | "PAID";
+  method: "BANK" | "CASH" | null;
+}) {
+  if (state !== "PAID") {
+    return <span className="text-xs text-text-subtle">—</span>;
+  }
+  if (method === "CASH") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
+        <Banknote className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Cash drawer
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
+      <Landmark className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Bank transfer
+    </span>
+  );
+}
+
+/** Period payment-method chip (PAID, mobile cluster) — quiet neutral. */
 function PaymentChip({
   state,
   method,
@@ -780,36 +1219,38 @@ function PaymentChip({
   method: "BANK" | "CASH" | null;
 }) {
   if (state !== "PAID") return null;
-  if (method === "CASH") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200 bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-800">
-        <Banknote className="h-3 w-3" /> Paid from drawer
-      </span>
-    );
-  }
-  if (method === "BANK") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-        <Landmark className="h-3 w-3" /> Paid via bank
-      </span>
-    );
-  }
+  const Icon = method === "CASH" ? Banknote : Landmark;
+  const label = method === "CASH" ? "Cash drawer" : "Bank transfer";
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-      <Landmark className="h-3 w-3" /> Paid from bank account
+    <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-text-muted whitespace-nowrap">
+      <Icon className="h-3 w-3" aria-hidden /> {label}
     </span>
   );
 }
 
 /** Portal visibility chip (per run). */
+/**
+ * Employee-visibility indicator. Deliberately a glyph, not a second chip:
+ * two full chips wrapped onto a second line in the status column, so rows
+ * with a publication state stood ~20px taller than rows without and the
+ * table read as ragged.
+ */
 function VisibilityChip({ published }: { published: boolean }) {
-  return published ? (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-1.5 py-0.5 text-[10px] font-medium text-success-800 ring-1 ring-inset ring-success-100 whitespace-nowrap">
-      <CheckCircle2 className="h-2.5 w-2.5" /> Published
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-1.5 py-0.5 text-[10px] font-medium text-warn-800 ring-1 ring-inset ring-warn-200 whitespace-nowrap">
-      <CircleDot className="h-2.5 w-2.5" /> Internal
+  const label = published ? "Visible to employees" : "Internal only";
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className={cn(
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
+        published ? "text-success-700" : "text-text-subtle",
+      )}
+    >
+      {published ? (
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+      ) : (
+        <CircleDot className="h-3.5 w-3.5" aria-hidden />
+      )}
     </span>
   );
 }
@@ -1003,9 +1444,9 @@ function RowOverflowMenu({
         <DropdownMenuLabel>Documents</DropdownMenuLabel>
         {hasPdf ? (
           <DropdownMenuItem asChild>
-            <Link href={`/api/reports/${runId}/pdf`} target="_blank" rel="noopener">
+            <PdfLink href={`/api/reports/${runId}/pdf`} filename="admin-report.pdf">
               <Download className="h-3.5 w-3.5" /> Download report PDF
-            </Link>
+            </PdfLink>
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem disabled>
@@ -1013,22 +1454,20 @@ function RowOverflowMenu({
           </DropdownMenuItem>
         )}
         <DropdownMenuItem asChild>
-          <Link
+          <PdfLink
             href={`/api/payroll/${periodId}/payslips-cut-sheet`}
-            target="_blank"
-            rel="noopener"
+            filename="payslip-cut-sheet.pdf"
           >
             <Scissors className="h-3.5 w-3.5" /> Pay-slip cut sheet
-          </Link>
+          </PdfLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link
+          <PdfLink
             href={`/api/payslips/period/${periodId}/signature`}
-            target="_blank"
-            rel="noopener"
+            filename="signature-report.pdf"
           >
             <Printer className="h-3.5 w-3.5" /> Signature report
-          </Link>
+          </PdfLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href={`/payroll/${periodId}`}>

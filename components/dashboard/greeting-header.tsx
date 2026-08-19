@@ -30,10 +30,7 @@ type Props = {
 
 function greetingFor(hour: number): {
   word: string;
-  Icon: React.ComponentType<{
-    className?: string;
-    style?: React.CSSProperties;
-  }>;
+  Icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 } {
   if (hour < 12) return { word: "Good morning", Icon: Sunrise };
   if (hour < 17) return { word: "Good afternoon", Icon: Sun };
@@ -52,18 +49,17 @@ export function GreetingHeader({
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="min-w-0">
+        {/* text-title, like every other page title — this was an arbitrary
+            1.3/1.5rem in the BODY font, so the app's landing screen was the
+            one page whose heading matched nothing else. */}
         <h1
-          className="flex items-center gap-2.5 text-[1.3rem] font-bold leading-tight tracking-[-0.02em] sm:text-[1.5rem]"
+          className="flex items-center gap-2.5 text-title tracking-tight antialiased"
           style={{ color: DASH.text }}
         >
           {word}, {name}
-          <Icon
-            className="h-6 w-6"
-            style={{ color: DASH.amber }}
-            aria-hidden="true"
-          />
+          <Icon className="h-6 w-6" style={{ color: DASH.amber }} aria-hidden="true" />
         </h1>
-        <p className="mt-0.5 text-[12px]" style={{ color: DASH.textMuted }}>
+        <p className="mt-1 text-caption" style={{ color: DASH.textMuted }}>
           Here&rsquo;s what&rsquo;s happening with your payroll today.
         </p>
       </div>
@@ -78,17 +74,9 @@ export function GreetingHeader({
               border: `1px solid ${DASH.border}`,
             }}
           >
-            <CalendarDays
-              className="h-4 w-4"
-              style={{ color: DASH.textMuted }}
-              aria-hidden="true"
-            />
+            <CalendarDays className="h-4 w-4" style={{ color: DASH.textMuted }} aria-hidden="true" />
             <span className="tabular-nums">{todayLabel}</span>
-            <ChevronDown
-              className="h-3.5 w-3.5"
-              style={{ color: DASH.textFaint }}
-              aria-hidden="true"
-            />
+            <ChevronDown className="h-3.5 w-3.5" style={{ color: DASH.textFaint }} aria-hidden="true" />
           </span>
           <Link
             href="/settings"
@@ -99,20 +87,16 @@ export function GreetingHeader({
               border: `1px solid ${DASH.border}`,
             }}
           >
-            <Settings2
-              className="h-4 w-4"
-              style={{ color: DASH.textMuted }}
-              aria-hidden="true"
-            />
+            <Settings2 className="h-4 w-4" style={{ color: DASH.textMuted }} aria-hidden="true" />
             Customize
           </Link>
           <Link
             href={quickActionHref}
             className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
             style={{
-              color: "white",
-              background: DASH.violet,
-              boxShadow: "0 8px 18px -12px rgba(15,118,110,0.55)",
+              color: DASH.onAccent,
+              background: DASH.accentGradient,
+              boxShadow: "0 8px 20px -8px rgba(5,150,105,0.7)",
             }}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -120,7 +104,7 @@ export function GreetingHeader({
           </Link>
         </div>
         {compareLabel ? (
-          <p className="text-xs" style={{ color: DASH.textFaint }}>
+          <p className="text-[11px]" style={{ color: DASH.textFaint }}>
             All amounts in USD · {compareLabel}
           </p>
         ) : null}

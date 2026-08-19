@@ -214,7 +214,7 @@ export function CommandPalette({
                 const GroupIcon = GROUP_ICON[group];
                 return (
                   <div key={group} className="py-1">
-                    <div className="px-4 py-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-text-subtle">
+                    <div className="px-4 py-1 flex items-center gap-1.5 text-micro uppercase text-text-subtle">
                       <GroupIcon className="h-3 w-3" aria-hidden />
                       {GROUP_LABEL[group]}
                     </div>
@@ -232,7 +232,7 @@ export function CommandPalette({
                             "w-full text-left px-4 py-2 flex items-center gap-3",
                             isActive
                               ? "bg-brand-50 text-brand-800"
-                              : "hover:bg-surface-2 text-text",
+                              : "hover:bg-surface-2/40 text-text",
                           )}
                         >
                           <Icon

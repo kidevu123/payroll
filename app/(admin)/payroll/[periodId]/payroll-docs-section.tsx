@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, FileText, Trash2, Upload } from "lucide-react";
 import type { Employee, PayrollPeriodDocument } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   deletePayrollDocAction,
   uploadPayrollDocAction,
 } from "./payroll-docs-actions";
+import { ZohoDocStatus } from "@/components/domain/zoho-doc-status";
 
 type EmployeeLite = Pick<
   Employee,
@@ -78,7 +80,7 @@ export function PayrollDocsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">W2 / paystub documents</CardTitle>
+        <CardTitle>W2 / paystub documents</CardTitle>
         <CardDescription>
           For employees whose pay is prepared externally (e.g. accountant).
           Upload the document here and the employee will see it under their
@@ -242,14 +244,15 @@ function DocRow({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
+        {/* Zoho stays available on locked/PAID periods — pushing the expense
+            is exactly what happens after paying. Hourly requiresW2Upload
+            employees never appear on the Salaried page, so this is the only
+            place their paystub can be pushed. */}
+        <ZohoDocStatus doc={doc} />
         <Button asChild size="sm" variant="ghost">
-          <Link
-            href={`/api/payroll-docs/${doc.id}`}
-            target="_blank"
-            rel="noopener"
-          >
+          <PdfLink href={`/api/payroll-docs/${doc.id}`} filename="paystub.pdf">
             <Download className="h-3.5 w-3.5" />
-          </Link>
+          </PdfLink>
         </Button>
         {!locked && (
           <form
@@ -267,6 +270,16 @@ function DocRow({
               size="sm"
               variant="ghost"
               disabled={removing}
+              aria-label={`Delete document ${doc.originalFilename}`}
+              title="Delete document"
+              onClick={(e) => {
+                if (
+                  !window.confirm(
+                    `Delete "${doc.originalFilename}"? This can't be undone.`,
+                  )
+                )
+                  e.preventDefault();
+              }}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

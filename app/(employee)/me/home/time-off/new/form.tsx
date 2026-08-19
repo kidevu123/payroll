@@ -69,7 +69,7 @@ export function TimeOffForm({
       {isPartial ? (
         <div className="space-y-4">
           <SingleDateField defaultValue={defaultDate} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               id="partialStartTime"
               name="partialStartTime"
@@ -99,7 +99,7 @@ export function TimeOffForm({
               <option value="OTHER">{t("otherLabel")}</option>
             </SelectField>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field
               id="startDate"
               name="startDate"

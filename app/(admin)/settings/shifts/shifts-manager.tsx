@@ -80,7 +80,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move up"
                     onClick={() => move(i, -1)}
                     disabled={i === 0 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
@@ -89,7 +89,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move down"
                     onClick={() => move(i, 1)}
                     disabled={i === items.length - 1 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
@@ -134,7 +134,15 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Archive the ${s.name} shift`}
+                            title="Archive shift"
                             onClick={async () => {
+                              if (
+                                !window.confirm(
+                                  `Archive the "${s.name}" shift? It will no longer be assignable.`,
+                                )
+                              )
+                                return;
                               const result = await archiveShiftAction(s.id);
                               if (result?.error) setError(result.error);
                             }}
@@ -201,7 +209,7 @@ function ShiftForm({
           id={`color-${shift?.id ?? "new"}`}
           name="colorHex"
           type="color"
-          defaultValue={shift?.colorHex ?? "#0f766e"}
+          defaultValue={shift?.colorHex ?? "#067049"}
         />
       </div>
       <div className="space-y-1">

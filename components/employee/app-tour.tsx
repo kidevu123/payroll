@@ -66,23 +66,30 @@ export function AppTour({
   }, [force]);
 
   // While in "step" phase, locate the target element so we can position
-  // the tooltip relative to it. Re-measure on resize.
+  // the tooltip relative to it. Measure once, then re-measure on scroll and
+  // resize — the old requestAnimationFrame loop called setState ~60×/s for
+  // the whole step, burning main-thread time on every employee page render.
   React.useEffect(() => {
     if (phase !== "step") return;
     const step = STEPS[stepIdx];
     if (!step) return;
     let raf = 0;
     const measure = () => {
+      raf = 0;
       const el = document.querySelector(step.target);
-      if (el) {
-        setRect((el as HTMLElement).getBoundingClientRect());
-      } else {
-        setRect(null);
-      }
-      raf = requestAnimationFrame(measure);
+      setRect(el ? (el as HTMLElement).getBoundingClientRect() : null);
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
     };
     measure();
-    return () => cancelAnimationFrame(raf);
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", schedule, { capture: true } as EventListenerOptions);
+      window.removeEventListener("resize", schedule);
+    };
   }, [phase, stepIdx]);
 
   function complete() {
@@ -187,7 +194,7 @@ export function AppTour({
       <div className="fixed inset-0 z-[60] bg-black/55 pointer-events-none" />
       {rect && (
         <div
-          className="fixed z-[61] pointer-events-none rounded-2xl ring-2 ring-brand-300 ring-offset-4 ring-offset-black/0"
+          className="fixed z-[61] pointer-events-none rounded-card ring-2 ring-brand-300 ring-offset-4 ring-offset-black/0"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
@@ -205,14 +212,14 @@ export function AppTour({
         style={tooltipStyle}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-brand-700">
+          <p className="text-micro uppercase text-brand-700">
             {stepIdx + 1} / {STEPS.length}
           </p>
           <button
             type="button"
             aria-label="Close"
             onClick={complete}
-            className="text-text-subtle hover:text-text"
+            className="-m-2 flex h-9 w-9 items-center justify-center rounded-input text-text-subtle hover:text-text [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11"
           >
             <X className="h-4 w-4" />
           </button>

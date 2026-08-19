@@ -74,7 +74,7 @@ function TrendDot(props: {
         cx={cx}
         cy={cy}
         r={2.5}
-        fill={CHART.violetBright}
+        fill={CHART.emerald}
         stroke="var(--dash-bg)"
         strokeWidth={1}
       />
@@ -84,13 +84,16 @@ function TrendDot(props: {
   const boxW = 52;
   const boxH = 22;
   const boxX = cx - boxW - 2; // pin to the left of the dot so it never clips
-  // Clamp so a high end-value doesn't push the label off the top of a short
-  // chart; drop it just below the dot if there isn't room above.
-  const boxY = cy - boxH - 10 < 2 ? cy + 8 : cy - boxH - 10;
+  // Clamp to the top edge when a high end-value leaves no room above. Dropping
+  // the label below the dot (the previous fallback) parked it on top of the
+  // month axis labels — an upward trend, which is the common case, always
+  // collided with "Aug". The label is offset horizontally from the dot, so
+  // sitting at the top edge never covers the point itself.
+  const boxY = Math.max(2, cy - boxH - 10);
   return (
     <g>
-      <circle cx={cx} cy={cy} r={9} fill={CHART.violetBright} fillOpacity={0.16} />
-      <circle cx={cx} cy={cy} r={4} fill={CHART.violetBright} stroke="var(--dash-bg)" strokeWidth={2} />
+      <circle cx={cx} cy={cy} r={9} fill={CHART.emerald} fillOpacity={0.16} />
+      <circle cx={cx} cy={cy} r={4} fill={CHART.emerald} stroke="var(--dash-bg)" strokeWidth={2} />
       <g transform={`translate(${boxX}, ${boxY})`}>
         <rect
           width={boxW}
@@ -135,8 +138,8 @@ export function SpendTrendChart({ data }: Props) {
         >
           <defs>
             <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={CHART.violet} stopOpacity={0.32} />
-              <stop offset="100%" stopColor={CHART.violet} stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART.emeraldDim} stopOpacity={0.32} />
+              <stop offset="100%" stopColor={CHART.emeraldDim} stopOpacity={0} />
             </linearGradient>
             <filter id="trendGlow" x="-10%" y="-30%" width="120%" height="160%">
               <feGaussianBlur stdDeviation="3" result="blur" />
@@ -173,7 +176,7 @@ export function SpendTrendChart({ data }: Props) {
           />
           <Tooltip
             content={<TrendTooltip />}
-            cursor={{ stroke: CHART.violetBright, strokeOpacity: 0.2 }}
+            cursor={{ stroke: CHART.emerald, strokeOpacity: 0.2 }}
           />
           <Area
             type="monotone"
@@ -185,7 +188,7 @@ export function SpendTrendChart({ data }: Props) {
           <Line
             type="monotone"
             dataKey="cents"
-            stroke={CHART.violetBright}
+            stroke={CHART.emerald}
             strokeWidth={2.5}
             filter="url(#trendGlow)"
             dot={(p) => (
@@ -200,7 +203,7 @@ export function SpendTrendChart({ data }: Props) {
             )}
             activeDot={{
               r: 5,
-              fill: CHART.violetBright,
+              fill: CHART.emerald,
               stroke: "var(--dash-bg)",
               strokeWidth: 2,
             }}

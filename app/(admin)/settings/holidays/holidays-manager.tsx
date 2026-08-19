@@ -47,19 +47,21 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
         {holidays.length === 0 ? (
           <p className="text-sm text-text-muted">No holidays yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-card border border-border bg-surface-2 shadow-sm">
+          <ul className="divide-y divide-border/60 rounded-card border border-border bg-surface shadow-sm">
             {holidays.map((h) => (
               <li
                 key={h.id}
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
               >
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="font-mono text-text">{h.date}</span>
+                  <span className="tabular-nums text-text">{h.date}</span>
                   <span className="text-text-muted">{h.label}</span>
                 </div>
                 <Button
                   size="sm"
                   variant="ghost"
+                  aria-label={`Delete holiday ${h.label} on ${h.date}`}
+                  title="Delete holiday"
                   onClick={async () => {
                     if (!confirm(`Delete "${h.label}" on ${h.date}?`)) return;
                     setPending(true);

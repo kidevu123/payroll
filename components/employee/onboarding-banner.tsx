@@ -223,7 +223,7 @@ export function OnboardingBanner({
             type="button"
             onClick={dismiss}
             aria-label="Dismiss"
-            className="shrink-0 -m-1 p-1 text-text-subtle hover:text-text rounded-input transition-colors"
+            className="shrink-0 -m-2 flex h-9 w-9 items-center justify-center rounded-input text-text-subtle hover:text-text transition-colors [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11"
           >
             <X className="h-4 w-4" />
           </button>
@@ -262,7 +262,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl bg-surface p-5 pb-8 shadow-pop"
+        className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-card bg-surface p-5 pb-8 shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong/70" />
@@ -274,7 +274,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-m-1 p-1 text-text-muted hover:text-text rounded-md"
+            className="-m-2 flex h-9 w-9 items-center justify-center text-text-muted hover:text-text rounded-input [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11"
           >
             <X className="h-4 w-4" aria-hidden />
           </button>

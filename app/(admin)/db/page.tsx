@@ -30,8 +30,8 @@ export default async function DbBrowserPage({
   const tablesResult = await listTablesAction();
   if ("error" in tablesResult) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Database</h1>
+      <div className="space-y-5">
+        <h1 className="text-title tracking-tight antialiased text-text">Database</h1>
         <div className="rounded-card border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700">
           <AlertTriangle className="inline h-4 w-4 mr-1" /> {tablesResult.error}
         </div>
@@ -51,10 +51,10 @@ export default async function DbBrowserPage({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="text-title tracking-tight antialiased text-text flex items-center gap-2">
             <Database className="h-6 w-6 text-brand-700" /> Database
           </h1>
           <p className="text-sm text-text-muted">
@@ -70,7 +70,7 @@ export default async function DbBrowserPage({
           aria-label="Tables"
           className="rounded-card border border-border bg-surface lg:sticky lg:top-4 self-start max-h-[80vh] overflow-y-auto"
         >
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-border/60 text-sm">
             {tables.map((t) => {
               const active = t.name === tableName;
               return (
@@ -80,7 +80,7 @@ export default async function DbBrowserPage({
                     className={`flex items-center justify-between gap-2 px-3 py-2 ${
                       active
                         ? "bg-brand-50 text-brand-700 font-medium"
-                        : "text-text-muted hover:bg-surface-2 hover:text-text"
+                        : "text-text-muted hover:bg-surface-2/40 hover:text-text"
                     }`}
                   >
                     <span className="font-mono text-xs truncate">{t.name}</span>
@@ -144,7 +144,7 @@ function TableViewer({
   const hasNext = nextOffset < total;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="font-mono text-sm">{tableName}</h2>
@@ -177,12 +177,12 @@ function TableViewer({
 
       <div className="overflow-auto rounded-card border border-border bg-surface max-h-[70vh]">
         <table className="min-w-full text-xs">
-          <thead className="sticky top-0 bg-surface-2 text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+          <thead className="sticky top-0 bg-surface-2 text-left text-micro uppercase text-text-subtle border-b border-border">
             <tr>
               {columns.map((c) => (
                 <th key={c.name} className="px-2 py-2 font-medium whitespace-nowrap">
                   <div>{c.name}</div>
-                  <div className="text-[9px] normal-case font-normal text-text-subtle">
+                  <div className="text-[11px] normal-case font-normal text-text-subtle">
                     {c.dataType}
                     {c.isNullable ? "?" : ""}
                   </div>
@@ -190,7 +190,7 @@ function TableViewer({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border font-mono">
+          <tbody className="divide-y divide-border/60 font-mono">
             {rows.length === 0 ? (
               <tr>
                 <td

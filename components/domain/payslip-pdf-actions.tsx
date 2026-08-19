@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Download, Printer } from "lucide-react";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { cn } from "@/lib/utils";
 
 export function payslipPdfHref(
@@ -25,19 +25,19 @@ export function PayslipPdfActions({
   const downloadUrl = `${url}?download=1`;
   const linkClass =
     layout === "inline"
-      ? "inline-flex items-center gap-1 rounded-input px-1.5 py-0.5 text-[11px] font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0"
-      : "inline-flex items-center gap-1.5 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0";
+      ? "inline-flex items-center gap-1 rounded-input px-1.5 py-0.5 text-[11px] font-medium text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0"
+      : "inline-flex items-center gap-1.5 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0";
 
   const links = (
     <>
-      <Link href={url} target="_blank" rel="noopener noreferrer" className={linkClass}>
+      <PdfLink href={url} filename="payslip.pdf" className={linkClass}>
         <Printer className="h-3.5 w-3.5" aria-hidden />
         {printLabel}
-      </Link>
-      <Link href={downloadUrl} className={linkClass}>
+      </PdfLink>
+      <PdfLink href={downloadUrl} filename="payslip.pdf" className={linkClass}>
         <Download className="h-3.5 w-3.5" aria-hidden />
         {downloadLabel}
-      </Link>
+      </PdfLink>
     </>
   );
 

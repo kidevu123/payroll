@@ -5,6 +5,7 @@
 // Plus an Acknowledge button when not yet acknowledged.
 
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileDown, AlertTriangle, CircleCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -273,7 +274,7 @@ async function PayslipBody({
       <Card
         className={
           isDisputed
-            ? "relative overflow-hidden before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warn-700/80"
+            ? "relative overflow-hidden before:absolute before:inset-y-5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warning-700/80"
             : undefined
         }
       >
@@ -290,7 +291,7 @@ async function PayslipBody({
               </p>
             </div>
             {isDisputed ? (
-              <span className="inline-flex items-center gap-1.5 rounded-chip border border-warn-200/80 bg-warn-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warn-700">
+              <span className="inline-flex items-center gap-1.5 rounded-chip border border-warning-200/80 bg-warning-50 px-2.5 py-1 text-[11px] font-medium tracking-tight text-warning-700">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
                 {t("problemReported")}
               </span>
@@ -303,11 +304,11 @@ async function PayslipBody({
             )}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <p className="text-[11px] uppercase tracking-wider text-text-subtle font-medium">
               {t("netPay")}
             </p>
-            <p className="text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
+            <p className="text-[1.875rem] sm:text-[2.25rem] leading-[1.1] font-semibold tracking-tight tabular-nums text-text antialiased">
               <MoneyDisplay
                 cents={payslip.roundedPayCents}
                 monospace={false}
@@ -342,7 +343,7 @@ async function PayslipBody({
           </p>
 
           {discrepancy && (
-            <div className="rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-xs text-warn-700 space-y-1.5 leading-relaxed">
+            <div className="rounded-card border border-warning-200/80 bg-warning-50 p-3.5 text-xs text-warning-700 space-y-1.5 leading-relaxed">
               <p className="font-medium">
                 {t("discrepancyHeading")}
               </p>
@@ -351,7 +352,6 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={storedHours}
                   decimals={payRules.hoursDecimalPlaces}
-                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={payslip.grossPayCents} monospace={false} />
               </p>
@@ -360,7 +360,6 @@ async function PayslipBody({
                 <HoursDisplay
                   hours={liveHours}
                   decimals={payRules.hoursDecimalPlaces}
-                  className="font-mono"
                 />{" "}
                 · <MoneyDisplay cents={liveCents} monospace={false} />
               </p>
@@ -406,7 +405,7 @@ async function PayslipBody({
             {t("timesShownLocal", { tz: tz.replace("_", " ") })}
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-2 sm:px-4 py-2">
+        <CardContent className="px-4 py-2">
           {days.length === 0 ? (
             <p className="px-4 py-4 text-sm text-text-muted leading-relaxed">
               {t("noClockInRecords")}
@@ -437,20 +436,20 @@ async function PayslipBody({
                               <span className="flex flex-col gap-0.5 text-xs">
                                 <span className="text-text-muted">
                                   {t("in")}{" "}
-                                  <span className="font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap tabular-nums text-text">
                                     {fmtTime(r.inT, tz, dateLocale)}
                                   </span>
                                   <span className="mx-1.5 text-text-subtle">
                                     →
                                   </span>
                                   {t("out")}{" "}
-                                  <span className="font-mono tabular-nums text-text">
+                                  <span className="whitespace-nowrap tabular-nums text-text">
                                     {fmtTime(r.outT, tz, dateLocale)}
                                   </span>
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-                                <span className="font-mono text-xs tabular-nums text-text">
+                                <span className="tabular-nums text-xs tabular-nums text-text">
                                   {r.hours !== null ? r.hours.toFixed(2) : "—"}
                                   <span className="ml-1 lowercase text-text-subtle">
                                     {t("hours")}
@@ -482,7 +481,7 @@ async function PayslipBody({
               <div className="hidden sm:block">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-text-subtle border-b border-border/60">
                       <th className="px-3 py-3 font-medium">{t("day")}</th>
                       <th className="px-3 py-3 font-medium">{t("in")}</th>
                       <th className="px-3 py-3 font-medium">{t("out")}</th>
@@ -507,13 +506,13 @@ async function PayslipBody({
                             <td className="px-3 py-3 text-xs font-medium text-text">
                               {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
                             </td>
-                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
                               {fmtTime(r.inT, tz, dateLocale)}
                             </td>
-                            <td className="px-3 py-3 font-mono text-xs text-text-muted tabular-nums">
+                            <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
                               {fmtTime(r.outT, tz, dateLocale)}
                             </td>
-                            <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-text">
+                            <td className="px-3 py-3 text-right tabular-nums text-xs tabular-nums text-text">
                               {r.hours !== null ? r.hours.toFixed(2) : "—"}
                             </td>
                             {payType === "HOURLY" && (
@@ -552,9 +551,9 @@ async function PayslipBody({
               {t("spreadsheetAttached")}
             </p>
             <Button asChild variant="secondary">
-              <a href={`/api/payslips/${payslip.id}/pdf`} download>
+              <PdfLink href={`/api/payslips/${payslip.id}/pdf`} filename="payslip.pdf">
                 <FileDown className="h-4 w-4" /> {t("downloadOriginal")}
-              </a>
+              </PdfLink>
             </Button>
           </CardContent>
         </Card>
@@ -563,7 +562,7 @@ async function PayslipBody({
       {/* Sticky-feeling actions footer. Acknowledge is the primary CTA;
           Report-a-problem stays a quiet ghost. The whole strip sits in a
           slim card so on mobile it visually anchors below the breakdown. */}
-      <Card className="no-print bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+      <Card className="no-print">
         <CardContent className="px-5 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <ReportProblemButton
             payslipId={payslip.id}

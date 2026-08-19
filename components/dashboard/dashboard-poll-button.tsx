@@ -2,13 +2,13 @@
 
 // "Poll now" pill for the dashboard automation banner. Fires the real
 // NGTeco poll (pollNowAction) and starts the global PollStatusBar watcher —
-// it does NOT navigate to settings.
+// it does NOT navigate to settings. Matches the banner's gradient pill.
 
 import * as React from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { pollNowAction } from "@/app/(admin)/payroll/actions";
 import { usePollStatus } from "@/components/admin/poll-status-provider";
-import { DASH } from "./theme";
+import { DASH } from "@/components/dashboard/theme";
 
 export function DashboardPollButton() {
   const { startWatching, isActive } = usePollStatus();
@@ -33,15 +33,14 @@ export function DashboardPollButton() {
       disabled={inProgress}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold transition-opacity disabled:opacity-70"
       style={{
-        color: "white",
-        background: DASH.violet,
-        boxShadow: "0 8px 18px -12px rgba(15,118,110,0.55)",
+        color: DASH.onAccent,
+        background: DASH.accentGradient,
+        boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
       }}
     >
       {inProgress ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{" "}
-          Polling…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Polling…
         </>
       ) : (
         <>

@@ -274,6 +274,62 @@
       "when": 1782260000000,
       "tag": "0038_time_off_one_pending_change",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1782340000000,
+      "tag": "0039_perf_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1782420000000,
+      "tag": "0040_ngteco_poll_hourly",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1782420010000,
+      "tag": "0041_announcement_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1784165360010,
+      "tag": "0042_sleepy_edwin_jarvis",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1784213713150,
+      "tag": "0043_eminent_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1784745282429,
+      "tag": "0044_curly_dakota_north",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1784752104119,
+      "tag": "0045_majestic_sebastian_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1784752105119,
+      "tag": "0046_brand_color_emerald",
+      "breakpoints": true
     }
   ]
 }

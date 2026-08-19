@@ -64,7 +64,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
             Chat
           </CardTitle>
           {!configured && (
-            <p className="rounded-input border border-warn-200 bg-warn-50 px-3 py-2 text-body text-warn-900">
+            <p className="rounded-input border border-warning-200 bg-warning-50 px-3 py-2 text-body text-warning-900">
               Set <code className="text-caption">OLLAMA_BASE_URL</code> +{" "}
               <code className="text-caption">OLLAMA_MODEL</code>, or{" "}
               <code className="text-caption">ANTHROPIC_API_KEY</code>, on the
@@ -86,7 +86,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
                       type="button"
                       disabled={!configured || loading}
                       onClick={() => void send(s)}
-                      className="rounded-lg border border-border/70 bg-surface-2/60 px-3 py-1.5 text-left text-[13px] text-text hover:bg-surface-2 disabled:opacity-50"
+                      className="rounded-lg border border-border/70 bg-surface-2/60 px-3 py-1.5 text-left text-[13px] text-text hover:bg-surface-2/40 disabled:opacity-50"
                     >
                       {s}
                     </button>
@@ -154,7 +154,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
       <aside className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-semibold">
+            <CardTitle>
               MCP capabilities
             </CardTitle>
           </CardHeader>
@@ -173,7 +173,7 @@ export function AssistantChat({ configured }: { configured: boolean }) {
                         {item.description}
                       </span>
                       {item.mutates && (
-                        <span className="ml-1 text-[10px] uppercase tracking-wide text-warning-700">
+                        <span className="ml-1 text-micro uppercase text-warning-700">
                           writes
                         </span>
                       )}

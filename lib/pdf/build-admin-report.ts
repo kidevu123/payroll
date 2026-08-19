@@ -28,6 +28,14 @@ function tzDayKey(d: Date, tz: string): string {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** Pay-schedule kind -> header cadence word for the admin report. */
+const SCHEDULE_LABEL: Record<string, string> = {
+  WEEKLY: "WEEKLY",
+  BIWEEKLY: "BI-WEEKLY",
+  SEMI_MONTHLY: "SEMI-MONTHLY",
+  MONTHLY: "MONTHLY",
+};
+
 /** YYYY-MM-DD strings from start to end inclusive. */
 function enumerateDays(startIso: string, endIso: string): string[] {
   const out: string[] = [];
@@ -413,6 +421,8 @@ export async function buildAdminReportArtifacts(
   });
   summaryRows.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
+  const scheduleLabel = SCHEDULE_LABEL[periodSchedule?.periodKind ?? ""] ?? "";
+
   const input: AdminReportInput = {
     company: {
       name: company.name,
@@ -420,6 +430,7 @@ export async function buildAdminReportArtifacts(
       brandColorHex: company.brandColorHex,
       locale: company.locale,
     },
+    ...(scheduleLabel ? { scheduleLabel } : {}),
     period: { startDate: period.startDate, endDate: displayEndDate },
     rules: {
       rounding: payRules.rounding,

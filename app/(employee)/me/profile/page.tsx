@@ -25,6 +25,7 @@ import { signOutAction } from "@/components/admin/sign-out-action";
 import { LanguageSwitcher } from "@/components/admin/language-switcher";
 import { resolveLocale } from "@/lib/i18n";
 import { ProfileForm } from "./profile-form";
+import { KioskPinForm } from "./kiosk-pin-form";
 import { PhotoUpload } from "./photo-upload";
 
 export default async function EmployeeProfile() {
@@ -74,14 +75,14 @@ export default async function EmployeeProfile() {
             }
           />
           <div className="min-w-0 flex-1 space-y-0.5">
-            <h1 className="text-title font-semibold tracking-tight antialiased truncate">
+            <h1 className="text-title tracking-tight antialiased text-text antialiased truncate">
               {employee.displayName}
             </h1>
             <p className="text-xs text-text-muted truncate">
               {employee.email}
             </p>
             <div className="pt-1.5">
-              <span className="inline-flex items-center gap-1 rounded-chip border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-medium tracking-tight text-brand-800">
+              <span className="inline-flex items-center gap-1 rounded-chip border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-brand-800">
                 {payTypeLabel(employee.payType)}
               </span>
             </div>
@@ -129,6 +130,11 @@ export default async function EmployeeProfile() {
       </Card>
 
       <ProfileForm employee={employee} />
+
+      <KioskPinForm
+        pinSet={Boolean(employee.kioskPinHash)}
+        clockId={employee.ngtecoEmployeeRef}
+      />
 
       {/* Per-device language switcher. The "saved" preference (set above)
           is what new devices use; this overrides only the current one. */}

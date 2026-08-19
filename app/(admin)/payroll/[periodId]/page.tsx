@@ -4,6 +4,7 @@
 // Reused for both legacy LEGACY_IMPORT runs and live cron-generated runs.
 
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
 import type React from "react";
 import {
@@ -16,9 +17,12 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -44,7 +48,7 @@ import { PublishPeriodButton } from "./publish-period-button";
 import { TempWorkersSection } from "./temp-workers-section";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { PayrollDocsSection } from "./payroll-docs-section";
-import { listDocs } from "@/lib/db/queries/payroll-documents";
+import { listDocs, listUnattachedDocsForRange } from "@/lib/db/queries/payroll-documents";
 import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
 import { DedupPunchesButton } from "./dedup-button";
@@ -65,17 +69,6 @@ import {
   buildPayrollCashInputs,
 } from "@/lib/payroll/cash-denominations";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
-
-const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function formatRange(startIso: string, endIso: string): string {
-  const a = new Date(`${startIso}T12:00:00Z`);
-  const b = new Date(`${endIso}T12:00:00Z`);
-  const sameYear = a.getUTCFullYear() === b.getUTCFullYear();
-  const left = `${MONTH_SHORT[a.getUTCMonth()]} ${String(a.getUTCDate()).padStart(2, "0")}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
-  const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
-  return `${left} – ${right}`;
-}
 
 function formatHm(d: Date | null, tz: string): string {
   if (!d) return "—";
@@ -121,7 +114,7 @@ function issueLabel(row: {
 }): React.ReactNode {
   if (row.incomplete > 0) {
     return (
-      <span className="text-warn-700">
+      <span className="text-warning-700">
         {row.incomplete} incomplete
       </span>
     );
@@ -152,7 +145,7 @@ export default async function PeriodReviewPage({
   const period = await getPeriodById(periodId);
   if (!period) notFound();
 
-  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, payrollDocs, allPayslips, duplicateClusters] = await Promise.all([
+  const [allEmployees, punches, payRules, payPeriod, company, schedules, tempWorkers, attachedDocs, rangeDocs, allPayslips, duplicateClusters] = await Promise.all([
     listEmployees(),
     listPunches({ periodId }),
     getSetting("payRules"),
@@ -161,9 +154,13 @@ export default async function PeriodReviewPage({
     db.select().from(paySchedules),
     listTempWorkers({ periodId }),
     listDocs({ periodId }),
+    // Salaried-tab uploads carry the same date range but no period link —
+    // show them here too so the period page sees every paystub it covers.
+    listUnattachedDocsForRange(period.startDate, period.endDate),
     listPayslipsForPeriod(periodId, { includeVoided: true }),
     findDuplicatePunchClusters({ periodId }),
   ]);
+  const payrollDocs = [...attachedDocs, ...rangeDocs];
   const tz = company.timezone ?? "America/New_York";
   const duplicateDetails = buildDuplicatePunchDetails({
     timezone: tz,
@@ -420,7 +417,7 @@ export default async function PeriodReviewPage({
   )}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Sticky action bar — keeps state pill, totals, primary CTAs visible
           even on long period pages. The lock/mark-paid action used to live at
           page bottom, requiring 3000px of scroll on busy weeks. */}
@@ -428,12 +425,12 @@ export default async function PeriodReviewPage({
           bar holds only the state pills + action buttons so it never
           wraps to a second row at common laptop widths (1100-1300px),
           which was the original "buttons all over the place" complaint. */}
-      <div>
+      <div className="space-y-2">
         <PeriodDetailBackButton
           fallbackHref={isAccountant ? "/cash-drawer" : "/payroll"}
         />
-        <h1 className="text-xl font-semibold tracking-tight">
-          {formatRange(
+        <PageHeader
+          title={formatRange(
             period.startDate,
             canonicalEndForScheduleName(
               period.startDate,
@@ -441,9 +438,15 @@ export default async function PeriodReviewPage({
               runSchedule?.name ?? null,
             ),
           )}
-        </h1>
+        />
       </div>
-      <div className="rounded-card border border-border bg-surface p-3 shadow-card lg:sticky lg:top-14 lg:z-20 lg:-mx-8 lg:rounded-none lg:border-x-0 lg:bg-page/95 lg:px-8 lg:py-2.5 lg:backdrop-blur lg:shadow-none">
+      {/* Stays in the content column — same card chrome as every section
+          below it. The old full-bleed treatment (-mx-8, no side borders)
+          read as a stray band floating between the title and the cards.
+          Pins flush to the viewport (top-0): the admin shell has no desktop
+          topbar — the old top-14 assumed one and left a 56px see-through
+          gap above the pinned bar. */}
+      <div className="rounded-card border border-border/70 bg-surface/95 p-3 shadow-card backdrop-blur lg:sticky lg:top-0 lg:z-20 lg:px-4 lg:py-2.5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
               <StatusPill status={period.state} />
@@ -488,13 +491,12 @@ export default async function PeriodReviewPage({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0 lg:flex-wrap lg:items-center">
             {!isAccountant && run?.pdfPath && (
               <Button asChild variant="secondary" size="sm" className="w-full justify-center lg:w-auto">
-                <Link
+                <PdfLink
                   href={`/api/reports/${run.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
+                  filename="admin-report.pdf"
                 >
                   <Download className="h-4 w-4" /> PDF
-                </Link>
+                </PdfLink>
               </Button>
             )}
             {!isAccountant && (
@@ -520,56 +522,53 @@ export default async function PeriodReviewPage({
 
       {!isAccountant && (
         <Card>
-          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-base">Print payroll documents</CardTitle>
-              <p className="mt-1 text-xs text-text-muted">
-                Print these while reviewing this period. Reports keeps the same documents for lookbacks.
-              </p>
-            </div>
+          <CardHeader>
+            <CardTitle>Print payroll documents</CardTitle>
+            <CardDescription>
+              Print these while reviewing this period. Reports keeps the same
+              documents for lookbacks.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            <Button asChild variant="secondary" className="justify-start">
-              <Link
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary" size="sm">
+              <PdfLink
                 href={`/api/payslips/period/${period.id}/signature`}
-                target="_blank"
-                rel="noopener"
+                filename="signature-report.pdf"
               >
                 <Printer className="h-4 w-4" /> Signature report
-              </Link>
+              </PdfLink>
             </Button>
-            <Button asChild variant="secondary" className="justify-start">
-              <Link
+            <Button asChild variant="secondary" size="sm">
+              <PdfLink
                 href={`/api/payroll/${period.id}/payslips-cut-sheet`}
-                target="_blank"
-                rel="noopener"
+                filename="payslip-cut-sheet.pdf"
               >
                 <Scissors className="h-4 w-4" /> Pay-slip cut sheet
-              </Link>
+              </PdfLink>
             </Button>
             <CashDenominationButton
               summary={cashSummary}
               periodLabel={periodLabel}
             />
             <form
+              className="contents"
               action={async () => {
                 "use server";
                 await backupAdminReportToZohoAction(period.id, run?.id ?? null);
               }}
             >
-              <Button type="submit" variant="secondary" className="justify-start">
+              <Button type="submit" variant="secondary" size="sm">
                 <UploadCloud className="h-4 w-4" /> Back up admin report
               </Button>
             </form>
             {run?.pdfPath && (
-              <Button asChild variant="secondary" className="justify-start">
-                <Link
+              <Button asChild variant="secondary" size="sm">
+                <PdfLink
                   href={`/api/reports/${run.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
+                  filename="admin-report.pdf"
                 >
                   <Download className="h-4 w-4" /> Generated report PDF
-                </Link>
+                </PdfLink>
               </Button>
             )}
           </CardContent>
@@ -595,67 +594,94 @@ export default async function PeriodReviewPage({
         const nameOf = (id: string) =>
           allEmployees.find((e) => e.id === id)?.displayName ?? "—";
         if (active.length === 0) return null;
+        const buckets = [
+          {
+            key: "acknowledged",
+            label: "Acknowledged",
+            dot: "bg-success-600",
+            count: ackd.length,
+            names: ackd.map((p) => nameOf(p.employeeId)).sort(),
+          },
+          {
+            key: "pending",
+            label: "Pending",
+            dot: "bg-warning-600",
+            count: pending.length,
+            names: pending.map((p) => nameOf(p.employeeId)).sort(),
+          },
+          ...(disputed.length > 0
+            ? [
+                {
+                  key: "disputed",
+                  label: "Disputed",
+                  dot: "bg-danger-600",
+                  count: disputed.length,
+                  names: disputed.map((p) => nameOf(p.employeeId)).sort(),
+                },
+              ]
+            : []),
+        ];
         return (
-          <div className="rounded-card border border-border/70 bg-surface p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-sm font-semibold tracking-tight">
+          <Card>
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
+              <CardTitle>
                 Payslip acknowledgements
-              </h2>
-              <p className="text-xs text-text-muted tabular-nums">
+              </CardTitle>
+              <p className="text-caption text-text-muted tabular-nums">
                 <span className="font-semibold text-success-700">
                   {ackd.length}
                 </span>{" "}
-                /{" "}
-                <span className="text-text">
-                  {active.length}
-                </span>{" "}
-                acknowledged
+                / <span className="text-text">{active.length}</span> acknowledged
                 {disputed.length > 0 ? ` · ${disputed.length} disputed` : ""}
                 {pending.length > 0 ? ` · ${pending.length} pending` : ""}
               </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-3 text-xs">
-              <div className="rounded-input border border-success-200/60 bg-success-50/40 p-2">
-                <p className="font-semibold text-success-800 mb-1">
-                  Acknowledged ({ackd.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {ackd.length === 0
-                    ? "—"
-                    : ackd
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className="h-1.5 overflow-hidden rounded-full bg-surface-2"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={active.length}
+                aria-valuenow={ackd.length}
+                aria-label="Payslips acknowledged"
+              >
+                <div
+                  className="h-full rounded-full bg-success-600 transition-[width]"
+                  style={{
+                    width: `${Math.round((ackd.length / active.length) * 100)}%`,
+                  }}
+                />
               </div>
-              <div className="rounded-input border border-warning-200/60 bg-warning-50/40 p-2">
-                <p className="font-semibold text-warning-800 mb-1">
-                  Pending ({pending.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {pending.length === 0
-                    ? "—"
-                    : pending
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {buckets.map((bucket) => (
+                  <div key={bucket.key} className="space-y-2">
+                    <p className="flex items-center gap-1.5 text-micro uppercase text-text-subtle">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${bucket.dot}`}
+                        aria-hidden
+                      />
+                      {bucket.label}
+                      <span className="tabular-nums">({bucket.count})</span>
+                    </p>
+                    {bucket.names.length === 0 ? (
+                      <p className="text-xs text-text-subtle">—</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {bucket.names.map((name) => (
+                          <span
+                            key={name}
+                            className="inline-flex rounded-chip border border-border/60 bg-surface-2/60 px-2 py-0.5 text-xs text-text-muted"
+                          >
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="rounded-input border border-danger-200/60 bg-danger-50/40 p-2">
-                <p className="font-semibold text-danger-800 mb-1">
-                  Disputed ({disputed.length})
-                </p>
-                <p className="text-text-muted leading-relaxed">
-                  {disputed.length === 0
-                    ? "—"
-                    : disputed
-                        .map((p) => nameOf(p.employeeId))
-                        .sort()
-                        .join(", ")}
-                </p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         );
       })()}
 
@@ -754,20 +780,20 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-mono text-base font-semibold tabular-nums">
+                          <div className="text-base font-semibold tabular-nums">
                             <MoneyDisplay cents={result.roundedCents} />
                           </div>
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
-                            rounded
+                          <div className="text-micro uppercase text-text-subtle">
+                            Rounded
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Hours
                           </div>
-                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                          <div className="mt-1 font-semibold tabular-nums">
                             <HoursDisplay
                               hours={result.totalHours}
                               decimals={payRules.hoursDecimalPlaces}
@@ -775,15 +801,15 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Gross
                           </div>
-                          <div className="mt-1 font-mono font-semibold tabular-nums">
+                          <div className="mt-1 font-semibold tabular-nums">
                             <MoneyDisplay cents={result.grossCents} />
                           </div>
                         </div>
                         <div className="rounded-input border border-border/70 bg-surface p-2">
-                          <div className="text-[10px] uppercase tracking-wider text-text-subtle">
+                          <div className="text-micro uppercase text-text-subtle">
                             Issues
                           </div>
                           <div className="mt-1 truncate text-xs">
@@ -829,14 +855,14 @@ export default async function PeriodReviewPage({
               <div className="rounded-card border border-border bg-surface-2 p-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-medium">Employee subtotal</span>
-                  <span className="font-mono font-semibold tabular-nums">
+                  <span className="font-semibold tabular-nums">
                     <MoneyDisplay cents={totals.rounded} />
                   </span>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-muted">
                   <div>
                     Hours:{" "}
-                    <span className="font-mono text-text">
+                    <span className="tabular-nums text-text">
                       <HoursDisplay
                         hours={totals.hours}
                         decimals={payRules.hoursDecimalPlaces}
@@ -845,7 +871,7 @@ export default async function PeriodReviewPage({
                   </div>
                   <div className="text-right">
                     Gross:{" "}
-                    <span className="font-mono text-text">
+                    <span className="tabular-nums text-text">
                       <MoneyDisplay cents={totals.gross} />
                     </span>
                   </div>
@@ -855,7 +881,7 @@ export default async function PeriodReviewPage({
 
             <div className="hidden space-y-0.5 overflow-x-auto md:block">
               <div className="min-w-[760px]">
-              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-micro uppercase text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
@@ -863,7 +889,7 @@ export default async function PeriodReviewPage({
                 <div className="text-right">Rounded</div>
                 <div className="text-right">Issues</div>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {displayRows.map((row) => {
                   const { employee, result, incomplete, punches } = row;
                   const ePunches = punches.filter((p) => !p.voidedAt);
@@ -873,7 +899,7 @@ export default async function PeriodReviewPage({
                     <details key={employee.id} className="group">
                       <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
                         <ChevronRight className="h-3.5 w-3.5 text-text-subtle group-open:rotate-90 transition-transform" />
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 flex-col gap-0.5">
                           {isAccountant ? (
                             <span className="block truncate font-semibold">
                               {employee.displayName}
@@ -886,29 +912,32 @@ export default async function PeriodReviewPage({
                               {employee.displayName}
                             </Link>
                           )}
-	                          <div className="text-xs text-text-muted">
-	                            {rateLabel(employee)}
-	              </div>
-                          {pdfUrl ? (
-                            <PayslipPdfActions
-                              url={pdfUrl}
-                              printLabel="Print"
-                              downloadLabel="PDF"
-                              layout="inline"
-                              className="mt-1"
-                            />
-                          ) : null}
-	              </div>
-	                        <span className="text-right font-mono tabular-nums">
+                          <div className="text-xs text-text-muted">
+                            {rateLabel(employee)}
+                          </div>
+                          {/* Reserve the actions slot so rows with and
+                              without a payslip PDF stay the same height. */}
+                          <div className="min-h-[1.75rem]">
+                            {pdfUrl ? (
+                              <PayslipPdfActions
+                                url={pdfUrl}
+                                printLabel="Print"
+                                downloadLabel="PDF"
+                                layout="inline"
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                        <span className="text-right tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
                           />
                         </span>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <MoneyDisplay cents={result.grossCents} />
                         </span>
-                        <span className="text-right font-mono tabular-nums font-semibold">
+                        <span className="text-right tabular-nums font-semibold">
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
                         <span className="text-right">
@@ -932,16 +961,16 @@ export default async function PeriodReviewPage({
               <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
                 <div></div>
                 <div>Employee subtotal</div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
                     decimals={payRules.hoursDecimalPlaces}
                   />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.gross} />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
                 <div></div>
@@ -952,7 +981,7 @@ export default async function PeriodReviewPage({
                   <div>+ Temp / manual labor</div>
                   <div></div>
                   <div></div>
-                  <div className="text-right font-mono tabular-nums">
+                  <div className="text-right tabular-nums">
                     <MoneyDisplay cents={tempWorkersTotalCents} />
                   </div>
                   <div></div>
@@ -964,15 +993,15 @@ export default async function PeriodReviewPage({
                   <div>Period grand total</div>
                   <div></div>
                   <div></div>
-                  <div className="text-right font-mono tabular-nums">
+                  <div className="text-right tabular-nums">
                     <MoneyDisplay cents={periodGrandTotalCents} />
                   </div>
                   <div></div>
                 </div>
-	              )}
-	            </div>
-	            </div>
-	            </>
+              )}
+            </div>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -1091,15 +1120,15 @@ function PunchSubTable({
   return (
     <div className="overflow-x-auto px-3 pb-3 pt-1 md:px-9">
       <table className="min-w-[22rem] text-xs md:min-w-full">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-micro uppercase text-text-subtle border-b border-border/60">
           <tr>
-            <th className="py-1 pr-3 font-medium">Day</th>
-            <th className="py-1 px-3 font-medium">In</th>
-            <th className="py-1 px-3 font-medium">Out</th>
-            <th className="py-1 px-3 font-medium text-right">Hours</th>
+            <th className="py-1 pr-3 font-semibold">Day</th>
+            <th className="py-1 px-3 font-semibold">In</th>
+            <th className="py-1 px-3 font-semibold">Out</th>
+            <th className="py-1 px-3 font-semibold text-right">Hours</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/40">
+        <tbody className="divide-y divide-border/60">
           {days.flatMap(([day, ps]) =>
             ps
               .sort((a, b) => {
@@ -1125,12 +1154,12 @@ function PunchSubTable({
                 const isInProgress = isMissingClockOut && day >= today;
                 const isStaleOpen = isMissingClockOut && day < today;
                 return (
-                  <tr key={p.id} className="hover:bg-surface-2/30">
+                  <tr key={p.id} className="hover:bg-surface-2/40">
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0 ? formatDayLabel(day, tz) : ""}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">{formatHm(inT, tz)}</td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">{formatHm(inT, tz)}</td>
+                    <td className="py-0.5 px-3 tabular-nums">
                       {isInProgress ? (
                         <span className="text-brand-700 font-medium">open</span>
                       ) : isStaleOpen && canEdit ? (
@@ -1144,7 +1173,7 @@ function PunchSubTable({
                         formatHm(outT, tz)
                       )}
                     </td>
-                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                    <td className="py-0.5 px-3 text-right tabular-nums">
                       {hours !== null ? hours.toFixed(2) : "—"}
                     </td>
                   </tr>

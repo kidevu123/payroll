@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import {
   ArrowLeft,
   Pencil,
@@ -97,7 +98,7 @@ export default async function EmployeeDetailPage({
           <Avatar name={employee.displayName} size="lg" />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-title font-semibold tracking-tight truncate">
+              <h1 className="text-title tracking-tight antialiased text-text truncate">
                 {employee.displayName}
               </h1>
               <StatusPill status={employee.status} />
@@ -130,7 +131,7 @@ export default async function EmployeeDetailPage({
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Overview</CardTitle>
+              <CardTitle>Overview</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <Stat
@@ -199,8 +200,8 @@ export default async function EmployeeDetailPage({
         {/* Right: work history + payslips + punches */}
         <div className="space-y-4 min-w-0">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="text-sm">Rate history</CardTitle>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle>Rate history</CardTitle>
               <Button asChild size="sm" variant="secondary">
                 <Link href={`/employees/${employee.id}/rate`}>
                   <Receipt className="h-4 w-4" /> Add rate
@@ -213,8 +214,8 @@ export default async function EmployeeDetailPage({
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="text-sm">Payslips</CardTitle>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle>Payslips</CardTitle>
               {payslipsWithPeriods.length > 0 && (
                 <RecomputePayslipsButton employeeId={employee.id} />
               )}
@@ -245,7 +246,7 @@ export default async function EmployeeDetailPage({
           {payrollDocs.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Uploaded W2 / paystub documents</CardTitle>
+                <CardTitle>Uploaded W2 / paystub documents</CardTitle>
                 <CardDescription>
                   Visible to the employee on their /me/pay tab.
                 </CardDescription>
@@ -269,13 +270,9 @@ export default async function EmployeeDetailPage({
                         </div>
                       </div>
                       <Button asChild size="sm" variant="ghost">
-                        <Link
-                          href={`/api/payroll-docs/${d.id}`}
-                          target="_blank"
-                          rel="noopener"
-                        >
+                        <PdfLink href={`/api/payroll-docs/${d.id}`} filename="paystub.pdf">
                           <Download className="h-3.5 w-3.5" /> View
-                        </Link>
+                        </PdfLink>
                       </Button>
                     </li>
                   ))}
@@ -286,7 +283,7 @@ export default async function EmployeeDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Recent punches</CardTitle>
+              <CardTitle>Recent punches</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 py-3">
               {lastTen.length === 0 ? (
@@ -335,7 +332,7 @@ function Stat({
     <div className="flex items-start gap-2.5 min-w-0">
       <Icon className="h-4 w-4 text-text-subtle shrink-0 mt-0.5" aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] uppercase tracking-wide text-text-subtle">
+        <div className="text-micro uppercase text-text-subtle">
           {label}
         </div>
         <div className="text-sm text-text">{value}</div>

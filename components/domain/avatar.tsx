@@ -21,7 +21,7 @@ const SIZE_CLASS = {
 const TONE_CLASS = [
   "bg-brand-50 text-brand-800",
   "bg-info-50 text-info-700",
-  "bg-warn-50 text-warn-700",
+  "bg-warning-50 text-warning-700",
   "bg-success-50 text-success-700",
   "bg-danger-50 text-danger-700",
   "bg-surface-2 text-text",

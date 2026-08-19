@@ -1,17 +1,22 @@
 "use client";
 
 // Report-mix donut for the Reports right rail. Counts of reports by cadence,
-// with a center total and a legend. Recharts PieChart; colors match the dark
-// theme's accents.
+// with a center total and a legend.
 
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import type { ReportsOverview } from "@/lib/reports/reports-overview";
+import { DASH } from "@/components/dashboard/theme";
 
+// Mirrors the cadence colors in components/domain/schedule-tabs.tsx (weekly
+// blue, semi cyan, monthly amber, salaried emerald) via the --dash-* tokens,
+// which flip per theme. These were hardcoded to the DARK brights, so on the
+// light canvas the donut rendered as a glowing pastel that read as the
+// loudest element on a page whose accent is emerald.
 const SLICE_COLOR: Record<string, string> = {
-  WEEKLY: "#a78bfa",
-  SEMI: "#6366f1",
-  MONTHLY: "#fbbf24",
-  SALARIED: "#34d399",
+  WEEKLY: DASH.blue,
+  SEMI: DASH.cyanBright,
+  MONTHLY: DASH.amber,
+  SALARIED: DASH.emerald,
 };
 
 export function ReportMixDonut({ mix }: { mix: ReportsOverview["mix"] }) {
@@ -22,7 +27,7 @@ export function ReportMixDonut({ mix }: { mix: ReportsOverview["mix"] }) {
       </div>
     );
   }
-  const data = mix.slices.map((s) => ({ ...s, fill: SLICE_COLOR[s.key] ?? "#71717a" }));
+  const data = mix.slices.map((s) => ({ ...s, fill: SLICE_COLOR[s.key] ?? "var(--color-text-subtle)" }));
   return (
     <div className="flex items-center gap-4">
       <div className="relative h-36 w-36 shrink-0">
@@ -49,10 +54,10 @@ export function ReportMixDonut({ mix }: { mix: ReportsOverview["mix"] }) {
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold leading-none tabular-nums text-text">
+          <span className="text-metric tabular-nums text-text">
             {mix.total}
           </span>
-          <span className="mt-0.5 text-[10px] uppercase tracking-wide text-text-subtle">
+          <span className="mt-0.5 text-micro uppercase text-text-subtle">
             Total
           </span>
         </div>

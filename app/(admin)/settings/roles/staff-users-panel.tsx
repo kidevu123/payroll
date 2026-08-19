@@ -98,7 +98,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
             <option value="ADMIN">Admin</option>
           </select>
         </div>
-        <Button type="submit" disabled={pending !== null}>
+        <Button type="submit" disabled={pending !== null} className="min-w-[10rem]">
           <UserPlus className="h-4 w-4" />
           {pending === "create" ? "Creating…" : "Create staff login"}
         </Button>
@@ -106,7 +106,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
 
       {tempPassword && (
         <div className="rounded-card border border-warning-200 bg-warning-50/60 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wider text-warning-800">
+          <p className="text-micro uppercase text-warning-800">
             Temporary password for {tempPassword.label} — share once
           </p>
           <div className="mt-1 flex items-center gap-2">
@@ -176,7 +176,14 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                           </option>
                         ))}
                       </select>
-                      <Button type="submit" size="sm" variant="ghost" disabled={pending !== null}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        variant="ghost"
+                        disabled={pending !== null}
+                        aria-label="Save role change"
+                        title="Save role"
+                      >
                         <Send className="h-3.5 w-3.5" />
                       </Button>
                     </form>
@@ -192,7 +199,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 align-middle">
+                  <td className="px-4 py-2.5 align-middle whitespace-nowrap min-w-[16rem]">
                     <div className="flex items-center justify-end gap-1.5">
                       <Button
                         size="sm"

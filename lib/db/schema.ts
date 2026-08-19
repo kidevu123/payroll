@@ -222,7 +222,7 @@ export const sessions = pgTable(
 export const shifts = pgTable("shifts", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
-  colorHex: text("color_hex").notNull().default("#0f766e"),
+  colorHex: text("color_hex").notNull().default("#067049"),
   defaultStart: time("default_start"),
   defaultEnd: time("default_end"),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -303,6 +303,23 @@ export const employees = pgTable(
      * Surfaces as an "Upload paystub" slot on the period detail.
      */
     requiresW2Upload: boolean("requires_w2_upload").notNull().default(false),
+    /**
+     * Zoho Books account names for this employee's paystub expense pushes.
+     * When null, the push tries "Employee Payroll-<first name>" for the
+     * expense account and "Business Checking" for paid-through, falling
+     * back to the org defaults when no chart account matches. Names are
+     * resolved against the target org's chart of accounts at push time
+     * (case-insensitive, bracketed codes ignored).
+     */
+    zohoExpenseAccount: text("zoho_expense_account"),
+    zohoPaidThrough: text("zoho_paid_through"),
+    /**
+     * Argon2id hash of the employee's warehouse-kiosk PIN (4-6 digits).
+     * Null = kiosk sign-in disabled for this employee. Set from the
+     * admin employee form; verified by the /kiosk login action against
+     * the employee's NGTeco clock ID.
+     */
+    kioskPinHash: text("kiosk_pin_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -394,6 +411,9 @@ export const payPeriods = pgTable(
     ),
     index("pay_periods_state_idx").on(t.state),
     index("pay_periods_schedule_idx").on(t.payScheduleId),
+    // Range-containment "which period covers this day" lookups (getCurrentPeriod,
+    // resolvePeriodIdForEmployeeDay) run on every punch create/edit.
+    index("pay_periods_dates_idx").on(t.startDate, t.endDate),
   ],
 );
 
@@ -432,6 +452,12 @@ export const punches = pgTable(
       .where(sql`${t.ngtecoRecordHash} IS NOT NULL`),
     index("punches_employee_period_idx").on(t.employeeId, t.periodId),
     index("punches_clock_in_idx").on(t.clockIn),
+    // Live-row clockIn scans (Time grid range, dashboard "today"): keeps the
+    // index tight to non-voided rows so it wins over a seq scan as the table
+    // grows year over year.
+    index("punches_clock_in_live_idx")
+      .on(t.clockIn)
+      .where(sql`${t.voidedAt} IS NULL`),
   ],
 );
 
@@ -525,6 +551,10 @@ export const cashDrawerEntries = pgTable(
     /** Optional classification. 'PETTY_CASH' marks an accountant-recorded
      *  petty-cash purchase (a WITHDRAWAL); NULL for payroll/manual entries. */
     category: text("category"),
+    /** Uploaded receipt image/PDF for petty-cash purchases. Absolute
+     *  container path under /data/uploads/drawer-receipts. Written by this
+     *  app and by Cashbook (the linked drawer app on the same host). */
+    receiptPath: text("receipt_path"),
     /** Withdrawals link back to the period that consumed them. Null
      *  for deposits and for any historical withdrawal recorded
      *  manually. */
@@ -726,7 +756,15 @@ export const missedPunchRequests = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("missed_requests_status_idx").on(t.status)],
+  (t) => [
+    index("missed_requests_status_idx").on(t.status),
+    // One PENDING request per employee per date. The employee-facing forms
+    // give a friendly error first; this index is the race-proof backstop so
+    // double-taps and parallel submissions can't spam the admin queue.
+    uniqueIndex("missed_requests_pending_unique")
+      .on(t.employeeId, t.date)
+      .where(sql`${t.status} = 'PENDING'`),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -776,6 +814,10 @@ export const timeOffRequests = pgTable(
       .where(
         sql`${t.status} = 'PENDING' AND ${t.changeRequestForId} IS NOT NULL`,
       ),
+    // Calendar/Time range-overlap queries: status='APPROVED' AND start<=X AND
+    // end>=Y. The status-only index is low-selectivity once most rows are
+    // APPROVED; this composite serves the date window too.
+    index("time_off_status_dates_idx").on(t.status, t.startDate, t.endDate),
   ],
 );
 
@@ -954,6 +996,36 @@ export const announcements = pgTable(
 
 export type Announcement = typeof announcements.$inferSelect;
 export type NewAnnouncement = typeof announcements.$inferInsert;
+
+/** Reusable announcement starting points. Picking one on /notifications
+ *  pre-fills the compose form; the sent announcement itself is still a
+ *  normal `announcements` row (templates are never referenced after
+ *  send, so deleting one never orphans history). */
+export const announcementTemplates = pgTable(
+  "announcement_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Short admin-facing label shown in the Saved templates card. */
+    name: varchar("name", { length: 120 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    link: text("link"),
+    createdById: uuid("created_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedById: uuid("deleted_by_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [index("announcement_templates_created_at_idx").on(t.createdAt)],
+);
+
+export type AnnouncementTemplate = typeof announcementTemplates.$inferSelect;
+export type NewAnnouncementTemplate = typeof announcementTemplates.$inferInsert;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Notifications

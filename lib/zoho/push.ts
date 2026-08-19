@@ -373,6 +373,21 @@ export async function pushPaystubToZoho(
     .from(employees)
     .where(eq(employees.id, doc.employeeId));
   const empName = employee?.displayName ?? "Salaried staff";
+
+  // Per-employee Zoho booking (owner directive): each person's paystub
+  // expense goes to their own "Employee Payroll-<name>" sub-account and
+  // is paid through Business Checking, not the org's Cash-on-hand
+  // default. The employee row can pin exact names; otherwise we try the
+  // naming convention with the employee's first name. Unresolvable names
+  // fall back to the org defaults inside createExpense.
+  const firstName =
+    employee?.preferredName?.trim().split(/\s+/)[0] ??
+    employee?.displayName?.trim().split(/\s+/)[0] ??
+    null;
+  const expenseAccountName =
+    employee?.zohoExpenseAccount ??
+    (firstName ? `Employee Payroll-${firstName}` : null);
+  const paidThroughName = employee?.zohoPaidThrough ?? "Business Checking";
   const periodLabel = doc.payPeriodStart && doc.payPeriodEnd
     ? `${doc.payPeriodStart}..${doc.payPeriodEnd}`
     : doc.uploadedAt.toISOString().slice(0, 10);
@@ -396,6 +411,8 @@ export async function pushPaystubToZoho(
     date:
       doc.payPeriodEnd ??
       doc.uploadedAt.toISOString().slice(0, 10),
+    expenseAccountName,
+    paidThroughName,
   });
   // Attach the file as the expense receipt. If this fails, roll back the
   // just-created expense so a half-pushed expense (no receipt, not linked in
@@ -433,6 +450,8 @@ export async function pushPaystubToZoho(
     after: {
       expenseId: expense.expenseId,
       organizationId: org.id,
+      expenseAccountName,
+      paidThroughName,
     },
   });
 

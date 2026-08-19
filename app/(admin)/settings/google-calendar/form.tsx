@@ -32,7 +32,7 @@ export function GoogleCalendarForm({
   return (
     <div className="space-y-4 max-w-2xl">
       <div>
-        <h1 className="text-title font-semibold tracking-tight text-text">Google Calendar</h1>
+        <h2 className="text-heading font-semibold tracking-tight text-text">Google Calendar</h2>
         <p className="text-sm text-text-muted">
           Push approved time-off requests to a Google Calendar so the team
           can see who&apos;s out at a glance.
@@ -47,7 +47,7 @@ export function GoogleCalendarForm({
         }
       >
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             {connected ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-success-700" />

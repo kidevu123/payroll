@@ -294,6 +294,25 @@ async function resolveAccountId(
   return { id: null, tried: sample, apiError: fetched.lastError };
 }
 
+/**
+ * Resolve a per-request account-name override to a Zoho account id.
+ * Best-effort: returns null (caller falls back to the org default) when
+ * the name doesn't match any chart account or the lookup itself fails —
+ * an override must never make a push fail that would otherwise succeed.
+ */
+async function resolveOverrideAccountId(
+  org: ZohoOrganization,
+  name: string | null | undefined,
+): Promise<string | null> {
+  if (!name?.trim()) return null;
+  try {
+    const resolved = await resolveAccountId(org, { name });
+    return resolved.id;
+  } catch {
+    return null;
+  }
+}
+
 export type CreateExpenseInput = {
   org: ZohoOrganization;
   amountCents: number;
@@ -306,6 +325,16 @@ export type CreateExpenseInput = {
    * to stay safely under their per-field limit.
    */
   description?: string;
+  /**
+   * Per-request chart-account overrides by NAME (e.g. a per-employee
+   * "Employee Payroll-Leo" expense account, "Business Checking" paid
+   * through). Resolved against the org's chart of accounts; when a name
+   * doesn't match anything the org default is used instead, so an unset
+   * or misspelled override degrades to today's behavior rather than
+   * failing the push.
+   */
+  expenseAccountName?: string | null;
+  paidThroughName?: string | null;
 };
 
 export type CreateExpenseResult = {
@@ -315,14 +344,34 @@ export type CreateExpenseResult = {
 export async function createExpense(
   input: CreateExpenseInput,
 ): Promise<CreateExpenseResult> {
+  // Per-request account overrides resolve to ids HERE (we hold the org's
+  // OAuth creds and chart access) in both gateway and direct modes.
+  const expenseOverrideId = await resolveOverrideAccountId(
+    input.org,
+    input.expenseAccountName,
+  );
+  const paidThroughOverrideId = await resolveOverrideAccountId(
+    input.org,
+    input.paidThroughName,
+  );
   // When the central Zoho gateway is configured, route through it (it injects
   // the brand's account/paid-through config + holds full-access tokens).
-  if (gatewayConfigured()) return gatewayCreateExpense(input);
+  // Resolved override ids ride along; the gateway honors them for brands
+  // whose extra_config omits account pinning (e.g. Haute) and force-pins
+  // for brands that configure it (e.g. Boomin).
+  if (gatewayConfigured()) {
+    return gatewayCreateExpense(input, {
+      accountId: expenseOverrideId,
+      paidThroughId: paidThroughOverrideId,
+    });
+  }
   const { org, amountCents, reference, date, description } = input;
-  const expense = await resolveAccountId(org, {
-    id: org.defaultExpenseAccountId,
-    name: org.defaultExpenseAccountName,
-  });
+  const expense = expenseOverrideId
+    ? { id: expenseOverrideId, tried: [], apiError: null }
+    : await resolveAccountId(org, {
+        id: org.defaultExpenseAccountId,
+        name: org.defaultExpenseAccountName,
+      });
   if (!expense.id) {
     const apiHint = expense.apiError
       ? ` Zoho /chartofaccounts call failed: ${expense.apiError}.`
@@ -334,10 +383,12 @@ export async function createExpense(
       `Zoho expense account "${org.defaultExpenseAccountName ?? "(unset)"}" not found in ${org.name}.${apiHint} Open /settings/zoho → Edit and pick a name that matches one of your Zoho Books chart-of-accounts entries (case insensitive, brackets/codes ignored).${sample}`,
     );
   }
-  const paidThrough = await resolveAccountId(org, {
-    id: org.defaultPaidThroughId,
-    name: org.defaultPaidThroughName,
-  });
+  const paidThrough = paidThroughOverrideId
+    ? { id: paidThroughOverrideId, tried: [], apiError: null }
+    : await resolveAccountId(org, {
+        id: org.defaultPaidThroughId,
+        name: org.defaultPaidThroughName,
+      });
   if (!paidThrough.id) {
     const apiHint = paidThrough.apiError
       ? ` Zoho /chartofaccounts call failed: ${paidThrough.apiError}.`

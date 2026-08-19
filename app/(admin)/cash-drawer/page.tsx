@@ -5,7 +5,8 @@
 // sum(WITHDRAWAL), constrained to never go negative.
 
 import Link from "next/link";
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart } from "lucide-react";
+import { Wallet, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Paperclip } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireCashDrawerAccess } from "@/lib/auth-guards";
 import {
   getDrawerBalanceCents,
@@ -20,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { MoneyDisplay } from "@/components/domain/money-display";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { DepositForm, WithdrawForm, PettyCashForm, LedgerRowActions } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -42,10 +44,10 @@ export default async function CashDrawerPage() {
     .reduce((s, e) => s + Number(e.entry.amountCents), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cash drawer</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Cash drawer</h1>
           <p className="text-xs text-text-muted mt-0.5">
             On-prem cash reconciliation. Deposits require an invoice number;
             withdrawals are mostly auto-recorded when a payroll period is paid
@@ -54,16 +56,16 @@ export default async function CashDrawerPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
+      <div className="grid gap-3 sm:grid-cols-3 items-stretch">
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-brand-700" />
               On hand
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={balanceCents} monospace={false} />
             </p>
             <p className="text-[11px] text-text-muted mt-1">
@@ -71,38 +73,46 @@ export default async function CashDrawerPage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Deposits (lifetime)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={totalDeposits} monospace={false} />
+            </p>
+            {/* Reserved sub-line so this card's baseline matches "On hand". */}
+            <p className="text-[11px] text-text-muted mt-1" aria-hidden="true">
+              &nbsp;
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Withdrawals (lifetime)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-metric tabular-nums">
               <MoneyDisplay cents={totalWithdrawals} monospace={false} />
+            </p>
+            {/* Reserved sub-line so this card's baseline matches "On hand". */}
+            <p className="text-[11px] text-text-muted mt-1" aria-hidden="true">
+              &nbsp;
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowDownToLine className="h-4 w-4 text-success-700" />
               Add cash to the drawer
             </CardTitle>
@@ -110,13 +120,13 @@ export default async function CashDrawerPage() {
               Required: invoice number for the source of the deposit.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <DepositForm />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-brand-700" />
               Petty cash purchase
             </CardTitle>
@@ -124,13 +134,13 @@ export default async function CashDrawerPage() {
               Record a purchase paid from the drawer (office supplies, etc.).
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <PettyCashForm />
           </CardContent>
         </Card>
-        <Card>
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-sm">
+            <CardTitle className="flex items-center gap-2">
               <ArrowUpFromLine className="h-4 w-4 text-warning-700" />
               Manual withdrawal
             </CardTitle>
@@ -138,7 +148,7 @@ export default async function CashDrawerPage() {
               Use sparingly — payroll cash payments record automatically.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <WithdrawForm />
           </CardContent>
         </Card>
@@ -146,13 +156,13 @@ export default async function CashDrawerPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Ledger</CardTitle>
+          <CardTitle>Ledger</CardTitle>
           <CardDescription>Newest first.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-surface-2/50 text-[10px] uppercase tracking-wider text-text-muted">
+              <thead className="bg-surface-2/50 text-micro uppercase text-text-muted">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium">Date</th>
                   <th className="text-left px-4 py-2 font-medium">Kind</th>
@@ -164,11 +174,15 @@ export default async function CashDrawerPage() {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/50">
+              <tbody className="divide-y divide-border/60">
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={canManage ? 6 : 5} className="px-4 py-6 text-center text-text-muted">
-                      No drawer activity yet. Record your first deposit above.
+                    <td colSpan={canManage ? 6 : 5} className="px-4 py-6">
+                      <EmptyState
+                        icon={Wallet}
+                        title="No drawer activity yet"
+                        description="Record your first deposit above to start the ledger."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -218,6 +232,17 @@ export default async function CashDrawerPage() {
                       </td>
                       <td className="px-4 py-2 text-xs text-text-muted">
                         {entry.notes ?? ""}
+                        {entry.receiptPath && (
+                          <PdfLink
+                            href={`/cash-drawer/receipt/${entry.id}`}
+                            filename={`receipt-${entry.id}`}
+                            className="ml-1.5 inline-flex items-center gap-0.5 text-brand-700 underline-offset-2 hover:underline"
+                            title="View uploaded receipt"
+                          >
+                            <Paperclip className="h-3 w-3" />
+                            receipt
+                          </PdfLink>
+                        )}
                         {createdByEmail && (
                           <span className="block text-[10px] text-text-subtle mt-0.5">
                             by {createdByEmail}

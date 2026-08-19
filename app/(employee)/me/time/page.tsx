@@ -122,7 +122,7 @@ export default async function EmployeeTime() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t("todayLabel")} · {today}</CardTitle>
+          <CardTitle>{t("todayLabel")} · {today}</CardTitle>
           <CardDescription>
             {t.rich("todaySubtitle", {
               hours: () => (
@@ -198,7 +198,6 @@ export default async function EmployeeTime() {
         <EmptyState
           icon={Calendar}
           title={t("noPunches")}
-          description=""
         />
       ) : (
         <div className="space-y-3">
@@ -207,7 +206,7 @@ export default async function EmployeeTime() {
             return (
               <Card key={wk}>
                 <CardHeader>
-                  <CardTitle className="text-sm">
+                  <CardTitle>
                     {t("weekOf", { date: wk })}
                   </CardTitle>
                 </CardHeader>
@@ -225,14 +224,14 @@ export default async function EmployeeTime() {
                       <Link
                         key={d}
                         href={`/me/time/${d}`}
-                        className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-input px-2 text-sm transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+                        className="flex min-h-11 items-center justify-between gap-3 rounded-input text-sm transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
                       >
                         <span className="font-medium tabular-nums text-text">
                           {d}
                         </span>
                         <span className="flex items-center gap-2.5 text-xs text-text-muted">
                           {edited ? (
-                            <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 px-1.5 py-0.5 text-[10px] font-medium">
+                            <span className="inline-flex items-center gap-1 rounded-chip border border-border/70 px-1.5 py-0.5 text-[11px] font-medium">
                               {t("edited")}
                             </span>
                           ) : null}

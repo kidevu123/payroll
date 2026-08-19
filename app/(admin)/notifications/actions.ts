@@ -211,3 +211,81 @@ export async function deleteAnnouncementAction(
 
   revalidatePath("/notifications");
 }
+
+// ── Templates ────────────────────────────────────────────────────────────
+
+const templateSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(2000),
+  link: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .nullable()
+    .refine(
+      (v) => !v || v.startsWith("/") || /^https?:\/\//.test(v),
+      "Link must start with / (internal) or http(s)://",
+    ),
+});
+
+export async function createTemplateAction(
+  formData: FormData,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  const parsed = templateSchema.safeParse({
+    name: formData.get("name"),
+    title: formData.get("title"),
+    body: formData.get("body"),
+    link: formData.get("link") || null,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid template" };
+  }
+  const { createAnnouncementTemplate } = await import(
+    "@/lib/db/queries/announcement-templates"
+  );
+  const row = await createAnnouncementTemplate({
+    name: parsed.data.name,
+    title: parsed.data.title,
+    body: parsed.data.body,
+    link: parsed.data.link ?? null,
+    createdById: session.user.id,
+  });
+  await writeAudit({
+    actorId: session.user.id,
+    actorRole: session.user.role,
+    action: "announcementTemplate.create",
+    targetType: "AnnouncementTemplate",
+    targetId: row.id,
+    after: { name: row.name, title: row.title },
+  });
+  revalidatePath("/notifications");
+  redirect("/notifications");
+}
+
+export async function deleteTemplateAction(formData: FormData): Promise<void> {
+  const session = await requireAdmin();
+  const id = z.string().uuid().safeParse(formData.get("id"));
+  if (!id.success) return;
+  const { softDeleteAnnouncementTemplate } = await import(
+    "@/lib/db/queries/announcement-templates"
+  );
+  const deleted = await softDeleteAnnouncementTemplate({
+    id: id.data,
+    actorId: session.user.id,
+  });
+  if (deleted) {
+    await writeAudit({
+      actorId: session.user.id,
+      actorRole: session.user.role,
+      action: "announcementTemplate.delete",
+      targetType: "AnnouncementTemplate",
+      targetId: deleted.id,
+      before: { name: deleted.name, title: deleted.title },
+      after: { deletedAt: deleted.deletedAt },
+    });
+  }
+  revalidatePath("/notifications");
+}

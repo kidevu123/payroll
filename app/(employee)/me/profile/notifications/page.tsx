@@ -67,7 +67,7 @@ export default async function NotificationsPage() {
           {configured ? (
             <PushToggle alreadySubscribed={subs.length > 0} />
           ) : (
-            <div className="flex items-start gap-2.5 rounded-card border border-warn-200/80 bg-warn-50 p-3.5 text-sm text-warn-700">
+            <div className="flex items-start gap-2.5 rounded-card border border-warning-200/80 bg-warning-50 p-3.5 text-sm text-warning-700">
               <AlertTriangle
                 className="mt-0.5 h-4 w-4 shrink-0"
                 aria-hidden
@@ -120,10 +120,10 @@ export default async function NotificationsPage() {
                   key={n.id}
                   className="flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5"
                 >
-                  <span className="font-mono text-[11px] tracking-tight text-text truncate">
+                  <span className="min-w-0 flex-1 tabular-nums text-[11px] tracking-tight text-text truncate">
                     {n.kind}
                   </span>
-                  <span className="text-[10px] text-text-muted tabular-nums shrink-0">
+                  <span className="text-[11px] text-text-muted tabular-nums shrink-0">
                     {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
                   </span>
                   <form action={dismissNotificationAction} className="shrink-0">
@@ -132,7 +132,7 @@ export default async function NotificationsPage() {
                       type="submit"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-text-muted hover:text-danger-700"
+                      className="h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 text-text-muted hover:text-danger-700"
                       title="Delete notification"
                       aria-label={`Delete notification ${n.kind}`}
                     >

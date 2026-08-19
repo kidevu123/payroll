@@ -85,9 +85,9 @@ export default async function PunchesAdmin({
   const periodById = new Map(periodRows.map((p) => [p.id, p]));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">All punches</h1>
+        <h1 className="text-title tracking-tight antialiased text-text">All punches</h1>
         <p className="text-sm text-text-muted">
           Manual override surface — search, edit, or void any punch across every period.
           Showing the {filtered.length}{" "}
@@ -97,13 +97,13 @@ export default async function PunchesAdmin({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Filters</CardTitle>
+          <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <form
             method="GET"
             action="/punches"
-            className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end"
+            className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-2 items-end"
           >
             <div className="space-y-1">
               <label className="text-xs text-text-muted">Employee</label>
@@ -209,7 +209,7 @@ export default async function PunchesAdmin({
                 <tr
                   key={p.id}
                   className={
-                    "hover:bg-surface-2/30 " +
+                    "hover:bg-surface-2/40 " +
                     (p.voidedAt ? "opacity-50 line-through " : "") +
                     (outOfPeriod ? "bg-warning-50/40 " : "")
                   }
@@ -222,13 +222,13 @@ export default async function PunchesAdmin({
                       {emp?.displayName ?? "Unknown"}
                     </Link>
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
+                  <td className="px-3 py-2 tabular-nums text-xs">
                     {fmt(p.clockIn, company.timezone)}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs">
+                  <td className="px-3 py-2 tabular-nums text-xs">
                     {fmt(p.clockOut, company.timezone)}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular-nums">
+                  <td className="px-3 py-2 text-right tabular-nums">
                     {hrs}
                   </td>
                   <td className="px-3 py-2 text-xs text-text-muted">

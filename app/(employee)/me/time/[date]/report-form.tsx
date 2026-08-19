@@ -6,12 +6,18 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  TextareaField,
   FormError,
   SideRadio,
 } from "@/components/employee/form-field";
+import { ReasonField } from "@/components/employee/reason-field";
 import { reportPunchFixAction } from "./actions";
 import type { EmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
+
+/** "2026-07-13T08:00" (report-mode default) -> "08:00" for <input type="time">. */
+function timeOf(value: string): string {
+  const t = value.indexOf("T");
+  return t === -1 ? value : value.slice(t + 1);
+}
 
 export function ReportFixForm({
   date,
@@ -77,9 +83,9 @@ export function ReportFixForm({
           <Field
             id="claimedClockOut"
             name="claimedClockOut"
-            type="datetime-local"
+            type="time"
             required
-            defaultValue={mode.defaultClockOut}
+            defaultValue={timeOf(mode.defaultClockOut)}
             label={t("enterClockOut")}
           />
         </>
@@ -99,9 +105,9 @@ export function ReportFixForm({
           <Field
             id="claimedClockIn"
             name="claimedClockIn"
-            type="datetime-local"
+            type="time"
             required
-            defaultValue={mode.defaultClockIn}
+            defaultValue={timeOf(mode.defaultClockIn)}
             label={t("enterClockIn")}
           />
         </>
@@ -135,18 +141,18 @@ export function ReportFixForm({
             <Field
               id="claimedClockOut"
               name="claimedClockOut"
-              type="datetime-local"
+              type="time"
               required
-              defaultValue={mode.defaultClockOut}
+              defaultValue={timeOf(mode.defaultClockOut)}
               label={t("enterClockOut")}
             />
           ) : (
             <Field
               id="claimedClockIn"
               name="claimedClockIn"
-              type="datetime-local"
+              type="time"
               required
-              defaultValue={mode.defaultClockIn}
+              defaultValue={timeOf(mode.defaultClockIn)}
               label={t("enterClockIn")}
             />
           )}
@@ -159,27 +165,28 @@ export function ReportFixForm({
           <Field
             id="claimedClockIn"
             name="claimedClockIn"
-            type="datetime-local"
-            defaultValue={mode.defaultClockIn}
+            type="time"
+            defaultValue={timeOf(mode.defaultClockIn)}
             label={t("correctClockIn")}
           />
           <Field
             id="claimedClockOut"
             name="claimedClockOut"
-            type="datetime-local"
-            defaultValue={mode.defaultClockOut}
+            type="time"
+            defaultValue={timeOf(mode.defaultClockOut)}
             label={t("correctClockOutOptional")}
           />
         </div>
       )}
-      <TextareaField
+      <ReasonField
         id="reason"
-        name="reason"
-        required
-        minLength={1}
-        maxLength={500}
-        placeholder={t("reasonPlaceholder")}
         label={t("whatHappened")}
+        placeholder={t("reasonPlaceholder")}
+        quickReasons={[
+          t("reasonQuickForgot"),
+          t("reasonQuickClock"),
+          t("reasonQuickLeftEarly"),
+        ]}
       />
       <FormError message={error} />
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">

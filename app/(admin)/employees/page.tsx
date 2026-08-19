@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Users, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EmployeeRow } from "@/components/domain/employee-row";
+import { EmployeeRow, EmployeeListHeader } from "@/components/domain/employee-row";
 import { cn } from "@/lib/utils";
 import {
   listEmployees,
@@ -64,7 +64,7 @@ export default async function EmployeesPage({
   const currentShift = params.shift ?? "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <EmployeesPageHeader
         shownCount={employees.length}
         livingCount={livingCount}
@@ -93,7 +93,7 @@ export default async function EmployeesPage({
         </div>
 
         {/* Pill toggle group: status */}
-        <div className="inline-flex h-9 items-center rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
+        <div className="inline-flex h-9 max-w-full items-center overflow-x-auto rounded-input border border-border bg-surface p-0.5 text-xs shrink-0 self-start md:self-auto">
           <PillToggle
             href={buildHref({ status: "" })}
             active={!explicitStatus}
@@ -148,7 +148,9 @@ export default async function EmployeesPage({
           }
         />
       ) : (
-        <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden divide-y divide-border/60">
+        <div className="rounded-card border border-border/70 bg-surface shadow-card overflow-hidden">
+          <EmployeeListHeader className="border-b border-border/60 bg-surface-2/40" />
+          <div className="divide-y divide-border/60">
           {employees.map((e) => (
             <EmployeeRow
               key={e.id}
@@ -157,6 +159,7 @@ export default async function EmployeesPage({
               href={`/employees/${e.id}`}
             />
           ))}
+          </div>
         </div>
       )}
     </div>
@@ -181,7 +184,7 @@ function PillToggle({
         "inline-flex items-center gap-1.5 rounded-chip px-2.5 h-8 font-medium tracking-tight transition-colors",
         active
           ? "bg-brand-700 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]"
-          : "text-text-muted hover:bg-surface-2 hover:text-text",
+          : "text-text-muted hover:bg-surface-2/40 hover:text-text",
       )}
     >
       {label}

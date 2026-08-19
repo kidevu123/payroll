@@ -34,7 +34,7 @@ export function BottomNav({ hideTime = false }: { hideTime?: boolean }) {
   return (
     <nav
       aria-label="Employee navigation"
-      className="no-print fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur-md supports-[backdrop-filter]:bg-surface/85 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(9_9_11_/_0.08)]"
+      className="no-print fixed bottom-0 inset-x-0 z-30 border-t border-border/70 bg-surface/95 backdrop-blur-sm supports-[backdrop-filter]:bg-surface/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_0_rgb(9_9_11_/_0.04),0_-8px_24px_-12px_rgb(9_9_11_/_0.08)]"
     >
       <ul
         className={cn(

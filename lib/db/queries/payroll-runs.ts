@@ -171,13 +171,34 @@ export type ReportRow = {
 };
 
 /**
- * Salaried W2 paystubs uploaded via the Salaried tab carry a pay period
- * (pay_period_start/end) but no payroll run and no pay_period row, so they
- * never appear in listReports. This surfaces them as synthetic report rows —
- * one per (start,end) pay period — summing every salaried employee's net for
- * that period. They flow into the reports month-total so monthly payroll
- * reflects salaried payouts too.
+ * Salaried W2 paystubs carry the real pay for employees whose pay is
+ * prepared externally, and a payroll RUN is the only other thing that puts
+ * a period on the Reports page. So a paystub doc must surface here whenever
+ * its period has no run to represent it:
+ *
+ *   - docs uploaded via the Salaried tab (periodId NULL — no period row), and
+ *   - docs attached to a pay period that never got a payroll run. Without
+ *     this, locking + marking such a period PAID made the pay INVISIBLE
+ *     everywhere: /payroll hides PAID periods by design ("history lives in
+ *     /reports") and /reports had nothing to show for a run-less period.
+ *
+ * Docs on run-backed periods are excluded — listReports already folds them
+ * in via docNetPayCents (the W2 net swap), so listing them here would
+ * double-count. Rows group per (start,end) pay period, summing every
+ * employee's net, and flow into the reports month-total.
  */
+/** Best-effort cadence label from a paystub's date range — used only when
+ *  the doc has no period row to read the real schedule from. */
+function inferCadenceFromRange(start: string, end: string): string {
+  const a = new Date(`${start}T12:00:00Z`);
+  const b = new Date(`${end}T12:00:00Z`);
+  const days = Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
+  if (days <= 9) return "Weekly";
+  if (days <= 20) return "Semi-monthly";
+  if (days <= 32) return "Monthly";
+  return "Salaried";
+}
+
 export async function listSalariedPaystubReports(
   limit = 200,
 ): Promise<ReportRow[]> {
@@ -188,19 +209,27 @@ export async function listSalariedPaystubReports(
       end: payrollPeriodDocuments.payPeriodEnd,
       amountCents: payrollPeriodDocuments.amountCents,
       uploadedAt: payrollPeriodDocuments.uploadedAt,
-      paymentMethod: payrollPeriodDocuments.zohoExpenseId,
       employeeName: employees.displayName,
+      periodId: payrollPeriodDocuments.periodId,
+      periodState: payPeriods.state,
+      periodPaymentMethod: payPeriods.paymentMethod,
+      scheduleName: paySchedules.name,
     })
     .from(payrollPeriodDocuments)
     .leftJoin(employees, eq(payrollPeriodDocuments.employeeId, employees.id))
+    .leftJoin(payPeriods, eq(payrollPeriodDocuments.periodId, payPeriods.id))
+    .leftJoin(paySchedules, eq(payPeriods.payScheduleId, paySchedules.id))
     .where(
       and(
         eq(payrollPeriodDocuments.kind, "PAYSTUB"),
-        isNull(payrollPeriodDocuments.periodId),
         isNull(payrollPeriodDocuments.deletedAt),
         sql`${payrollPeriodDocuments.amountCents} IS NOT NULL`,
         sql`${payrollPeriodDocuments.payPeriodStart} IS NOT NULL`,
         sql`${payrollPeriodDocuments.payPeriodEnd} IS NOT NULL`,
+        sql`(${payrollPeriodDocuments.periodId} IS NULL OR NOT EXISTS (
+          SELECT 1 FROM ${payrollRuns}
+          WHERE ${payrollRuns.periodId} = ${payrollPeriodDocuments.periodId}
+        ))`,
       ),
     )
     .orderBy(desc(payrollPeriodDocuments.payPeriodEnd));
@@ -213,6 +242,10 @@ export async function listSalariedPaystubReports(
       end: string;
       total: number;
       latestUpload: Date;
+      periodId: string | null;
+      periodState: "OPEN" | "LOCKED" | "PAID" | null;
+      periodPaymentMethod: "BANK" | "CASH" | null;
+      scheduleName: string | null;
       docs: Array<{ id: string; employeeName: string; amountCents: number }>;
     }
   >();
@@ -224,10 +257,20 @@ export async function listSalariedPaystubReports(
       end: d.end,
       total: 0,
       latestUpload: d.uploadedAt,
+      periodId: null,
+      periodState: null,
+      periodPaymentMethod: null,
+      scheduleName: null,
       docs: [],
     };
     g.total += d.amountCents;
     if (d.uploadedAt > g.latestUpload) g.latestUpload = d.uploadedAt;
+    if (d.periodId && !g.periodId) {
+      g.periodId = d.periodId;
+      g.periodState = d.periodState;
+      g.periodPaymentMethod = d.periodPaymentMethod;
+      g.scheduleName = d.scheduleName;
+    }
     g.docs.push({
       id: d.id,
       employeeName: d.employeeName ?? "Salaried employee",
@@ -240,12 +283,18 @@ export async function listSalariedPaystubReports(
     .slice(0, limit)
     .map((g) => ({
       id: `salaried-paystub:${g.start}:${g.end}`,
-      periodId: `salaried-paystub:${g.start}:${g.end}`,
+      // Real period id when the docs are period-attached, so the reports
+      // line can link back to the period page; synthetic key otherwise.
+      periodId: g.periodId ?? `salaried-paystub:${g.start}:${g.end}`,
       startDate: g.start,
       endDate: g.end,
       source: "AD_HOC" as PayrollRun["source"],
       state: "PUBLISHED" as PayrollRun["state"],
-      scheduleName: "Salaried",
+      // Salaried employees still ride a pay schedule (weekly / semi-monthly /
+      // monthly). Prefer the attached period's real schedule name; for
+      // legacy Salaried-tab uploads with no period row, infer the cadence
+      // from the date range so the Schedule column never reads as blank.
+      scheduleName: g.scheduleName ?? inferCadenceFromRange(g.start, g.end),
       amountCents: g.total,
       grossPayCents: 0,
       docNetPayCents: 0,
@@ -256,8 +305,10 @@ export async function listSalariedPaystubReports(
       publishedToPortalAt: null,
       pdfPath: null,
       zohoPushes: [],
-      periodState: "PAID" as const,
-      periodPaymentMethod: "BANK" as const,
+      // Period-attached docs report their period's real state; the legacy
+      // Salaried-tab flow has no period row and keeps its PAID default.
+      periodState: g.periodState ?? ("PAID" as const),
+      periodPaymentMethod: g.periodPaymentMethod ?? (g.periodId ? null : ("BANK" as const)),
       isSalariedPaystub: true,
       paystubDocs: g.docs,
     }));

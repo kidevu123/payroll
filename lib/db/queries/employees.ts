@@ -265,6 +265,9 @@ const UPDATABLE_FIELDS = new Set<keyof UpdateEmployeePatch>([
   "status",
   "requiresW2Upload",
   "birthday",
+  "zohoExpenseAccount",
+  "zohoPaidThrough",
+  "kioskPinHash",
 ]);
 
 function whitelistPatch(patch: UpdateEmployeePatch): UpdateEmployeePatch {

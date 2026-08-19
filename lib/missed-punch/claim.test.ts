@@ -98,6 +98,45 @@ describe("parseMissedPunchClaim", () => {
     }
   });
 
+  it("anchors bare time-of-day claims to the report date", () => {
+    // Phone-friendly <input type="time"> submits "HH:MM" with no date.
+    const result = parseMissedPunchClaim({
+      claimedClockIn: "08:00",
+      claimedClockOut: "17:30",
+      timezone: "America/New_York",
+      date: "2026-05-26",
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.clockIn?.toISOString()).toBe("2026-05-26T12:00:00.000Z");
+      expect(result.clockOut?.toISOString()).toBe("2026-05-26T21:30:00.000Z");
+    }
+  });
+
+  it("anchors a one-sided bare time claim for UNPAIRED_PUNCH", () => {
+    const result = parseMissedPunchClaim({
+      issue: "UNPAIRED_PUNCH",
+      claimedClockIn: "10:00",
+      timezone: "America/New_York",
+      date: "2026-07-13",
+    });
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.clockIn?.toISOString()).toBe("2026-07-13T14:00:00.000Z");
+      expect(result.clockOut).toBeNull();
+    }
+  });
+
+  it("rejects a bare time claim without a date to anchor it", () => {
+    expect(
+      parseMissedPunchClaim({
+        claimedClockIn: "08:00",
+        timezone: "America/New_York",
+      }),
+    ).toEqual({ ok: false, error: "Invalid clock-in time." });
+  });
+
   it("rejects backwards ranges", () => {
     expect(
       parseMissedPunchClaim({

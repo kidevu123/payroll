@@ -50,7 +50,7 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
         <CardHeader>
           <summary className="cursor-pointer list-none flex items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Manage payslips</CardTitle>
+              <CardTitle>Manage payslips</CardTitle>
               <CardDescription>
                 Manual override · {activeCount} active
                 {voidedCount > 0 ? ` · ${voidedCount} voided` : ""} · click to expand
@@ -59,23 +59,25 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
           </summary>
         </CardHeader>
         <CardContent>
-          <table className="min-w-full text-sm">
-          <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-            <tr>
-              <th className="py-2 pr-3 font-medium">Employee</th>
-              <th className="py-2 px-3 font-medium text-right">Hours</th>
-              <th className="py-2 px-3 font-medium text-right">Amount</th>
-              <th className="py-2 px-3 font-medium">Status</th>
-              <th className="py-2 px-3 font-medium text-right">Payslip</th>
-              <th className="py-2 px-3 font-medium text-right" />
-            </tr>
-          </thead>
-            <tbody className="divide-y divide-border">
-              {rows.map((r) => (
-                <PayslipRow key={r.payslip.id} row={r} />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+            <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Employee</th>
+                <th className="py-2 px-3 font-medium text-right">Hours</th>
+                <th className="py-2 px-3 font-medium text-right">Amount</th>
+                <th className="py-2 px-3 font-medium">Status</th>
+                <th className="py-2 px-3 font-medium text-right">Payslip</th>
+                <th className="py-2 px-3 font-medium text-right" />
+              </tr>
+            </thead>
+              <tbody className="divide-y divide-border/60">
+                {rows.map((r) => (
+                  <PayslipRow key={r.payslip.id} row={r} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </details>
     </Card>
@@ -96,10 +98,10 @@ function PayslipRow({ row }: { row: Row }) {
             {row.employee.displayName}
           </span>
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           {Number(row.payslip.hoursWorked).toFixed(2)}
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           <MoneyDisplay cents={row.payslip.roundedPayCents} />
         </td>
         <td className="py-2 px-3 text-xs text-text-muted">

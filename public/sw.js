@@ -1,7 +1,8 @@
-// Offline shell. Caches the static app chrome only — no employee data
-// is cached for privacy reasons.
+// Offline shell + static-asset cache. Caches the app chrome and Next's
+// content-hashed build assets only — no employee data is cached for privacy.
 
-const CACHE = "payroll-shell-v2";
+const CACHE = "payroll-shell-v3";
+const STATIC_CACHE = "payroll-static-v1";
 const OFFLINE_PAGE = "/offline";
 const SHELL = [OFFLINE_PAGE, "/manifest.webmanifest"];
 
@@ -19,7 +20,11 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+        Promise.all(
+          keys
+            .filter((k) => k !== CACHE && k !== STATIC_CACHE)
+            .map((k) => caches.delete(k)),
+        )
       )
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
@@ -70,10 +75,31 @@ self.addEventListener("notificationclick", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  // Only intercept navigation requests. Auth, API, and asset requests
-  // pass through untouched.
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Next's build assets are content-hashed (immutable) — cache-first makes
+  // cold app opens skip the network for every JS/CSS chunk and font file.
+  // A new deploy emits new hashes so stale entries are never referenced.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then((cache) =>
+        cache.match(req).then(
+          (hit) =>
+            hit ||
+            fetch(req).then((resp) => {
+              if (resp.ok) cache.put(req, resp.clone());
+              return resp;
+            }),
+        ),
+      ),
+    );
+    return;
+  }
+
+  // Everything else dynamic (API, RSC payloads, sw.js itself) passes
+  // through untouched. Navigations keep the offline fallback.
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/_next/") ||

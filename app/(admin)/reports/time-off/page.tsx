@@ -133,7 +133,7 @@ export default async function TimeOffTallyPage({
   const nextYear = year + 1 <= currentYear ? year + 1 : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <Link
@@ -142,7 +142,7 @@ export default async function TimeOffTallyPage({
           >
             <ArrowLeft className="h-3 w-3" /> Reports
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-title tracking-tight antialiased text-text">
             Time off · {year}
           </h1>
           <p className="text-sm text-text-muted">
@@ -173,7 +173,7 @@ export default async function TimeOffTallyPage({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{year} totals</CardTitle>
+          <CardTitle>{year} totals</CardTitle>
           <CardDescription className="text-xs">
             Days are calendar days (full-day requests). Schedule note hours
             are partial-day heads-ups — these don&apos;t count toward
@@ -183,9 +183,11 @@ export default async function TimeOffTallyPage({
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm tabular-nums">
-            <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border bg-surface-2/60">
+            <thead className="text-left text-micro uppercase text-text-subtle border-b border-border bg-surface-2/60">
               <tr>
-                <th className="px-3 py-2 font-medium">Employee</th>
+                <th className="px-3 py-2 font-medium min-w-[10rem] whitespace-nowrap">
+                  Employee
+                </th>
                 <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium text-right">Unpaid d</th>
                 <th className="px-3 py-2 font-medium text-right">Sick d</th>
@@ -199,7 +201,7 @@ export default async function TimeOffTallyPage({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/60">
               {rows.length === 0 && (
                 <tr>
                   <td
@@ -212,7 +214,7 @@ export default async function TimeOffTallyPage({
               )}
               {rows.map((r) => (
                 <tr key={r.id} className="hover:bg-surface-2/40">
-                  <td className="px-3 py-2 font-medium">
+                  <td className="px-3 py-2 font-medium min-w-[10rem] whitespace-nowrap">
                     <Link
                       href={`/employees/${r.id}`}
                       className="hover:underline"
@@ -223,16 +225,16 @@ export default async function TimeOffTallyPage({
                   <td className="px-3 py-2 text-text-muted text-xs">
                     {r.payType}
                   </td>
-                  <td className="px-3 py-2 text-right">{r.unpaidDays || ""}</td>
-                  <td className="px-3 py-2 text-right">{r.sickDays || ""}</td>
+                  <td className="px-3 py-2 text-right">{r.unpaidDays || "—"}</td>
+                  <td className="px-3 py-2 text-right">{r.sickDays || "—"}</td>
                   <td className="px-3 py-2 text-right">
-                    {r.personalDays || ""}
+                    {r.personalDays || "—"}
                   </td>
-                  <td className="px-3 py-2 text-right">{r.otherDays || ""}</td>
+                  <td className="px-3 py-2 text-right">{r.otherDays || "—"}</td>
                   <td className="px-3 py-2 text-right">
                     {r.scheduleNoteHours
                       ? r.scheduleNoteHours.toFixed(1)
-                      : ""}
+                      : "—"}
                   </td>
                   <td className="px-3 py-2 text-right font-semibold">
                     {r.totalHours

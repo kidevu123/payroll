@@ -21,6 +21,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import { ChevronRight, AlertTriangle, FileText, Download } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -90,11 +91,11 @@ export function PayslipCard(props: PayslipCardProps) {
         "transition-shadow duration-200 hover:shadow-card-hover",
         // Disputed: subtle amber inset on the left edge — one strong cue.
         isDisputed &&
-          "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warn-700/80",
+          "before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-warning-700/80",
         props.className,
       )}
     >
-      <div className="px-5 py-4 sm:px-6 sm:py-5 flex items-center gap-4">
+      <div className="px-4 py-3 flex items-center gap-4">
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-semibold tracking-tight antialiased text-text">
@@ -103,7 +104,7 @@ export function PayslipCard(props: PayslipCardProps) {
               {props.periodEnd}
             </h3>
             {isDisputed ? (
-              <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
+              <span className="inline-flex items-center gap-1 rounded-chip border border-warning-200/80 bg-warning-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warning-700">
                 <AlertTriangle className="h-3 w-3" aria-hidden />
                 {t("problemReported")}
               </span>
@@ -176,7 +177,7 @@ export function PayslipCard(props: PayslipCardProps) {
     <div
       className={cn(
         "rounded-card overflow-hidden border border-border/70 bg-surface shadow-card",
-        isDisputed && "ring-1 ring-warn-200/70",
+        isDisputed && "ring-1 ring-warning-200/70",
         props.className,
       )}
     >
@@ -211,14 +212,13 @@ function DocRow({ doc, viewLabel }: { doc: PayslipCardDoc; viewLabel: string }) 
           </p>
         </div>
       </div>
-      <Link
+      <PdfLink
         href={`/api/payroll-docs/${doc.id}`}
-        target="_blank"
-        rel="noopener"
-        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text shrink-0"
+        filename="paystub.pdf"
+        className="inline-flex items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2/40 hover:text-text shrink-0"
       >
         <Download className="h-3 w-3" /> {viewLabel}
-      </Link>
+      </PdfLink>
     </div>
   );
 }

@@ -54,11 +54,11 @@ export async function AuthLayout({
             </div>
             <div className="mt-7 text-center">
               {eyebrow ? (
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                <p className="text-micro uppercase text-text-subtle">
                   {eyebrow}
                 </p>
               ) : null}
-              <h1 className="mt-1.5 text-title font-semibold tracking-tight antialiased text-text">
+              <h1 className="mt-1.5 text-title tracking-tight antialiased text-text antialiased text-text">
                 {title}
               </h1>
               {description ? (

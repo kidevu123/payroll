@@ -263,6 +263,10 @@ export async function pushDocToZohoAction(
       role: session.user.role,
     });
     revalidatePath("/salaried");
+    // Period-attached docs also render (with this push control) on their
+    // period detail page — keep that page's Zoho chip in sync.
+    const doc = await getDoc(docId);
+    if (doc?.periodId) revalidatePath(`/payroll/${doc.periodId}`);
     return { ok: true, ...result };
   } catch (err) {
     return {
@@ -292,6 +296,8 @@ export async function repushDocToZohoAction(
       { force },
     );
     revalidatePath("/salaried");
+    const doc = await getDoc(docId);
+    if (doc?.periodId) revalidatePath(`/payroll/${doc.periodId}`);
     return { ok: true, expenseId: result.expenseId };
   } catch (err) {
     return {

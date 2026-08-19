@@ -1,5 +1,5 @@
 // Dark cadence card: one per active pay schedule (Monthly / Semi-monthly /
-// Weekly). Shows the current open period total, a restrained sparkline of
+// Weekly). Shows the current open period total, a glowing brand sparkline of
 // recent period totals, headcount + hours, a delta vs prior period, an alert
 // chip, and the correct next-step button. Server component — data comes pre-
 // shaped from computeDashboardMetrics; only the chart child is "use client".
@@ -14,7 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatMoney, formatHoursMinutes } from "@/lib/utils";
-import { CadenceSparkline } from "./charts/cadence-sparkline";
+import { CadenceSparkline } from "./charts/lazy";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
 import type { CadenceCard as CadenceData } from "@/lib/payroll/dashboard-metrics";
@@ -39,59 +39,24 @@ function resolveNextStep(card: CadenceData): NextStep {
     ? `/payroll/run/${card.runId}`
     : `/payroll/${card.period.id}`;
   if (card.period.state === "PAID") {
-    return {
-      label: "View run",
-      href: `/payroll/${card.period.id}`,
-      badge: "Paid",
-      primary: false,
-    };
+    return { label: "View run", href: `/payroll/${card.period.id}`, badge: "Paid", primary: false };
   }
   switch (card.runState) {
     case "AWAITING_ADMIN_REVIEW":
     case "AWAITING_EMPLOYEE_FIXES":
-      return {
-        label: "Review run",
-        href: runHref,
-        badge: "Needs review",
-        primary: true,
-      };
+      return { label: "Review run", href: runHref, badge: "Needs review", primary: true };
     case "APPROVED":
-      return {
-        label: "Publish run",
-        href: runHref,
-        badge: "Approved",
-        primary: true,
-      };
+      return { label: "Publish run", href: runHref, badge: "Approved", primary: true };
     case "PUBLISHED":
-      return {
-        label: "Mark paid",
-        href: `/payroll/${card.period.id}`,
-        badge: "Awaiting payment",
-        primary: true,
-      };
+      return { label: "Mark paid", href: `/payroll/${card.period.id}`, badge: "Awaiting payment", primary: true };
     case "SCHEDULED":
     case "INGESTING":
-      return {
-        label: "View progress",
-        href: runHref,
-        badge: "Running",
-        primary: false,
-      };
+      return { label: "View progress", href: runHref, badge: "Running", primary: false };
     case "INGEST_FAILED":
     case "FAILED":
-      return {
-        label: "View failure",
-        href: runHref,
-        badge: "Failed",
-        primary: false,
-      };
+      return { label: "View failure", href: runHref, badge: "Failed", primary: false };
     default:
-      return {
-        label: "Start payroll run",
-        href: `/payroll/${card.period.id}`,
-        badge: "Not started",
-        primary: true,
-      };
+      return { label: "Start payroll run", href: `/payroll/${card.period.id}`, badge: "Not started", primary: true };
   }
 }
 
@@ -103,7 +68,7 @@ function badgeStyle(badge: string): { color: string; bg: string } {
     case "Approved":
     case "Running":
     case "Awaiting payment":
-      return { color: DASH.violetBright, bg: "rgba(15,118,110,0.12)" };
+      return { color: DASH.cyanBright, bg: "rgba(34,211,238,0.14)" };
     case "Paid":
       return { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" };
     default:
@@ -139,44 +104,19 @@ export function CadenceCard({ card }: { card: CadenceData }) {
   return (
     <DashCard
       glow={step.primary}
-      className="flex h-full min-h-[280px] flex-col gap-3"
+      className="flex h-full flex-col gap-2 overflow-hidden"
     >
-      {/* Big flowing sparkline that bleeds to the top + right edges, behind
-          the content — matches the reference's prominent wave. */}
-      {hasSpark ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-card"
-        >
-          <div
-            className="absolute"
-            style={{
-              top: "3.5rem",
-              right: "-0.5rem",
-              bottom: "3.5rem",
-              width: "64%",
-            }}
-          >
-            <CadenceSparkline
-              data={card.spark}
-              gradientId={`spark-${card.scheduleId}`}
-              className="h-full"
-            />
-          </div>
-        </div>
-      ) : null}
-
       {/* Header: icon + uppercase cadence name + range, status badge */}
       <div className="relative z-10 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span
             className="flex h-8 w-8 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(15,118,110,0.10)",
+              background: "rgba(34,211,238,0.14)",
               border: `1px solid ${DASH.border}`,
             }}
           >
-            <Icon className="h-4 w-4" style={{ color: DASH.violetBright }} />
+            <Icon className="h-4 w-4" style={{ color: DASH.cyanBright }} />
           </span>
           <div>
             <div
@@ -185,7 +125,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
             >
               {card.scheduleName}
             </div>
-            <div className="text-xs" style={{ color: DASH.textFaint }}>
+            <div className="text-[11px]" style={{ color: DASH.textFaint }}>
               {card.period
                 ? shortRange(card.period.startDate, card.period.endDate)
                 : "No open period"}
@@ -193,7 +133,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           </div>
         </div>
         <span
-          className="rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+          className="rounded-full px-2.5 py-1 text-micro uppercase"
           style={{ color: badge.color, background: badge.bg }}
         >
           {step.badge}
@@ -204,7 +144,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       <div className="relative z-10 min-w-0">
         <Eyebrow>Total pay period</Eyebrow>
         <div
-          className="mt-1 text-[1.2rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
+          className="mt-1 text-[1.65rem] font-bold leading-none tracking-[-0.02em] tabular-nums"
           style={{ color: DASH.text }}
         >
           {formatMoney(card.totalCents)}
@@ -212,26 +152,24 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <Delta pct={card.deltaPct} />
           {card.priorRangeLabel ? (
-            <span className="text-xs" style={{ color: DASH.textFaint }}>
+            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
               vs {card.priorRangeLabel}
             </span>
           ) : (
-            <span className="text-xs" style={{ color: DASH.textFaint }}>
+            <span className="text-[11px]" style={{ color: DASH.textFaint }}>
               building history
             </span>
           )}
         </div>
         <div
-          className="mt-1 flex items-center gap-3 text-xs"
+          className="mt-1 flex items-center gap-3 text-[11px]"
           style={{ color: DASH.textMuted }}
         >
           <span className="inline-flex items-center gap-1">
             <Users className="h-3 w-3" aria-hidden="true" />
             {card.employeeCount} emp
           </span>
-          <span aria-hidden="true" style={{ color: DASH.textFaint }}>
-            ·
-          </span>
+          <span aria-hidden="true" style={{ color: DASH.textFaint }}>·</span>
           <span className="inline-flex items-center gap-1 tabular-nums">
             <Clock4 className="h-3 w-3" aria-hidden="true" />
             {formatHoursMinutes(card.hours)}
@@ -239,19 +177,36 @@ export function CadenceCard({ card }: { card: CadenceData }) {
         </div>
       </div>
 
-      <div className="flex-1" />
+      {/* Sparkline strip: contained, fixed height — recent period totals.
+          Cards without history stay compact instead of reserving a void. */}
+      {hasSpark ? (
+        <div aria-hidden className="relative z-10 -mx-1 h-16">
+          <CadenceSparkline
+            data={card.spark}
+            gradientId={`spark-${card.scheduleId}`}
+            className="h-full"
+          />
+        </div>
+      ) : (
+        <div
+          className="flex h-16 items-center justify-center rounded-lg border border-dashed text-[11px]"
+          style={{ borderColor: DASH.border, color: DASH.textFaint }}
+        >
+          Trend appears after two closed periods
+        </div>
+      )}
 
       {/* Footer: full-width action + alert pill */}
-      <div className="relative z-10 flex items-center gap-2.5">
+      <div className="relative z-10 mt-auto flex items-center gap-2.5">
         <Link
           href={step.href}
-          className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[13px] font-semibold transition-colors"
           style={
             step.primary
               ? {
-                  color: "white",
-                  background: DASH.violet,
-                  boxShadow: "0 8px 18px -12px rgba(15,118,110,0.55)",
+                  color: DASH.onAccent,
+                  background: DASH.accentGradient,
+                  boxShadow: "0 8px 20px -10px rgba(5,150,105,0.7)",
                 }
               : {
                   color: DASH.text,

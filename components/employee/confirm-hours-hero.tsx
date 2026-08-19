@@ -83,17 +83,17 @@ export async function ConfirmHoursHero({
         </div>
 
         {/* Net pay is the headline figure; hours sit alongside. */}
-        <div className="flex items-end justify-between gap-4 border-y border-border/60 py-4">
-          <div className="space-y-1">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-text-subtle">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-y border-border/60 py-4">
+          <div className="min-w-0 space-y-1">
+            <p className="text-micro uppercase text-text-subtle">
               {t("netPay")}
             </p>
-            <p className="text-[2rem] font-semibold leading-[1.1] tracking-tight tabular-nums text-text antialiased">
+            <p className="text-[1.75rem] sm:text-[2rem] font-semibold leading-[1.1] tracking-tight tabular-nums text-text antialiased">
               <MoneyDisplay cents={top.roundedPayCents} monospace={false} />
             </p>
           </div>
           <div className="space-y-1 text-right">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-text-subtle">
+            <p className="text-micro uppercase text-text-subtle">
               {t("viewerHours")}
             </p>
             <p className="text-base font-semibold tracking-tight tabular-nums text-text antialiased">

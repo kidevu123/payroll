@@ -211,9 +211,9 @@
     "day": {
       "back": "Atrás",
       "noPunches": "Aún no hay marcaciones.",
-      "reportSent": "Enviado. El administrador lo revisará en /requests.",
+      "reportSent": "Enviado. Un administrador lo revisará pronto.",
       "reportFix": "Reportar una corrección para este día",
-      "reportInstructions": "Dígale al administrador cuáles deberían ser las horas correctas de entrada / salida para {date}. Se revisan en /requests y se aplica la corrección.",
+      "reportInstructions": "Ingrese las horas correctas para {date}. Un administrador revisará y aplicará la corrección.",
       "missingPunchInstructions": "Encontramos una marcación registrada para {date}. Ingrese solo la hora que falta.",
       "correctClockIn": "Hora de entrada correcta",
       "correctClockOutOptional": "Hora de salida correcta (opcional)",
@@ -233,7 +233,11 @@
       "reasonPlaceholder": "Olvidé marcar la salida del almuerzo, salí temprano para una cita médica, etc.",
       "cancel": "Cancelar",
       "submitting": "Enviando...",
-      "sendToAdmin": "Enviar al administrador"
+      "sendToAdmin": "Enviar al administrador",
+      "reasonQuickForgot": "Olvidé marcar",
+      "reasonQuickClock": "El reloj no registró mi marcación",
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde",
+      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer."
     },
     "pay": {
       "title": "Mi pago",
@@ -312,7 +316,11 @@
       "enterClockOut": "¿A qué hora salió?",
       "whatHappened": "¿Qué pasó?",
       "submitting": "Enviando...",
-      "submitFix": "Enviar solicitud de corrección"
+      "submitFix": "Enviar solicitud de corrección",
+      "reasonQuickForgot": "Olvidé marcar",
+      "reasonQuickClock": "El reloj no registró mi marcación",
+      "reasonQuickLeftEarly": "Salí temprano / llegué tarde",
+      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer."
     },
     "timeOff": {
       "back": "Atrás",
@@ -365,7 +373,20 @@
       "languageHint": "Cambia el idioma en este dispositivo de inmediato. Su preferencia guardada (arriba) es la que usan otros dispositivos hasta que también se cambien.",
       "payTypeHourly": "Por hora",
       "payTypeSalaried": "Asalariado",
-      "payTypeFlatTask": "Por tarea"
+      "payTypeFlatTask": "Por tarea",
+      "kioskPinTitle": "PIN del kiosco del almacen",
+      "kioskPinUnsetHint": "Cree un PIN de 4-6 digitos para entrar al kiosco del almacen con su numero de reloj.",
+      "kioskPinSetHint": "Su PIN del kiosco ya esta configurado. Ingrese uno nuevo para cambiarlo.",
+      "kioskPinNew": "Nuevo PIN",
+      "kioskPinConfirm": "Repita el PIN",
+      "kioskPinMismatch": "Los dos PIN no coinciden.",
+      "kioskPinInvalid": "El PIN debe tener de 4 a 6 digitos.",
+      "kioskPinSave": "Crear PIN",
+      "kioskPinReplace": "Cambiar PIN",
+      "kioskPinSaving": "Guardando...",
+      "kioskPinSaved": "PIN guardado. Uselo en el kiosco con su numero de reloj.",
+      "clockIdLabel": "Su numero de reloj",
+      "clockIdMissing": "Sin asignar — pregunte en la oficina."
     },
     "notifications": {
       "back": "Atrás",
@@ -393,7 +414,8 @@
       "errorNotSupportedShort": "No compatible."
     },
     "alertCard": {
-      "fixThis": "Corregir"
+      "fixThis": "Corregir",
+      "inReview": "En revision"
     },
     "onboarding": {
       "saveTitle": "Guarde Milo en su pantalla de inicio",

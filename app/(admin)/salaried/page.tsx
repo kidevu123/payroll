@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
-import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
+import { listVisibleDocsByEmployee } from "@/lib/db/queries/payroll-documents";
 import {
   Card,
   CardContent,
@@ -44,9 +44,9 @@ export default async function SalariedPage() {
 
   if (salaried.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div>
-          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Salaried</h1>
           <p className="text-sm text-text-muted">
             Salaried employees are paid externally (W2). Upload paystubs here
             and they appear on each employee&apos;s portal under Pay.
@@ -66,16 +66,15 @@ export default async function SalariedPage() {
     );
   }
 
-  // Pull each salaried employee's docs + a schedule lookup in parallel.
-  const [docsByEmployee, schedules] = await Promise.all([
-    Promise.all(
-      salaried.map(async (e) => ({
-        employee: e,
-        docs: await listEmployeeVisibleDocs(e.id),
-      })),
-    ),
+  // One batch docs query for the whole roster (was N+1) + schedule lookup.
+  const [docsMap, schedules] = await Promise.all([
+    listVisibleDocsByEmployee(salaried.map((e) => e.id)),
     listSchedules(),
   ]);
+  const docsByEmployee = salaried.map((e) => ({
+    employee: e,
+    docs: docsMap.get(e.id) ?? [],
+  }));
 
   const scheduleById = new Map(schedules.map((s) => [s.id, s]));
 
@@ -101,7 +100,7 @@ export default async function SalariedPage() {
     <div className="space-y-5">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div className="space-y-1.5">
-          <h1 className="text-title font-semibold tracking-tight">Salaried</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Salaried</h1>
           <p className="text-sm text-text-muted">
             Upload and manage W-2 / paystub documents for salaried employees.
           </p>
@@ -117,14 +116,14 @@ export default async function SalariedPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SalariedStat
           icon={Users}
-          tone="violet"
+          tone="cyan"
           value={salaried.length}
           label="Salaried employees"
           sub="Active this month"
         />
         <SalariedStat
           icon={FileText}
-          tone="indigo"
+          tone="blue"
           value={totalDocs}
           label="Documents uploaded"
           sub="All paystubs on file"
@@ -189,7 +188,7 @@ export default async function SalariedPage() {
                       ) : (
                         <Link
                           href={`/employees/${employee.id}`}
-                          className="inline-flex items-center gap-1 rounded-chip bg-warn-50 px-2 py-0.5 text-[10px] font-medium text-warn-700 ring-1 ring-inset ring-warn-200 underline-offset-2 hover:underline"
+                          className="inline-flex items-center gap-1 rounded-chip bg-warning-50 px-2 py-0.5 text-[10px] font-medium text-warning-700 ring-1 ring-inset ring-warning-200 underline-offset-2 hover:underline"
                         >
                           <CalendarClock className="h-3 w-3" />
                           No schedule — set one
@@ -233,8 +232,8 @@ export default async function SalariedPage() {
 // KPI stat tile for the Salaried header (matches #65). Tinted icon chip +
 // figure + label + sub; dash-palette tones flip correctly in light & dark.
 const SALARIED_TONE: Record<string, string> = {
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
   amber: "var(--dash-amber)",
   emerald: "var(--dash-emerald)",
 };
@@ -264,7 +263,7 @@ function SalariedStat({
         </span>
         <div className="min-w-0">
           <div className="text-xs font-medium text-text-muted">{label}</div>
-          <div className="text-xl font-bold leading-tight tabular-nums tracking-tight text-text">
+          <div className="text-metric tabular-nums text-text">
             {value}
           </div>
           <div className="text-[11px] text-text-subtle">{sub}</div>

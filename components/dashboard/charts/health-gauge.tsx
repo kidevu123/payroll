@@ -14,7 +14,7 @@ type Props = {
 
 function scoreColor(score: number): string {
   if (score >= 75) return CHART.emerald;
-  if (score >= 50) return CHART.violetBright;
+  if (score >= 50) return CHART.cyanBright;
   return "#fb7185";
 }
 
@@ -65,10 +65,7 @@ export function HealthGauge({ score }: Props) {
         >
           {score}
         </span>
-        <span
-          className="mt-0.5 text-xs font-medium uppercase tracking-wider"
-          style={{ color: "#6e6e85" }}
-        >
+        <span className="mt-0.5 text-micro uppercase" style={{ color: "#6e6e85" }}>
           / 100
         </span>
       </div>

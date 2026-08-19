@@ -56,7 +56,7 @@ export function TempWorkersSection({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
         <div>
-          <CardTitle className="text-base">Temp / manual labor</CardTitle>
+          <CardTitle>Temp / manual labor</CardTitle>
           <CardDescription>
             One-off contractors, day-labor, or anyone who doesn&apos;t punch in
             but whose pay must roll into this period&apos;s total.
@@ -122,7 +122,7 @@ export function TempWorkersSection({
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Worker</th>
                   <th className="py-2 px-3 font-medium">Description</th>
@@ -131,7 +131,7 @@ export function TempWorkersSection({
                   <th className="py-2 pl-3 pr-1 font-medium text-right" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {initialEntries.map((e) => (
                   <TempWorkerRow key={e.id} entry={e} locked={locked} />
                 ))}
@@ -141,7 +141,7 @@ export function TempWorkersSection({
                   <td className="py-2 pr-3" colSpan={3}>
                     Temp labor subtotal
                   </td>
-                  <td className="py-2 px-3 text-right font-mono tabular-nums">
+                  <td className="py-2 px-3 text-right tabular-nums">
                     <MoneyDisplay cents={total} />
                   </td>
                   <td />
@@ -169,10 +169,10 @@ function TempWorkerRow({
       <tr className="hover:bg-surface-2/40 transition-colors">
         <td className="py-2 pr-3 font-medium">{entry.workerName}</td>
         <td className="py-2 px-3 text-text-muted">{entry.description ?? "—"}</td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums text-text-muted">
+        <td className="py-2 px-3 text-right tabular-nums text-text-muted">
           {entry.hours ?? "—"}
         </td>
-        <td className="py-2 px-3 text-right font-mono tabular-nums">
+        <td className="py-2 px-3 text-right tabular-nums">
           <MoneyDisplay cents={entry.amountCents} />
         </td>
         <td className="py-2 pl-3 pr-1 text-right">

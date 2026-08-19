@@ -65,29 +65,41 @@ function parse(text: string): GatewayJson {
   }
 }
 
-export async function gatewayCreateExpense(input: {
-  org: ZohoOrganization;
-  amountCents: number;
-  reference: string;
-  date: string;
-  description?: string;
-}): Promise<{ expenseId: string }> {
+export async function gatewayCreateExpense(
+  input: {
+    org: ZohoOrganization;
+    amountCents: number;
+    reference: string;
+    date: string;
+    description?: string;
+  },
+  /**
+   * Per-request account ids already resolved against the org's chart
+   * (e.g. a per-employee payroll sub-account + Business Checking).
+   * Take precedence over the org's stored defaults. The gateway still
+   * force-pins accounts for brands that configure them in extra_config.
+   */
+  accountOverrides?: {
+    accountId?: string | null;
+    paidThroughId?: string | null;
+  },
+): Promise<{ expenseId: string }> {
   const { org, amountCents, reference, date, description } = input;
-  // account_id / paid_through_account_id are injected by the gateway from the
-  // brand's config, so we deliberately omit them here.
   const body: Record<string, unknown> = {
     date,
     amount: amountCents / 100,
     reference_number: reference.slice(0, 100),
     description: (description ?? `Paystub — ${reference}`).slice(0, 500),
   };
-  // Send the org's configured account IDs when present. The gateway overrides
-  // these with the brand's own config where it has one (e.g. expense account),
-  // and falls back to ours where it doesn't (e.g. a brand missing paid-through).
-  if (org.defaultExpenseAccountId) body.account_id = org.defaultExpenseAccountId;
-  if (org.defaultPaidThroughId) {
-    body.paid_through_account_id = org.defaultPaidThroughId;
-  }
+  // Send per-request resolved ids when present, else the org's configured
+  // defaults. The gateway overrides these with the brand's own config where
+  // it has one (e.g. expense account), and falls back to ours where it
+  // doesn't (e.g. a brand missing paid-through).
+  const accountId = accountOverrides?.accountId ?? org.defaultExpenseAccountId;
+  const paidThroughId =
+    accountOverrides?.paidThroughId ?? org.defaultPaidThroughId;
+  if (accountId) body.account_id = accountId;
+  if (paidThroughId) body.paid_through_account_id = paidThroughId;
   if (org.defaultVendorId) body.vendor_id = org.defaultVendorId;
 
   const resp = await fetch(gatewayUrl("/zoho/expenses/create_books"), {

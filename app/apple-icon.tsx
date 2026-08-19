@@ -36,7 +36,7 @@ export default async function AppleIcon() {
   // Fallback: render a 180x180 brand square with company initials.
   const company = await getSetting("company").catch(() => null);
   const initials = initialsFor(company?.name ?? "Payroll");
-  const brand = company?.brandColorHex ?? "#0f766e";
+  const brand = company?.brandColorHex ?? "#067049";
   return new ImageResponse(
     (
       <div

@@ -41,7 +41,7 @@ export function NotificationsForm({
         >
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Event</th>
                   <th className="py-2 px-3 font-medium text-center">In-app</th>
@@ -49,7 +49,7 @@ export function NotificationsForm({
                   <th className="py-2 px-3 font-medium text-center">Push</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {kinds.map((kind) => {
                   const val = notifications.defaults[kind];
                   if (!val) return null;
@@ -57,7 +57,7 @@ export function NotificationsForm({
                     <tr key={kind}>
                       <td className="py-2 pr-3">
                         <div className="font-medium">{KIND_LABELS[kind] ?? kind}</div>
-                        <div className="text-xs text-text-muted font-mono">{kind}</div>
+                        <div className="text-xs text-text-muted tabular-nums">{kind}</div>
                       </td>
                       <td className="py-2 px-3 text-center">
                         <input

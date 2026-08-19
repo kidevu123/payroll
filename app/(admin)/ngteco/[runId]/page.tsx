@@ -26,14 +26,14 @@ export default async function NgtecoRunDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Button asChild variant="ghost" size="sm">
         <Link href="/ngteco">
           <ArrowLeft className="h-4 w-4" /> All runs
         </Link>
       </Button>
       <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold font-mono">{run.id}</h1>
+        <h1 className="text-title tracking-tight antialiased text-text tabular-nums">{run.id}</h1>
         <StatusPill status={run.state as never} />
       </div>
       <p className="text-sm text-text-muted">
@@ -46,7 +46,7 @@ export default async function NgtecoRunDetail({
             <CardTitle>Last error</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="font-mono text-xs whitespace-pre-wrap">{run.lastError}</p>
+            <p className="tabular-nums text-xs whitespace-pre-wrap">{run.lastError}</p>
             {run.ingestScreenshotPath && (
               <p className="mt-2 text-xs text-text-muted">
                 Screenshot on the LXC: <span className="font-mono">{run.ingestScreenshotPath}</span>
@@ -94,7 +94,7 @@ function ExceptionCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">
+        <CardTitle>
           {title}{" "}
           <span className="text-sm font-normal text-text-muted">{rows.length}</span>
         </CardTitle>

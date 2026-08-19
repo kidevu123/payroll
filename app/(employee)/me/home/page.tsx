@@ -37,6 +37,7 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { getEmployee } from "@/lib/db/queries/employees";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { listAlertsForEmployee, resolveAlert } from "@/lib/db/queries/alerts";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import {
   listApprovedTimeOffInRange,
   listRecentForEmployee,
@@ -121,6 +122,7 @@ export default async function EmployeeHome() {
 
   let stats = { hours: 0, projected: 0, daysLeft: 0 };
   let alerts: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
+  let alertsInReview: Awaited<ReturnType<typeof listAlertsForEmployee>> = [];
   if (period && !isSalaried) {
     const [punches, rates, openAlerts, holidays, approvedTimeOff] = await Promise.all([
       listPunches({ periodId: period.id, employeeId: employee.id }),
@@ -180,6 +182,15 @@ export default async function EmployeeHome() {
         !staleIds.includes(a.id) &&
         validKeys.has(`${a.employeeId}|${a.date}|${a.issue}`),
     );
+    // A day the employee ALREADY reported (any flow — alert, day page,
+    // kiosk) is waiting on the office, not on them. Show it as calm
+    // "in review" instead of a red fix prompt; resubmitting would only
+    // bounce off the duplicate-request gate anyway.
+    const pendingDates = new Set(
+      await listPendingMissedPunchDatesForEmployee(employee.id),
+    );
+    alertsInReview = alerts.filter((a) => pendingDates.has(a.date));
+    alerts = alerts.filter((a) => !pendingDates.has(a.date));
     const result = computePay({
       punches,
       timezone: company.timezone,
@@ -270,10 +281,10 @@ export default async function EmployeeHome() {
       {!isSalaried && <ConfirmHoursHero employeeId={employee.id} />}
 
       {!isSalaried && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 items-stretch gap-3">
           <EmpMetric
             icon={Clock}
-            tone="violet"
+            tone="cyan"
             label="Hours this period"
             value={
               <HoursDisplay
@@ -285,7 +296,7 @@ export default async function EmployeeHome() {
           />
           <EmpMetric
             icon={Wallet}
-            tone="indigo"
+            tone="blue"
             label="Estimated pay"
             value={<MoneyDisplay cents={stats.projected} monospace={false} />}
             sub="Based on current hours"
@@ -321,7 +332,7 @@ export default async function EmployeeHome() {
                   {t("latestPayslip")}
                 </p>
                 {latestPayslip.state === "disputed" ? (
-                  <span className="inline-flex items-center gap-1 rounded-chip border border-warn-200/80 bg-warn-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warn-700">
+                  <span className="inline-flex items-center gap-1 rounded-chip border border-warning-200/80 bg-warning-50 px-2 py-0.5 text-[11px] font-medium tracking-tight text-warning-700">
                     <AlertTriangle className="h-3 w-3" aria-hidden />
                     {t("reported")}
                   </span>
@@ -378,12 +389,12 @@ export default async function EmployeeHome() {
                   {t("alertsTitle")}
                 </h3>
                 {alerts.length > 0 && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warn-50 border border-warn-200/80 px-1.5 text-[10px] font-medium text-warn-700 tabular-nums">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-50 border border-warning-200/80 px-1.5 text-[11px] font-medium text-warning-700 tabular-nums">
                     {alerts.length}
                   </span>
                 )}
               </div>
-              {alerts.length === 0 ? (
+              {alerts.length === 0 && alertsInReview.length === 0 ? (
                 <p className="text-sm text-text-muted leading-relaxed">
                   {t("alertsEmpty")}
                 </p>
@@ -395,6 +406,15 @@ export default async function EmployeeHome() {
                       alertId={a.id}
                       date={a.date}
                       issue={a.issue}
+                    />
+                  ))}
+                  {alertsInReview.map((a) => (
+                    <AlertCard
+                      key={a.id}
+                      alertId={a.id}
+                      date={a.date}
+                      issue={a.issue}
+                      inReview
                     />
                   ))}
                 </div>
@@ -439,7 +459,7 @@ export default async function EmployeeHome() {
                     <li
                       key={r.id}
                       className={
-                        "flex items-center justify-between gap-3 rounded-input border bg-surface px-3 py-2 " +
+                        "flex flex-col gap-2 rounded-input border bg-surface px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 " +
                         (isCancelled
                           ? "border-border/40 opacity-60"
                           : "border-border/70")
@@ -544,8 +564,8 @@ export default async function EmployeeHome() {
 
 // #71 employee-home metric tile. Tinted icon chip + figure + label + sub.
 const EMP_TONE: Record<string, string> = {
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
   emerald: "var(--dash-emerald)",
   rose: "var(--dash-rose)",
 };
@@ -565,9 +585,9 @@ function EmpMetric({
 }) {
   const c = EMP_TONE[tone];
   return (
-    <Card className="p-4">
+    <Card className="h-full p-4">
       <span
-        className="flex h-9 w-9 items-center justify-center rounded-lg"
+        className="flex h-9 w-9 items-center justify-center rounded-input"
         style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
       >
         <Icon className="h-4 w-4" />

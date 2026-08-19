@@ -57,7 +57,7 @@ export default async function Page() {
     }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <RolesMatrixForm
         rows={rows}
         surfaces={SURFACES.map((s) => ({ key: s, label: SURFACE_LABEL[s] }))}

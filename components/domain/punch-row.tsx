@@ -63,29 +63,29 @@ export function PunchRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-card border border-border bg-surface px-3 py-2 text-sm",
+        "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-input border border-border bg-surface px-3 py-2.5 text-sm",
         punch.voidedAt && "opacity-50 line-through",
         (missingIn || ambiguous) && "border-warning-200/80 bg-warning-50/40",
         className,
       )}
     >
       <div className="text-text-muted">{formatDay(punch.clockIn, timezone)}</div>
-      <div className="font-mono tabular-nums">
+      <div className="tabular-nums">
         {ambiguous ? (
-          <span className="text-warning-800 text-xs font-semibold uppercase tracking-wide">
+          <span className="text-warning-800 text-micro uppercase">
             Unpaired
           </span>
         ) : missingIn ? (
-          <span className="text-warning-800 text-xs font-semibold uppercase tracking-wide">
+          <span className="text-warning-800 text-micro uppercase">
             Missing in
           </span>
         ) : (
           formatClock(punch.clockIn, timezone)
         )}
       </div>
-      <div className="font-mono tabular-nums">
+      <div className="tabular-nums">
         {ambiguous ? (
-          <span className="font-mono tabular-nums text-warning-900">
+          <span className="tabular-nums text-warning-900">
             {formatClock(punch.clockIn, timezone)}
           </span>
         ) : openShift ? (
@@ -95,7 +95,7 @@ export function PunchRow({
         )}
       </div>
       {missingIn || ambiguous ? (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-warning-800">
+        <span className="text-micro uppercase text-warning-800">
           fix
         </span>
       ) : (

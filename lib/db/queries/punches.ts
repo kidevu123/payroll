@@ -1,7 +1,7 @@
 // Punch queries. Edit preserves originalClockIn/Out and demands a reason.
 // voidPunch is the soft-delete (sets voidedAt; never DELETEs).
 
-import { and, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,
@@ -87,9 +87,12 @@ export async function listPunches(
   if (filters.clockAfter) conds.push(gte(punches.clockIn, filters.clockAfter));
   if (filters.clockBefore)
     conds.push(lte(punches.clockIn, filters.clockBefore));
-  const q = db.select().from(punches);
-  const rows = conds.length > 0 ? await q.where(and(...conds)) : await q;
-  return rows.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
+  // Order in SQL (clockIn asc). Lets the (clock_in) index satisfy the
+  // range+sort for the Time grid / dashboard instead of pulling rows and
+  // re-sorting in JS on every render.
+  const base = db.select().from(punches);
+  const filtered = conds.length > 0 ? base.where(and(...conds)) : base;
+  return filtered.orderBy(asc(punches.clockIn));
 }
 
 /**
@@ -180,6 +183,74 @@ export async function createPunch(
         actorId: actor.id,
         actorRole: actor.role,
         action: "punch.create",
+        targetType: "Punch",
+        targetId: row.id,
+        after: row,
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+export type CreateBackPayInput = {
+  employeeId: string;
+  /** True worked timestamps — a day inside an already-PAID period. */
+  clockIn: Date;
+  clockOut: Date;
+  /** YYYY-MM-DD of the day actually worked (in company timezone). */
+  workDate: string;
+  reason: string;
+  source?: "MANUAL_ADMIN" | "MISSED_PUNCH_APPROVED";
+};
+
+/**
+ * Record a shift from an already-paid week as BACK PAY in the employee's
+ * current pay period. The punch keeps its true timestamps (so payslips
+ * and the time grid show the day it was actually worked) but is attached
+ * to the period covering TODAY, so the money flows into the next run.
+ * Deliberately skips assertPunchWithinPeriod — see lib/punches/backpay.ts.
+ */
+export async function createBackPayPunch(
+  input: CreateBackPayInput,
+  actor: Actor,
+): Promise<Punch> {
+  if (input.clockOut.getTime() <= input.clockIn.getTime()) {
+    throw new Error("Back pay needs a clock-out after the clock-in.");
+  }
+  const { getSetting } = await import("@/lib/settings/runtime");
+  const { resolvePeriodIdForEmployeeDay } = await import("./pay-periods");
+  const { backPayNote } = await import("@/lib/punches/backpay");
+  const company = await getSetting("company");
+  const todayIso = companyDayIso(new Date(), company.timezone);
+  const periodId = await resolvePeriodIdForEmployeeDay(
+    input.employeeId,
+    todayIso,
+  );
+  if (!periodId) {
+    throw new Error(
+      "No pay period covers today for this employee — open one before adding back pay.",
+    );
+  }
+  return db.transaction(async (tx) => {
+    await assertPeriodMutable(tx as unknown as typeof db, periodId);
+    const [row] = await tx
+      .insert(punches)
+      .values({
+        employeeId: input.employeeId,
+        periodId,
+        clockIn: input.clockIn,
+        clockOut: input.clockOut,
+        source: input.source ?? "MANUAL_ADMIN",
+        notes: backPayNote(input.workDate, input.reason),
+      })
+      .returning();
+    if (!row) throw new Error("createBackPayPunch: insert returned no row");
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "punch.backpay.create",
         targetType: "Punch",
         targetId: row.id,
         after: row,

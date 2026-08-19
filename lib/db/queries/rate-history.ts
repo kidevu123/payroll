@@ -5,7 +5,7 @@
 // most recent (by effectiveFrom). Past-dated rate corrections are allowed,
 // with the audit row recording the reason.
 
-import { and, desc, eq, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employeeRateHistory,
@@ -23,6 +23,30 @@ export async function listRates(
     .from(employeeRateHistory)
     .where(eq(employeeRateHistory.employeeId, employeeId))
     .orderBy(desc(employeeRateHistory.effectiveFrom));
+}
+
+/**
+ * Batched rate history for many employees in ONE query, grouped by employeeId
+ * (each list newest-first, same order as listRates). Avoids the N+1 that the
+ * schedule cockpit / dashboard metrics hit when computing pay for every
+ * employee in a period.
+ */
+export async function listRatesForEmployees(
+  employeeIds: readonly string[],
+): Promise<Map<string, EmployeeRateHistoryRow[]>> {
+  const byEmployee = new Map<string, EmployeeRateHistoryRow[]>();
+  if (employeeIds.length === 0) return byEmployee;
+  const rows = await db
+    .select()
+    .from(employeeRateHistory)
+    .where(inArray(employeeRateHistory.employeeId, [...employeeIds]))
+    .orderBy(desc(employeeRateHistory.effectiveFrom));
+  for (const r of rows) {
+    const list = byEmployee.get(r.employeeId);
+    if (list) list.push(r);
+    else byEmployee.set(r.employeeId, [r]);
+  }
+  return byEmployee;
 }
 
 /** Rate effective at a given YYYY-MM-DD. Null if no rate covers that day. */

@@ -49,9 +49,17 @@ export function getBoss(): Promise<PgBoss> {
     const boss = new PgBoss({
       connectionString: url,
       schema: "pgboss",
-      // Safety: archive completed jobs after a week so payroll history queries
-      // are never racing with millions of dead rows.
-      archiveCompletedAfterSeconds: 60 * 60 * 24 * 7,
+      // Retention: the pgboss.job table is internal plumbing, NOT payroll
+      // history (that lives in payslips/runs). The old 7-day archive window
+      // let completed rows pile up — with a per-minute heartbeat that's ~10k
+      // dead rows, and the DB was mostly pg-boss job history. Archive completed
+      // + failed jobs after 12h (pg-boss's own default) so the hot job table
+      // stays tiny, and purge the archive after 2 days — enough to debug a
+      // recent failure, short enough to stay lean. Maintenance auto-applies
+      // this to the existing backlog on its next sweep.
+      archiveCompletedAfterSeconds: 60 * 60 * 12,
+      archiveFailedAfterSeconds: 60 * 60 * 12,
+      deleteAfterDays: 2,
     });
     boss.on("error", (err) => logger.error({ err }, "pg-boss error"));
     await boss.start();
@@ -229,7 +237,7 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   if (cronEnabled && automation?.ngtecoPunchPoll?.enabled) {
     await boss.schedule(
       NGTECO_PUNCH_POLL_QUEUE,
-      automation.ngtecoPunchPoll.cron ?? "*/15 * * * *",
+      automation.ngtecoPunchPoll.cron ?? "0 * * * *",
       { triggeredBy: "CRON" } satisfies PunchPollJobData,
       tzOpts,
     );

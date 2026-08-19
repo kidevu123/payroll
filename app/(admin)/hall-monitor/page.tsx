@@ -67,10 +67,10 @@ export default async function HallMonitorPage({
     : [];
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+          <h1 className="text-title tracking-tight antialiased text-text flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5 text-brand" />
             Weekly payroll checklist
           </h1>
@@ -96,7 +96,7 @@ export default async function HallMonitorPage({
         <>
           <Card>
             <CardHeader className="px-4 py-3">
-              <CardTitle className="text-base">
+              <CardTitle>
                 Week of {report.weekStart} through {report.weekEnd}
               </CardTitle>
               <CardDescription>
@@ -144,7 +144,9 @@ export default async function HallMonitorPage({
                 key={`${d.title}-${i}`}
                 className={`rounded-card border px-4 py-3 ${SEVERITY_STYLES[d.severity]}`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div
+                  className={`flex items-start gap-2 ${d.href ? "justify-between" : ""}`}
+                >
                   <span
                     className={`shrink-0 rounded-chip px-2 py-0.5 text-[11px] font-medium ${SEVERITY_BADGE[d.severity]}`}
                   >
@@ -161,13 +163,13 @@ export default async function HallMonitorPage({
                 </h2>
                 <div className="mt-2 space-y-2 text-sm text-text">
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                    <p className="text-micro uppercase text-text-muted">
                       What this means
                     </p>
                     <p className="mt-0.5 leading-relaxed">{d.meaning}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                    <p className="text-micro uppercase text-text-muted">
                       What to do
                     </p>
                     <p className="mt-0.5 leading-relaxed font-medium">
@@ -188,7 +190,7 @@ export default async function HallMonitorPage({
         </>
       )}
 
-      <p className="text-sm text-text-muted leading-relaxed">
+      <p className="mt-6 border-t border-border pt-4 text-sm text-text-muted leading-relaxed">
         Day to day, use{" "}
         <Link href="/calendar" className="underline font-medium text-text">
           Calendar → Pending

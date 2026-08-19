@@ -84,7 +84,7 @@ export default async function NewEmployeePage({
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold">Add a person</h1>
+          <h1 className="text-title tracking-tight antialiased text-text">Add a person</h1>
           <p className="text-sm text-text-muted">
             Who are you adding? Pick the option that fits — you can change
             most details later.
@@ -112,7 +112,7 @@ export default async function NewEmployeePage({
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             Back to chooser
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">Add a login-only person</h1>
+          <h1 className="mt-2 text-title tracking-tight antialiased text-text">Add a login-only person</h1>
           <p className="text-sm text-text-muted">
             Creates an app login with a role — no clock and no pay through the
             app.
@@ -146,7 +146,7 @@ export default async function NewEmployeePage({
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Back to chooser
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">
+        <h1 className="mt-2 text-title tracking-tight antialiased text-text">
           {kind === "salaried" ? "New salaried employee" : "New hourly employee"}
         </h1>
         <p className="text-sm text-text-muted">

@@ -2,14 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { PdfLink } from "@/components/domain/pdf-link";
 import {
   CalendarClock,
   CheckCircle2,
-  RotateCcw,
   Download,
   FileText,
   Loader2,
-  PlugZap,
   Sparkles,
   Trash2,
   Upload,
@@ -17,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ZohoDocStatus } from "@/components/domain/zoho-doc-status";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -29,13 +29,9 @@ import {
 import {
   deleteSalariedDocAction,
   inferSalariedPeriodAction,
-  listZohoOrgsAction,
-  pushDocToZohoAction,
-  repushDocToZohoAction,
   setSalariedDocNetAmountAction,
   suggestNetFromPdfAction,
   uploadSalariedDocAction,
-  type ZohoOrgChoice,
 } from "./actions";
 
 type DocLite = {
@@ -64,6 +60,13 @@ function formatRange(start: string | null, end: string | null): string | null {
   const left = `${m[a.getUTCMonth()]} ${a.getUTCDate()}${sameYear ? "" : `, ${a.getUTCFullYear()}`}`;
   const right = `${m[b.getUTCMonth()]} ${b.getUTCDate()}, ${b.getUTCFullYear()}`;
   return `${left} – ${right}`;
+}
+
+/** Loose label compare so "Semi-monthly" and "Semi-Monthly" (and "Monthly"
+ *  vs "Monthly") are treated as the same word — used to suppress redundant
+ *  schedule-name labels next to the cadence badge. */
+function normalizeLabel(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function formatMoney(cents: number): string {
@@ -199,7 +202,7 @@ export function SalariedUploadSlot({
   return (
     <div className="space-y-4">
       {docs.length > 0 && (
-        <ul className="divide-y divide-border rounded-card border border-border bg-surface overflow-hidden">
+        <ul className="divide-y divide-border/60 rounded-card border border-border bg-surface overflow-hidden">
           {docs.map((d) => (
             <DocRow key={d.id} doc={d} />
           ))}
@@ -211,7 +214,13 @@ export function SalariedUploadSlot({
           <span className="inline-flex items-center gap-1 rounded-chip bg-surface-2 px-2 py-0.5 font-medium text-text-muted ring-1 ring-inset ring-border/70">
             {scheduleBadge}
           </span>
-          <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
+          {/* Only show the schedule NAME when it adds information — the default
+              schedules are literally named after their cadence ("Monthly"),
+              which produced a redundant "Monthly  Monthly". Compare loosely so
+              "Semi-monthly" vs "Semi-Monthly" also collapses to one. */}
+          {normalizeLabel(inferred.scheduleName) !== normalizeLabel(scheduleBadge) && (
+            <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
+          )}
         </div>
       )}
 
@@ -243,7 +252,7 @@ export function SalariedUploadSlot({
             "group flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border border-dashed px-4 py-7 text-center transition-colors",
             dragOver
               ? "border-brand-700 bg-brand-50"
-              : "border-border bg-surface-2/40 hover:border-brand-700/60 hover:bg-surface-2",
+              : "border-border bg-surface-2/40 hover:border-brand-700/60 hover:bg-surface-2/40",
           ].join(" ")}
         >
           <input
@@ -312,18 +321,18 @@ export function SalariedUploadSlot({
               <div
                 className="flex items-center gap-1.5 rounded-input px-2 py-1"
                 style={{
-                  background: "color-mix(in srgb, var(--dash-violet) 12%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--dash-violet) 26%, transparent)",
+                  background: "color-mix(in srgb, var(--dash-cyan) 12%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--dash-cyan) 26%, transparent)",
                 }}
               >
                 <CalendarClock
                   className="h-3 w-3 shrink-0"
-                  style={{ color: "var(--dash-violet)" }}
+                  style={{ color: "var(--dash-cyan)" }}
                   aria-hidden="true"
                 />
                 <span
                   className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: "var(--dash-violet)" }}
+                  style={{ color: "var(--dash-cyan)" }}
                 >
                   {formatRange(inferred.startDate, inferred.endDate)}
                 </span>
@@ -333,7 +342,7 @@ export function SalariedUploadSlot({
                 className={[
                   "text-[10px] leading-tight",
                   inferred.kind === "NONE" || inferred.kind === "ERROR"
-                    ? "text-warn-700"
+                    ? "text-warning-700"
                     : "text-text-subtle",
                 ].join(" ")}
               >
@@ -378,7 +387,7 @@ export function SalariedUploadSlot({
                   if (readState.kind === "FILLED") setReadState({ kind: "IDLE" });
                 }}
                 placeholder="2143.20"
-                className="font-mono tabular-nums"
+                className="tabular-nums"
                 title="Post-tax net the employee receives — this is what Zoho gets."
               />
             </div>
@@ -460,8 +469,8 @@ function DocRow({ doc }: { doc: DocLite }) {
                 <span
                   className="inline-flex shrink-0 items-center gap-1 rounded-chip px-1.5 py-0.5 text-[11px] font-semibold tabular-nums"
                   style={{
-                    background: "color-mix(in srgb, var(--dash-violet) 15%, transparent)",
-                    color: "var(--dash-violet)",
+                    background: "color-mix(in srgb, var(--dash-cyan) 15%, transparent)",
+                    color: "var(--dash-cyan)",
                   }}
                 >
                   <CalendarClock className="h-3 w-3" />
@@ -472,7 +481,7 @@ function DocRow({ doc }: { doc: DocLite }) {
                   No period set
                 </span>
               )}
-              <span className="text-[10px] font-medium uppercase tracking-wide text-text-subtle">
+              <span className="text-micro uppercase text-text-subtle">
                 {KIND_LABEL[doc.kind]}
               </span>
             </p>
@@ -486,16 +495,15 @@ function DocRow({ doc }: { doc: DocLite }) {
 
         <div className="flex shrink-0 items-center gap-1.5">
           <InlineNet doc={doc} />
-          <ZohoStatus doc={doc} />
+          <ZohoDocStatus doc={doc} />
           <Button asChild size="sm" variant="ghost">
-            <Link
+            <PdfLink
               href={`/api/payroll-docs/${doc.id}`}
-              target="_blank"
-              rel="noopener"
+              filename="paystub.pdf"
               title="View document"
             >
               <Download className="h-3.5 w-3.5" /> View
-            </Link>
+            </PdfLink>
           </Button>
           <form
             action={async () => {
@@ -532,7 +540,7 @@ function DocRow({ doc }: { doc: DocLite }) {
  */
 function InlineNet({ doc }: { doc: DocLite }) {
   // Paystub nets stay editable even after a Zoho push — correcting a mistake
-  // is exactly when you need it. Re-push (in ZohoStatus) resyncs Zoho.
+  // is exactly when you need it. Re-push (in ZohoDocStatus) resyncs Zoho.
   const editable = doc.kind === "PAYSTUB";
   const hasAmount = doc.amountCents !== null && doc.amountCents > 0;
 
@@ -555,7 +563,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
   if (!editable) {
     if (!liveHasAmount) return null;
     return (
-      <span className="font-mono tabular-nums text-xs text-text-muted">
+      <span className="tabular-nums text-xs text-text-muted">
         {formatMoney(amountCents as number)}
       </span>
     );
@@ -594,7 +602,7 @@ function InlineNet({ doc }: { doc: DocLite }) {
             if (e.key === "Escape") setEditing(false);
           }}
           placeholder="1702.42"
-          className="h-7 w-24 font-mono tabular-nums text-xs"
+          className="h-7 w-24 tabular-nums text-xs"
           disabled={pending}
         />
         <Button
@@ -624,201 +632,13 @@ function InlineNet({ doc }: { doc: DocLite }) {
       onClick={() => setEditing(true)}
       title="Click to edit net pay"
       className={[
-        "rounded-chip px-2 py-0.5 font-mono tabular-nums text-xs transition-colors",
+        "rounded-chip px-2 py-0.5 tabular-nums text-xs transition-colors",
         liveHasAmount
-          ? "text-text hover:bg-surface-2"
-          : "bg-warn-50 text-warn-700 hover:bg-warn-50/80",
+          ? "text-text hover:bg-surface-2/40"
+          : "bg-warning-50 text-warning-700 hover:bg-warning-50/80",
       ].join(" ")}
     >
       {liveHasAmount ? formatMoney(amountCents as number) : "Add net $"}
     </button>
-  );
-}
-
-function ZohoStatus({ doc }: { doc: DocLite }) {
-  const [orgs, setOrgs] = React.useState<ZohoOrgChoice[] | null>(null);
-  const [pending, setPending] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [pushedExpenseId, setPushedExpenseId] = React.useState<string | null>(
-    doc.zohoExpenseId,
-  );
-
-  // W2 docs are legal records, not expenses — no Zoho push.
-  if (doc.kind === "W2") return null;
-
-  const needsNet =
-    doc.kind === "PAYSTUB" && (doc.amountCents === null || doc.amountCents <= 0);
-
-  async function repush(force = false) {
-    setPending(true);
-    setError(null);
-    try {
-      const r = await repushDocToZohoAction(doc.id, force);
-      if ("error" in r) setError(r.error);
-      else setPushedExpenseId(r.expenseId);
-    } catch (e) {
-      setError(
-        e instanceof Error && e.message ? e.message : "Re-push failed. Please try again.",
-      );
-    } finally {
-      setPending(false);
-    }
-  }
-
-  if (pushedExpenseId) {
-    // Pushed: a dropdown to re-push (delete the stale Zoho expense + post a
-    // fresh one with the corrected amount). Use after editing the net.
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            disabled={pending}
-            className="inline-flex items-center gap-1 rounded-chip px-1.5 py-0.5 text-[10px] font-semibold"
-            style={{
-              background: "color-mix(in srgb, var(--dash-emerald) 16%, transparent)",
-              color: "var(--dash-emerald)",
-            }}
-            title={`In Zoho: expense ${pushedExpenseId} — click to re-push`}
-          >
-            {pending ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-3 w-3" />
-            )}{" "}
-            Zoho
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-56">
-          <DropdownMenuLabel>In Zoho · expense {pushedExpenseId}</DropdownMenuLabel>
-          {error ? <p className="px-2 py-1.5 text-xs text-danger-700">{error}</p> : null}
-          <DropdownMenuItem
-            disabled={pending}
-            onSelect={(e) => {
-              e.preventDefault();
-              void repush(false);
-            }}
-          >
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Re-push (replace the Zoho expense)
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={pending}
-            onSelect={(e) => {
-              e.preventDefault();
-              void repush(true);
-            }}
-          >
-            <PlugZap className="mr-1.5 h-3.5 w-3.5" />
-            Force re-push (post fresh, keep old in Zoho)
-          </DropdownMenuItem>
-          <p className="px-2 pb-1.5 pt-1 text-[10px] leading-tight text-text-subtle">
-            Delete needs the expenses.DELETE scope — reconnect in Settings →
-            Zoho to enable a clean replace.
-          </p>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  // Without a net, the row's inline-net control prompts for one — keep
-  // the Zoho affordance quiet rather than a loud warning.
-  if (needsNet) {
-    return (
-      <span
-        className="text-[10px] text-text-subtle"
-        title="Add the net amount first, then push to Zoho."
-      >
-        Net needed
-      </span>
-    );
-  }
-
-  async function loadOrgs() {
-    setError(null);
-    try {
-      setOrgs(await listZohoOrgsAction());
-    } catch {
-      setOrgs([]);
-      setError("Couldn't load Zoho orgs.");
-    }
-  }
-
-  async function push(orgId: string) {
-    setPending(true);
-    setError(null);
-    try {
-      const r = await pushDocToZohoAction(doc.id, orgId);
-      if ("error" in r) setError(r.error);
-      else setPushedExpenseId(r.expenseId);
-    } catch (e) {
-      setError(
-        e instanceof Error && e.message ? e.message : "Push failed. Please try again.",
-      );
-    } finally {
-      setPending(false);
-    }
-  }
-
-  // Rendered in a Radix DropdownMenu so the org list / errors portal to the
-  // body — the old absolute picker was clipped by overflow-hidden on the
-  // <ul> and <Card>, so with 2+ Zoho orgs the click "did nothing".
-  return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (open && orgs === null) void loadOrgs();
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          type="button"
-          disabled={pending}
-          title="Push to Zoho Books as an expense"
-        >
-          {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <PlugZap className="h-3.5 w-3.5" />
-          )}{" "}
-          Zoho
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52">
-        <DropdownMenuLabel>Push paystub to Zoho</DropdownMenuLabel>
-        {error ? (
-          <p className="px-2 py-1.5 text-xs text-danger-700">{error}</p>
-        ) : orgs === null ? (
-          <p className="px-2 py-1.5 text-xs text-text-muted">Loading orgs…</p>
-        ) : orgs.length === 0 ? (
-          <p className="px-2 py-1.5 text-xs text-text-muted">
-            No active Zoho org.{" "}
-            <Link
-              href="/settings/zoho"
-              className="font-medium text-brand-700 underline"
-            >
-              Connect one
-            </Link>
-          </p>
-        ) : (
-          orgs.map((o) => (
-            <DropdownMenuItem
-              key={o.id}
-              disabled={pending}
-              onSelect={(e) => {
-                e.preventDefault();
-                void push(o.id);
-              }}
-            >
-              {pending ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : null}
-              {o.name}
-            </DropdownMenuItem>
-          ))
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

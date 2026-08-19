@@ -60,7 +60,7 @@ export function LockButtons({
               if (result?.error) setError(result.error);
               else setUnmarkOpen(false);
             }}
-            className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warn-300 bg-surface p-2.5 shadow-pop space-y-2"
+            className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warning-200 bg-surface p-2.5 shadow-pop space-y-2"
           >
             <p className="text-[11px] text-text-muted leading-snug">
               Unmark paid for {period.startDate}? If the period was paid from
@@ -214,7 +214,7 @@ export function LockButtons({
             if (result?.error) setError(result.error);
             else setUnlockOpen(false);
           }}
-          className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warn-300 bg-surface p-2.5 shadow-pop space-y-2"
+          className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warning-200 bg-surface p-2.5 shadow-pop space-y-2"
         >
           <p className="text-[11px] text-text-muted leading-snug">
             Unlock {period.startDate}? Reason will be audited.

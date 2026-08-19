@@ -6,7 +6,7 @@
   the .dark block below), NOT prefers-color-scheme, so `dark:` utilities must
   key off the class — otherwise they'd fire on OS dark mode while the tokens
   (which are class-gated) stayed light. Use `dark:` only for accent colors that
-  have no semantic token (e.g. raw purple/teal chips); prefer the flipping
+  have no semantic token (e.g. raw cyan/amber chips); prefer the flipping
   semantic tokens (success/danger/info/warning) everywhere else.
 */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -28,68 +28,99 @@
 */
 
 @theme {
-  /* ── Type scale (Apple-bold pass) ──────────────────────────────────────
-     Font stack resolves to real SF Pro on Apple hardware (the owner's
-     Mac/iPhone), giving the authentic Apple-bold feel. Falls back to Inter
-     then system-ui elsewhere. Display/title sizes are pushed up and the
-     tracking tightened for confident, heavy headings. */
-  --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-mono:
-    "DM Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    monospace;
+  /* ── Type scale ────────────────────────────────────────────────────────
+     One UI family (Inter, self-hosted via next/font — no external
+     stylesheet request). Headings differ from body by WEIGHT and TRACKING
+     only, which is how Geist, Linear, Primer and Stripe all do it. Mono is
+     reserved for genuine code artifacts (build SHA, cron expressions, file
+     paths), never for money or dates. */
+  --font-sans: var(--font-ui), "Inter", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  /* Same family as body. Headings separate themselves with weight and
+     tracking, the way Geist, Linear and Primer do — not with a second face. */
+  --font-display: var(--font-ui), "Inter", -apple-system, BlinkMacSystemFont,
+    ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace,
+    SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
-  --text-display: 2.75rem;
-  --text-display--line-height: 3rem;
-  --text-display--letter-spacing: -0.03em;
-  --text-display--font-weight: 700;
-  --text-title: 1.875rem;
-  --text-title--line-height: 2.25rem;
-  --text-title--letter-spacing: -0.025em;
-  --text-title--font-weight: 700;
+  /* Weights and tracking measured off shipped products rather than guessed:
+     Geist 40px/600/-0.06em, shadcn 48px/600/-0.05em, Linear 64px/510/-0.022em,
+     Primer title 32px/600. Headings were at 700 with looser tracking, which is
+     what made them read as a different (heavier, wider) typeface than the body
+     even before the second font family is accounted for. */
+  --text-display: 2.5rem;
+  --text-display--line-height: 2.75rem;
+  --text-display--letter-spacing: -0.028em;
+  --text-display--font-weight: 600;
+  --text-title: 1.75rem;
+  --text-title--line-height: 2.125rem;
+  --text-title--letter-spacing: -0.022em;
+  --text-title--font-weight: 600;
   --text-heading: 1.25rem;
   --text-heading--line-height: 1.625rem;
   --text-heading--letter-spacing: -0.015em;
   --text-heading--font-weight: 600;
+  /* Card titles and section heads. The scale was missing a step between
+     heading (20px) and body (15px), so 36 of 40 CardTitles hand-overrode
+     themselves to text-base/text-sm and no two cards agreed. */
+  --text-subheading: 1rem;
+  --text-subheading--line-height: 1.375rem;
+  --text-subheading--letter-spacing: -0.01em;
+  --text-subheading--font-weight: 600;
   --text-body: 0.9375rem;
   --text-body--line-height: 1.4rem;
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.05rem;
+  /* KPI / hero figures. Replaces nine ad-hoc sizes (text-xl..text-3xl plus
+     arbitrary rem values) used for the same stat-tile role. */
+  --text-metric: 1.5rem;
+  --text-metric--line-height: 1.75rem;
+  --text-metric--letter-spacing: -0.02em;
+  --text-metric--font-weight: 600;
+  /* Uppercase eyebrow / column label. Was 32 different recipes across 96
+     sites (3 sizes x 4 weights x 6 tracking values). */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 0.875rem;
+  --text-micro--letter-spacing: 0.12em;
+  --text-micro--font-weight: 600;
 
-  /* ── Radii (Apple-bold: rounder everywhere, squircle hero cards) ─────── */
-  --radius-card: 0.9375rem;
-  --radius-xl: 1.375rem;
-  --radius-input: 0.6875rem;
-  --radius-chip: 0.625rem;
+  /* ── Radii (owner direction Jul 2026: squarer, intentional corners —
+     cards read as precise panels, chips as squared tags, matching the
+     reference mocks. Keep a hint of rounding so nothing feels sharp.) ── */
+  --radius-card: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-input: 0.5rem;
+  --radius-chip: 0.375rem;
 
   /* ── Shadow scale (soft, no colored glows) ─────────────────────────── */
-  --shadow-card: 0 1px 2px 0 rgb(9 9 11 / 0.06), 0 0 0 1px rgb(9 9 11 / 0.04);
-  --shadow-card-strong:
-    0 2px 6px -1px rgb(9 9 11 / 0.1), 0 0 0 1px rgb(9 9 11 / 0.05);
-  --shadow-card-hover:
-    0 4px 12px -2px rgb(9 9 11 / 0.12), 0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-card: 0 1px 2px 0 rgb(9 9 11 / 0.06),
+    0 0 0 1px rgb(9 9 11 / 0.04);
+  --shadow-card-strong: 0 2px 6px -1px rgb(9 9 11 / 0.10),
+    0 0 0 1px rgb(9 9 11 / 0.05);
+  --shadow-card-hover: 0 4px 12px -2px rgb(9 9 11 / 0.12),
+    0 0 0 1px rgb(9 9 11 / 0.05);
   /* Gentle Apple-style elevation for hero/cockpit cards. */
-  --shadow-elevated:
-    0 1px 2px 0 rgb(9 9 11 / 0.05), 0 10px 30px -10px rgb(9 9 11 / 0.12),
+  --shadow-elevated: 0 1px 2px 0 rgb(9 9 11 / 0.05),
+    0 10px 30px -10px rgb(9 9 11 / 0.12),
     0 2px 8px -4px rgb(9 9 11 / 0.06);
-  --shadow-elevated-hover:
-    0 2px 4px 0 rgb(9 9 11 / 0.06), 0 18px 40px -12px rgb(9 9 11 / 0.16),
+  --shadow-elevated-hover: 0 2px 4px 0 rgb(9 9 11 / 0.06),
+    0 18px 40px -12px rgb(9 9 11 / 0.16),
     0 4px 12px -4px rgb(9 9 11 / 0.08);
-  --shadow-pop:
-    0 8px 24px -4px rgb(9 9 11 / 0.18), 0 0 0 1px rgb(9 9 11 / 0.06);
+  --shadow-pop: 0 8px 24px -4px rgb(9 9 11 / 0.18),
+    0 0 0 1px rgb(9 9 11 / 0.06);
 
-  /* ── Brand accent ──────────────────────────────────────────────────── */
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
+  /* ── Brand accent (deep emerald — forest-leaning so it stays distinct
+     from the success family, which sits yellower/brighter) ─────────────── */
+  --color-brand-50: #ecfdf4;
+  --color-brand-100: #d2f9e4;
+  --color-brand-200: #a9f0cb;
+  --color-brand-300: #6fe0ab;
+  --color-brand-400: #34c886;
+  --color-brand-500: #12a968;
+  --color-brand-600: #078a54;
+  --color-brand-700: #067049;
+  --color-brand-800: #085a3c;
+  --color-brand-900: #084a33;
   --color-brand-fg: #ffffff;
 
   /* ── Page surfaces ─────────────────────────────────────────────────── */
@@ -114,13 +145,6 @@
   --color-success-700: #047857;
   --color-success-800: #065f46;
   --color-success-900: #064e3b;
-  --color-warn-50: #fffbeb;
-  --color-warn-100: #fef3c7;
-  --color-warn-200: #fde68a;
-  --color-warn-600: #d97706;
-  --color-warn-700: #b45309;
-  --color-warn-800: #92400e;
-  --color-warn-900: #78350f;
   --color-danger-50: #fef2f2;
   --color-danger-100: #fee2e2;
   --color-danger-200: #fecaca;
@@ -154,27 +178,31 @@
      These light values give the dashboard the clean #58 aesthetic; the .dark
      block below overrides them with the original dark canvas hex so dark mode
      is unchanged. */
-  --dash-bg: #f6f8fb;
+  --dash-bg: #f5f6fb;
   --dash-surface: #ffffff;
-  --dash-surface-raised: #f8fafc;
-  --dash-border: rgba(15, 23, 42, 0.08);
-  --dash-border-strong: rgba(15, 23, 42, 0.14);
-  --dash-text: #0f172a;
-  --dash-text-muted: #475569;
-  --dash-text-faint: #64748b;
-  --dash-violet: #0f766e;
-  --dash-violet-bright: #0d9488;
-  --dash-indigo: #2563eb;
+  --dash-surface-raised: #f4f4f8;
+  --dash-border: rgba(17, 17, 40, 0.08);
+  --dash-border-strong: rgba(17, 17, 40, 0.14);
+  --dash-text: #18181f;
+  --dash-text-muted: #5e5e72;
+  --dash-text-faint: #8e8ea3;
+  --dash-cyan: #0e7490;
+  --dash-cyan-bright: #0891b2;
+  --dash-blue: #2563eb;
   --dash-emerald: #059669;
   --dash-emerald-dim: #10b981;
-  --dash-rose: #dc2626;
-  --dash-amber: #b45309;
-  --dash-chart-grid: rgba(15, 23, 42, 0.06);
-  --dash-chart-axis: #64748b;
-  --dash-sidebar: rgba(255, 255, 255, 0.92);
-  --dash-topbar: rgba(255, 255, 255, 0.94);
-  --dash-search: rgba(15, 23, 42, 0.035);
-  --dash-hover: rgba(15, 23, 42, 0.045);
+  --dash-rose: #e11d48;
+  --dash-amber: #d97706;
+  /* Ink that sits on top of the brand accent fill (sidebar CTA, avatar
+     chips, rail buttons). Near-black in both themes: the accent is a
+     saturated mid-tone, so white text under-contrasts on it. */
+  --dash-on-accent: #0b0b12;
+  --dash-chart-grid: rgba(17, 17, 40, 0.06);
+  --dash-chart-axis: #8e8ea3;
+  --dash-sidebar: rgba(255, 255, 255, 0.82);
+  --dash-topbar: rgba(255, 255, 255, 0.9);
+  --dash-search: rgba(17, 17, 40, 0.04);
+  --dash-hover: rgba(17, 17, 40, 0.05);
 }
 
 /*
@@ -192,131 +220,162 @@
   light theme always shows until a real, audited dark theme + toggle ships.
 */
 .dark {
-  color-scheme: dark;
-  --color-page: #09090b;
-  --color-surface: #18181b;
-  --color-surface-2: #27272a;
-  --color-surface-3: #3f3f46;
-  --color-border: #27272a;
-  --color-border-strong: #3f3f46;
-  --color-text: #fafaf9;
-  --color-text-muted: #a1a1aa;
-  --color-text-subtle: #71717a;
-  /*
+    color-scheme: dark;
+    /*
+      Re-establish the default text color AT the themed root. body sets
+      `color: var(--color-text)` while the light tokens are active, so its
+      computed near-black color is what descendants inherit — redefining the
+      variable below does not re-resolve it. Without this line, any element
+      inside a .dark subtree that lacks an explicit text-* class (CardTitle,
+      native date/time input values via preflight `color: inherit`, …)
+      renders near-black on the dark background and is unreadable.
+    */
+    color: var(--color-text);
+    --color-page: #09090b;
+    --color-surface: #18181b;
+    --color-surface-2: #27272a;
+    --color-surface-3: #3f3f46;
+    /* Stronger hairlines in dark — borders should assert the panel edges
+       (owner direction: intentional, visible structure), not vanish. */
+    --color-border: #2e2e33;
+    --color-border-strong: #47474f;
+    --color-text: #fafaf9;
+    --color-text-muted: #a1a1aa;
+    --color-text-subtle: #71717a;
+    /*
       Brand stays the same teal in dark mode — pale-mint tints (brand-50,
       brand-100) read as a deliberate highlight on a near-black page, and
       keeping brand-700 unchanged means the primary button keeps its
       contrast with text-white. Don't retune unless WCAG fails on a
       specific surface — verify there first, override there second.
     */
-  --color-success-50: #022c22;
-  --color-success-100: #064e3b;
-  --color-success-200: #065f46;
-  --color-success-500: #10b981;
-  --color-success-600: #34d399;
-  --color-success-700: #34d399;
-  --color-success-800: #6ee7b7;
-  --color-success-900: #a7f3d0;
-  --color-warn-50: #2c1e02;
-  --color-warn-100: #422006;
-  --color-warn-200: #5a3a06;
-  --color-warn-600: #fbbf24;
-  --color-warn-700: #fbbf24;
-  --color-warn-800: #fcd34d;
-  --color-warn-900: #fde68a;
-  --color-danger-50: #2c0a0a;
-  --color-danger-100: #450a0a;
-  --color-danger-200: #5a1414;
-  --color-danger-500: #f87171;
-  --color-danger-600: #fca5a5;
-  --color-danger-700: #fca5a5;
-  --color-danger-800: #fecaca;
-  --color-danger-900: #fee2e2;
-  --color-info-50: #0a1f3d;
-  --color-info-100: #0f2a4d;
-  --color-info-200: #14315c;
-  --color-info-600: #60a5fa;
-  --color-info-700: #93c5fd;
-  --color-info-800: #bfdbfe;
-  --color-info-900: #dbeafe;
-  /* Warning (amber) — dark surface, light-amber text/icon (mirrors danger). */
-  --color-warning-50: #2a1a02;
-  --color-warning-100: #422f06;
-  --color-warning-200: #5c4310;
-  --color-warning-500: #fbbf24;
-  --color-warning-600: #fcd34d;
-  --color-warning-700: #fcd34d;
-  --color-warning-800: #fde68a;
-  --color-warning-900: #fef3c7;
+    --color-success-50: #022c22;
+    --color-success-100: #064e3b;
+    --color-success-200: #065f46;
+    --color-success-500: #10b981;
+    --color-success-600: #34d399;
+    --color-success-700: #34d399;
+    --color-success-800: #6ee7b7;
+    --color-success-900: #a7f3d0;
+    --color-danger-50: #2c0a0a;
+    --color-danger-100: #450a0a;
+    --color-danger-200: #5a1414;
+    --color-danger-500: #f87171;
+    --color-danger-600: #fca5a5;
+    --color-danger-700: #fca5a5;
+    --color-danger-800: #fecaca;
+    --color-danger-900: #fee2e2;
+    --color-info-50: #0a1f3d;
+    --color-info-100: #0f2a4d;
+    --color-info-200: #14315c;
+    --color-info-600: #60a5fa;
+    --color-info-700: #93c5fd;
+    --color-info-800: #bfdbfe;
+    --color-info-900: #dbeafe;
+    /* Warning (amber) — dark surface, light-amber text/icon (mirrors danger). */
+    --color-warning-50: #2a1a02;
+    --color-warning-100: #422f06;
+    --color-warning-200: #5c4310;
+    --color-warning-500: #fbbf24;
+    --color-warning-600: #fcd34d;
+    --color-warning-700: #fcd34d;
+    --color-warning-800: #fde68a;
+    --color-warning-900: #fef3c7;
 
-  /* ── Dashboard canvas (theme-aware) — DARK values ──────────────────
+    /* ── Dashboard canvas (theme-aware) — DARK values ──────────────────
        These match the original self-contained dark canvas hex exactly, so
        dark mode renders pixel-identical to before the var() refactor. */
-  --dash-bg: #0b0b12;
-  --dash-surface: #16161f;
-  --dash-surface-raised: #1c1c28;
-  --dash-border: rgba(255, 255, 255, 0.08);
-  --dash-border-strong: rgba(255, 255, 255, 0.14);
-  --dash-text: #f4f4f8;
-  --dash-text-muted: #a1a1b5;
-  --dash-text-faint: #6e6e85;
-  --dash-violet: #14b8a6;
-  --dash-violet-bright: #2dd4bf;
-  --dash-indigo: #60a5fa;
-  --dash-emerald: #34d399;
-  --dash-emerald-dim: #10b981;
-  --dash-rose: #fb7185;
-  --dash-amber: #fbbf24;
-  --dash-chart-grid: rgba(255, 255, 255, 0.06);
-  --dash-chart-axis: #6e6e85;
-  --dash-sidebar: rgba(13, 13, 20, 0.72);
-  --dash-topbar: rgba(13, 13, 20, 0.9);
-  --dash-search: rgba(255, 255, 255, 0.04);
-  --dash-hover: rgba(255, 255, 255, 0.05);
-  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5), 0 6px 16px -4px rgb(0 0 0 / 0.6);
-  --shadow-card-strong:
-    0 1px 2px 0 rgb(0 0 0 / 0.6), 0 8px 24px -6px rgb(0 0 0 / 0.7),
-    0 0 0 1px rgb(255 255 255 / 0.04);
-  --shadow-card-hover:
-    0 2px 4px 0 rgb(0 0 0 / 0.5), 0 12px 28px -6px rgb(0 0 0 / 0.65);
-  --shadow-elevated:
-    0 1px 2px 0 rgb(0 0 0 / 0.6), 0 12px 32px -10px rgb(0 0 0 / 0.7);
-  --shadow-elevated-hover:
-    0 2px 4px 0 rgb(0 0 0 / 0.7), 0 20px 44px -12px rgb(0 0 0 / 0.78);
-  --shadow-pop:
-    0 12px 32px -6px rgb(0 0 0 / 0.7), 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --dash-bg: #0b0b12;
+    --dash-surface: #16161f;
+    --dash-surface-raised: #1c1c28;
+    --dash-border: rgba(255, 255, 255, 0.11);
+    --dash-border-strong: rgba(255, 255, 255, 0.19);
+    --dash-text: #f4f4f8;
+    --dash-text-muted: #a1a1b5;
+    --dash-text-faint: #6e6e85;
+    --dash-cyan: #22d3ee;
+    --dash-cyan-bright: #67e8f9;
+    --dash-blue: #60a5fa;
+    --dash-emerald: #34d399;
+    --dash-emerald-dim: #10b981;
+    --dash-rose: #fb7185;
+    --dash-amber: #fbbf24;
+    --dash-on-accent: #0b0b12;
+    --dash-chart-grid: rgba(255, 255, 255, 0.06);
+    --dash-chart-axis: #6e6e85;
+    --dash-sidebar: rgba(13, 13, 20, 0.72);
+    --dash-topbar: rgba(13, 13, 20, 0.9);
+    --dash-search: rgba(255, 255, 255, 0.04);
+    --dash-hover: rgba(255, 255, 255, 0.05);
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.5),
+      0 6px 16px -4px rgb(0 0 0 / 0.6);
+    --shadow-card-strong: 0 1px 2px 0 rgb(0 0 0 / 0.6),
+      0 8px 24px -6px rgb(0 0 0 / 0.7),
+      0 0 0 1px rgb(255 255 255 / 0.04);
+    --shadow-card-hover: 0 2px 4px 0 rgb(0 0 0 / 0.5),
+      0 12px 28px -6px rgb(0 0 0 / 0.65);
+    --shadow-elevated: 0 1px 2px 0 rgb(0 0 0 / 0.6),
+      0 12px 32px -10px rgb(0 0 0 / 0.7);
+    --shadow-elevated-hover: 0 2px 4px 0 rgb(0 0 0 / 0.7),
+      0 20px 44px -12px rgb(0 0 0 / 0.78);
+    --shadow-pop: 0 12px 32px -6px rgb(0 0 0 / 0.7),
+      0 4px 8px -2px rgb(0 0 0 / 0.5);
+}
+
+/* Display faces: the two largest text styles carry the display family so
+   hero numbers and page titles read set-by-hand; body/tables stay on the
+   workhorse sans for legibility. */
+.text-display,
+.text-title {
+  font-family: var(--font-display);
 }
 
 html,
 body {
-  min-height: 100%;
   color-scheme: light;
   background: var(--color-page);
   color: var(--color-text);
   font-family: var(--font-sans);
+  /* Kill rubber-band overscroll that reveals the white body behind the dark
+     app shell (the "white strip" seen at the page edges on bounce). */
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings:
-    "kern" 1,
-    "liga" 1,
-    "calt" 1;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }
 
-body {
-  min-height: 100dvh;
-}
-
+/* Admin shell backstop: #admin-root carries the theme class (.dark) and wraps
+   the whole dark shell. Give it the themed canvas background + full viewport
+   min-height so short pages never let the white <body> show below the app.
+   Scoped to admin, so auth/login pages are untouched. */
 #admin-root {
   min-height: 100dvh;
-  background: var(--dash-bg, var(--color-page));
+  background: var(--dash-bg);
 }
 
-/* Tabular numerics in the same JetBrains Mono used by tables and stats. */
+/* Respect prefers-reduced-motion: neutralize non-essential motion — card
+   hover lifts, glow pulses, status/expand transitions, smooth scroll — for
+   users who ask the OS to reduce motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* Tabular numerics for tables and stats. Calm pass: figures stay in the UI
+   sans — tabular-nums alone provides the column alignment; the mono face
+   made every number read like terminal output. Mono is reserved for real
+   code artifacts (build sha, kbd shortcuts). */
 .tabnum,
 td.num,
 .num {
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-mono);
 }
 
 /*
@@ -343,11 +402,11 @@ td.num,
   top of admin/auth views; employee shell stays flat for PWA clarity.
 */
 .shell-admin {
-  background-color: var(--dash-bg, var(--color-page));
+  background-color: var(--color-page);
   background-image: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-brand-50) 42%, transparent) 0%,
-    transparent 20rem
+    color-mix(in srgb, var(--color-brand-50) 55%, transparent) 0%,
+    transparent 18rem
   );
 }
 
@@ -396,8 +455,7 @@ td.num,
 
 /* Shared page title block — pairs with components/ui/page-header.tsx */
 .page-header-rule {
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--color-border) 70%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
   padding-bottom: 1rem;
   margin-bottom: 0.25rem;
 }
@@ -433,8 +491,8 @@ td.num,
 /* A gentle soft-shadow lift on hero cards. Compositor-friendly transform +
    box-shadow only. Motion is gated below for reduced-motion users. */
 .card-lift {
-  transition:
-    transform var(--duration-normal, 300ms) cubic-bezier(0.16, 1, 0.3, 1),
+  transition: transform var(--duration-normal, 300ms)
+      cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow var(--duration-normal, 300ms) cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }

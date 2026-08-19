@@ -17,7 +17,8 @@ import { writeAudit } from "@/lib/db/audit";
 import { companyDayIso } from "@/lib/time/company-day";
 
 export type Actor = {
-  id: string;
+  /** users.id, or null for actors without a user row (kiosk). */
+  id: string | null;
   role: "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT" | "EMPLOYEE";
 };
 

@@ -9,15 +9,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listEmployees } from "@/lib/db/queries/employees";
+import { getAnnouncementTemplateById } from "@/lib/db/queries/announcement-templates";
 import { ComposeAnnouncementForm } from "../compose-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewAnnouncementPage() {
+export default async function NewAnnouncementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ template?: string }>;
+}) {
+  const sp = await searchParams;
   // Only ACTIVE/INACTIVE employees who actually have a linked user can
   // receive a push or in-app notification. We pass the lighter shape
   // the form needs for the SPECIFIC picker.
-  const employees = await listEmployees();
+  const [employees, template] = await Promise.all([
+    listEmployees(),
+    sp.template
+      ? getAnnouncementTemplateById(sp.template).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const eligible = employees
     .filter((e) => e.status !== "TERMINATED")
     .map((e) => ({
@@ -27,7 +38,7 @@ export default async function NewAnnouncementPage() {
     }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <Link
           href="/notifications"
@@ -35,7 +46,7 @@ export default async function NewAnnouncementPage() {
         >
           <ArrowLeft className="h-3 w-3" /> Notifications
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">
+        <h1 className="text-title tracking-tight antialiased text-text">
           Send announcement
         </h1>
         <p className="text-sm text-text-muted">
@@ -46,13 +57,24 @@ export default async function NewAnnouncementPage() {
       </div>
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Compose</CardTitle>
+          <CardTitle>Compose</CardTitle>
           <CardDescription className="text-xs">
             Audience preview updates as you change the filter.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ComposeAnnouncementForm employees={eligible} />
+          <ComposeAnnouncementForm
+            employees={eligible}
+            {...(template
+              ? {
+                  initial: {
+                    title: template.title,
+                    body: template.body,
+                    link: template.link,
+                  },
+                }
+              : {})}
+          />
         </CardContent>
       </Card>
     </div>

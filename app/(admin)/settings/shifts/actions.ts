@@ -17,7 +17,7 @@ const createSchema = z.object({
   colorHex: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Pick a 6-digit hex color")
-    .default("#0f766e"),
+    .default("#067049"),
   defaultStart: z.union([z.string(), z.literal("").transform(() => null)]).nullable(),
   defaultEnd: z.union([z.string(), z.literal("").transform(() => null)]).nullable(),
 });
@@ -28,7 +28,7 @@ export async function createShiftAction(
   const session = await requireAdmin();
   const parsed = createSchema.safeParse({
     name: formData.get("name"),
-    colorHex: formData.get("colorHex") || "#0f766e",
+    colorHex: formData.get("colorHex") || "#067049",
     defaultStart: formData.get("defaultStart"),
     defaultEnd: formData.get("defaultEnd"),
   });
@@ -57,7 +57,7 @@ export async function updateShiftAction(
   if (!idSchema.safeParse(id).success) return { error: "Invalid id." };
   const parsed = updateSchema.safeParse({
     name: formData.get("name"),
-    colorHex: formData.get("colorHex") || "#0f766e",
+    colorHex: formData.get("colorHex") || "#067049",
     defaultStart: formData.get("defaultStart"),
     defaultEnd: formData.get("defaultEnd"),
   });

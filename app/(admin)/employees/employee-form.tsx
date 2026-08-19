@@ -343,11 +343,11 @@ export function EmployeeForm(props: Props) {
         // Salaried implies W2 upload — no checkbox needed. Hidden field
         // ensures the action receives "1" so the period detail's W2 slot
         // appears unconditionally for salaried staff.
-        <div className="rounded-card border border-purple-200 bg-purple-50/40 p-3 text-sm dark:border-purple-500/40 dark:bg-purple-500/10">
-          <span className="font-medium text-purple-900 dark:text-purple-200">
+        <div className="rounded-card border border-cyan-200 bg-cyan-50/40 p-3 text-sm dark:border-cyan-500/40 dark:bg-cyan-500/10">
+          <span className="font-medium text-cyan-900 dark:text-cyan-200">
             W2 / paystub upload is enabled
           </span>
-          <span className="block text-xs text-purple-800 dark:text-purple-300">
+          <span className="block text-xs text-cyan-800 dark:text-cyan-300">
             Salaried staff are paid externally. Upload their W2 or paystub
             from the Salaried tab; the employee sees it on their Pay tab.
           </span>
@@ -380,6 +380,55 @@ export function EmployeeForm(props: Props) {
         // Submit a hidden "0" so legacy data flips off if it was on.
         <input type="hidden" name="requiresW2Upload" value="0" />
       )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="zohoExpenseAccount">
+            Zoho expense account (paystub pushes)
+          </Label>
+          <Input
+            id="zohoExpenseAccount"
+            name="zohoExpenseAccount"
+            defaultValue={e?.zohoExpenseAccount ?? ""}
+            placeholder={`Employee Payroll-${(e?.preferredName ?? e?.displayName ?? "Name").trim().split(/\s+/)[0]}`}
+          />
+          <p className="text-xs text-text-muted">
+            Blank uses the &quot;Employee Payroll-&lt;first name&gt;&quot;
+            convention, falling back to the org default account when no
+            match exists in Zoho.
+          </p>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="zohoPaidThrough">Zoho paid through</Label>
+          <Input
+            id="zohoPaidThrough"
+            name="zohoPaidThrough"
+            defaultValue={e?.zohoPaidThrough ?? ""}
+            placeholder="Business Checking"
+          />
+          <p className="text-xs text-text-muted">
+            Blank uses Business Checking, falling back to the org default
+            when that account is missing in Zoho.
+          </p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="kioskPin">
+          Warehouse kiosk PIN {e?.kioskPinHash ? "(set — enter to replace)" : "(not set)"}
+        </Label>
+        <Input
+          id="kioskPin"
+          name="kioskPin"
+          inputMode="numeric"
+          pattern="\d{4,6}"
+          maxLength={6}
+          placeholder="4-6 digits"
+          autoComplete="off"
+        />
+        <p className="text-xs text-text-muted">
+          Lets this employee sign in at the warehouse kiosk with their
+          NGTeco clock ID + this PIN. Leave blank to keep the current PIN.
+        </p>
+      </div>
       {scheduleWarning && (
         <p className="text-sm text-warning-800 bg-warning-50 border border-warning-200 rounded-card px-3 py-2">
           {scheduleWarning}

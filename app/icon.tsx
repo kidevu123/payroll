@@ -41,7 +41,7 @@ export default async function Icon() {
   // No favicon uploaded — render initials onto the brand color.
   const company = await getSetting("company").catch(() => null);
   const initials = initialsFor(company?.name ?? "Payroll");
-  const brand = company?.brandColorHex ?? "#0f766e";
+  const brand = company?.brandColorHex ?? "#067049";
   return new ImageResponse(
     (
       <div

@@ -53,7 +53,11 @@ const credentialsSchema = z.object({
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 30 }, // 30-day rolling
+  // 365-day rolling sessions so employees stay signed in on their own
+  // phones (owner ask: "they won't get logged out"). Staff roles are
+  // capped at 30 days in the jwt callback below — long-lived sessions are
+  // an employee-device convenience, not an admin posture.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 365 },
   pages: { signIn: "/login" },
   providers: [
     ...(process.env.AUTHENTIK_CLIENT_ID
@@ -130,6 +134,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async jwt({ token, user, account, trigger }) {
       if (user) {
+        // Stamp the sign-in time once; used below to cap staff sessions.
+        token.signedInAt = Math.floor(Date.now() / 1000);
+      }
+      if (user) {
         if (account?.provider === "authentik") {
           const dbUser = await findUserByEmail(user.email!);
           if (dbUser) {
@@ -160,6 +168,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.employeeId = fresh.employeeId ?? undefined;
           token.role = fresh.role;
           token.mustChangePassword = fresh.mustChangePassword;
+        }
+      }
+      // Staff roles keep the previous 30-day cap: the 365-day cookie is
+      // for employees' personal phones only. Tokens minted before this
+      // change carry no signedInAt — treat those as expired for staff
+      // (one-time re-login) while employees ride the long session.
+      if (token.role && token.role !== "EMPLOYEE") {
+        const at = token.signedInAt;
+        const STAFF_MAX_AGE_S = 60 * 60 * 24 * 30;
+        if (
+          typeof at !== "number" ||
+          Math.floor(Date.now() / 1000) - at > STAFF_MAX_AGE_S
+        ) {
+          return null;
         }
       }
       void trigger;

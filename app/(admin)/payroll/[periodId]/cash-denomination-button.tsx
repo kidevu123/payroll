@@ -24,7 +24,7 @@ export function CashDenominationButton({
         <Button
           type="button"
           variant="secondary"
-          className="justify-start"
+          size="sm"
           disabled={!hasRows}
         >
           <Banknote className="h-4 w-4" />
@@ -47,7 +47,7 @@ export function CashDenominationButton({
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2 hover:text-text"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-input text-text-muted hover:bg-surface-2/40 hover:text-text sm:h-8 sm:w-8"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -57,7 +57,7 @@ export function CashDenominationButton({
 
           <div className="overflow-y-auto p-4 sm:p-5">
             {summary.remainderCents > 0 && (
-              <div className="mb-4 rounded-card border border-warn-200 bg-warn-50 px-3 py-2 text-xs text-warn-800">
+              <div className="mb-4 rounded-card border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-800">
                 Warning: this payroll has{" "}
                 <MoneyDisplay cents={summary.remainderCents} /> in cents
                 remainder. Payroll should be rounded to whole dollars before
@@ -71,10 +71,10 @@ export function CashDenominationButton({
                   key={denomination.value}
                   className="min-w-0 rounded-card border border-border bg-surface-2 px-2.5 py-2"
                 >
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
+                  <div className="text-micro uppercase text-text-subtle">
                     ${denomination.value}s
                   </div>
-                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums">
+                  <div className="mt-1 tabular-nums text-xl font-semibold tabular-nums">
                     {denomination.count}
                   </div>
                   <div className="truncate text-[11px] text-text-muted">
@@ -86,10 +86,10 @@ export function CashDenominationButton({
 
             <div className="mt-4 rounded-card border border-border bg-surface px-3 py-2">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                <span className="text-micro uppercase text-text-muted">
                   Total cash
                 </span>
-                <span className="font-mono text-lg font-semibold">
+                <span className="tabular-nums text-lg font-semibold">
                   <MoneyDisplay cents={summary.totalCents} />
                 </span>
               </div>
@@ -97,7 +97,7 @@ export function CashDenominationButton({
 
             <div className="mt-4 overflow-x-auto rounded-card border border-border">
               <table className="w-full min-w-[620px] text-sm">
-                <thead className="bg-surface-2 text-[10px] uppercase tracking-wider text-text-subtle">
+                <thead className="bg-surface-2 text-micro uppercase text-text-subtle">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold">Employee</th>
                     <th className="px-3 py-2 text-right font-semibold">Pay</th>
@@ -111,17 +111,17 @@ export function CashDenominationButton({
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border/60">
                   {summary.rows.map((row) => (
                     <tr key={row.employeeId}>
                       <td className="px-3 py-2 font-medium">{row.employeeName}</td>
-                      <td className="px-3 py-2 text-right font-mono">
+                      <td className="px-3 py-2 text-right tabular-nums">
                         <MoneyDisplay cents={row.roundedPayCents} />
                       </td>
                       {CASH_DENOMINATIONS.map((denomination) => (
                         <td
                           key={denomination}
-                          className="px-3 py-2 text-right font-mono tabular-nums"
+                          className="px-3 py-2 text-right tabular-nums"
                         >
                           {row.bills[denomination] || "—"}
                         </td>

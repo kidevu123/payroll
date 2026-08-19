@@ -12,7 +12,7 @@ const sample: PayslipDocInput = {
   company: {
     name: "Acme Manufacturing",
     address: "123 Main St, Anytown",
-    brandColorHex: "#0f766e",
+    brandColorHex: "#067049",
     locale: "en-US",
   },
   employee: {

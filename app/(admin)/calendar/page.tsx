@@ -67,10 +67,10 @@ const TYPE_COLORS: Record<string, string> = {
   SICK: "bg-warning-100 text-warning-800 border-warning-200",
   UNPAID: "bg-surface-2 text-text-muted border-border",
   OTHER:
-    "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/40",
+    "bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/40",
   // Distinct from time-off bars — heads-up only, no payroll impact.
   // Soft blue says "informational" without competing with the
-  // amber/emerald/violet bars that count toward time-off totals.
+  // amber/emerald/cyan bars that count toward time-off totals.
   SCHEDULE_NOTE: "bg-info-50 text-info-800 border-info-200",
 };
 
@@ -96,7 +96,12 @@ export default async function CalendarPage({
 }) {
   const params = await searchParams;
   const company = await getSetting("company");
-  const tab = params.tab === "totals" ? "totals" : "calendar";
+  const tab =
+    params.tab === "totals"
+      ? "totals"
+      : params.tab === "agenda"
+        ? "agenda"
+        : "calendar";
   const today = new Date();
   const companyToday = companyTodayIso(today, company.timezone);
   const year = Number(params.year) || Number(companyToday.slice(0, 4));
@@ -284,10 +289,10 @@ export default async function CalendarPage({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h1 className="text-title tracking-tight antialiased text-text">
             Calendar &amp; requests
           </h1>
           <p className="text-sm text-text-muted">
@@ -322,9 +327,14 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {/* Tab nav. Two pills, no chrome — keeps the page header light. */}
+      {/* Tab nav. Pills, no chrome — keeps the page header light. */}
       <div className="flex items-center gap-1 border-b border-border">
         <TabPill href="/calendar" label="Calendar" active={tab === "calendar"} />
+        <TabPill
+          href="/calendar?tab=agenda"
+          label="Agenda"
+          active={tab === "agenda"}
+        />
         <TabPill
           href="/calendar?tab=totals"
           label="Time off totals"
@@ -339,7 +349,7 @@ export default async function CalendarPage({
               No approved time-off yet this year.
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border/60">
               {totals.map((r) => (
                 <li
                   key={r.id}
@@ -369,6 +379,91 @@ export default async function CalendarPage({
         </div>
       )}
 
+      {/* Agenda — one row per absence with a SINGLE Edit/Cancel pair. The
+          month grid necessarily repeats a visual bar (and its actions) on
+          every day a leave spans; that's dozens of duplicated controls in the
+          reading order for a multi-week leave. This view is the keyboard /
+          screen-reader friendly path: each absence is one actionable item. */}
+      {tab === "agenda" && (
+        <div className="rounded-card border border-border bg-surface">
+          {approved.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-text-muted">
+              No approved time-off in {monthName}.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {[...approved]
+                .sort((a, b) =>
+                  a.startDate < b.startDate
+                    ? -1
+                    : a.startDate > b.startDate
+                      ? 1
+                      : nameFromMap(empMap, a.employeeId).localeCompare(
+                          nameFromMap(empMap, b.employeeId),
+                        ),
+                )
+                .map((r) => {
+                  const manageable = isAdminManageableTimeOff(r, todayIso);
+                  const partial = partialLabel(
+                    r.partialStartTime,
+                    r.partialEndTime,
+                  );
+                  return (
+                    <li
+                      key={r.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">
+                            {nameFromMap(empMap, r.employeeId)}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-[11px] ${TYPE_COLORS[r.type] ?? TYPE_COLORS.OTHER}`}
+                          >
+                            {TYPE_LABEL[r.type] ?? r.type}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-text-muted tabular-nums">
+                          {r.startDate}
+                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          {partial ? ` · ${partial}` : ""}
+                        </div>
+                        {r.reason && (
+                          <p className="mt-0.5 text-[11px] text-text-subtle line-clamp-1">
+                            {r.reason}
+                          </p>
+                        )}
+                      </div>
+                      {manageable && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <EditApprovedTimeOffAction
+                            request={{
+                              id: r.id,
+                              startDate: r.startDate,
+                              endDate: r.endDate,
+                              type: r.type as
+                                | "UNPAID"
+                                | "SICK"
+                                | "PERSONAL"
+                                | "OTHER",
+                              reason: r.reason,
+                            }}
+                          />
+                          <CancelTimeOffActionButton
+                            requestId={r.id}
+                            status="APPROVED"
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
+          )}
+        </div>
+      )}
+
       {tab === "calendar" && (
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -391,7 +486,7 @@ export default async function CalendarPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-1 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border pb-1 mb-1">
+          <div className="grid grid-cols-7 gap-1 text-micro uppercase text-text-subtle border-b border-border pb-1 mb-1">
             <div>Sun</div>
             <div>Mon</div>
             <div>Tue</div>
@@ -444,9 +539,11 @@ export default async function CalendarPage({
                     // Always render the actual name. The previous build
                     // hid them in a `title` tooltip, which doesn't fire
                     // on touch — owner couldn't tell whose birthday it
-                    // was without going to the employees page.
+                    // was without going to the employees page. Capped with
+                    // a +N roll-up like the time-off entries so a day with
+                    // many birthdays doesn't overflow the fixed cell.
                     <div className="mt-1 space-y-0.5">
-                      {cell.birthdays.map((b, i) => (
+                      {cell.birthdays.slice(0, MAX_VISIBLE).map((b, i) => (
                         <div
                           key={`bday-${day}-${i}`}
                           className="truncate rounded border border-pink-300 bg-pink-50 px-1.5 py-0.5 text-[11px] leading-tight text-pink-800 dark:border-pink-500/40 dark:bg-pink-500/15 dark:text-pink-300"
@@ -455,6 +552,17 @@ export default async function CalendarPage({
                           {b.name}
                         </div>
                       ))}
+                      {cell.birthdays.length > MAX_VISIBLE && (
+                        <div
+                          className="truncate px-1.5 text-[11px] font-medium leading-tight text-pink-700 dark:text-pink-300"
+                          title={cell.birthdays
+                            .slice(MAX_VISIBLE)
+                            .map((b) => b.name)
+                            .join(", ")}
+                        >
+                          +{cell.birthdays.length - MAX_VISIBLE} more
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Mobile: colored dots per entry (matches #69). Name bars
@@ -481,14 +589,17 @@ export default async function CalendarPage({
                       />
                     ))}
                     {overflow.length > 0 && (
-                      <details className="group">
+                      <details className="group relative">
                         <summary
                           className="cursor-pointer list-none text-[11px] font-medium text-text-muted hover:text-text"
                           title={overflow.map((r) => r.emp).join(", ")}
                         >
                           +{overflow.length} more
                         </summary>
-                        <div className="mt-1 space-y-0.5 rounded-card border border-border bg-surface-2 p-1">
+                        {/* Absolutely positioned so expanding the roll-up
+                            doesn't stretch the whole 7-day row (matches the
+                            edit popover pattern below). */}
+                        <div className="absolute left-0 top-full z-20 mt-1 w-40 space-y-0.5 rounded-card border border-border bg-surface-2 p-1 shadow-pop">
                           {overflow.map((r) => (
                             <CalendarEntry
                               key={`${day}-overflow-${r.id}`}
@@ -515,40 +626,43 @@ export default async function CalendarPage({
           {/* Month overview — four stat tiles (matches the #58 rail). */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{monthName} overview</CardTitle>
+              <CardTitle>{monthName} overview</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <OverviewStat tone="emerald" value={approvedCount} label="Approved" sub="Time-off requests" />
               <OverviewStat tone="amber" value={pendingTimeOff.length} label="Pending" sub="Awaiting approval" />
-              <OverviewStat tone="violet" value={peopleOffSet.size} label="People off" sub="This month" />
-              <OverviewStat tone="indigo" value={`${coveragePct}%`} label="Coverage" sub="Across all shifts" />
+              <OverviewStat tone="cyan" value={peopleOffSet.size} label="People off" sub="This month" />
+              <OverviewStat tone="blue" value={`${coveragePct}%`} label="Coverage" sub="Across all shifts" />
             </CardContent>
           </Card>
 
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Pending {pendingTotal > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-medium text-warning-900">
-                  {pendingTotal}
-                </span>
-              )}
-            </h2>
-            <TimeOffOnBehalfForm
-              employees={employees
-                .filter((e) => e.status !== "TERMINATED")
-                .map((e) => ({ id: e.id, displayName: e.displayName }))}
-            />
-          </div>
-
-          {pendingTotal === 0 ? (
-            <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
-              Nothing waiting on you. New requests show up here as
-              employees submit them.
+          {/* Pending heading + on-behalf form carded so they don't float
+              as bare markup between the overview and coverage cards. */}
+          <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Pending {pendingTotal > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-100 px-1.5 text-[11px] font-medium text-warning-900">
+                    {pendingTotal}
+                  </span>
+                )}
+              </h2>
+              <TimeOffOnBehalfForm
+                employees={employees
+                  .filter((e) => e.status !== "TERMINATED")
+                  .map((e) => ({ id: e.id, displayName: e.displayName }))}
+              />
             </div>
-          ) : (
-            <>
-              {pendingTimeOff.length > 0 && (
-                <div className="rounded-card border border-border bg-surface p-3 space-y-3">
+
+            {pendingTotal === 0 ? (
+              <div className="rounded-card border border-dashed border-border bg-surface-2/40 p-6 text-center text-xs text-text-muted">
+                Nothing waiting on you. New requests show up here as
+                employees submit them.
+              </div>
+            ) : (
+              <>
+                {pendingTimeOff.length > 0 && (
+                  <div className="rounded-card border border-border bg-surface p-3 space-y-3">
                   <div className="flex items-center gap-2 text-xs font-medium text-info-800">
                     <Plane className="h-3.5 w-3.5" />
                     Time off ({pendingTimeOff.length})
@@ -598,8 +712,9 @@ export default async function CalendarPage({
                   })}
                 </div>
               )}
-            </>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Need coverage? — quick jump to the attendance board to fill
               open shifts (matches the #58 rail). */}
@@ -734,15 +849,15 @@ const TYPE_DOT: Record<string, string> = {
   PERSONAL: "var(--dash-emerald)",
   SICK: "var(--dash-amber)",
   UNPAID: "var(--dash-text-faint)",
-  OTHER: "var(--dash-violet)",
-  SCHEDULE_NOTE: "var(--dash-indigo)",
+  OTHER: "var(--dash-cyan)",
+  SCHEDULE_NOTE: "var(--dash-blue)",
 };
 
 const OVERVIEW_TONE: Record<string, string> = {
   emerald: "var(--dash-emerald)",
   amber: "var(--dash-amber)",
-  violet: "var(--dash-violet)",
-  indigo: "var(--dash-indigo)",
+  cyan: "var(--dash-cyan)",
+  blue: "var(--dash-blue)",
 };
 
 function OverviewStat({
@@ -751,7 +866,7 @@ function OverviewStat({
   label,
   sub,
 }: {
-  tone: "emerald" | "amber" | "violet" | "indigo";
+  tone: "emerald" | "amber" | "cyan" | "blue";
   value: string | number;
   label: string;
   sub: string;

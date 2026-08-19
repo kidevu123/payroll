@@ -167,7 +167,7 @@ export default async function RunReviewPage({
   const unresolvedAlerts = alerts.filter((a) => !a.resolvedAt).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/payroll">
@@ -175,7 +175,7 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-2xl font-semibold font-mono">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-title tracking-tight antialiased text-text tabular-nums">{run.id.slice(0, 8)}…</h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">
@@ -195,7 +195,7 @@ export default async function RunReviewPage({
             <div className="space-y-0.5 overflow-x-auto">
               <div className="min-w-[860px]">
               {/* Header row — kept in sync with the summary grid below. */}
-              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+              <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 px-2 py-1.5 text-micro uppercase text-text-subtle border-b border-border">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
@@ -204,7 +204,7 @@ export default async function RunReviewPage({
                 <div>Alerts</div>
                 <div>Payslip</div>
               </div>
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {rendered.map(({ employee, result, alerts: eAlerts, payslip }) => {
                   const ePunches = (punchesByE.get(employee.id) ?? []).filter((p) => !p.voidedAt);
                   return (
@@ -220,16 +220,16 @@ export default async function RunReviewPage({
                         >
                           {employee.displayName}
                         </Link>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <HoursDisplay
                             hours={result.totalHours}
                             decimals={payRules.hoursDecimalPlaces}
                           />
                         </span>
-                        <span className="text-right font-mono tabular-nums">
+                        <span className="text-right tabular-nums">
                           <MoneyDisplay cents={result.grossCents} />
                         </span>
-                        <span className="text-right font-mono tabular-nums font-semibold">
+                        <span className="text-right tabular-nums font-semibold">
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
                         <span className="flex flex-wrap gap-1">
@@ -278,7 +278,7 @@ export default async function RunReviewPage({
                     <span className="text-warning-700 text-xs">★</span>
                     <div className="min-w-0">
                       <span className="font-medium truncate">{tw.workerName}</span>
-                      <span className="ml-2 text-[10px] uppercase tracking-wide text-warning-700">
+                      <span className="ml-2 text-micro uppercase text-warning-700">
                         Temp
                       </span>
                       {tw.description && (
@@ -287,17 +287,17 @@ export default async function RunReviewPage({
                         </div>
                       )}
                     </div>
-                    <span className="text-right font-mono tabular-nums text-text-muted">
+                    <span className="text-right tabular-nums text-text-muted">
                       {tw.hours !== null ? Number(tw.hours).toFixed(2) : "—"}
                     </span>
-                    <span className="text-right font-mono tabular-nums">
+                    <span className="text-right tabular-nums">
                       <MoneyDisplay cents={tw.amountCents} />
                     </span>
-                    <span className="text-right font-mono tabular-nums font-semibold">
+                    <span className="text-right tabular-nums font-semibold">
                       <MoneyDisplay cents={tw.amountCents} />
                     </span>
-                    <span></span>
-                    <span></span>
+                    <span className="text-xs text-text-subtle">—</span>
+                    <span className="text-xs text-text-subtle">—</span>
                   </div>
                 ))}
               </div>
@@ -305,20 +305,20 @@ export default async function RunReviewPage({
               <div className="grid grid-cols-[24px_minmax(160px,1.6fr)_1fr_1fr_1fr_1.5fr_0.7fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
                 <div></div>
                 <div>Totals</div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
                     decimals={payRules.hoursDecimalPlaces}
                   />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.gross} />
                 </div>
-                <div className="text-right font-mono tabular-nums">
+                <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
-                <div></div>
-                <div></div>
+                <div className="text-text-subtle">—</div>
+                <div className="text-text-subtle">—</div>
               </div>
               </div>
             </div>
@@ -343,14 +343,14 @@ export default async function RunReviewPage({
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
+                  <thead className="text-left text-micro uppercase text-text-subtle border-b border-border">
                     <tr>
                       <th className="py-2 pr-3 font-medium">Type</th>
                       <th className="py-2 px-3 font-medium">Ref</th>
                       <th className="py-2 px-3 font-medium">Reason / details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border/60">
                     {exceptions.slice(0, 50).map((e) => {
                     const raw = (e.rawData ?? {}) as Record<string, unknown>;
                     const reason =
@@ -366,9 +366,9 @@ export default async function RunReviewPage({
                           .join(" · ")
                       : "";
                     return (
-                      <tr key={e.id} className="hover:bg-surface-2/30">
-                        <td className="py-1.5 pr-3 font-mono text-xs">{e.type}</td>
-                        <td className="py-1.5 px-3 font-mono text-xs">
+                      <tr key={e.id} className="hover:bg-surface-2/40">
+                        <td className="py-1.5 pr-3 tabular-nums text-xs">{e.type}</td>
+                        <td className="py-1.5 px-3 tabular-nums text-xs">
                           {e.ngtecoEmployeeRef ?? "—"}
                         </td>
                         <td className="py-1.5 px-3 text-xs">
@@ -439,9 +439,9 @@ function RunPunchTable({
   }
   const days = Array.from(byDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   return (
-    <div className="px-9 pb-3 pt-1">
+    <div className="overflow-x-auto px-3 pb-3 pt-1 sm:px-9">
       <table className="min-w-full text-xs">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-text-subtle border-b border-border/60">
+        <thead className="text-left text-micro uppercase text-text-subtle border-b border-border/60">
           <tr>
             <th className="py-1 pr-3 font-medium">Day</th>
             <th className="py-1 px-3 font-medium">In</th>
@@ -449,7 +449,7 @@ function RunPunchTable({
             <th className="py-1 px-3 font-medium text-right">Hours</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/40">
+        <tbody className="divide-y divide-border/60">
           {days.flatMap(([day, ps]) =>
             ps
               .sort((a, b) => {
@@ -466,7 +466,7 @@ function RunPunchTable({
                   : null;
                 const hours = outT ? (outT.getTime() - inT.getTime()) / 3_600_000 : null;
                 return (
-                  <tr key={p.id} className="hover:bg-surface-2/30">
+                  <tr key={p.id} className="hover:bg-surface-2/40">
                     <td className="py-0.5 pr-3 text-text-muted">
                       {i === 0
                         ? new Intl.DateTimeFormat("en-US", {
@@ -477,14 +477,14 @@ function RunPunchTable({
                           }).format(new Date(`${day}T12:00:00Z`))
                         : ""}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">
                       {new Intl.DateTimeFormat("en-US", {
                         hour: "numeric",
                         minute: "2-digit",
                         timeZone: tz,
                       }).format(inT)}
                     </td>
-                    <td className="py-0.5 px-3 font-mono">
+                    <td className="py-0.5 px-3 tabular-nums">
                       {outT
                         ? new Intl.DateTimeFormat("en-US", {
                             hour: "numeric",
@@ -493,7 +493,7 @@ function RunPunchTable({
                           }).format(outT)
                         : "—"}
                     </td>
-                    <td className="py-0.5 px-3 text-right font-mono tabular-nums">
+                    <td className="py-0.5 px-3 text-right tabular-nums">
                       {hours !== null ? hours.toFixed(2) : "—"}
                     </td>
                   </tr>

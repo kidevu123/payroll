@@ -211,9 +211,9 @@
     "day": {
       "back": "Back",
       "noPunches": "No punches yet.",
-      "reportSent": "Sent. Admin will review on /requests.",
+      "reportSent": "Sent. An admin will review it shortly.",
       "reportFix": "Report a fix for this day",
-      "reportInstructions": "Tell admin what the correct in / out times should be for {date}. They review on /requests and apply the fix.",
+      "reportInstructions": "Enter the correct times for {date}. An admin will review and apply the fix.",
       "missingPunchInstructions": "We found one punch already on file for {date}. Only enter the missing time.",
       "correctClockIn": "Correct clock in",
       "correctClockOutOptional": "Correct clock out (optional)",
@@ -233,7 +233,11 @@
       "reasonPlaceholder": "Forgot to clock out for lunch, left early for a doctor appointment, etc.",
       "cancel": "Cancel",
       "submitting": "Submitting...",
-      "sendToAdmin": "Send to admin"
+      "sendToAdmin": "Send to admin",
+      "reasonQuickForgot": "I forgot to punch",
+      "reasonQuickClock": "The time clock did not take my punch",
+      "reasonQuickLeftEarly": "I left early / came in late",
+      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do."
     },
     "pay": {
       "title": "My pay",
@@ -312,7 +316,11 @@
       "enterClockOut": "When did you clock out?",
       "whatHappened": "What happened?",
       "submitting": "Submitting...",
-      "submitFix": "Submit fix request"
+      "submitFix": "Submit fix request",
+      "reasonQuickForgot": "I forgot to punch",
+      "reasonQuickClock": "The time clock did not take my punch",
+      "reasonQuickLeftEarly": "I left early / came in late",
+      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do."
     },
     "timeOff": {
       "back": "Back",
@@ -365,7 +373,20 @@
       "languageHint": "Switches the language on this device immediately. Your saved preference (above) is what other devices use until they switch too.",
       "payTypeHourly": "Hourly",
       "payTypeSalaried": "Salaried",
-      "payTypeFlatTask": "Flat-task"
+      "payTypeFlatTask": "Flat-task",
+      "kioskPinTitle": "Warehouse kiosk PIN",
+      "kioskPinUnsetHint": "Set a 4-6 digit PIN to sign in at the warehouse kiosk with your clock ID.",
+      "kioskPinSetHint": "Your kiosk PIN is set. Enter a new one below to change it.",
+      "kioskPinNew": "New PIN",
+      "kioskPinConfirm": "Repeat PIN",
+      "kioskPinMismatch": "The two PINs do not match.",
+      "kioskPinInvalid": "PIN must be 4-6 digits.",
+      "kioskPinSave": "Set PIN",
+      "kioskPinReplace": "Change PIN",
+      "kioskPinSaving": "Saving...",
+      "kioskPinSaved": "PIN saved. Use it at the kiosk with your clock ID.",
+      "clockIdLabel": "Your clock ID",
+      "clockIdMissing": "Not set yet — ask the office."
     },
     "notifications": {
       "back": "Back",
@@ -393,7 +414,8 @@
       "errorNotSupportedShort": "Not supported."
     },
     "alertCard": {
-      "fixThis": "Fix this"
+      "fixThis": "Fix this",
+      "inReview": "Pending review"
     },
     "onboarding": {
       "saveTitle": "Save Milo to your Home Screen",

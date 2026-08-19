@@ -29,14 +29,22 @@ export function CompanyForm({ initial }: { initial: CompanySettings }) {
     >
       <Field label="Company name" name="name" defaultValue={initial.name} required />
       <Field label="Address" name="address" defaultValue={initial.address} />
-      <Field
-        label="Brand color"
-        name="brandColorHex"
-        defaultValue={initial.brandColorHex}
-        type="color"
-      />
-      <Field label="Timezone" name="timezone" defaultValue={initial.timezone} />
-      <Field label="Locale" name="locale" defaultValue={initial.locale} />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="brandColorHex">Brand color</Label>
+        <Input
+          id="brandColorHex"
+          name="brandColorHex"
+          type="color"
+          defaultValue={initial.brandColorHex}
+          className="w-16 h-10 p-1"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Field label="Timezone" name="timezone" defaultValue={initial.timezone} />
+        <Field label="Locale" name="locale" defaultValue={initial.locale} />
+      </div>
 
       {error ? (
         <p className="text-sm text-red-600" role="alert">
@@ -44,9 +52,11 @@ export function CompanyForm({ initial }: { initial: CompanySettings }) {
         </p>
       ) : null}
       {success ? <p className="text-sm text-emerald-600">Saved.</p> : null}
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Save changes"}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving..." : "Save changes"}
+        </Button>
+      </div>
     </form>
   );
 }

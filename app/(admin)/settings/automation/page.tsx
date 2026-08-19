@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const automation = await getSetting("automation");
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <AutomationForm automation={automation} />
       {automation.cronEnabled ? (
         <ClearCronButton disabledReason="Turn off the cron master switch above and save first." />

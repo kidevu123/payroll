@@ -95,18 +95,19 @@ export function PaySchedulesManager({
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+                      <div className="flex flex-wrap items-center gap-y-1 text-xs text-text-muted [&>span:not(:first-child)]:before:mx-2 [&>span:not(:first-child)]:before:text-border [&>span:not(:first-child)]:before:content-['·']">
                         <span>{KIND_LABEL[s.periodKind]}</span>
                         {s.startDayOfWeek !== null && s.startDayOfWeek !== undefined && (
                           <span>Starts {DOW_LABELS[s.startDayOfWeek]}</span>
                         )}
                         {s.anchorDate && <span>Anchor {s.anchorDate}</span>}
-                        <span className="font-mono">{s.cron}</span>
-                        <span>
-                          {employeeCounts[s.id] ?? 0} active emp
-                          {(employeeCounts[s.id] ?? 0) === 1 ? "" : "s"}
+                        <span className="inline-flex items-center gap-2">
+                          <code className="rounded bg-surface-3 px-1.5 py-0.5 tabular-nums">{s.cron}</code>
+                          <span className="text-text-subtle">
+                            {employeeCounts[s.id] ?? 0} emp
+                            {(employeeCounts[s.id] ?? 0) === 1 ? "" : "s"} · {runCounts[s.id] ?? 0} runs
+                          </span>
                         </span>
-                        <span>{runCounts[s.id] ?? 0} runs</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -243,7 +244,7 @@ function ScheduleForm({
           defaultValue={schedule?.cron ?? "0 19 * * 0"}
         />
       </div>
-      <div className="flex items-center gap-2 pt-6 sm:col-span-2">
+      <div className="flex items-center gap-2 sm:col-span-2">
         <input
           id={`active-${schedule?.id ?? "new"}`}
           type="checkbox"

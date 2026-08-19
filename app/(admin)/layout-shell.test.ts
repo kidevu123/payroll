@@ -6,8 +6,7 @@ const layoutSource = readFileSync(join(__dirname, "layout.tsx"), "utf8");
 const globalsSource = readFileSync(join(__dirname, "../globals.css"), "utf8");
 
 describe("admin shell architecture", () => {
-  it("does not route dashboard through a separate visual shell", () => {
-    expect(layoutSource).not.toContain("DashboardDarkShell");
+  it("does not branch dashboard through a separate visual route", () => {
     expect(layoutSource).not.toContain("isDashboardRoute");
   });
 
@@ -17,8 +16,6 @@ describe("admin shell architecture", () => {
   });
 
   it("uses the shared workspace canvas for admin pages", () => {
-    expect(globalsSource).toContain(
-      "background-color: var(--dash-bg, var(--color-page));",
-    );
+    expect(globalsSource).toContain("background: var(--dash-bg);");
   });
 });
