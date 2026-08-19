@@ -76,19 +76,6 @@ export function CadenceSparkline({
               />
               <stop offset="100%" stopColor={CHART.violet} stopOpacity={0} />
             </linearGradient>
-            <filter
-              id={`${gradientId}-glow`}
-              x="-20%"
-              y="-20%"
-              width="140%"
-              height="140%"
-            >
-              <feGaussianBlur stdDeviation="2.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
           </defs>
           <YAxis hide domain={["dataMin", "dataMax"]} />
           <Tooltip
@@ -101,7 +88,6 @@ export function CadenceSparkline({
             stroke={CHART.violetBright}
             strokeWidth={2}
             fill={`url(#${gradientId})`}
-            filter={`url(#${gradientId}-glow)`}
             dot={false}
             activeDot={{
               r: 3,

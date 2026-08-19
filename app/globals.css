@@ -154,27 +154,27 @@
      These light values give the dashboard the clean #58 aesthetic; the .dark
      block below overrides them with the original dark canvas hex so dark mode
      is unchanged. */
-  --dash-bg: #f5f6fb;
+  --dash-bg: #f6f8fb;
   --dash-surface: #ffffff;
-  --dash-surface-raised: #f4f4f8;
-  --dash-border: rgba(17, 17, 40, 0.08);
-  --dash-border-strong: rgba(17, 17, 40, 0.14);
-  --dash-text: #18181f;
-  --dash-text-muted: #5e5e72;
-  --dash-text-faint: #8e8ea3;
-  --dash-violet: #7c3aed;
-  --dash-violet-bright: #8b5cf6;
-  --dash-indigo: #6366f1;
+  --dash-surface-raised: #f8fafc;
+  --dash-border: rgba(15, 23, 42, 0.08);
+  --dash-border-strong: rgba(15, 23, 42, 0.14);
+  --dash-text: #0f172a;
+  --dash-text-muted: #475569;
+  --dash-text-faint: #64748b;
+  --dash-violet: #0f766e;
+  --dash-violet-bright: #0d9488;
+  --dash-indigo: #2563eb;
   --dash-emerald: #059669;
   --dash-emerald-dim: #10b981;
-  --dash-rose: #e11d48;
-  --dash-amber: #d97706;
-  --dash-chart-grid: rgba(17, 17, 40, 0.06);
-  --dash-chart-axis: #8e8ea3;
-  --dash-sidebar: rgba(255, 255, 255, 0.82);
-  --dash-topbar: rgba(255, 255, 255, 0.9);
-  --dash-search: rgba(17, 17, 40, 0.04);
-  --dash-hover: rgba(17, 17, 40, 0.05);
+  --dash-rose: #dc2626;
+  --dash-amber: #b45309;
+  --dash-chart-grid: rgba(15, 23, 42, 0.06);
+  --dash-chart-axis: #64748b;
+  --dash-sidebar: rgba(255, 255, 255, 0.92);
+  --dash-topbar: rgba(255, 255, 255, 0.94);
+  --dash-search: rgba(15, 23, 42, 0.035);
+  --dash-hover: rgba(15, 23, 42, 0.045);
 }
 
 /*
@@ -260,9 +260,9 @@
   --dash-text: #f4f4f8;
   --dash-text-muted: #a1a1b5;
   --dash-text-faint: #6e6e85;
-  --dash-violet: #8b5cf6;
-  --dash-violet-bright: #a78bfa;
-  --dash-indigo: #6366f1;
+  --dash-violet: #14b8a6;
+  --dash-violet-bright: #2dd4bf;
+  --dash-indigo: #60a5fa;
   --dash-emerald: #34d399;
   --dash-emerald-dim: #10b981;
   --dash-rose: #fb7185;
@@ -343,11 +343,11 @@ td.num,
   top of admin/auth views; employee shell stays flat for PWA clarity.
 */
 .shell-admin {
-  background-color: var(--color-page);
+  background-color: var(--dash-bg, var(--color-page));
   background-image: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-brand-50) 55%, transparent) 0%,
-    transparent 18rem
+    color-mix(in srgb, var(--color-brand-50) 42%, transparent) 0%,
+    transparent 20rem
   );
 }
 

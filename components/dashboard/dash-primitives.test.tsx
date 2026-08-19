@@ -9,6 +9,13 @@ describe("dashboard geometry primitives", () => {
     expect(html).toContain("p-4");
   });
 
+  it("uses the shared enterprise card radius", () => {
+    const html = renderToStaticMarkup(<DashCard>Payroll health</DashCard>);
+
+    expect(html).toContain("rounded-card");
+    expect(html).not.toContain("rounded-2xl");
+  });
+
   it("keeps operational captions at twelve pixels", () => {
     const html = renderToStaticMarkup(<Eyebrow>Total pay period</Eyebrow>);
 

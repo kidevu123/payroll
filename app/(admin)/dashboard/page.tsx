@@ -1,9 +1,6 @@
-// Premium dark "wow" dashboard — the showcase screen.
-//
-// Self-contained dark canvas: the rest of the app is light, so this page
-// wraps everything in a deep near-black container with explicit dark surface
-// styling. It does NOT enable global dark mode or touch app/globals.css token
-// values. All charts are client components fed serializable props from this
+// Enterprise payroll dashboard. The shared admin shell owns the chrome; this
+// page focuses on operational hierarchy, calm cards, and clipped-safe data
+// density. All charts are client components fed serializable props from this
 // RSC page.
 
 import { GreetingHeader } from "@/components/dashboard/greeting-header";

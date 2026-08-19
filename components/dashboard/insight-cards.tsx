@@ -1,4 +1,4 @@
-// Second-row + KPI presentational cards for the dark dashboard. Pure
+// Second-row + KPI presentational cards for the dashboard. Pure
 // presentational; all data pre-shaped by computeDashboardMetrics.
 
 import {
@@ -69,7 +69,7 @@ export function TrendCard({ trend }: { trend: DashboardMetrics["trend"] }) {
         <span
           className="hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
           style={{
-            background: "rgba(139,92,246,0.12)",
+            background: "rgba(15,118,110,0.10)",
             border: `1px solid ${DASH.border}`,
           }}
         >
@@ -130,7 +130,7 @@ function MiniStat({
   return (
     <Link
       href={href}
-      className="block h-full rounded-2xl transition duration-150 hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="block h-full rounded-card transition duration-150 hover:brightness-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40"
     >
       {card}
     </Link>
@@ -303,7 +303,7 @@ export function AutomationBanner({
           <span
             className="flex h-9 w-9 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(139,92,246,0.16)",
+              background: "rgba(15,118,110,0.12)",
               border: `1px solid ${DASH.borderStrong}`,
             }}
           >

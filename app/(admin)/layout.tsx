@@ -8,11 +8,12 @@ import {
 } from "@/lib/auth/role-matrix";
 import { Sidebar } from "@/components/admin/sidebar";
 import { Topbar } from "@/components/admin/topbar";
-import { DashboardDarkShell } from "@/components/dashboard/dark-shell";
-import { getTranslations } from "next-intl/server";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
-import { PollStatusBar, PollStatusProvider } from "@/components/admin/poll-status-provider";
+import {
+  PollStatusBar,
+  PollStatusProvider,
+} from "@/components/admin/poll-status-provider";
 import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
@@ -26,19 +27,73 @@ import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
 
 const SETTINGS_TARGETS: CommandTarget[] = [
-  { id: "set-company", label: "Settings · Company", href: "/settings/company", group: "settings" },
-  { id: "set-pay-periods", label: "Settings · Pay periods", href: "/settings/pay-periods", group: "settings" },
-  { id: "set-pay-rules", label: "Settings · Pay rules", href: "/settings/pay-rules", group: "settings" },
-  { id: "set-shifts", label: "Settings · Shifts", href: "/settings/shifts", group: "settings" },
-  { id: "set-holidays", label: "Settings · Holidays", href: "/settings/holidays", group: "settings" },
-  { id: "set-ngteco", label: "Settings · NGTeco", href: "/settings/ngteco", group: "settings" },
-  { id: "set-automation", label: "Settings · Automation", href: "/settings/automation", group: "settings" },
-  { id: "set-notifications", label: "Settings · Notifications", href: "/settings/notifications", group: "settings" },
-  { id: "set-security", label: "Settings · Security", href: "/settings/security", group: "settings" },
-  { id: "set-google-calendar", label: "Settings · Google Calendar", href: "/settings/google-calendar", group: "settings" },
+  {
+    id: "set-company",
+    label: "Settings · Company",
+    href: "/settings/company",
+    group: "settings",
+  },
+  {
+    id: "set-pay-periods",
+    label: "Settings · Pay periods",
+    href: "/settings/pay-periods",
+    group: "settings",
+  },
+  {
+    id: "set-pay-rules",
+    label: "Settings · Pay rules",
+    href: "/settings/pay-rules",
+    group: "settings",
+  },
+  {
+    id: "set-shifts",
+    label: "Settings · Shifts",
+    href: "/settings/shifts",
+    group: "settings",
+  },
+  {
+    id: "set-holidays",
+    label: "Settings · Holidays",
+    href: "/settings/holidays",
+    group: "settings",
+  },
+  {
+    id: "set-ngteco",
+    label: "Settings · NGTeco",
+    href: "/settings/ngteco",
+    group: "settings",
+  },
+  {
+    id: "set-automation",
+    label: "Settings · Automation",
+    href: "/settings/automation",
+    group: "settings",
+  },
+  {
+    id: "set-notifications",
+    label: "Settings · Notifications",
+    href: "/settings/notifications",
+    group: "settings",
+  },
+  {
+    id: "set-security",
+    label: "Settings · Security",
+    href: "/settings/security",
+    group: "settings",
+  },
+  {
+    id: "set-google-calendar",
+    label: "Settings · Google Calendar",
+    href: "/settings/google-calendar",
+    group: "settings",
+  },
 ];
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   // Cash drawer is the one (admin) route accountants can reach; their
   // role is otherwise scoped strictly to that page. Everyone else
   // hitting any other (admin) path is bounced to /cash-drawer so they
@@ -56,16 +111,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? hdrs.get("x-invoke-path") ?? "";
-  // Theme is a per-user preference persisted in the `milo-theme` cookie.
-  // Default is dark (the showcase canvas); light renders the #58 aesthetic.
-  // The class is applied to the admin root so the toggle is scoped to the
-  // app chrome and never darkens the auth/login pages.
+  // Theme is a per-user preference persisted in the `milo-theme` cookie. Light
+  // is the default enterprise admin surface; dark is opt-in so pages do not
+  // unexpectedly inherit a separate dashboard/showcase treatment.
   const themeCookie = (await cookies()).get("milo-theme")?.value;
-  const themeClass = themeCookie === "light" ? "" : "dark";
-  // Every admin route now renders the cohesive dark shell (not just the
-  // dashboard). Typed as boolean so the light-shell fallback below stays
-  // valid code; it is no longer reached.
-  const isDashboardRoute: boolean = true;
+  const themeClass = themeCookie === "dark" ? "dark" : "";
   if (session.user.role !== "OWNER") {
     if (pathname) {
       // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
@@ -99,7 +149,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Notifications item, which then linked to the (empty) announcements feed
   // — a badge with nothing behind it. Keyed by nav href so the shells can
   // drop the count on the matching item.
-  const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion] = await Promise.all([
+  const [
+    missedReqs,
+    timeOffReqs,
+    company,
+    employees,
+    periods,
+    locale,
+    logoVersion,
+  ] = await Promise.all([
     listPendingMissedPunchRequests().catch(() => []),
     listPendingTimeOffRequests().catch(() => []),
     getSetting("company").catch(() => null),
@@ -142,81 +200,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     group: "period",
   }));
 
-  const commandTargets = [...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS];
-
-  // ── Dashboard: render the cohesive full-screen DARK shell ────────────────
-  // The dashboard is the showcase surface; it gets its own dark sidebar +
-  // canvas instead of the light chrome the rest of the admin app uses.
-  if (isDashboardRoute) {
-    const meEmp = session.user.employeeId
-      ? employees.find((e) => e.id === session.user.employeeId) ?? null
-      : null;
-    const friendlyFromEmail = (email: string): string => {
-      const local = email.split("@")[0] ?? email;
-      const first = local.split(/[._-]+/).filter(Boolean)[0] ?? local;
-      return first.charAt(0).toUpperCase() + first.slice(1);
-    };
-    const displayName = meEmp?.displayName ?? friendlyFromEmail(session.user.email);
-    const roleLabel =
-      session.user.role.charAt(0) + session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
-    const avatarUrl = meEmp
-      ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
-      : null;
-    const tAuth = await getTranslations("auth");
-    // Build/version footer — preserves the SHA + server-time marker the light
-    // shell shows, computed server-side so the time is the server's clock.
-    const shaFull = process.env.NEXT_PUBLIC_GIT_SHA ?? "";
-    const sha = shaFull ? shaFull.slice(0, 7) : "dev";
-    const tz = company?.timezone ?? "America/New_York";
-    const serverTime = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZoneName: "short",
-    }).format(new Date());
-    return (
-      <PollStatusProvider>
-        <div id="admin-root" className={themeClass}>
-          <DashboardDarkShell
-            company={companyForBrand}
-            user={{
-              name: displayName,
-              role: roleLabel,
-              email: session.user.email,
-              avatarUrl,
-            }}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            badges={navBadges}
-            commandTargets={commandTargets}
-            signOutLabel={tAuth("signOut")}
-            footer={{ sha, shaFull, serverTime }}
-          >
-            {/* NGTeco poll progress — shown on every admin page. */}
-            <PollStatusBar />
-            {children}
-          </DashboardDarkShell>
-          {/* Mobile navigation (the dark sidebar is desktop-only). */}
-          <MobileQuickNav
-            company={companyForBrand}
-            currentLocale={locale}
-            allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
-            badges={navBadges}
-          />
-          <FeedbackLauncher />
-        </div>
-      </PollStatusProvider>
-    );
-  }
+  const commandTargets = [
+    ...employeeTargets,
+    ...periodTargets,
+    ...SETTINGS_TARGETS,
+  ];
 
   return (
-    <div className="min-h-dvh flex overflow-x-hidden bg-page shell-admin">
+    <div
+      id="admin-root"
+      className={`${themeClass} min-h-dvh flex overflow-x-hidden bg-page shell-admin`}
+    >
       <Sidebar
         company={companyForBrand}
-        role={session.user.role as "OWNER" | "ADMIN" | "PAYROLL_STAFF" | "ACCOUNTANT"}
+        role={
+          session.user.role as
+            | "OWNER"
+            | "ADMIN"
+            | "PAYROLL_STAFF"
+            | "ACCOUNTANT"
+        }
         allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}
         badges={navBadges}
       />
@@ -228,7 +231,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             email={session.user.email}
             role={session.user.role}
             unreadCount={timeOffCount}
-            commandTargets={[...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS]}
+            commandTargets={commandTargets}
             company={companyForBrand}
             currentLocale={locale}
             allowedSurfaces={allowedSurfaces as ReadonlyArray<Surface>}

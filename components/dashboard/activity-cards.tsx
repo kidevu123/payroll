@@ -1,4 +1,4 @@
-// Third-row dark cards: Pending requests, Recent runs, Today (attendance
+// Third-row dashboard cards: Pending requests, Recent runs, Today (attendance
 // buckets). Presentational — receives already-shaped serializable props from
 // the dashboard RSC page. Links preserve real navigation.
 
@@ -15,7 +15,7 @@ import { formatMoney } from "@/lib/utils";
 import { DashCard, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
 
-// ── Shared: dark avatar (photo or initials) ──────────────────────────────────
+// ── Shared: dashboard avatar (photo or initials) ──────────────────────────────────
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -50,7 +50,7 @@ function DashAvatar({
       aria-hidden="true"
       style={{
         ...dim,
-        background: "rgba(139,92,246,0.18)",
+        background: "rgba(15,118,110,0.12)",
         color: DASH.violetBright,
       }}
       className="inline-flex shrink-0 items-center justify-center rounded-full text-xs font-bold"
@@ -109,7 +109,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
                   }
                 : {
                     color: DASH.violetBright,
-                    bg: "rgba(139,92,246,0.16)",
+                    bg: "rgba(15,118,110,0.12)",
                     label: "Awaiting",
                   };
             return (
@@ -159,7 +159,7 @@ export function PendingRequestsCard({ items }: { items: PendingItem[] }) {
                 className="block rounded-xl px-3 py-1.5 text-center text-[12px] font-medium"
                 style={{
                   color: DASH.violetBright,
-                  background: "rgba(139,92,246,0.08)",
+                  background: "rgba(15,118,110,0.08)",
                 }}
               >
                 View all {items.length}
@@ -185,7 +185,7 @@ export type RecentRunItem = {
 
 const RUN_STATE_TONE: Record<string, { color: string; bg: string }> = {
   PUBLISHED: { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" },
-  APPROVED: { color: DASH.violetBright, bg: "rgba(139,92,246,0.14)" },
+  APPROVED: { color: DASH.violetBright, bg: "rgba(15,118,110,0.12)" },
   AWAITING_ADMIN_REVIEW: { color: DASH.amber, bg: "rgba(251,191,36,0.12)" },
   AWAITING_EMPLOYEE_FIXES: { color: DASH.amber, bg: "rgba(251,191,36,0.12)" },
   FAILED: { color: DASH.rose, bg: "rgba(251,113,133,0.12)" },

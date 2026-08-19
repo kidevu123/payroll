@@ -1,5 +1,5 @@
 // Dark cadence card: one per active pay schedule (Monthly / Semi-monthly /
-// Weekly). Shows the current open period total, a violet glowing sparkline of
+// Weekly). Shows the current open period total, a restrained sparkline of
 // recent period totals, headcount + hours, a delta vs prior period, an alert
 // chip, and the correct next-step button. Server component — data comes pre-
 // shaped from computeDashboardMetrics; only the chart child is "use client".
@@ -103,7 +103,7 @@ function badgeStyle(badge: string): { color: string; bg: string } {
     case "Approved":
     case "Running":
     case "Awaiting payment":
-      return { color: DASH.violetBright, bg: "rgba(139,92,246,0.14)" };
+      return { color: DASH.violetBright, bg: "rgba(15,118,110,0.12)" };
     case "Paid":
       return { color: DASH.emerald, bg: "rgba(52,211,153,0.12)" };
     default:
@@ -146,7 +146,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
       {hasSpark ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-card"
         >
           <div
             className="absolute"
@@ -172,7 +172,7 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           <span
             className="flex h-8 w-8 items-center justify-center rounded-xl"
             style={{
-              background: "rgba(139,92,246,0.14)",
+              background: "rgba(15,118,110,0.10)",
               border: `1px solid ${DASH.border}`,
             }}
           >
@@ -249,9 +249,9 @@ export function CadenceCard({ card }: { card: CadenceData }) {
           style={
             step.primary
               ? {
-                  color: "#0b0b12",
-                  background: "linear-gradient(135deg, #a78bfa, #7c3aed)",
-                  boxShadow: "0 8px 20px -10px rgba(124,58,237,0.7)",
+                  color: "white",
+                  background: DASH.violet,
+                  boxShadow: "0 8px 18px -12px rgba(15,118,110,0.55)",
                 }
               : {
                   color: DASH.text,

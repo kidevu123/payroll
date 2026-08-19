@@ -1,6 +1,6 @@
-// Shared dark presentational primitives for the dashboard. Pure, no data
-// access. Explicit dark hex / rgba so the dashboard is a self-contained dark
-// canvas independent of the app's light global tokens.
+// Shared dashboard presentational primitives. Pure, no data access. These use
+// the same radius and elevation language as the rest of the admin app so the
+// dashboard feels like the product home, not a separate showcase surface.
 
 import * as React from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
@@ -17,7 +17,7 @@ export function DashCard({
   return (
     <div
       className={cn(
-        "relative rounded-2xl p-4",
+        "relative rounded-card p-4",
         "transition-colors duration-200",
         className,
       )}
@@ -25,8 +25,8 @@ export function DashCard({
         background: DASH.surface,
         border: `1px solid ${DASH.border}`,
         boxShadow: glow
-          ? "0 0 0 1px rgba(139,92,246,0.12), 0 18px 50px -22px rgba(139,92,246,0.30)"
-          : "0 10px 34px -24px rgba(0,0,0,0.7)",
+          ? "0 1px 2px 0 rgb(15 23 42 / 0.06), 0 14px 30px -22px rgb(15 118 110 / 0.35)"
+          : "0 1px 2px 0 rgb(15 23 42 / 0.05), 0 10px 24px -22px rgb(15 23 42 / 0.45)",
       }}
       {...rest}
     >
