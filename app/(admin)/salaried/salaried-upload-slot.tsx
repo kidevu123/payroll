@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
 import {
   CalendarClock,
@@ -9,23 +8,16 @@ import {
   Download,
   FileText,
   Loader2,
+  Plus,
   Sparkles,
   Trash2,
   Upload,
-  UploadCloud,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ZohoDocStatus } from "@/components/domain/zoho-doc-status";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
 import {
   deleteSalariedDocAction,
   inferSalariedPeriodAction,
@@ -62,13 +54,6 @@ function formatRange(start: string | null, end: string | null): string | null {
   return `${left} – ${right}`;
 }
 
-/** Loose label compare so "Semi-monthly" and "Semi-Monthly" (and "Monthly"
- *  vs "Monthly") are treated as the same word — used to suppress redundant
- *  schedule-name labels next to the cadence badge. */
-function normalizeLabel(s: string | null | undefined): string {
-  return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 function formatMoney(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
@@ -84,6 +69,16 @@ type ReadState =
   | { kind: "FILLED" }
   | { kind: "MANUAL"; reason: string };
 
+/**
+ * Per-employee paystub manager: the document list plus an ADD affordance.
+ *
+ * Progressive disclosure (owner: "no need for a giant upload box"): the
+ * default state is a single slim "Add paystub" row. The compact form —
+ * file chip, period date, kind, net — only appears once the admin starts
+ * an upload (click, or drop a file straight onto the row). Period
+ * inference is likewise deferred until the form is open, so a page full
+ * of collapsed cards fires zero inference requests.
+ */
 export function SalariedUploadSlot({
   employeeId,
   docs,
@@ -91,12 +86,13 @@ export function SalariedUploadSlot({
   employeeId: string;
   docs: DocLite[];
 }) {
+  const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
   const [referenceDate, setReferenceDate] = React.useState(todayStr);
 
-  // Controlled file selection drives the drag-and-drop zone + auto-read.
+  // Controlled file selection drives the drop target + auto-read.
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -112,11 +108,13 @@ export function SalariedUploadSlot({
     | { kind: "ERROR"; error: string }
   >({ kind: "PENDING" });
 
-  // Infer the pay period from the employee's schedule whenever the
-  // reference date changes. Admin picks any date inside the period and we
-  // resolve the (start, end) bounds — shown live for verification.
+  // Infer the pay period from the employee's schedule — but only while the
+  // form is open. Admin picks any date inside the period and we resolve the
+  // (start, end) bounds — shown live for verification.
   React.useEffect(() => {
+    if (!open) return;
     let cancelled = false;
+    setInferred({ kind: "PENDING" });
     void (async () => {
       const r = await inferSalariedPeriodAction({ employeeId, referenceDate });
       if (cancelled) return;
@@ -125,7 +123,7 @@ export function SalariedUploadSlot({
     return () => {
       cancelled = true;
     };
-  }, [employeeId, referenceDate]);
+  }, [employeeId, referenceDate, open]);
 
   // Auto-read the net from a freshly selected PDF (best-effort). Never
   // blocks: any miss leaves the field empty for manual entry.
@@ -162,7 +160,10 @@ export function SalariedUploadSlot({
       setFile(picked);
       setNetDollars("");
       setReadState({ kind: "IDLE" });
-      if (picked) void tryAutoReadNet(picked);
+      if (picked) {
+        setOpen(true);
+        void tryAutoReadNet(picked);
+      }
     },
     [tryAutoReadNet],
   );
@@ -174,12 +175,36 @@ export function SalariedUploadSlot({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
-  const scheduleBadge =
-    inferred.kind === "OK" ? prettyPeriodKind(inferred.periodKind) : null;
+  const cancel = React.useCallback(() => {
+    clearFile();
+    setError(null);
+    setOpen(false);
+  }, [clearFile]);
+
+  // Open the form and go straight to the file picker — one click from the
+  // collapsed row to the OS dialog.
+  const openAndBrowse = React.useCallback(() => {
+    setOpen(true);
+    requestAnimationFrame(() => fileInputRef.current?.click());
+  }, []);
+
+  const dropHandlers = {
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(true);
+    },
+    onDragLeave: () => setDragOver(false),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const dropped = e.dataTransfer.files?.[0] ?? null;
+      if (dropped) onPickFile(dropped);
+    },
+  };
 
   async function handleUpload() {
     if (!file) {
-      setError("Drop a paystub or browse to choose a file.");
+      setError("Choose a paystub file first.");
       return;
     }
     setPending(true);
@@ -197,10 +222,11 @@ export function SalariedUploadSlot({
       return;
     }
     clearFile();
+    setOpen(false);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {docs.length > 0 && (
         <ul className="divide-y divide-border/60 rounded-card border border-border bg-surface overflow-hidden">
           {docs.map((d) => (
@@ -209,68 +235,51 @@ export function SalariedUploadSlot({
         </ul>
       )}
 
-      {scheduleBadge && inferred.kind === "OK" && (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-chip bg-surface-2 px-2 py-0.5 font-medium text-text-muted ring-1 ring-inset ring-border/70">
-            {scheduleBadge}
-          </span>
-          {/* Only show the schedule NAME when it adds information — the default
-              schedules are literally named after their cadence ("Monthly"),
-              which produced a redundant "Monthly  Monthly". Compare loosely so
-              "Semi-monthly" vs "Semi-Monthly" also collapses to one. */}
-          {normalizeLabel(inferred.scheduleName) !== normalizeLabel(scheduleBadge) && (
-            <span className="truncate text-text-subtle">{inferred.scheduleName}</span>
-          )}
-        </div>
-      )}
+      {/* Always mounted so the collapsed row can open the picker directly. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.png,.jpg,.jpeg,.xlsx"
+        className="sr-only"
+        onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
+      />
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        {/* Drag-and-drop upload zone */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Drop a paystub PDF, or browse"
-          onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              fileInputRef.current?.click();
-            }
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const dropped = e.dataTransfer.files?.[0] ?? null;
-            if (dropped) onPickFile(dropped);
-          }}
+      {!open ? (
+        <button
+          type="button"
+          onClick={openAndBrowse}
+          {...dropHandlers}
           className={[
-            "group flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-card border border-dashed px-4 py-7 text-center transition-colors",
+            "flex min-h-11 w-full items-center justify-between gap-3 rounded-card border border-dashed px-3 py-2 text-sm transition-colors",
             dragOver
-              ? "border-brand-700 bg-brand-50"
-              : "border-border bg-surface-2/40 hover:border-brand-700/60 hover:bg-surface-2/40",
+              ? "border-brand-700 bg-brand-50 text-brand-800"
+              : "border-border text-text-muted hover:border-brand-700/60 hover:bg-surface-2/40 hover:text-text",
           ].join(" ")}
         >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg,.xlsx"
-            className="sr-only"
-            onChange={(e) => onPickFile(e.target.files?.[0] ?? null)}
-          />
+          <span className="flex items-center gap-2 font-medium">
+            <Plus className="h-4 w-4" aria-hidden /> Add paystub
+          </span>
+          <span className="hidden text-xs text-text-subtle sm:inline">
+            or drop a PDF here
+          </span>
+        </button>
+      ) : (
+        <div
+          {...dropHandlers}
+          className={[
+            "space-y-3 rounded-card border p-3 transition-colors",
+            dragOver ? "border-brand-700 bg-brand-50/60" : "border-border bg-surface-2/30",
+          ].join(" ")}
+        >
+          {/* File chip — or a compact picker when opened without a file
+              (e.g. the OS dialog was dismissed). */}
           {file ? (
-            <div className="flex w-full items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 rounded-input border border-border bg-surface px-3 py-2">
               <div className="flex min-w-0 items-center gap-2">
-                <FileText className="h-5 w-5 shrink-0 text-brand-700" />
-                <div className="min-w-0 text-left">
-                  <p className="truncate text-sm font-medium text-text">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-text-subtle">
+                <FileText className="h-4 w-4 shrink-0 text-brand-700" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-text">{file.name}</p>
+                  <p className="text-[11px] text-text-subtle">
                     {(file.size / 1024).toFixed(0)} KB
                   </p>
                 </div>
@@ -279,83 +288,81 @@ export function SalariedUploadSlot({
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  clearFile();
-                }}
+                onClick={clearFile}
                 title="Remove file"
+                aria-label="Remove file"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           ) : (
-            <>
-              <UploadCloud className="h-6 w-6 text-text-subtle group-hover:text-brand-700" />
-              <p className="text-sm font-medium text-text">
-                Drop a paystub PDF, or browse
-              </p>
-              <p className="text-xs text-text-subtle">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-input border border-dashed border-border bg-surface px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:border-brand-700/60 hover:text-text"
+            >
+              <FileText className="h-4 w-4" aria-hidden /> Choose file
+              <span className="text-xs font-normal text-text-subtle">
                 PDF, PNG, JPG, or XLSX · max 10 MB
-              </p>
-            </>
+              </span>
+            </button>
           )}
-        </div>
 
-        {/* Period + kind + net controls */}
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor={`ref-${employeeId}`} className="text-xs text-text-muted">
-              Pay period covering
-            </Label>
-            <Input
-              id={`ref-${employeeId}`}
-              type="date"
-              value={referenceDate}
-              onChange={(e) => setReferenceDate(e.target.value)}
-            />
-            {/* Resolved coverage. When a schedule is attached this resolves the
-                instant the date changes (defaulted to today), so the owner can
-                drop a PDF and hit Upload — the range is shown filled-in, never
-                "blank". Back-filling an old stub is just changing the date. */}
-            {inferred.kind === "OK" ? (
-              <div
-                className="flex items-center gap-1.5 rounded-input px-2 py-1"
-                style={{
-                  background: "color-mix(in srgb, var(--dash-cyan) 12%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--dash-cyan) 26%, transparent)",
-                }}
-              >
-                <CalendarClock
-                  className="h-3 w-3 shrink-0"
-                  style={{ color: "var(--dash-cyan)" }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="text-[11px] font-semibold tabular-nums"
-                  style={{ color: "var(--dash-cyan)" }}
+          {/* Fixed-width columns — a full-width date input reads as dead
+              space; these three fields are all short values. */}
+          <div className="grid gap-2 sm:grid-cols-[12rem_8rem_9rem]">
+            <div className="space-y-1">
+              <Label htmlFor={`ref-${employeeId}`} className="text-xs text-text-muted">
+                Pay period covering
+              </Label>
+              <Input
+                id={`ref-${employeeId}`}
+                type="date"
+                value={referenceDate}
+                onChange={(e) => setReferenceDate(e.target.value)}
+              />
+              {/* Resolved coverage. When a schedule is attached this resolves
+                  the instant the date changes (defaulted to today), so the
+                  owner can pick a PDF and hit Upload — the range shows
+                  filled-in, never "blank". Back-filling an old stub is just
+                  changing the date. */}
+              {inferred.kind === "OK" ? (
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-input px-2 py-1"
+                  style={{
+                    background: "color-mix(in srgb, var(--dash-cyan) 12%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--dash-cyan) 26%, transparent)",
+                  }}
                 >
-                  {formatRange(inferred.startDate, inferred.endDate)}
-                </span>
-              </div>
-            ) : (
-              <p
-                className={[
-                  "text-[10px] leading-tight",
-                  inferred.kind === "NONE" || inferred.kind === "ERROR"
-                    ? "text-warning-700"
-                    : "text-text-subtle",
-                ].join(" ")}
-              >
-                {inferred.kind === "NONE"
-                  ? "No schedule — set one on the profile, or enter dates manually."
-                  : inferred.kind === "PENDING"
-                    ? "Resolving period…"
-                    : "Couldn't infer; check the schedule."}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
+                  <CalendarClock
+                    className="h-3 w-3 shrink-0"
+                    style={{ color: "var(--dash-cyan)" }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="text-[11px] font-semibold tabular-nums"
+                    style={{ color: "var(--dash-cyan)" }}
+                  >
+                    {formatRange(inferred.startDate, inferred.endDate)}
+                  </span>
+                </div>
+              ) : (
+                <p
+                  className={[
+                    "text-[10px] leading-tight",
+                    inferred.kind === "NONE" || inferred.kind === "ERROR"
+                      ? "text-warning-700"
+                      : "text-text-subtle",
+                  ].join(" ")}
+                >
+                  {inferred.kind === "NONE"
+                    ? "No schedule — set one on the profile, or enter dates manually."
+                    : inferred.kind === "PENDING"
+                      ? "Resolving period…"
+                      : "Couldn't infer; check the schedule."}
+                </p>
+              )}
+            </div>
             <div className="space-y-1">
               <Label htmlFor={`kind-${employeeId}`} className="text-xs text-text-muted">
                 Kind
@@ -394,37 +401,25 @@ export function SalariedUploadSlot({
           </div>
 
           <ReadStatus state={readState} />
-        </div>
-      </div>
 
-      <div className="flex items-center gap-3">
-        <Button type="button" size="sm" onClick={handleUpload} disabled={pending || !file}>
-          {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Upload className="h-3.5 w-3.5" />
-          )}
-          {pending ? "Uploading…" : "Upload"}
-        </Button>
-        {error && <span className="text-xs text-danger-700">{error}</span>}
-      </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" onClick={handleUpload} disabled={pending || !file}>
+              {pending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {pending ? "Uploading…" : "Upload"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={cancel} disabled={pending}>
+              Cancel
+            </Button>
+            {error && <span className="text-xs text-danger-700">{error}</span>}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-function prettyPeriodKind(periodKind: string): string {
-  switch (periodKind) {
-    case "WEEKLY":
-      return "Weekly";
-    case "BIWEEKLY":
-      return "Bi-weekly";
-    case "SEMI_MONTHLY":
-      return "Semi-monthly";
-    case "MONTHLY":
-      return "Monthly";
-    default:
-      return periodKind;
-  }
 }
 
 function ReadStatus({ state }: { state: ReadState }) {

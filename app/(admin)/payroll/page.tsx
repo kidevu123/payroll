@@ -46,6 +46,7 @@ import {
   type ScheduleTab,
 } from "@/components/domain/schedule-tabs";
 import { listEmployees } from "@/lib/db/queries/employees";
+import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { listVisibleDocsByEmployee } from "@/lib/db/queries/payroll-documents";
 import { SalariedUploadSlot } from "@/app/(admin)/salaried/salaried-upload-slot";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
@@ -396,6 +397,13 @@ function RunningDot({ className }: { className?: string }) {
  *     paystub is for (Juan would NOT show here — he's on a
  *     SEMI_MONTHLY schedule and lives under that tab).
  */
+const SALARIED_PERIOD_KIND_LABEL: Record<string, string> = {
+  WEEKLY: "Weekly",
+  BIWEEKLY: "Bi-weekly",
+  SEMI_MONTHLY: "Semi-monthly",
+  MONTHLY: "Monthly",
+};
+
 async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
   const all = await listEmployees({ status: "ACTIVE" });
   // STRICT: only employees who have NO weekly/semi-monthly schedule
@@ -405,13 +413,17 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
     if (e.payType !== "SALARIED") return false;
     return true; // schedule-aware filter happens below using the join
   });
-  // One batch query for every salaried employee's docs (was N+1).
-  const docsMap = await listVisibleDocsByEmployee(
-    salariedExclusive.map((e) => e.id),
-  );
+  // One batch query for every salaried employee's docs (was N+1), plus the
+  // schedule lookup so the cadence chip renders server-side in the header.
+  const [docsMap, schedules] = await Promise.all([
+    listVisibleDocsByEmployee(salariedExclusive.map((e) => e.id)),
+    listSchedules(),
+  ]);
+  const scheduleById = new Map(schedules.map((s) => [s.id, s]));
   const cards = salariedExclusive.map((e) => ({
     employee: e,
     docs: docsMap.get(e.id) ?? [],
+    schedule: e.payScheduleId ? scheduleById.get(e.payScheduleId) ?? null : null,
   }));
   return (
     <div className="space-y-5">
@@ -438,12 +450,6 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
       />
       <ScheduleTabs current={currentTab} basePath="/payroll" />
 
-      <p className="text-xs text-text-muted">
-        Salaried staff are paid externally. No payroll run — just upload the
-        paystub when it arrives. Each upload pre-fills the period dates from the
-        employee&apos;s pay schedule.
-      </p>
-
       {salariedExclusive.length === 0 ? (
         <EmptyState
           icon={Briefcase}
@@ -457,16 +463,35 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
         />
       ) : (
         <div className="space-y-3">
-          {cards.map(({ employee, docs }) => (
+          {cards.map(({ employee, docs, schedule }) => (
             <Card key={employee.id} className="overflow-hidden">
               <CardHeader className="border-b-0 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
                     <Avatar name={employee.displayName} size="md" />
                     <div className="min-w-0">
-                      <CardTitle>
-                        {employee.displayName}
-                      </CardTitle>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle>
+                          {employee.displayName}
+                        </CardTitle>
+                        {/* Cadence is employee-level context, so it lives in
+                            the header — not floating inside the upload area. */}
+                        {schedule ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-chip bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text-muted ring-1 ring-inset ring-border/70">
+                            <CalendarClock className="h-3 w-3" aria-hidden />
+                            {SALARIED_PERIOD_KIND_LABEL[schedule.periodKind] ??
+                              schedule.periodKind}
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/employees/${employee.id}`}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-chip bg-warning-50 px-2 py-0.5 text-[10px] font-medium text-warning-700 ring-1 ring-inset ring-warning-200 underline-offset-2 hover:underline"
+                          >
+                            <CalendarClock className="h-3 w-3" aria-hidden />
+                            No schedule — set one
+                          </Link>
+                        )}
+                      </div>
                       <CardDescription>
                         {employee.email}
                         {docs.length > 0
