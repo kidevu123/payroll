@@ -27,10 +27,10 @@ const buttonVariants = cva(
           "bg-danger-700 text-white shadow-[0_1px_2px_0_rgb(15_23_42_/_0.08)] hover:bg-danger-700/90",
       },
       size: {
-        default: "h-10 px-4",
-        sm: "h-8 px-3.5 text-xs",
-        lg: "h-11 px-6",
-        icon: "h-10 w-10",
+        default: "min-h-11 px-4 py-2",
+        sm: "min-h-10 px-3.5 py-2 text-xs",
+        lg: "min-h-12 px-6 py-2.5",
+        icon: "h-11 w-11 shrink-0 p-0",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -38,7 +38,8 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
@@ -70,7 +71,8 @@ Button.displayName = "Button";
  * Touch-friendly by default (min 44px hit area) while staying visually 36–40px.
  */
 export interface IconButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">,
+  extends
+    Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">,
     Pick<VariantProps<typeof buttonVariants>, "variant"> {
   /** Required: screen-reader name for the icon-only action. */
   "aria-label": string;
@@ -82,7 +84,17 @@ export interface IconButtonProps
 }
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ className, variant = "ghost", sizePx = "md", asChild = false, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant = "ghost",
+      sizePx = "md",
+      asChild = false,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
@@ -92,8 +104,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           // Square footprint + generous touch target (hit area >= 44px via
           // padding-free min sizing on touch, visual box stays compact).
           "shrink-0 rounded-input p-0",
-          sizePx === "sm" ? "h-8 w-8 min-h-8 min-w-8" : "h-10 w-10",
-          "[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
+          sizePx === "sm" ? "h-10 w-10" : "h-11 w-11",
           className,
         )}
         ref={ref}

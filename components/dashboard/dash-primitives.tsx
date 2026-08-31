@@ -1,6 +1,4 @@
-// Shared dark presentational primitives for the dashboard. Pure, no data
-// access. Explicit dark hex / rgba so the dashboard is a self-contained dark
-// canvas independent of the app's light global tokens.
+// Shared dashboard presentational primitives. Pure, no data access.
 
 import * as React from "react";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
@@ -17,7 +15,7 @@ export function DashCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl p-2",
+        "relative rounded-card p-4",
         "transition-colors duration-200",
         className,
       )}
@@ -39,7 +37,7 @@ export function DashCard({
 export function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
     <span
-      className="text-micro uppercase"
+      className="text-xs font-semibold uppercase tracking-[0.1em]"
       style={{ color: DASH.textFaint }}
     >
       {children}

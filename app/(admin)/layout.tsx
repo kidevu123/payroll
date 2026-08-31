@@ -10,7 +10,10 @@ import { DashboardDarkShell } from "@/components/dashboard/dark-shell";
 import { getTranslations } from "next-intl/server";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
-import { PollStatusBar, PollStatusProvider } from "@/components/admin/poll-status-provider";
+import {
+  PollStatusBar,
+  PollStatusProvider,
+} from "@/components/admin/poll-status-provider";
 import { getSetting } from "@/lib/settings/runtime";
 import { assetVersion } from "@/lib/branding/storage";
 import { listEmployees } from "@/lib/db/queries/employees";
@@ -24,19 +27,73 @@ import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
 
 const SETTINGS_TARGETS: CommandTarget[] = [
-  { id: "set-company", label: "Settings · Company", href: "/settings/company", group: "settings" },
-  { id: "set-pay-periods", label: "Settings · Pay periods", href: "/settings/pay-periods", group: "settings" },
-  { id: "set-pay-rules", label: "Settings · Pay rules", href: "/settings/pay-rules", group: "settings" },
-  { id: "set-shifts", label: "Settings · Shifts", href: "/settings/shifts", group: "settings" },
-  { id: "set-holidays", label: "Settings · Holidays", href: "/settings/holidays", group: "settings" },
-  { id: "set-ngteco", label: "Settings · NGTeco", href: "/settings/ngteco", group: "settings" },
-  { id: "set-automation", label: "Settings · Automation", href: "/settings/automation", group: "settings" },
-  { id: "set-notifications", label: "Settings · Notifications", href: "/settings/notifications", group: "settings" },
-  { id: "set-security", label: "Settings · Security", href: "/settings/security", group: "settings" },
-  { id: "set-google-calendar", label: "Settings · Google Calendar", href: "/settings/google-calendar", group: "settings" },
+  {
+    id: "set-company",
+    label: "Settings · Company",
+    href: "/settings/company",
+    group: "settings",
+  },
+  {
+    id: "set-pay-periods",
+    label: "Settings · Pay periods",
+    href: "/settings/pay-periods",
+    group: "settings",
+  },
+  {
+    id: "set-pay-rules",
+    label: "Settings · Pay rules",
+    href: "/settings/pay-rules",
+    group: "settings",
+  },
+  {
+    id: "set-shifts",
+    label: "Settings · Shifts",
+    href: "/settings/shifts",
+    group: "settings",
+  },
+  {
+    id: "set-holidays",
+    label: "Settings · Holidays",
+    href: "/settings/holidays",
+    group: "settings",
+  },
+  {
+    id: "set-ngteco",
+    label: "Settings · NGTeco",
+    href: "/settings/ngteco",
+    group: "settings",
+  },
+  {
+    id: "set-automation",
+    label: "Settings · Automation",
+    href: "/settings/automation",
+    group: "settings",
+  },
+  {
+    id: "set-notifications",
+    label: "Settings · Notifications",
+    href: "/settings/notifications",
+    group: "settings",
+  },
+  {
+    id: "set-security",
+    label: "Settings · Security",
+    href: "/settings/security",
+    group: "settings",
+  },
+  {
+    id: "set-google-calendar",
+    label: "Settings · Google Calendar",
+    href: "/settings/google-calendar",
+    group: "settings",
+  },
 ];
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   // Cash drawer is the one (admin) route accountants can reach; their
   // role is otherwise scoped strictly to that page. Everyone else
   // hitting any other (admin) path is bounced to /cash-drawer so they
@@ -54,12 +111,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const allowedSurfaces = await effectiveSurfacesFor(session.user.role);
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname") ?? hdrs.get("x-invoke-path") ?? "";
-  // Theme is a per-user preference persisted in the `milo-theme` cookie.
-  // Default is dark (the showcase canvas); light renders the #58 aesthetic.
-  // The class is applied to the admin root so the toggle is scoped to the
-  // app chrome and never darkens the auth/login pages.
+  // Theme is a per-user preference persisted in the `milo-theme` cookie. Light
+  // is the default enterprise admin surface; dark is opt-in for operators who
+  // prefer the command-center treatment.
   const themeCookie = (await cookies()).get("milo-theme")?.value;
-  const themeClass = themeCookie === "light" ? "" : "dark";
+  const themeClass = themeCookie === "dark" ? "dark" : "";
   if (session.user.role !== "OWNER") {
     if (pathname) {
       // Match the path's first segment against the surface keys ("/cash-drawer", etc.)
@@ -92,7 +148,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Notifications shows a recent-activity count (announcements from the
   // last 7 days). Keyed by nav href so the shells can drop the count on
   // the matching item.
-  const [missedReqs, timeOffReqs, company, employees, periods, locale, logoVersion, recentAnnouncements] = await Promise.all([
+  const [
+    missedReqs,
+    timeOffReqs,
+    company,
+    employees,
+    periods,
+    locale,
+    logoVersion,
+    recentAnnouncements,
+  ] = await Promise.all([
     listPendingMissedPunchRequests().catch(() => []),
     listPendingTimeOffRequests().catch(() => []),
     getSetting("company").catch(() => null),
@@ -140,23 +205,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     group: "period",
   }));
 
-  const commandTargets = [...employeeTargets, ...periodTargets, ...SETTINGS_TARGETS];
+  const commandTargets = [
+    ...employeeTargets,
+    ...periodTargets,
+    ...SETTINGS_TARGETS,
+  ];
 
-  // Every admin route renders the cohesive dark shell. (A light Sidebar +
-  // Topbar shell used to live below this as an `if (isDashboardRoute)`
-  // fallback with the flag hardcoded to true — 55 lines of unreachable code
-  // that kept sprouting stale 3.5rem topbar offsets in live pages.)
+  // Every admin route renders the same cohesive shell. The older route-specific
+  // light/dark fork kept sprouting stale topbar offsets in live pages.
   const meEmp = session.user.employeeId
-    ? employees.find((e) => e.id === session.user.employeeId) ?? null
+    ? (employees.find((e) => e.id === session.user.employeeId) ?? null)
     : null;
   const friendlyFromEmail = (email: string): string => {
     const local = email.split("@")[0] ?? email;
     const first = local.split(/[._-]+/).filter(Boolean)[0] ?? local;
     return first.charAt(0).toUpperCase() + first.slice(1);
   };
-  const displayName = meEmp?.displayName ?? friendlyFromEmail(session.user.email);
+  const displayName =
+    meEmp?.displayName ?? friendlyFromEmail(session.user.email);
   const roleLabel =
-    session.user.role.charAt(0) + session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
+    session.user.role.charAt(0) +
+    session.user.role.slice(1).toLowerCase().replace(/_/g, " ");
   const avatarUrl = meEmp
     ? `/api/employees/${meEmp.id}/photo?v=${meEmp.id.slice(0, 8)}`
     : null;
