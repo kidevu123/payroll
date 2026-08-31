@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Actor } from "@/lib/db/queries/employees";
 import { registerEmployeeTools } from "./tools/employees.js";
-import { registerHallMonitorTools } from "./tools/hall-monitor.js";
 import { registerNgtecoTools } from "./tools/ngteco.js";
 import { registerPayrollTools } from "./tools/payroll.js";
 import { registerPeriodTools } from "./tools/periods.js";
@@ -25,7 +24,6 @@ export function createPayrollMcpServer(actor: Actor): McpServer {
   registerPunchTools(server, actor);
   registerPayrollTools(server);
   registerNgtecoTools(server, actor);
-  registerHallMonitorTools(server);
   registerSalariedDocTools(server, actor);
   registerPeriodDocTools(server, actor);
   registerPeriodDocDeleteTools(server, actor);

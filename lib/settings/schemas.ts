@@ -192,10 +192,21 @@ export const notificationKind = z.enum([
   "period.locked",
   "payslip.disputed",
   "admin.announcement",
-  "hall_monitor.weekly_ready",
   "employee.ngteco_imported",
 ]);
 export type NotificationKind = z.infer<typeof notificationKind>;
+
+// Kinds removed from the product (e.g. hall_monitor.weekly_ready, retired
+// Aug 2026) may still be present as keys in the stored settings row. A strict
+// z.record(enum, ...) parse would reject the whole row over a stale key, so
+// strip unknown kinds before validation.
+const stripRetiredKinds = (v: unknown): unknown => {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return v;
+  const known = new Set<string>(notificationKind.options);
+  return Object.fromEntries(
+    Object.entries(v as Record<string, unknown>).filter(([k]) => known.has(k)),
+  );
+};
 
 export const notificationChannels = z.object({
   in_app: z.boolean().default(true),
@@ -205,7 +216,10 @@ export const notificationChannels = z.object({
 export type NotificationChannels = z.infer<typeof notificationChannels>;
 
 export const notificationsSchema = z.object({
-  defaults: z.record(notificationKind, notificationChannels).default({
+  defaults: z.preprocess(
+    stripRetiredKinds,
+    z.record(notificationKind, notificationChannels),
+  ).default({
     "missed_punch.detected": { in_app: true, email: false, push: true },
     "missed_punch.request_submitted": { in_app: true, email: false, push: true },
     "missed_punch.request_resolved": { in_app: true, email: false, push: true },
@@ -218,7 +232,6 @@ export const notificationsSchema = z.object({
     "period.locked": { in_app: true, email: false, push: false },
     "payslip.disputed": { in_app: true, email: false, push: true },
     "admin.announcement": { in_app: true, email: false, push: true },
-    "hall_monitor.weekly_ready": { in_app: true, email: false, push: true },
     "employee.ngteco_imported": { in_app: true, email: false, push: true },
   }),
 });

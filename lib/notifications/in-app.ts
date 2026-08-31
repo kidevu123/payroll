@@ -26,7 +26,6 @@ export type NotificationKind =
   // (no canned fallback for announcements — the words ARE the
   // message).
   | "admin.announcement"
-  | "hall_monitor.weekly_ready"
   | "employee.ngteco_imported";
 
 export type DispatchEntry = {

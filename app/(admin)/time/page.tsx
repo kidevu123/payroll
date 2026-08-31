@@ -1348,12 +1348,6 @@ function ExceptionsQueueCard({
             </span>
           )}
         </h3>
-        <Link
-          href="/hall-monitor"
-          className="text-[11px] font-medium text-brand-700 hover:underline"
-        >
-          View all
-        </Link>
       </div>
       <ul className="mt-3 space-y-2">
         {rows.map((r) => (

@@ -795,9 +795,9 @@ function PeriodLine({
     const docs = paystubRun.paystubDocs ?? [];
     // Period-attached paystub groups carry the real period id (uuid) —
     // link back to that period's page. Salaried-tab uploads have only the
-    // synthetic "salaried-paystub:" key and keep linking to /salaried.
+    // synthetic "salaried-paystub:" key and link to the Salaried tab.
     const rangeHref = group.periodId.startsWith("salaried-paystub:")
-      ? "/salaried"
+      ? "/payroll?schedule=salaried"
       : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
@@ -886,7 +886,7 @@ function PeriodLine({
                       <Eye className="h-4 w-4" />
                     </PdfLink>
                   ) : (
-                    <Link href="/salaried">
+                    <Link href="/payroll?schedule=salaried">
                       <Eye className="h-4 w-4" />
                     </Link>
                   )}
@@ -916,8 +916,8 @@ function PeriodLine({
                     ))}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/salaried">
-                        <FileText className="h-3.5 w-3.5" /> Manage on Salaried page
+                      <Link href="/payroll?schedule=salaried">
+                        <FileText className="h-3.5 w-3.5" /> Manage on Salaried tab
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>

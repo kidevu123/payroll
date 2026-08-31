@@ -17,16 +17,12 @@ import {
   CalendarDays,
   Wallet,
   BarChart3,
-  ClipboardCheck,
-  Bot,
   Settings2,
-  Briefcase,
   CalendarRange,
   Banknote,
   Megaphone,
   Search,
   Bell,
-  Sparkles,
   ChevronDown,
   LogOut,
   type LucideIcon,
@@ -55,17 +51,15 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: "manage",
     items: [
+      // Salaried staff live on /payroll's Salaried tab — no separate nav item.
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
-      { href: "/salaried", labelKey: "salaried", icon: Briefcase },
       { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
     ],
   },
   {
     headingKey: "operate",
     items: [
-      { href: "/hall-monitor", labelKey: "hallMonitor", icon: ClipboardCheck },
-      { href: "/assistant", labelKey: "assistant", icon: Bot },
       { href: "/reports", labelKey: "reports", icon: BarChart3 },
       { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
       { href: "/notifications", labelKey: "notifications", icon: Megaphone },
@@ -240,8 +234,8 @@ export function DashboardDarkShell({
       {/* ── Sidebar ─────────────────────────────────────────────────
           Compact icon rail on tablet (md, w-16) → full sidebar on desktop
           (lg, w-64). Below md it's hidden and the mobile top bar + bottom
-          tab bar take over. Labels/search/intelligence/profile-detail are
-          gated to lg so the rail stays icon-only. */}
+          tab bar take over. Labels/search/profile-detail are gated to lg
+          so the rail stays icon-only. */}
       <aside
         className="hidden md:flex fixed inset-y-0 left-0 z-30 w-16 lg:w-64 flex-col h-dvh"
         style={{
@@ -328,41 +322,6 @@ export function DashboardDarkShell({
             </div>
           ))}
         </nav>
-
-        {/* Intelligence card → Assistant — full sidebar only; the rail
-            already carries the Assistant nav icon. */}
-        <div className="hidden lg:block px-3 pb-3 shrink-0">
-          <div
-            className="rounded-xl p-3.5"
-            style={{
-              background: "linear-gradient(160deg, rgba(52,211,153,0.16), rgba(52,211,153,0.04))",
-              border: `1px solid ${DASH.borderStrong}`,
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" style={{ color: DASH.emerald }} aria-hidden />
-              <span className="text-[13px] font-bold" style={{ color: DASH.text }}>
-                {company.name} Intelligence
-              </span>
-              <span
-                className="rounded px-1.5 py-px text-micro uppercase"
-                style={{ background: "rgba(52,211,153,0.25)", color: DASH.emerald }}
-              >
-                Beta
-              </span>
-            </div>
-            <p className="mt-1.5 text-[11px] leading-snug" style={{ color: DASH.textMuted }}>
-              Ask anything about your payroll, team, or operations.
-            </p>
-            <Link
-              href="/assistant"
-              className="mt-2.5 flex w-full items-center justify-center rounded-lg py-1.5 text-[12px] font-semibold"
-              style={{ background: DASH.emerald, color: DASH.onAccent }}
-            >
-              Ask {company.name}
-            </Link>
-          </div>
-        </div>
 
         {/* Footer: settings + profile */}
         <div className="px-3 pb-4 shrink-0 space-y-1" style={{ borderTop: `1px solid ${DASH.border}` }}>

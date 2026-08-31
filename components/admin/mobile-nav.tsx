@@ -8,10 +8,7 @@ import {
   CalendarDays,
   Wallet,
   BarChart3,
-  ClipboardCheck,
-  Bot,
   Settings2,
-  Briefcase,
   CalendarRange,
   Banknote,
   Megaphone,
@@ -35,17 +32,15 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
   {
     headingKey: "manage",
     items: [
+      // Salaried staff live on /payroll's Salaried tab — no separate nav item.
       { href: "/time", labelKey: "time", icon: CalendarDays },
       { href: "/payroll", labelKey: "payroll", icon: Wallet },
-      { href: "/salaried", labelKey: "salaried", icon: Briefcase },
       { href: "/calendar", labelKey: "calendar", icon: CalendarRange },
     ],
   },
   {
     headingKey: "operate",
     items: [
-      { href: "/hall-monitor", labelKey: "hallMonitor", icon: ClipboardCheck },
-      { href: "/assistant", labelKey: "assistant", icon: Bot },
       { href: "/reports", labelKey: "reports", icon: BarChart3 },
       { href: "/cash-drawer", labelKey: "cashDrawer", icon: Banknote },
       { href: "/notifications", labelKey: "notifications", icon: Megaphone },

@@ -106,13 +106,6 @@ function buildPushFallback(e: RecipientPayload): PushPayload | null {
         url: "/ngteco",
         tag: "ingest_failed",
       };
-    case "hall_monitor.weekly_ready":
-      return {
-        title: "Weekly hall monitor",
-        body: "Review the outside verification report before payroll.",
-        url: "/hall-monitor",
-        tag: "hall_monitor",
-      };
     case "employee.ngteco_imported": {
       const count =
         typeof e.payload.count === "number" ? e.payload.count : 1;

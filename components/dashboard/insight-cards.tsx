@@ -166,7 +166,7 @@ export function ExceptionsCard({ count }: { count: number }) {
       value={String(count)}
       icon={clear ? CheckCircle2 : TriangleAlert}
       accent={clear ? DASH.emerald : DASH.amber}
-      href="/hall-monitor"
+      href="/time"
       sub={
         <span
           className="inline-flex items-center gap-1 text-[11px]"
