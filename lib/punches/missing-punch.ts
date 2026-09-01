@@ -85,3 +85,44 @@ export function validateAmbiguousPair(
   }
   return null;
 }
+
+const WALL_CLOCK_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+const TIME_ONLY_RE = /^(\d{2}):(\d{2})$/;
+
+/**
+ * Build the full wall-clock value for the missing side of an ambiguous
+ * punch from a time-only input. The date is taken from the on-file punch
+ * so the admin never re-types a date the app already knows. It rolls to
+ * the adjacent day only when the entered time makes that the sole valid
+ * reading (overnight shift): a clock-out at or before the on-file
+ * clock-in time is treated as next day; a clock-in at or after the
+ * on-file clock-out time is treated as the previous day.
+ */
+export function composeMissingWallClock(
+  onFileRole: "clock-in" | "clock-out",
+  onFileWallClock: string,
+  missingTime: string,
+): { wallClock: string; dayOffset: -1 | 0 | 1 } | null {
+  const dateMatch = WALL_CLOCK_DATE_RE.exec(onFileWallClock);
+  const timeMatch = TIME_ONLY_RE.exec(missingTime);
+  if (!dateMatch || !timeMatch) return null;
+
+  const [, y, mo, d, onH, onM] = dateMatch;
+  const [, h, m] = timeMatch;
+  const onFileMinutes = Number(onH) * 60 + Number(onM);
+  const missingMinutes = Number(h) * 60 + Number(m);
+
+  const dayOffset: -1 | 0 | 1 =
+    onFileRole === "clock-in"
+      ? missingMinutes <= onFileMinutes
+        ? 1
+        : 0
+      : missingMinutes >= onFileMinutes
+        ? -1
+        : 0;
+
+  // Date-only arithmetic in UTC so DST never shifts the calendar day.
+  const day = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d) + dayOffset));
+  const wallDate = day.toISOString().slice(0, 10);
+  return { wallClock: `${wallDate}T${h}:${m}`, dayOffset };
+}

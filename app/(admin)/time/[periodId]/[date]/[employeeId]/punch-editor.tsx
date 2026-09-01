@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PunchRow } from "@/components/domain/punch-row";
 import {
+  composeMissingWallClock,
   inferAmbiguousOnFileRole,
   isAmbiguousSinglePunch,
   isMissingClockInPunch,
   isOpenShiftPunch,
   validateAmbiguousPair,
 } from "@/lib/punches/missing-punch";
-import { coerceDate } from "@/lib/time/wall-clock";
+import { coerceDate, wallClockToUtc } from "@/lib/time/wall-clock";
 import {
   createBackPayPunchAction,
   createPunchAction,
@@ -52,6 +53,17 @@ function formatNgtecoSourceLine(notes: string): string {
   if (dev) parts.push(`device ${dev}`);
   if (scrape) parts.push(`scraped ${scrape.replace(/\|/g, " ")}`);
   return parts.join(" · ");
+}
+
+function formatWallDate(wallClock: string, timezone: string): string {
+  const d = wallClockToUtc(wallClock, timezone);
+  if (!d) return wallClock.slice(0, 10);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(d);
 }
 
 function defaultClockOutGuess(clockIn: Date | string, timezone: string): string {
@@ -221,6 +233,14 @@ function FixPunchForm({
   const [onFileRole, setOnFileRole] = React.useState<"clock-in" | "clock-out">(
     () => inferAmbiguousOnFileRole(punch.clockIn, timezone),
   );
+  // Time-only entry for the missing side; the date comes from the on-file punch.
+  const [missingTime, setMissingTime] = React.useState("");
+  const composed = ambiguous
+    ? composeMissingWallClock(onFileRole, onFileTime, missingTime)
+    : null;
+  const composedDayLabel = composed
+    ? formatWallDate(composed.wallClock, timezone)
+    : null;
 
   const cleanedNotes =
     punch.notes?.replace(/\bambiguous:single\b/g, "").replace(/\s+/g, " ").trim() ??
@@ -232,10 +252,19 @@ function FixPunchForm({
         setPending(true);
         setError(null);
         if (ambiguous) {
-          const missing =
-            onFileRole === "clock-in"
-              ? String(form.get("clockOut") ?? "")
-              : String(form.get("clockIn") ?? "");
+          const built = composeMissingWallClock(
+            onFileRole,
+            onFileTime,
+            String(form.get("missingTime") ?? ""),
+          );
+          if (!built) {
+            setPending(false);
+            setError("Enter the missing time (hours and minutes).");
+            return;
+          }
+          const missing = built.wallClock;
+          form.delete("missingTime");
+          form.set(onFileRole === "clock-in" ? "clockOut" : "clockIn", missing);
           const pairErr = validateAmbiguousPair(
             onFileRole,
             onFileTime,
@@ -307,16 +336,22 @@ function FixPunchForm({
             <>
               <input type="hidden" name="clockIn" value={onFileTime} />
               <div className="space-y-1">
-                <Label htmlFor="fix-clockOut">Missing clock out ({timezone})</Label>
+                <Label htmlFor="fix-missingTime">
+                  Clock out time on {formatWallDate(onFileTime, timezone)} ({timezone})
+                </Label>
                 <Input
-                  id="fix-clockOut"
-                  name="clockOut"
-                  type="datetime-local"
+                  id="fix-missingTime"
+                  name="missingTime"
+                  type="time"
                   required
+                  value={missingTime}
+                  onChange={(e) => setMissingTime(e.target.value)}
+                  className="max-w-[12rem]"
                 />
                 <p className="text-xs text-text-muted">
-                  The {onFileWallLabel} punch stays as clock-in. Enter a later
-                  clock-out time.
+                  {composed && composed.dayOffset === 1
+                    ? `Earlier than the ${onFileWallLabel} clock-in, so this counts as an overnight shift ending ${composedDayLabel}.`
+                    : `The ${onFileWallLabel} punch stays as clock-in. Enter the time they left.`}
                 </p>
               </div>
             </>
@@ -324,16 +359,22 @@ function FixPunchForm({
             <>
               <input type="hidden" name="clockOut" value={onFileTime} />
               <div className="space-y-1">
-                <Label htmlFor="fix-clockIn">Missing clock in ({timezone})</Label>
+                <Label htmlFor="fix-missingTime">
+                  Clock in time on {formatWallDate(onFileTime, timezone)} ({timezone})
+                </Label>
                 <Input
-                  id="fix-clockIn"
-                  name="clockIn"
-                  type="datetime-local"
+                  id="fix-missingTime"
+                  name="missingTime"
+                  type="time"
                   required
+                  value={missingTime}
+                  onChange={(e) => setMissingTime(e.target.value)}
+                  className="max-w-[12rem]"
                 />
                 <p className="text-xs text-text-muted">
-                  The {onFileWallLabel} punch stays as clock-out. Enter an
-                  earlier clock-in time (e.g. start of shift).
+                  {composed && composed.dayOffset === -1
+                    ? `Later than the ${onFileWallLabel} clock-out, so this counts as an overnight shift starting ${composedDayLabel}.`
+                    : `The ${onFileWallLabel} punch stays as clock-out. Enter the time they arrived.`}
                 </p>
               </div>
             </>
