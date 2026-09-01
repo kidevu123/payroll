@@ -36,7 +36,8 @@ export function PeriodDeleteButton({
           setOpen(true);
         }}
         title="Delete this period (cascade)"
-        className="text-danger-700 hover:bg-danger-50"
+        aria-label="Delete this period"
+        className="h-8 min-h-0 w-8 p-0 text-text-subtle hover:bg-danger-50 hover:text-danger-700"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
@@ -60,7 +61,9 @@ export function PeriodDeleteButton({
         // Success: page revalidates server-side, no need to handle here.
       }}
       onClick={(e) => e.stopPropagation()}
-      className="flex items-center gap-2 rounded-input border border-danger-200 bg-danger-50 px-2 py-1.5"
+      // Popover anchored to the row's action cell so confirming never
+      // reflows the row it is about to delete.
+      className="absolute right-0 top-1/2 z-30 flex -translate-y-1/2 flex-wrap items-center gap-2 rounded-card border border-danger-200 bg-surface p-2 shadow-pop"
     >
       <AlertTriangle className="h-3.5 w-3.5 text-danger-700 shrink-0" />
       <Input

@@ -75,7 +75,10 @@ export function PollPunchesNowButton({
           )}
         </Button>
         {last && (
-          <span className="text-xs text-text-muted">
+          <span
+            className="min-w-0 max-w-[22rem] truncate text-xs text-text-muted"
+            title={lastLabel + (last.errorMessage ? ` · ${last.errorMessage}` : "")}
+          >
             Last:{" "}
             <span
               className={

@@ -15,7 +15,6 @@
 // absent here. The owner only uses this page to sync punches and to step into
 // a period's detail — keep it ruthlessly simple.
 
-import type React from "react";
 import Link from "next/link";
 import {
   Wallet,
@@ -23,22 +22,15 @@ import {
   Briefcase,
   Pencil,
   ChevronRight,
-  CircleAlert,
-  Banknote,
   CalendarClock,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MoneyDisplay } from "@/components/domain/money-display";
+import { HoursDisplay } from "@/components/domain/hours-display";
 import { Avatar } from "@/components/domain/avatar";
 import { SchedulePill } from "@/components/domain/schedule-pill";
-import { statusChipClasses } from "@/components/domain/status-pill";
 import {
   ScheduleTabs,
   parseScheduleTab,
@@ -58,8 +50,9 @@ import {
 } from "@/lib/payroll/period-status";
 import { getSetting } from "@/lib/settings/runtime";
 import { db } from "@/lib/db";
-import { payPeriods, paySchedules } from "@/lib/db/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { payPeriods, paySchedules, punches, payslips } from "@/lib/db/schema";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { wallClockToUtc } from "@/lib/time/wall-clock";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
@@ -124,6 +117,40 @@ export default async function PayrollPage({
     day: "2-digit",
   }).format(new Date());
 
+  // Per-row figures so the list answers "how big is this period" without
+  // opening it. Two grouped aggregates over at most 8 period ids: live punch
+  // figures for every row, and stored payslip totals for LOCKED rows (the
+  // money is only real once payslips exist — OPEN rows show hours, not $).
+  const periodIds = openPeriods.map((p) => p.id);
+  const tz = company?.timezone ?? "America/New_York";
+  const todayStartIso = (wallClockToUtc(`${today}T00:00`, tz) ?? new Date()).toISOString();
+  const [punchAgg, payslipAgg] = periodIds.length
+    ? await Promise.all([
+        db
+          .select({
+            periodId: punches.periodId,
+            employees: sql<string>`count(distinct ${punches.employeeId})`,
+            hours: sql<string>`coalesce(sum(extract(epoch from (${punches.clockOut} - ${punches.clockIn})) / 3600) filter (where ${punches.clockOut} is not null), 0)`,
+            incomplete: sql<string>`count(*) filter (where ${punches.clockOut} is null and ${punches.clockIn} < ${todayStartIso}::timestamptz)`,
+          })
+          .from(punches)
+          .where(and(isNull(punches.voidedAt), inArray(punches.periodId, periodIds)))
+          .groupBy(punches.periodId),
+        db
+          .select({
+            periodId: payslips.periodId,
+            employees: sql<string>`count(*)`,
+            hours: sql<string>`coalesce(sum(${payslips.hoursWorked}), 0)`,
+            totalCents: sql<string>`coalesce(sum(${payslips.roundedPayCents}), 0)`,
+          })
+          .from(payslips)
+          .where(and(isNull(payslips.voidedAt), inArray(payslips.periodId, periodIds)))
+          .groupBy(payslips.periodId),
+      ])
+    : [[], []];
+  const punchByPeriod = new Map(punchAgg.map((r) => [r.periodId, r]));
+  const payslipByPeriod = new Map(payslipAgg.map((r) => [r.periodId, r]));
+
   // Resolve each period's lifecycle phase up front, then order the list by
   // urgency: needs-processing first, then locked awaiting payment, then
   // running, then upcoming. Within a phase, newest first.
@@ -140,11 +167,27 @@ export default async function PayrollPage({
         state: p.state,
         today,
       });
+      const live = punchByPeriod.get(p.id);
+      const stored = payslipByPeriod.get(p.id);
+      const figures =
+        stored && Number(stored.employees) > 0
+          ? {
+              employees: Number(stored.employees),
+              hours: Number(stored.hours),
+              totalCents: Number(stored.totalCents) as number | null,
+            }
+          : {
+              employees: Number(live?.employees ?? 0),
+              hours: Number(live?.hours ?? 0),
+              totalCents: null as number | null,
+            };
       return {
         ...p,
         displayEnd,
         phase,
         progress: periodProgress(p.startDate, displayEnd, today),
+        figures,
+        incomplete: Number(live?.incomplete ?? 0),
       };
     })
     .sort(
@@ -174,7 +217,7 @@ export default async function PayrollPage({
         title="Periods"
         description={
           <>
-            Open and locked pay periods awaiting work. Historical reports live
+            Open and locked pay periods that still need work. Paid periods live
             in{" "}
             <Link
               href="/reports"
@@ -217,83 +260,169 @@ export default async function PayrollPage({
       />
       <ScheduleTabs current={tab} basePath="/payroll" />
 
-      {/* Recent periods — the visual focus of this screen. A thin cadence
-          accent bar repeats on each row so the schedule is recognizable at a
-          glance even on the All tab. Clicking a row steps into the period's
-          detail page. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-brand-700" /> Recent periods
-          </CardTitle>
-          <CardDescription>
-            Open and locked periods awaiting work. Paid periods live in{" "}
-            <Link
-              href="/reports"
-              className="text-brand-700 underline underline-offset-2"
+      {/* One table, grouped by lifecycle phase. The group header names the
+          state once; the row itself carries the figures. (Before: a card per
+          row inside a card, a colored bar + a chip + a sentence all saying
+          the same thing, and no numbers at all.) */}
+      <Card className="overflow-hidden">
+        {periods.length === 0 ? (
+          <EmptyState
+            icon={Wallet}
+            title="No periods need work"
+            description="Open and locked pay periods will appear here. Paid periods live in Reports."
+          />
+        ) : (
+          <>
+            <div
+              className={`hidden md:grid ${LIST_GRID} items-center gap-x-4 border-b border-border/60 bg-surface-2/40 px-5 py-2.5 text-micro uppercase text-text-subtle`}
             >
-              Reports
-            </Link>
-            .
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {periods.length === 0 ? (
-            <EmptyState
-              icon={Wallet}
-              title="No periods yet"
-              description="Open and locked pay periods awaiting work will appear here. Paid periods live in Reports."
-            />
-          ) : (
-            periods.map((p) => {
-              // The left accent bar carries the PHASE, not the cadence — the
-              // owner's ask: tell me at a glance which row is running, which
-              // is done and waiting on me, which is locked. Cadence still
-              // reads from the SchedulePill.
-              const rowAccent =
-                p.phase === "NEEDS_PROCESSING"
-                  ? "before:bg-warning-500"
-                  : p.phase === "AWAITING_PAYMENT"
-                    ? "before:bg-info-600"
-                    : p.phase === "RUNNING"
-                      ? "before:bg-success-500"
-                      : "before:bg-text/25";
-              return (
-                <div
-                  key={p.id}
-                  className={`relative flex items-center justify-between gap-3 rounded-card border border-border/70 bg-surface p-3 hover:bg-surface-2/40 shadow-card transition-colors overflow-hidden before:absolute before:left-0 before:top-0 before:h-full before:w-1 focus-within:ring-2 focus-within:ring-brand-700/60 ${rowAccent}`}
-                >
-                  {/* Stretched link: the whole row is the click/hover target
-                      (after:inset-0), while the delete button sits above it
-                      via z-10 so it stays independently clickable. Keyboard
-                      focus lights the row through focus-within. */}
-                  <Link
-                    href={`/payroll/${p.id}`}
-                    className="group flex items-center gap-3 flex-1 min-w-0 pl-1.5 after:absolute after:inset-0 after:rounded-card focus:outline-none focus-visible:outline-none"
-                  >
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium tabular-nums tracking-tight">
-                          {formatPeriodRange(p.startDate, p.displayEnd)}
-                        </span>
-                        <SchedulePill name={p.scheduleName} />
-                        <PhaseChip phase={p.phase} />
-                      </div>
-                      <p className="text-xs text-text-muted">
-                        {phaseDetail(p.phase, p.startDate, p.displayEnd, p.progress)}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                  <div className="relative z-10">
-                    <PeriodDeleteButton periodId={p.id} state={p.state} />
-                  </div>
+              <div>Pay period</div>
+              <div>Schedule</div>
+              <div className="text-right">Employees</div>
+              <div className="text-right">Hours</div>
+              <div className="text-right">Total</div>
+              <div />
+            </div>
+            {PHASE_ORDER.filter((ph) => phaseCount(ph) > 0).map((ph) => (
+              <section key={ph} aria-label={PHASE_META[ph].label}>
+                <div className="flex items-center gap-2 border-b border-border/60 bg-surface-2/20 px-5 py-2">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${PHASE_META[ph].dot}`}
+                    aria-hidden
+                  />
+                  <span className={`text-micro uppercase ${PHASE_META[ph].tone}`}>
+                    {PHASE_META[ph].label}
+                  </span>
+                  <span className="text-micro uppercase text-text-subtle tabular-nums">
+                    {phaseCount(ph)}
+                  </span>
                 </div>
-              );
-            })
-          )}
-        </CardContent>
+                <div className="divide-y divide-border/60">
+                  {periods
+                    .filter((p) => p.phase === ph)
+                    .map((p) => (
+                      <PeriodRow key={p.id} p={p} />
+                    ))}
+                </div>
+              </section>
+            ))}
+          </>
+        )}
       </Card>
+    </div>
+  );
+}
+
+const LIST_GRID =
+  "md:grid-cols-[minmax(0,1.6fr)_8rem_6rem_6rem_7.5rem_5.5rem]";
+
+const PHASE_ORDER: PeriodPhase[] = [
+  "NEEDS_PROCESSING",
+  "AWAITING_PAYMENT",
+  "RUNNING",
+  "UPCOMING",
+];
+
+const PHASE_META: Record<
+  PeriodPhase,
+  { label: string; dot: string; tone: string }
+> = {
+  NEEDS_PROCESSING: {
+    label: "Needs processing",
+    dot: "bg-warning-600",
+    tone: "text-warning-700",
+  },
+  AWAITING_PAYMENT: {
+    label: "Awaiting payment",
+    dot: "bg-warning-600",
+    tone: "text-warning-700",
+  },
+  RUNNING: { label: "In progress", dot: "bg-success-600", tone: "text-text-muted" },
+  UPCOMING: { label: "Upcoming", dot: "bg-text/25", tone: "text-text-subtle" },
+};
+
+type PeriodRowData = {
+  id: string;
+  state: "OPEN" | "LOCKED" | "PAID";
+  startDate: string;
+  displayEnd: string;
+  scheduleName: string | null;
+  phase: PeriodPhase;
+  progress: { day: number; total: number } | null;
+  figures: { employees: number; hours: number; totalCents: number | null };
+  incomplete: number;
+};
+
+function PeriodRow({ p }: { p: PeriodRowData }) {
+  const detail = phaseDetail(p.phase, p.startDate, p.displayEnd, p.progress);
+  return (
+    <div
+      className={`group relative grid grid-cols-1 gap-y-2 px-5 py-3.5 transition-colors hover:bg-surface-2/40 focus-within:bg-surface-2/40 md:grid md:items-center md:gap-x-4 ${LIST_GRID}`}
+    >
+      {/* Stretched link: the whole row is the target; the delete control
+          sits above it (z-10) so it stays independently clickable. */}
+      <Link
+        href={`/payroll/${p.id}`}
+        className="min-w-0 after:absolute after:inset-0 focus:outline-none"
+      >
+        <span className="block truncate text-sm font-medium tabular-nums tracking-tight text-text">
+          {formatPeriodRange(p.startDate, p.displayEnd)}
+        </span>
+        <span className="mt-0.5 block text-xs text-text-muted">
+          {detail}
+          {p.incomplete > 0 ? (
+            <>
+              {" · "}
+              <span className="font-medium text-warning-700">
+                {p.incomplete} incomplete punch{p.incomplete === 1 ? "" : "es"}
+              </span>
+            </>
+          ) : null}
+        </span>
+      </Link>
+      <div>
+        <SchedulePill name={p.scheduleName} />
+      </div>
+      {/* Figures: a compact sentence on phones, three aligned columns on md+. */}
+      <p className="text-xs text-text-muted tabular-nums md:hidden">
+        {p.figures.employees} employee{p.figures.employees === 1 ? "" : "s"}
+        {" · "}
+        <HoursDisplay hours={p.figures.hours} decimals={2} /> h
+        {p.figures.totalCents !== null ? (
+          <>
+            {" · "}
+            <span className="font-medium text-text">
+              <MoneyDisplay cents={p.figures.totalCents} />
+            </span>
+          </>
+        ) : null}
+      </p>
+      <span className="hidden text-right text-sm tabular-nums text-text md:block">
+        {p.figures.employees > 0 ? p.figures.employees : <span className="text-text-subtle">—</span>}
+      </span>
+      <span className="hidden text-right text-sm tabular-nums text-text md:block">
+        {p.figures.hours > 0 ? (
+          <HoursDisplay hours={p.figures.hours} decimals={2} />
+        ) : (
+          <span className="text-text-subtle">—</span>
+        )}
+      </span>
+      <span className="hidden text-right text-sm font-medium tabular-nums text-text md:block">
+        {p.figures.totalCents !== null ? (
+          <MoneyDisplay cents={p.figures.totalCents} />
+        ) : (
+          <span className="font-normal text-text-subtle">—</span>
+        )}
+      </span>
+      <div className="absolute right-4 top-3 flex items-center justify-end gap-1 md:static">
+        <div className="relative z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+          <PeriodDeleteButton periodId={p.id} state={p.state} />
+        </div>
+        <ChevronRight
+          className="hidden h-4 w-4 text-text-subtle transition-transform group-hover:translate-x-0.5 md:block"
+          aria-hidden
+        />
+      </div>
     </div>
   );
 }
@@ -318,72 +447,15 @@ function phaseDetail(
   switch (phase) {
     case "RUNNING":
       return progress
-        ? `In progress · day ${progress.day} of ${progress.total} · ends ${friendlyDate(endDate)}`
-        : `In progress · ends ${friendlyDate(endDate)}`;
+        ? `Day ${progress.day} of ${progress.total} · ends ${friendlyDate(endDate)}`
+        : `Ends ${friendlyDate(endDate)}`;
     case "NEEDS_PROCESSING":
       return `Ended ${friendlyDate(endDate)} · ready to review and lock`;
     case "AWAITING_PAYMENT":
-      return "Locked · reviewed and awaiting payment";
+      return "Reviewed and locked · ready to pay";
     case "UPCOMING":
       return `Starts ${friendlyDate(startDate)}`;
   }
-}
-
-/**
- * Lifecycle chip — the loud cue on each period row. Same chip anatomy as
- * StatusPill but keyed to the phase judgement instead of the raw DB state,
- * so "Open" stops meaning three different things.
- */
-function PhaseChip({ phase }: { phase: PeriodPhase }) {
-  // Tones come from the shared status vocabulary (components/domain/status-pill),
-  // so a LOCKED period reads the same here as it does on /reports: in progress
-  // is informational, anything needing the owner's hands is amber.
-  const styles: Record<
-    PeriodPhase,
-    { label: string; className: string; Icon: React.ComponentType<{ className?: string }> }
-  > = {
-    RUNNING: {
-      label: "In progress",
-      className: statusChipClasses("info"),
-      Icon: RunningDot,
-    },
-    NEEDS_PROCESSING: {
-      label: "Needs processing",
-      className: statusChipClasses("warn"),
-      Icon: CircleAlert,
-    },
-    AWAITING_PAYMENT: {
-      label: "Awaiting payment",
-      className: statusChipClasses("warn"),
-      Icon: Banknote,
-    },
-    UPCOMING: {
-      label: "Upcoming",
-      className: statusChipClasses("neutral"),
-      Icon: CalendarClock,
-    },
-  };
-  const s = styles[phase];
-  const { Icon } = s;
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-[11px] font-medium tracking-tight antialiased ${s.className}`}
-    >
-      <Icon className="h-3 w-3" aria-hidden />
-      {s.label}
-    </span>
-  );
-}
-
-/** Soft pulsing dot for the in-progress chip — motion gated by the global
- *  prefers-reduced-motion rule in globals.css. */
-function RunningDot({ className }: { className?: string }) {
-  return (
-    <span className={`relative inline-flex items-center justify-center ${className ?? ""}`}>
-      <span className="absolute h-2 w-2 rounded-full bg-success-500/50 animate-ping" />
-      <span className="relative h-1.5 w-1.5 rounded-full bg-success-600" />
-    </span>
-  );
 }
 
 /**
