@@ -153,40 +153,40 @@ export function LockButtons({
             setPending(false);
             if (result?.error) setError(result.error);
           }}
-          className="flex flex-wrap items-center gap-2"
+          // Payment method + confirm read as ONE control: the select and
+          // the button share edges, so the bar carries a single primary
+          // unit instead of a label, a floating select and a button.
+          className="flex items-stretch"
         >
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-text-muted whitespace-nowrap">Payment</span>
-            <select
-              value={paymentMethod}
-              onChange={(e) =>
-                setPaymentMethod(e.target.value as "BANK" | "CASH")
-              }
-              disabled={pending}
-              className="h-8 rounded-input border border-border/70 bg-surface px-2.5 text-xs"
-            >
-              <option value="BANK">Paid through bank</option>
-              <option value="CASH">Paid through cash</option>
-            </select>
-          </div>
+          <select
+            aria-label="Payment method"
+            value={paymentMethod}
+            onChange={(e) =>
+              setPaymentMethod(e.target.value as "BANK" | "CASH")
+            }
+            disabled={pending}
+            className="h-10 rounded-input rounded-r-none border border-r-0 border-border bg-surface pl-3 pr-8 text-xs font-medium text-text transition-colors hover:bg-surface-2/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 disabled:opacity-50"
+          >
+            <option value="BANK">Paid through bank</option>
+            <option value="CASH">Paid through cash</option>
+          </select>
           {paymentMethod === "CASH" && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-text-muted whitespace-nowrap">Cash ($)</span>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={cashDollars}
-                onChange={(e) => setCashDollars(e.target.value)}
-                disabled={pending}
-                className="h-8 w-24 text-xs"
-              />
-            </div>
+            <Input
+              type="number"
+              step="0.01"
+              min="0.01"
+              aria-label="Cash amount in dollars"
+              value={cashDollars}
+              onChange={(e) => setCashDollars(e.target.value)}
+              disabled={pending}
+              className="h-10 w-28 rounded-none border-r-0 text-xs tabular-nums"
+            />
           )}
           <Button
             type="submit"
             size="sm"
             disabled={pending}
+            className="rounded-l-none"
             title="Only mark paid once payment has actually been sent."
           >
             <CheckCircle2 className="h-4 w-4" />{" "}
@@ -195,7 +195,7 @@ export function LockButtons({
         </form>
         <Button
           size="sm"
-          variant="secondary"
+          variant="ghost"
           onClick={() => setUnlockOpen((v) => !v)}
           title="Unlock to correct punches before payment."
         >

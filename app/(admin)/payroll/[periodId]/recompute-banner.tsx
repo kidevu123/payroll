@@ -82,8 +82,8 @@ export function RecomputeBanner({
 
   return (
     <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900">
-      <div className="flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-warning-700" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">
+        <AlertTriangle className="hidden h-4 w-4 shrink-0 sm:mt-0.5 sm:block text-warning-700" />
         <div className="flex-1 min-w-0">
           <p className="font-medium">
             {drifts.length} payslip{drifts.length === 1 ? "" : "s"} on this
@@ -119,7 +119,7 @@ export function RecomputeBanner({
           variant="default"
           disabled={pending}
           onClick={onRecompute}
-          className="shrink-0"
+          className="shrink-0 self-start"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {pending

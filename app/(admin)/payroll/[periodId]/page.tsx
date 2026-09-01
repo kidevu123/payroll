@@ -106,6 +106,29 @@ function rateLabel(employee: {
     : "—";
 }
 
+function formatShortDate(d: Date | string, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    month: "short",
+    day: "numeric",
+  }).format(d instanceof Date ? d : new Date(d));
+}
+
+/** Inclusive day count between two ISO dates. */
+function periodDayCount(startIso: string, endIso: string): number {
+  const a = Date.UTC(
+    Number(startIso.slice(0, 4)),
+    Number(startIso.slice(5, 7)) - 1,
+    Number(startIso.slice(8, 10)),
+  );
+  const b = Date.UTC(
+    Number(endIso.slice(0, 4)),
+    Number(endIso.slice(5, 7)) - 1,
+    Number(endIso.slice(8, 10)),
+  );
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
 function issueLabel(row: {
   incomplete: number;
   hoursDrift?: boolean;
@@ -438,6 +461,30 @@ export default async function PeriodReviewPage({
               runSchedule?.name ?? null,
             ),
           )}
+          meta={[
+            `${periodDayCount(
+              period.startDate,
+              canonicalEndForScheduleName(
+                period.startDate,
+                period.endDate,
+                runSchedule?.name ?? null,
+              ),
+            )}-day period`,
+            period.lockedAt
+              ? `Locked ${formatShortDate(period.lockedAt, tz)}`
+              : null,
+            period.paidAt
+              ? `Paid ${formatShortDate(period.paidAt, tz)}${
+                  period.paymentMethod === "CASH"
+                    ? " in cash"
+                    : period.paymentMethod === "BANK"
+                      ? " by bank"
+                      : ""
+                }`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         />
       </div>
       {/* Stays in the content column — same card chrome as every section
@@ -467,9 +514,20 @@ export default async function PeriodReviewPage({
                     }))}
                 />
               )}
-              <span className="basis-full text-sm text-text-muted sm:basis-auto">
-                {displayRows.length} emp ·{" "}
-                <span className="font-medium text-text">
+              <span
+                className="hidden h-5 w-px bg-border/80 sm:block"
+                aria-hidden
+              />
+              <span className="basis-full text-sm text-text-muted tabular-nums sm:basis-auto">
+                {displayRows.length}{" "}
+                {displayRows.length === 1 ? "employee" : "employees"}
+                {" · "}
+                <HoursDisplay
+                  hours={totals.hours}
+                  decimals={payRules.hoursDecimalPlaces}
+                />{" "}
+                h{" · "}
+                <span className="font-semibold text-text">
                   <MoneyDisplay
                     cents={periodGrandTotalCents}
                     monospace={false}
@@ -488,7 +546,7 @@ export default async function PeriodReviewPage({
                 )}
               </span>
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0 lg:flex-wrap lg:items-center">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0 lg:flex-wrap lg:items-center lg:gap-3">
             {!isAccountant && run?.pdfPath && (
               <Button asChild variant="secondary" size="sm" className="w-full justify-center lg:w-auto">
                 <PdfLink
@@ -522,14 +580,15 @@ export default async function PeriodReviewPage({
 
       {!isAccountant && (
         <Card>
-          <CardHeader>
-            <CardTitle>Print payroll documents</CardTitle>
-            <CardDescription>
-              Print these while reviewing this period. Reports keeps the same
-              documents for lookbacks.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+          <CardHeader className="gap-3 border-b-0 py-4 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0 space-y-1">
+              <CardTitle>Payroll documents</CardTitle>
+              <CardDescription>
+                Print while reviewing. Reports keeps the same documents for
+                lookbacks.
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-2 md:justify-end">
             <Button asChild variant="secondary" size="sm">
               <PdfLink
                 href={`/api/payslips/period/${period.id}/signature`}
@@ -571,7 +630,8 @@ export default async function PeriodReviewPage({
                 </PdfLink>
               </Button>
             )}
-          </CardContent>
+            </div>
+          </CardHeader>
         </Card>
       )}
 
@@ -624,37 +684,40 @@ export default async function PeriodReviewPage({
         return (
           <Card>
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
-              <CardTitle>
-                Payslip acknowledgements
-              </CardTitle>
+              <CardTitle>Payslip acknowledgements</CardTitle>
               <p className="text-caption text-text-muted tabular-nums">
-                <span className="font-semibold text-success-700">
+                <span className="text-subheading font-semibold text-text">
                   {ackd.length}
-                </span>{" "}
-                / <span className="text-text">{active.length}</span> acknowledged
-                {disputed.length > 0 ? ` · ${disputed.length} disputed` : ""}
-                {pending.length > 0 ? ` · ${pending.length} pending` : ""}
+                </span>
+                <span className="text-text-subtle"> of {active.length}</span>{" "}
+                acknowledged
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Stacked bar: every payslip is a segment, colored by its
+                  state. A 0% single-fill bar read as an empty gray line. */}
               <div
-                className="h-1.5 overflow-hidden rounded-full bg-surface-2"
+                className="flex h-2 gap-px overflow-hidden rounded-full bg-surface-2"
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={active.length}
                 aria-valuenow={ackd.length}
                 aria-label="Payslips acknowledged"
               >
-                <div
-                  className="h-full rounded-full bg-success-600 transition-[width]"
-                  style={{
-                    width: `${Math.round((ackd.length / active.length) * 100)}%`,
-                  }}
-                />
+                {buckets
+                  .filter((b) => b.count > 0)
+                  .map((b) => (
+                    <div
+                      key={b.key}
+                      className={`h-full ${b.dot} ${b.key === "pending" ? "opacity-50" : ""}`}
+                      style={{ width: `${(b.count / active.length) * 100}%` }}
+                      aria-hidden
+                    />
+                  ))}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="flex flex-wrap gap-x-10 gap-y-4">
                 {buckets.map((bucket) => (
-                  <div key={bucket.key} className="space-y-2">
+                  <div key={bucket.key} className="min-w-[12rem] flex-1 space-y-2">
                     <p className="flex items-center gap-1.5 text-micro uppercase text-text-subtle">
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${bucket.dot}`}
@@ -664,7 +727,7 @@ export default async function PeriodReviewPage({
                       <span className="tabular-nums">({bucket.count})</span>
                     </p>
                     {bucket.names.length === 0 ? (
-                      <p className="text-xs text-text-subtle">—</p>
+                      <p className="text-xs text-text-subtle">No one yet</p>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {bucket.names.map((name) => (
@@ -738,17 +801,34 @@ export default async function PeriodReviewPage({
           period detail page no longer requires scrolling past every
           employee twice. */}
       <Card>
-        <CardHeader>
-          <CardTitle>Employee totals</CardTitle>
+        <CardHeader className="flex-row flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle>Employee totals</CardTitle>
+            <CardDescription>
+              Expand a row to see that employee&apos;s daily punches.
+            </CardDescription>
+          </div>
+          {rendered.length > 0 ? (
+            <p className="text-caption text-text-muted tabular-nums">
+              {displayRows.length}{" "}
+              {displayRows.length === 1 ? "employee" : "employees"}
+              {" · "}
+              <HoursDisplay
+                hours={totals.hours}
+                decimals={payRules.hoursDecimalPlaces}
+              />{" "}
+              h
+            </p>
+          ) : null}
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {rendered.length === 0 ? (
-            <p className="text-sm text-text-muted">
+            <p className="px-6 py-8 text-center text-sm text-text-muted">
               No punches or task pay recorded for this period.
             </p>
           ) : (
             <>
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-3 p-4 md:hidden">
               {displayRows.map((row) => {
                 const { employee, result, incomplete, punches } = row;
                 const ePunches = punches.filter((p) => !p.voidedAt);
@@ -788,7 +868,7 @@ export default async function PeriodReviewPage({
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div className="rounded-input border border-border/70 bg-surface p-2">
                           <div className="text-micro uppercase text-text-subtle">
                             Hours
@@ -879,15 +959,16 @@ export default async function PeriodReviewPage({
               </div>
             </div>
 
-            <div className="hidden space-y-0.5 overflow-x-auto md:block">
-              <div className="min-w-[760px]">
-              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 px-2 py-1.5 text-micro uppercase text-text-subtle border-b border-border">
+            <div className="hidden overflow-x-auto md:block">
+              <div className="min-w-[820px]">
+              <div className="grid grid-cols-[1.5rem_minmax(180px,2fr)_1fr_1fr_1fr_1.5fr_6.5rem] items-center gap-x-4 border-b border-border/60 bg-surface-2/40 px-5 py-2.5 text-micro uppercase text-text-subtle">
                 <div></div>
                 <div>Employee</div>
                 <div className="text-right">Hours</div>
                 <div className="text-right">Gross</div>
                 <div className="text-right">Rounded</div>
                 <div className="text-right">Issues</div>
+                <div className="text-right">Payslip</div>
               </div>
               <div className="divide-y divide-border/60">
                 {displayRows.map((row) => {
@@ -897,8 +978,8 @@ export default async function PeriodReviewPage({
                   const pdfUrl = payslipPdfHref(slip);
                   return (
                     <details key={employee.id} className="group">
-                      <summary className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2.5 text-sm cursor-pointer list-none hover:bg-surface-2/40 transition-colors [&::-webkit-details-marker]:hidden">
-                        <ChevronRight className="h-3.5 w-3.5 text-text-subtle group-open:rotate-90 transition-transform" />
+                      <summary className="grid grid-cols-[1.5rem_minmax(180px,2fr)_1fr_1fr_1fr_1.5fr_6.5rem] cursor-pointer list-none items-center gap-x-4 px-5 py-3 text-sm transition-colors hover:bg-surface-2/40 group-open:bg-surface-2/30 [&::-webkit-details-marker]:hidden">
+                        <ChevronRight className="h-4 w-4 text-text-subtle transition-transform group-open:rotate-90" />
                         <div className="flex min-w-0 flex-col gap-0.5">
                           {isAccountant ? (
                             <span className="block truncate font-semibold">
@@ -912,20 +993,8 @@ export default async function PeriodReviewPage({
                               {employee.displayName}
                             </Link>
                           )}
-                          <div className="text-xs text-text-muted">
+                          <div className="text-xs text-text-muted tabular-nums">
                             {rateLabel(employee)}
-                          </div>
-                          {/* Reserve the actions slot so rows with and
-                              without a payslip PDF stay the same height. */}
-                          <div className="min-h-[1.75rem]">
-                            {pdfUrl ? (
-                              <PayslipPdfActions
-                                url={pdfUrl}
-                                printLabel="Print"
-                                downloadLabel="PDF"
-                                layout="inline"
-                              />
-                            ) : null}
                           </div>
                         </div>
                         <span className="text-right tabular-nums">
@@ -940,7 +1009,7 @@ export default async function PeriodReviewPage({
                         <span className="text-right tabular-nums font-semibold">
                           <MoneyDisplay cents={result.roundedCents} />
                         </span>
-                        <span className="text-right">
+                        <span className="truncate text-right text-xs">
                           {issueLabel({
                             incomplete,
                             ...("hoursDrift" in row
@@ -952,15 +1021,27 @@ export default async function PeriodReviewPage({
                               : {}),
                           })}
                         </span>
+                        <span className="flex justify-end">
+                          {pdfUrl ? (
+                            <PayslipPdfActions
+                              url={pdfUrl}
+                              printLabel="Print"
+                              downloadLabel="PDF"
+                              layout="inline"
+                            />
+                          ) : (
+                            <span className="text-xs text-text-subtle">—</span>
+                          )}
+                        </span>
                       </summary>
                       <PunchSubTable punches={ePunches} tz={tz} formatHm={formatHm} formatDayLabel={formatDayLabel} periodId={periodId} employeeId={employee.id} canEdit={!isAccountant && period.state !== "PAID"} today={new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date())} />
                     </details>
                   );
                 })}
               </div>
-              <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t-2 border-border text-sm font-medium">
+              <div className="grid grid-cols-[1.5rem_minmax(180px,2fr)_1fr_1fr_1fr_1.5fr_6.5rem] items-center gap-x-4 border-t border-border bg-surface-2/40 px-5 py-3 text-sm font-medium">
                 <div></div>
-                <div>Employee subtotal</div>
+                <div>Subtotal</div>
                 <div className="text-right tabular-nums">
                   <HoursDisplay
                     hours={totals.hours}
@@ -970,13 +1051,14 @@ export default async function PeriodReviewPage({
                 <div className="text-right tabular-nums">
                   <MoneyDisplay cents={totals.gross} />
                 </div>
-                <div className="text-right tabular-nums">
+                <div className="text-right font-semibold tabular-nums">
                   <MoneyDisplay cents={totals.rounded} />
                 </div>
                 <div></div>
+                <div></div>
               </div>
               {tempWorkersTotalCents > 0 && (
-                <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-1 text-xs text-text-muted">
+                <div className="grid grid-cols-[1.5rem_minmax(180px,2fr)_1fr_1fr_1fr_1.5fr_6.5rem] items-center gap-x-4 bg-surface-2/40 px-5 py-1.5 text-xs text-text-muted">
                   <div></div>
                   <div>+ Temp / manual labor</div>
                   <div></div>
@@ -985,10 +1067,11 @@ export default async function PeriodReviewPage({
                     <MoneyDisplay cents={tempWorkersTotalCents} />
                   </div>
                   <div></div>
+                  <div></div>
                 </div>
               )}
               {tempWorkersTotalCents > 0 && (
-                <div className="grid grid-cols-[24px_minmax(160px,2fr)_1fr_1fr_1fr_1fr] gap-x-3 items-center px-2 py-2 border-t border-border text-sm font-semibold">
+                <div className="grid grid-cols-[1.5rem_minmax(180px,2fr)_1fr_1fr_1fr_1.5fr_6.5rem] items-center gap-x-4 border-t border-border bg-surface-2/40 px-5 py-3 text-sm font-semibold">
                   <div></div>
                   <div>Period grand total</div>
                   <div></div>
@@ -996,6 +1079,7 @@ export default async function PeriodReviewPage({
                   <div className="text-right tabular-nums">
                     <MoneyDisplay cents={periodGrandTotalCents} />
                   </div>
+                  <div></div>
                   <div></div>
                 </div>
               )}

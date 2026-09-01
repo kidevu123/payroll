@@ -19,8 +19,10 @@ export function PublishPeriodButton({
 
   if (published) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-input bg-success-50 px-3 py-1.5 text-sm font-medium text-success-700">
-        <Eye className="h-4 w-4" /> Visible to employees
+      // Status, not an action: quiet text so the one primary CTA in the
+      // bar (Mark as paid) stays the loudest element on the row.
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap px-1 text-xs font-medium text-success-700">
+        <Eye className="h-4 w-4" aria-hidden /> Visible to employees
       </span>
     );
   }
