@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Calculator, RotateCcw, X } from "lucide-react";
+import { Calculator, ChevronDown, RotateCcw, X } from "lucide-react";
 import type { Payslip, Employee } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,18 +46,25 @@ export function PayslipManageSection({ rows }: { rows: Row[] }) {
   const voidedCount = rows.length - activeCount;
   return (
     <Card>
-      <details>
-        <CardHeader>
-          <summary className="cursor-pointer list-none flex items-center justify-between gap-3">
-            <div>
+      {/* <summary> must be the FIRST child of <details>. Wrapping it in a
+          CardHeader div made the browser render its own "Details" label and
+          hide the real header inside the collapsed body. */}
+      <details className="group">
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <CardHeader className="flex-row items-center justify-between gap-3 border-b-0 transition-colors hover:bg-surface-2/40 group-open:border-b">
+            <div className="space-y-1">
               <CardTitle>Manage payslips</CardTitle>
               <CardDescription>
-                Manual override · {activeCount} active
-                {voidedCount > 0 ? ` · ${voidedCount} voided` : ""} · click to expand
+                Void or recompute individual payslips · {activeCount} active
+                {voidedCount > 0 ? ` · ${voidedCount} voided` : ""}
               </CardDescription>
             </div>
-          </summary>
-        </CardHeader>
+            <ChevronDown
+              className="h-4 w-4 shrink-0 text-text-subtle transition-transform group-open:rotate-180"
+              aria-hidden
+            />
+          </CardHeader>
+        </summary>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

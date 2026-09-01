@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
-import { Download, FileText, Trash2, Upload } from "lucide-react";
+import { Download, FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import type { Employee, PayrollPeriodDocument } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,12 +82,11 @@ export function PayrollDocsSection({
       <CardHeader>
         <CardTitle>W2 / paystub documents</CardTitle>
         <CardDescription>
-          For employees whose pay is prepared externally (e.g. accountant).
-          Upload the document here and the employee will see it under their
-          Pay tab.
+          For employees whose pay is prepared externally. Upload the document
+          and the employee sees it under their Pay tab.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="divide-y divide-border/60 p-0">
         {w2Employees.map((e) => (
           <EmployeeDocSlot
             key={e.id}
@@ -102,6 +101,19 @@ export function PayrollDocsSection({
   );
 }
 
+const KIND_LABEL: Record<"PAYSTUB" | "W2" | "OTHER", string> = {
+  PAYSTUB: "Paystub",
+  W2: "W2",
+  OTHER: "Other",
+};
+
+/**
+ * One employee's row. Progressive disclosure (owner: "no need for a giant
+ * upload box"): the resting state is the name, the on-file documents and a
+ * single slim "Add paystub" affordance. Clicking it opens the OS picker
+ * straight away; the compact form (file chip, kind, net, Upload) appears
+ * only once a file is chosen or dropped onto the row.
+ */
 function EmployeeDocSlot({
   periodId,
   employee,
@@ -115,22 +127,70 @@ function EmployeeDocSlot({
 }) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [file, setFile] = React.useState<File | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [dragOver, setDragOver] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const pickFile = (f: File | null) => {
+    if (!f) return;
+    setFile(f);
+    setOpen(true);
+    setError(null);
+  };
+  const reset = () => {
+    setFile(null);
+    setOpen(false);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+  const dropHandlers = locked
+    ? {}
+    : {
+        onDragOver: (e: React.DragEvent) => {
+          e.preventDefault();
+          setDragOver(true);
+        },
+        onDragLeave: () => setDragOver(false),
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault();
+          setDragOver(false);
+          pickFile(e.dataTransfer.files?.[0] ?? null);
+        },
+      };
 
   return (
-    <div className="rounded-card border border-border bg-surface-2/40 p-3 space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium">{employee.displayName}</p>
+    <div
+      {...dropHandlers}
+      className={[
+        "space-y-3 px-6 py-4 transition-colors",
+        dragOver ? "bg-brand-50/60" : "",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text">{employee.displayName}</p>
           <p className="text-xs text-text-muted">
             {docs.length === 0
-              ? "No document uploaded yet."
-              : `${docs.length} document${docs.length === 1 ? "" : "s"} on file.`}
+              ? "No document yet"
+              : `${docs.length} document${docs.length === 1 ? "" : "s"} on file`}
           </p>
         </div>
+        {!locked && !open && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            className="border-dashed"
+          >
+            <Plus className="h-4 w-4" aria-hidden /> Add paystub
+          </Button>
+        )}
       </div>
 
       {docs.length > 0 && (
-        <ul className="space-y-1 text-sm">
+        <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border bg-surface text-sm">
           {docs.map((d) => (
             <DocRow key={d.id} doc={d} locked={locked} />
           ))}
@@ -138,70 +198,117 @@ function EmployeeDocSlot({
       )}
 
       {!locked && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.xlsx"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+        />
+      )}
+
+      {!locked && open && (
         <form
           action={async (form) => {
+            if (!file) {
+              setError("Choose a file first.");
+              return;
+            }
             form.set("employeeId", employee.id);
+            form.set("file", file);
             setPending(true);
             setError(null);
             const result = await uploadPayrollDocAction(periodId, form);
             setPending(false);
             if (result?.error) setError(result.error);
+            else reset();
           }}
-          className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end"
+          className="space-y-3 rounded-card border border-border bg-surface-2/30 p-3"
         >
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor={`file-${employee.id}`} className="text-xs">
-              Upload PDF / PNG / JPG / XLSX (max 10 MB)
-            </Label>
-            <Input
-              id={`file-${employee.id}`}
-              name="file"
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.xlsx"
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`kind-${employee.id}`} className="text-xs">
-              Kind
-            </Label>
-            <select
-              id={`kind-${employee.id}`}
-              name="kind"
-              defaultValue="PAYSTUB"
-              className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+          {file ? (
+            <div className="flex items-center justify-between gap-3 rounded-input border border-border bg-surface px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <FileText className="h-4 w-4 shrink-0 text-brand-700" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-text">{file.name}</p>
+                  <p className="text-[11px] text-text-subtle">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={reset}
+                title="Remove file"
+                aria-label="Remove file"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-input border border-dashed border-border bg-surface px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:border-brand-700/60 hover:text-text"
             >
-              <option value="PAYSTUB">Paystub</option>
-              <option value="W2">W2</option>
-              <option value="OTHER">Other</option>
-            </select>
+              <FileText className="h-4 w-4" aria-hidden /> Choose file
+              <span className="text-xs font-normal text-text-subtle">
+                PDF, PNG, JPG, or XLSX · max 10 MB
+              </span>
+            </button>
+          )}
+
+          <div className="grid gap-2 sm:grid-cols-[8rem_10rem]">
+            <div className="space-y-1">
+              <Label htmlFor={`kind-${employee.id}`} className="text-xs text-text-muted">
+                Kind
+              </Label>
+              <select
+                id={`kind-${employee.id}`}
+                name="kind"
+                defaultValue="PAYSTUB"
+                className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+              >
+                {(Object.keys(KIND_LABEL) as Array<keyof typeof KIND_LABEL>).map((k) => (
+                  <option key={k} value={k}>
+                    {KIND_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`amt-${employee.id}`} className="text-xs text-text-muted">
+                Net pay (post-tax)
+              </Label>
+              <Input
+                id={`amt-${employee.id}`}
+                name="netAmountDollars"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                placeholder="1685.00"
+                className="tabular-nums"
+                title="The net amount actually paid to the employee. This is what gets pushed to Zoho; the gross on the PDF is for record-keeping only."
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor={`amt-${employee.id}`} className="text-xs">
-              Net pay $ (post-tax)
-            </Label>
-            <Input
-              id={`amt-${employee.id}`}
-              name="netAmountDollars"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="1685.00"
-              title="The net amount you actually wire to the employee — what gets pushed to Zoho. The gross is on the PDF; this is gross minus all taxes/withholdings. Required for paystubs."
-            />
-          </div>
-          <div className="sm:col-span-4 flex items-center gap-2">
-            <Button type="submit" size="sm" disabled={pending}>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="submit" size="sm" disabled={pending || !file}>
               <Upload className="h-3.5 w-3.5" />
               {pending ? "Uploading…" : "Upload"}
             </Button>
-            <span className="text-[11px] text-text-muted">
-              Net pay drives the Zoho expense amount; the gross on the PDF is for
-              record-keeping only.
+            <Button type="button" size="sm" variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+            <span className="text-[11px] text-text-subtle">
+              Net pay drives the Zoho expense amount.
             </span>
-            {error && (
-              <span className="text-xs text-danger-700">{error}</span>
-            )}
+            {error && <span className="text-xs text-danger-700">{error}</span>}
           </div>
         </form>
       )}
@@ -219,12 +326,12 @@ function DocRow({
   const [removing, setRemoving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   return (
-    <li className="flex items-center justify-between gap-2 rounded-input border border-border bg-surface px-2 py-1.5">
+    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
       <div className="flex items-center gap-2 min-w-0">
         <FileText className="h-4 w-4 text-text-muted shrink-0" />
         <span className="truncate font-medium">{doc.originalFilename}</span>
         <span className="text-xs text-text-muted shrink-0">
-          · {doc.kind}
+          · {KIND_LABEL[doc.kind]}
         </span>
         {doc.amountCents !== null && (
           <span

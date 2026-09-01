@@ -129,6 +129,13 @@ function periodDayCount(startIso: string, endIso: string): number {
   return Math.round((b - a) / 86_400_000) + 1;
 }
 
+const ROUNDING_LABEL: Record<string, string> = {
+  NONE: "Pay is not rounded",
+  NEAREST_DOLLAR: "Pay is rounded to the nearest dollar",
+  NEAREST_QUARTER: "Pay is rounded to the nearest quarter",
+  NEAREST_FIFTEEN_MIN_HOURS: "Hours are rounded to the nearest 15 minutes",
+};
+
 function issueLabel(row: {
   incomplete: number;
   hoursDrift?: boolean;
@@ -1150,8 +1157,8 @@ export default async function PeriodReviewPage({
         locked={isAccountant || period.state === "PAID"}
       />
 
-      <p className="text-xs text-text-muted">
-        Rounding: {payRules.rounding}. Period length: {payPeriod.lengthDays} days.
+      <p className="text-xs text-text-subtle">
+        {ROUNDING_LABEL[payRules.rounding]}.
         {tempWorkers.length > 0 && (
           <>
             {" "}
