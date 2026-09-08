@@ -23,6 +23,7 @@ import {
 } from "@/lib/kiosk/payday";
 import { kioskCopy } from "@/lib/kiosk/copy";
 import { consumePaydayCode } from "@/lib/db/queries/payday-codes";
+import { payslipHasPay } from "@/lib/payroll/payslip-pay";
 
 const COOKIE_PATH = "/kiosk";
 
@@ -105,7 +106,13 @@ export async function paydaySignPayslipAction(
   if (!parsed.success) return { error: cEn.paySignEmpty };
   const { getPayslipById } = await import("@/lib/db/queries/payslips");
   const slip = await getPayslipById(parsed.data.payslipId);
-  if (!slip || slip.periodId !== period.id || slip.voidedAt || !slip.publishedAt) {
+  if (
+    !slip ||
+    slip.periodId !== period.id ||
+    slip.voidedAt ||
+    !slip.publishedAt ||
+    !payslipHasPay(slip)
+  ) {
     return { ok: true, next: "/kiosk/payday/list" };
   }
   const { employees } = await import("@/lib/db/schema");

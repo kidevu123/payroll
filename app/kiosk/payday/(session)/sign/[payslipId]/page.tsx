@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { getPayslipById } from "@/lib/db/queries/payslips";
+import { payslipHasPay } from "@/lib/payroll/payslip-pay";
 import { PAYDAY_IDLE_RETURN_S } from "@/lib/kiosk/payday";
 import type { KioskLang } from "@/lib/kiosk/copy";
 import { PayslipSignScreen } from "../../../../sign-screen";
@@ -23,7 +24,14 @@ export default async function PaydaySignPage({
   // Period gate: only payslips of the unlocked period, published, active,
   // and not yet signed.
   const slip = await getPayslipById(payslipId);
-  if (!slip || slip.periodId !== period.id || slip.voidedAt || !slip.publishedAt || slip.signedAt) {
+  if (
+    !slip ||
+    slip.periodId !== period.id ||
+    slip.voidedAt ||
+    !slip.publishedAt ||
+    slip.signedAt ||
+    !payslipHasPay(slip)
+  ) {
     redirect("/kiosk/payday/list");
   }
   const [employee] = await db

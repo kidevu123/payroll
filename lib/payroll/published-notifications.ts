@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { employees, payrollRuns, payslips, users } from "@/lib/db/schema";
 import { dispatch } from "@/lib/notifications/router";
+import { payslipHasPay } from "./payslip-pay";
 
 function messageFor(language: string | null | undefined): {
   title: string;
@@ -37,6 +38,10 @@ export async function notifyEmployeesPayslipsPublished(
       userId: users.id,
       employeeId: employees.id,
       language: employees.language,
+      hoursWorked: payslips.hoursWorked,
+      grossPayCents: payslips.grossPayCents,
+      taskPayCents: payslips.taskPayCents,
+      roundedPayCents: payslips.roundedPayCents,
     })
     .from(payslips)
     .innerJoin(employees, eq(payslips.employeeId, employees.id))
@@ -49,8 +54,11 @@ export async function notifyEmployeesPayslipsPublished(
       ),
     );
 
+  // Owner rule: someone who did not work this period has nothing to
+  // review — no notification, even though a zero-pay row exists.
   const seen = new Set<string>();
   const entries = rows.flatMap((row) => {
+    if (!payslipHasPay(row)) return [];
     if (seen.has(row.userId)) return [];
     seen.add(row.userId);
     const msg = messageFor(row.language);

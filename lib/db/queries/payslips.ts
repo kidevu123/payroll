@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
 import { companyDayIso } from "@/lib/time/company-day";
+import { payslipHasPay } from "@/lib/payroll/payslip-pay";
 
 export type Actor = {
   /** users.id, or null for actors without a user row (kiosk). */
@@ -64,15 +65,17 @@ export async function listPublishedPayslipsForEmployee(
         isNull(payslips.voidedAt),
       ),
     );
-  return rows
-    .map((r) => r.p)
-    .filter(
-      (p) =>
-        Number(p.hoursWorked) > 0 ||
-        p.grossPayCents > 0 ||
-        p.taskPayCents > 0 ||
-        p.roundedPayCents > 0,
-    );
+  return rows.map((r) => r.p).filter(payslipHasPay);
+}
+
+/**
+ * Active payslips for a period that actually pay something — the set an
+ * employee-facing surface (payday list, sign-off roll-call) should see.
+ * Zero-pay rows exist for schedule members who did not work; they stay
+ * internal.
+ */
+export async function listPayablePayslipsForPeriod(periodId: string): Promise<Payslip[]> {
+  return (await listPayslipsForPeriod(periodId)).filter(payslipHasPay);
 }
 
 /**
@@ -555,11 +558,11 @@ export type SignatureStatus = {
   unsigned: { payslipId: string; employeeId: string }[];
 };
 
-/** Signed / total over the period's active (non-voided) payslips. */
+/** Signed / total over the period's active payslips with real pay. */
 export async function listSignatureStatusForPeriod(
   periodId: string,
 ): Promise<SignatureStatus> {
-  const rows = await listPayslipsForPeriod(periodId);
+  const rows = await listPayablePayslipsForPeriod(periodId);
   const unsigned = rows
     .filter((p) => !p.signedAt)
     .map((p) => ({ payslipId: p.id, employeeId: p.employeeId }));

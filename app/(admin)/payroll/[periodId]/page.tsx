@@ -51,6 +51,7 @@ import { PayrollDocsSection } from "./payroll-docs-section";
 import { listDocs, listUnattachedDocsForRange } from "@/lib/db/queries/payroll-documents";
 import { PayslipManageSection } from "./payslip-manage-section";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";
+import { payslipHasPay } from "@/lib/payroll/payslip-pay";
 import { DedupPunchesButton } from "./dedup-button";
 import { findDuplicatePunchClusters } from "@/lib/db/queries/punches";
 import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
@@ -650,7 +651,9 @@ export default async function PeriodReviewPage({
           (acknowledged / disputed / awaiting), with names listed
           under each bucket so admin sees exactly who's outstanding. */}
       {(() => {
-        const active = allPayslips.filter((p) => !p.voidedAt);
+        // Only payslips that pay something: zero-pay rows (did not work
+        // this week) are internal bookkeeping, never something to sign.
+        const active = allPayslips.filter((p) => !p.voidedAt && payslipHasPay(p));
         // Signed = drew a signature on the tablet (implies acknowledged).
         // Acknowledged = tapped OK on their phone but has not signed.
         const signed = active.filter((p) => p.signedAt && !p.disputedAt);
