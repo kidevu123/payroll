@@ -565,3 +565,8 @@ export async function listSignatureStatusForPeriod(
     .map((p) => ({ payslipId: p.id, employeeId: p.employeeId }));
   return { signed: rows.length - unsigned.length, total: rows.length, unsigned };
 }
+
+export async function getPayslipById(id: string): Promise<Payslip | null> {
+  const [row] = await db.select().from(payslips).where(eq(payslips.id, id)).limit(1);
+  return row ?? null;
+}

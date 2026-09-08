@@ -4,10 +4,8 @@
 // Bilingual static labels — language preference applies after sign-in.
 
 import * as React from "react";
-import { Delete } from "lucide-react";
 import { kioskLoginAction } from "./actions";
-
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] as const;
+import { Keypad } from "./keypad";
 
 export function KioskLoginForm() {
   const [step, setStep] = React.useState<"id" | "pin">("id");
@@ -78,46 +76,17 @@ export function KioskLoginForm() {
         </p>
       ) : null}
 
-      <div className="mx-auto grid w-full max-w-sm grid-cols-3 gap-3">
-        {KEYS.slice(0, 9).map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => press(d)}
-            className="h-20 rounded-xl border-2 border-border bg-surface text-3xl font-bold active:bg-surface-2"
-          >
-            {d}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setValue("");
-          }}
-          className="h-20 rounded-xl border-2 border-border bg-surface text-lg font-semibold text-text-muted active:bg-surface-2"
-        >
-          Clear
-        </button>
-        <button
-          type="button"
-          onClick={() => press("0")}
-          className="h-20 rounded-xl border-2 border-border bg-surface text-3xl font-bold active:bg-surface-2"
-        >
-          0
-        </button>
-        <button
-          type="button"
-          aria-label="Delete"
-          onClick={() => {
-            setError(null);
-            setValue((v) => v.slice(0, -1));
-          }}
-          className="flex h-20 items-center justify-center rounded-xl border-2 border-border bg-surface active:bg-surface-2"
-        >
-          <Delete className="h-8 w-8" />
-        </button>
-      </div>
+      <Keypad
+        onPress={press}
+        onClear={() => {
+          setError(null);
+          setValue("");
+        }}
+        onDelete={() => {
+          setError(null);
+          setValue((v) => v.slice(0, -1));
+        }}
+      />
 
       <div className="mx-auto flex w-full max-w-sm gap-3">
         {step === "pin" ? (

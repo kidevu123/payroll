@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Wordmark } from "@/components/brand/wordmark";
 import { getSetting } from "@/lib/settings/runtime";
@@ -20,6 +21,14 @@ export default async function KioskLoginPage() {
         />
       </div>
       <KioskLoginForm />
+      <p className="pb-2 pt-4 text-center">
+        <Link
+          href="/kiosk/payday"
+          className="inline-flex h-12 items-center rounded-xl px-4 text-base font-semibold text-text-muted underline-offset-4 active:bg-surface-2"
+        >
+          Payday signing (office code)
+        </Link>
+      </p>
     </>
   );
 }
