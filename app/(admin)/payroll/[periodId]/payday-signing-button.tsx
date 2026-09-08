@@ -65,7 +65,7 @@ export function PaydaySigningButton({
                 Payday signing on the tablet
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-xs text-text-muted">
-                {periodLabel}. On the warehouse tablet, tap "Payday signing" under the
+                {periodLabel}. On the warehouse tablet, tap &ldquo;Payday signing&rdquo; under the
                 kiosk sign-in and enter this code. Employees then tap their own name
                 and sign; the list shows names only.
               </Dialog.Description>
