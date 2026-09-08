@@ -955,6 +955,36 @@ export const payslips = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Kiosk payday-signing codes
+// The owner mints a 6-digit code on the period page; the warehouse tablet
+// redeems it to enter payday signing mode for that period. Persisted (not
+// in-memory) because the admin route and the kiosk route are separate
+// server bundles — module state is not shared between them. Single use,
+// short TTL; rows are tiny and pruned on issue.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const kioskPaydayCodes = pgTable(
+  "kiosk_payday_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull(),
+    periodId: uuid("period_id")
+      .notNull()
+      .references(() => payPeriods.id, { onDelete: "cascade" }),
+    issuedById: uuid("issued_by_id").references(() => users.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("kiosk_payday_codes_code_unique").on(t.code),
+    index("kiosk_payday_codes_period_idx").on(t.periodId),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Announcements
 // Persisted log of admin-composed broadcasts. The notifications + push
 // dispatchers fan-out to recipients; this table is the audit + history

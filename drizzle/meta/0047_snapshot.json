@@ -1,5 +1,5 @@
 {
-  "id": "60d00958-61f6-4b7e-9021-58172d3e2b14",
+  "id": "394bb91e-515c-49d0-afd6-36d17c00f575",
   "prevId": "b26cfa50-6c86-4dcd-b788-7aab3888fc6c",
   "version": "7",
   "dialect": "postgresql",
@@ -1274,6 +1274,121 @@
           "tableTo": "users",
           "columnsFrom": [
             "resolved_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.kiosk_payday_codes": {
+      "name": "kiosk_payday_codes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issued_by_id": {
+          "name": "issued_by_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "kiosk_payday_codes_code_unique": {
+          "name": "kiosk_payday_codes_code_unique",
+          "columns": [
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kiosk_payday_codes_period_idx": {
+          "name": "kiosk_payday_codes_period_idx",
+          "columns": [
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "kiosk_payday_codes_period_id_pay_periods_id_fk": {
+          "name": "kiosk_payday_codes_period_id_pay_periods_id_fk",
+          "tableFrom": "kiosk_payday_codes",
+          "tableTo": "pay_periods",
+          "columnsFrom": [
+            "period_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "kiosk_payday_codes_issued_by_id_users_id_fk": {
+          "name": "kiosk_payday_codes_issued_by_id_users_id_fk",
+          "tableFrom": "kiosk_payday_codes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "issued_by_id"
           ],
           "columnsTo": [
             "id"

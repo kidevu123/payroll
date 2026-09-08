@@ -188,9 +188,9 @@ export async function createPaydayCodeAction(
     .where(eq(payPeriods.id, periodId))
     .limit(1);
   if (!period) return { error: "Period not found." };
-  const { issuePaydayCode } = await import("@/lib/kiosk/payday");
+  const { issuePaydayCode } = await import("@/lib/db/queries/payday-codes");
   const { writeAudit } = await import("@/lib/db/audit");
-  const { code, expiresAt } = issuePaydayCode(periodId);
+  const { code, expiresAt } = await issuePaydayCode(periodId, session.user.id);
   await writeAudit({
     actorId: session.user.id,
     actorRole: session.user.role,

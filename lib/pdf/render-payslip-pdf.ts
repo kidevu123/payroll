@@ -18,6 +18,7 @@ import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import type { PayslipDocInput } from "@/lib/pdf/types";
 import { companyDayIso } from "@/lib/time/company-day";
+import { pdfDocPath } from "@/lib/pdf/doc-path";
 
 export const PAYSLIP_ROOT = process.env.PAYSLIP_STORAGE_DIR ?? "/data/payslips";
 
@@ -142,7 +143,7 @@ export async function renderPayslipPdfBuffer(
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const PAYSLIP_DOC_PATH = "/app/.next/pdf/payslip.js";
+  const PAYSLIP_DOC_PATH = pdfDocPath("payslip");
   const payslipDoc = (await import(
     /* webpackIgnore: true */ PAYSLIP_DOC_PATH
   )) as typeof import("@/lib/pdf/payslip");

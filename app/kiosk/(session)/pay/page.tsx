@@ -43,9 +43,12 @@ export default async function KioskPay({
     )
     .slice(0, SHOWN);
 
-  // Newest published payslip still waiting on the employee's signature —
-  // shown front and center so it can be signed before anything else.
-  const toSign = rows.find(({ slip }) => !slip.signedAt) ?? null;
+  // The newest published payslip, when still unsigned, gets the big card.
+  // Older unsigned weeks (signed on paper before the tablet existed, or a
+  // missed week) stay quiet in the history list with a Sign link instead
+  // of nagging forever.
+  const newest = rows[0] ?? null;
+  const toSign = newest && !newest.slip.signedAt ? newest : null;
 
   // Day-by-day hours for that payslip, so the employee can see exactly
   // what they are about to sign for.
@@ -163,7 +166,14 @@ export default async function KioskPay({
                   <p className="flex items-center justify-end gap-1 text-base font-semibold text-brand-800">
                     <CheckCircle2 className="h-4 w-4" /> {c.paySignedOn}
                   </p>
-                ) : null}
+                ) : (
+                  <Link
+                    href={`/kiosk/pay/sign/${slip.id}`}
+                    className="mt-1 inline-flex h-10 items-center gap-1 rounded-input border-2 border-brand-700 px-3 text-base font-semibold text-brand-800 active:bg-brand-50"
+                  >
+                    <PenLine className="h-4 w-4" /> {c.paySign}
+                  </Link>
+                )}
               </div>
             </div>
           ))

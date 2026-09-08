@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  PAYDAY_CODE_TTL_S,
   clearPaydayFailures,
-  consumePaydayCode,
-  issuePaydayCode,
+  generatePaydayCode,
   openPaydayToken,
   paydayLockedUntil,
   recordPaydayFailure,
@@ -13,35 +11,11 @@ import { sealKioskToken } from "./session";
 
 const KEY = "test-secret";
 
-describe("payday codes", () => {
-  it("issues a six-digit code that redeems exactly once", () => {
-    const { code } = issuePaydayCode("period-a", 1_000);
-    expect(code).toMatch(/^\d{6}$/);
-    expect(consumePaydayCode(code, 2_000)).toBe("period-a");
-    expect(consumePaydayCode(code, 3_000)).toBeNull();
-  });
-
-  it("zero-pads small random values", () => {
-    const { code } = issuePaydayCode("period-pad", 1_000, () => 42);
-    expect(code).toBe("000042");
-    expect(consumePaydayCode(code, 1_500)).toBe("period-pad");
-  });
-
-  it("expires after the TTL", () => {
-    const { code, expiresAt } = issuePaydayCode("period-b", 1_000);
-    expect(expiresAt.getTime()).toBe(1_000 + PAYDAY_CODE_TTL_S * 1000);
-    expect(consumePaydayCode(code, 1_000 + PAYDAY_CODE_TTL_S * 1000)).toBeNull();
-  });
-
-  it("re-issuing for the same period revokes the older code", () => {
-    const first = issuePaydayCode("period-c", 1_000).code;
-    const second = issuePaydayCode("period-c", 1_001).code;
-    expect(consumePaydayCode(first, 1_002)).toBeNull();
-    expect(consumePaydayCode(second, 1_002)).toBe("period-c");
-  });
-
-  it("rejects unknown codes", () => {
-    expect(consumePaydayCode("999999", 1_000)).toBeNull();
+describe("generatePaydayCode", () => {
+  it("is six zero-padded digits", () => {
+    expect(generatePaydayCode()).toMatch(/^\d{6}$/);
+    expect(generatePaydayCode(() => 42)).toBe("000042");
+    expect(generatePaydayCode(() => 999_999)).toBe("999999");
   });
 });
 

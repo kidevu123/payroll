@@ -12,6 +12,7 @@ import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { getSetting } from "@/lib/settings/runtime";
 import type { EmployeePayslipBatchInput } from "@/lib/pdf/types";
 import { companyDayIso } from "@/lib/time/company-day";
+import { pdfDocPath } from "@/lib/pdf/doc-path";
 
 function tzDayKey(d: Date, tz: string): string {
   return companyDayIso(d, tz);
@@ -186,7 +187,7 @@ export async function buildEmployeePayslipBatchPdf(
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const BATCH_PATH = "/app/.next/pdf/payslip-batch-sheet.js";
+  const BATCH_PATH = pdfDocPath("payslip-batch-sheet");
   let mod: typeof import("@/lib/pdf/payslip-batch-sheet");
   try {
     mod = (await import(

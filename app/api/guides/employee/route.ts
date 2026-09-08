@@ -9,6 +9,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getSetting } from "@/lib/settings/runtime";
+import { pdfDocPath } from "@/lib/pdf/doc-path";
 
 const GUIDE_SCREENSHOT_DIR =
   process.env.EMPLOYEE_GUIDE_SCREENSHOT_DIR ?? "/data/employee-guide";
@@ -54,7 +55,7 @@ export async function GET(): Promise<Response> {
   const guideMod = (await Function(
     "p",
     "return import(/* webpackIgnore: true */ p)",
-  )("/app/.next/pdf/employee-guide.js")) as typeof import("@/lib/pdf/employee-guide");
+  )(pdfDocPath("employee-guide"))) as typeof import("@/lib/pdf/employee-guide");
 
   const buf = await renderer.renderToBuffer(guideMod.EmployeeGuide({ data }));
   return new NextResponse(buf as unknown as BodyInit, {

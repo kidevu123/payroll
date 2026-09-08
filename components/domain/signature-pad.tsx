@@ -27,8 +27,10 @@ export function SignaturePad({
   const [hasInk, setHasInk] = React.useState(false);
 
   // Size the bitmap to the rendered box at device pixel ratio so strokes
-  // stay crisp on high-DPI tablets. Resizing wipes the canvas, so it only
-  // happens on mount and on real viewport changes.
+  // stay crisp on high-DPI tablets. Resizing a canvas clears it, and
+  // tablets resize constantly (address bar, on-screen keyboard, rotation,
+  // even a scrollbar appearing) — so an in-progress signature is copied
+  // into the new bitmap instead of being lost.
   React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -38,6 +40,13 @@ export function SignaturePad({
       const w = Math.max(1, Math.round(rect.width * dpr));
       const h = Math.max(1, Math.round(rect.height * dpr));
       if (canvas.width === w && canvas.height === h) return;
+      let keep: HTMLCanvasElement | null = null;
+      if (hasInkRef.current) {
+        keep = document.createElement("canvas");
+        keep.width = canvas.width;
+        keep.height = canvas.height;
+        keep.getContext("2d")?.drawImage(canvas, 0, 0);
+      }
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext("2d");
@@ -47,6 +56,11 @@ export function SignaturePad({
       ctx.lineJoin = "round";
       ctx.lineWidth = STROKE_CSS_PX;
       ctx.strokeStyle = "#0f172a";
+      if (keep) {
+        ctx.drawImage(keep, 0, 0, rect.width, rect.height);
+        onChange(canvas.toDataURL("image/png"));
+        return;
+      }
       hasInkRef.current = false;
       setHasInk(false);
       onChange(null);

@@ -22,6 +22,7 @@ import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 import type { AdminReportInput } from "./types";
 import { companyDayIso } from "@/lib/time/company-day";
 import { readSignatureDataUrl } from "@/lib/payslips/signature-storage";
+import { pdfDocPath } from "@/lib/pdf/doc-path";
 
 function tzDayKey(d: Date, tz: string): string {
   return companyDayIso(d, tz);
@@ -456,7 +457,7 @@ export async function buildAdminReportArtifacts(
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const ADMIN_REPORT_PATH = "/app/.next/pdf/admin-report.js";
+  const ADMIN_REPORT_PATH = pdfDocPath("admin-report");
   const adminDoc = (await import(
     /* webpackIgnore: true */ ADMIN_REPORT_PATH
   )) as typeof import("@/lib/pdf/admin-report");
@@ -508,7 +509,7 @@ export async function buildPayslipCutSheet(
   const renderer = (await import(
     /* webpackIgnore: true */ "@react-pdf/renderer"
   )) as typeof import("@react-pdf/renderer");
-  const CUT_PATH = "/app/.next/pdf/payslip-cut-sheet.js";
+  const CUT_PATH = pdfDocPath("payslip-cut-sheet");
   const mod = (await import(
     /* webpackIgnore: true */ CUT_PATH
   )) as typeof import("@/lib/pdf/payslip-cut-sheet");

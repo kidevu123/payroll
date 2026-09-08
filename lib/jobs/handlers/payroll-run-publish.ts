@@ -36,6 +36,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { dispatch } from "@/lib/notifications/router";
 import type { SignatureReportInput } from "@/lib/pdf/types";
+import { pdfDocPath } from "@/lib/pdf/doc-path";
 
 export async function handlePayrollRunPublish(data: {
   runId: string;
@@ -152,7 +153,7 @@ export async function handlePayrollRunPublish(data: {
   // type-check a deploy-time-emitted file from source. Use string
   // expressions so TS doesn't try to resolve them as static imports;
   // the casts pin the public shape we depend on.
-  const SIG_DOC_PATH = "/app/.next/pdf/signature-report.js";
+  const SIG_DOC_PATH = pdfDocPath("signature-report");
   const signatureDoc = (await import(
     /* webpackIgnore: true */ SIG_DOC_PATH
   )) as typeof import("@/lib/pdf/signature-report");

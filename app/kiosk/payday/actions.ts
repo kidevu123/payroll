@@ -16,13 +16,13 @@ import {
   PAYDAY_COOKIE_NAME,
   PAYDAY_SESSION_TTL_S,
   clearPaydayFailures,
-  consumePaydayCode,
   openPaydayToken,
   paydayLockedUntil,
   recordPaydayFailure,
   sealPaydayToken,
 } from "@/lib/kiosk/payday";
 import { kioskCopy } from "@/lib/kiosk/copy";
+import { consumePaydayCode } from "@/lib/db/queries/payday-codes";
 
 const COOKIE_PATH = "/kiosk";
 
@@ -51,7 +51,7 @@ export async function paydayUnlockAction(
   }
   const parsed = codeSchema.safeParse(String(formData.get("code") ?? ""));
   if (!parsed.success) return { error: "Enter the 6-digit code from the office." };
-  const periodId = consumePaydayCode(parsed.data);
+  const periodId = await consumePaydayCode(parsed.data);
   if (!periodId) {
     recordPaydayFailure();
     return { error: "That code is not valid or has expired. Ask for a new one." };

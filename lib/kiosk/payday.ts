@@ -4,9 +4,11 @@
 // signing screen at a time. No employee PIN — the owner is standing there
 // handing the tablet over. The admin login never touches the shared device.
 //
-// Codes live in process memory (single-node app; a lost code is re-minted
-// in one click). The session is an HMAC-sealed cookie under its own scope
-// so a kiosk employee token can never be replayed as a payday token.
+// Codes are persisted (lib/db/queries/payday-codes.ts): the admin route
+// and the kiosk route are separate server bundles, so module-level state
+// would not be shared between "mint" and "redeem". The session is an
+// HMAC-sealed cookie under its own scope so a kiosk employee token can
+// never be replayed as a payday token.
 
 import { randomInt } from "node:crypto";
 import { openScopedToken, sealScopedToken } from "./session";
@@ -27,53 +29,17 @@ export type PaydaySessionPayload = {
   exp: number;
 };
 
-type CodeEntry = { periodId: string; expMs: number };
-const codes = new Map<string, CodeEntry>();
-
-function prune(nowMs: number): void {
-  for (const [code, entry] of codes) {
-    if (entry.expMs <= nowMs) codes.delete(code);
-  }
-}
-
-/**
- * Mint a fresh single-use code for a period. Any earlier unconsumed code
- * for the same period is revoked so only the newest one on the owner's
- * screen works.
- */
-export function issuePaydayCode(
-  periodId: string,
-  nowMs: number = Date.now(),
+/** Six zero-padded digits from a CSPRNG. */
+export function generatePaydayCode(
   rand: (max: number) => number = (max) => randomInt(max),
-): { code: string; expiresAt: Date } {
-  prune(nowMs);
-  for (const [code, entry] of codes) {
-    if (entry.periodId === periodId) codes.delete(code);
-  }
-  let code: string;
-  do {
-    code = String(rand(1_000_000)).padStart(6, "0");
-  } while (codes.has(code));
-  const expMs = nowMs + PAYDAY_CODE_TTL_S * 1000;
-  codes.set(code, { periodId, expMs });
-  return { code, expiresAt: new Date(expMs) };
-}
-
-/** Redeem a code. Returns the period id once; null for unknown/expired/used. */
-export function consumePaydayCode(
-  code: string,
-  nowMs: number = Date.now(),
-): string | null {
-  prune(nowMs);
-  const entry = codes.get(code);
-  if (!entry) return null;
-  codes.delete(code);
-  return entry.periodId;
+): string {
+  return String(rand(1_000_000)).padStart(6, "0");
 }
 
 // ── Wrong-code throttle ─────────────────────────────────────────────────
 // One tablet, one owner: after 5 wrong codes, wait a minute. Stops a
 // bored employee from brute-forcing the six digits at human speed.
+// Process-local is fine here — the unlock action is a single route.
 
 const MAX_FAILS = 5;
 const LOCK_MS = 60 * 1000;
