@@ -492,3 +492,76 @@ async function recomputeRunTotal(
     .set({ totalAmountCents: total })
     .where(eq(payrollRuns.id, runId));
 }
+
+// ── Tablet e-signature ──────────────────────────────────────────────────
+
+export type SignedVia = "KIOSK" | "PAYDAY";
+
+export class PayslipAlreadySignedError extends Error {
+  constructor(id: string) {
+    super(`Payslip ${id} is already signed.`);
+    this.name = "PayslipAlreadySignedError";
+  }
+}
+
+/**
+ * Stamp a drawn signature onto a payslip. Signing implies acknowledgement.
+ * A payslip is signed at most once — the caller must not have written the
+ * PNG for an already-signed row (writeSignatureFile uses the exclusive
+ * flag for the same reason). The audit payload carries the channel only,
+ * never the image.
+ */
+export async function signPayslip(
+  id: string,
+  input: { signaturePath: string; signedVia: SignedVia },
+  actor: Actor,
+): Promise<Payslip> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx.select().from(payslips).where(eq(payslips.id, id));
+    if (!before) throw new Error(`signPayslip: ${id} not found`);
+    if (before.signedAt) throw new PayslipAlreadySignedError(id);
+    const now = new Date();
+    const [row] = await tx
+      .update(payslips)
+      .set({
+        signaturePath: input.signaturePath,
+        signedAt: now,
+        signedVia: input.signedVia,
+        acknowledgedAt: before.acknowledgedAt ?? now,
+      })
+      .where(and(eq(payslips.id, id), isNull(payslips.signedAt)))
+      .returning();
+    if (!row) throw new PayslipAlreadySignedError(id);
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "payslip.sign",
+        targetType: "Payslip",
+        targetId: id,
+        before: { acknowledgedAt: before.acknowledgedAt, signedAt: null },
+        after: { acknowledgedAt: row.acknowledgedAt, signedAt: row.signedAt, signedVia: row.signedVia },
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+export type SignatureStatus = {
+  signed: number;
+  total: number;
+  /** Active payslips still unsigned, for the "who's missing" list. */
+  unsigned: { payslipId: string; employeeId: string }[];
+};
+
+/** Signed / total over the period's active (non-voided) payslips. */
+export async function listSignatureStatusForPeriod(
+  periodId: string,
+): Promise<SignatureStatus> {
+  const rows = await listPayslipsForPeriod(periodId);
+  const unsigned = rows
+    .filter((p) => !p.signedAt)
+    .map((p) => ({ payslipId: p.id, employeeId: p.employeeId }));
+  return { signed: rows.length - unsigned.length, total: rows.length, unsigned };
+}

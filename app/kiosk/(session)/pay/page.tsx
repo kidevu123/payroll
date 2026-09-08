@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, BadgeCheck, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, PenLine } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { requireKioskEmployee } from "../../actions";
 import { kioskCopy, type KioskLang } from "@/lib/kiosk/copy";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
 import { db } from "@/lib/db";
 import { payPeriods } from "@/lib/db/schema";
-import { formatMoney, formatHoursMinutes, addDaysIso } from "@/lib/utils";
-import { listPunches } from "@/lib/db/queries/punches";
-import { companyDayIso } from "@/lib/time/company-day";
+import { formatMoney, formatHoursMinutes } from "@/lib/utils";
+import { loadPayslipDays } from "@/lib/kiosk/payslip-days";
 import { getSetting } from "@/lib/settings/runtime";
-import { localMidnightUtc } from "@/lib/utils";
-
-import { kioskAcknowledgePayslipAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +18,7 @@ const SHOWN = 6;
 export default async function KioskPay({
   searchParams,
 }: {
-  searchParams: Promise<{ acked?: string }>;
+  searchParams: Promise<{ signed?: string }>;
 }) {
   const sp = await searchParams;
   const employee = await requireKioskEmployee();
@@ -47,61 +43,23 @@ export default async function KioskPay({
     )
     .slice(0, SHOWN);
 
-  // Newest published payslip still waiting on the employee's OK — shown
-  // front and center so it can be approved in one tap before anything else.
-  const toApprove = rows.find(({ slip }) => !slip.acknowledgedAt) ?? null;
+  // Newest published payslip still waiting on the employee's signature —
+  // shown front and center so it can be signed before anything else.
+  const toSign = rows.find(({ slip }) => !slip.signedAt) ?? null;
 
-  // Day-by-day hours for the payslip awaiting approval, so the employee
-  // can see exactly what they are OK-ing before tapping Approve.
+  // Day-by-day hours for that payslip, so the employee can see exactly
+  // what they are about to sign for.
   const company = await getSetting("company");
   const tz = company.timezone;
-  type DayRow = { day: string; in: string; out: string | null; hours: number };
-  let approveDays: DayRow[] = [];
-  if (toApprove) {
-    const fmtTime = (d: Date) =>
-      new Intl.DateTimeFormat(locale, {
-        timeZone: tz,
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(d);
-    // Union of period-linked and date-range punches: legacy imports can
-    // sit under a sibling schedule's overlapping period id (the /time
-    // grid fetches by date range for the same reason), while back-pay
-    // punches carry this period's id but an out-of-range date. Both
-    // belong on the card the employee is approving.
-    const byPeriod = await listPunches({
-      employeeId: employee.id,
-      periodId: toApprove.slip.periodId,
-    });
-    const period = toApprove.period;
-    const byRange = period
-      ? await listPunches({
-          employeeId: employee.id,
-          clockAfter: localMidnightUtc(period.startDate, tz),
-          clockBefore: new Date(
-            localMidnightUtc(addDaysIso(period.endDate, 1), tz).getTime() - 1,
-          ),
-        })
-      : [];
-    const seen = new Set<string>();
-    const punches = [...byPeriod, ...byRange]
-      .filter((p) => {
-        if (seen.has(p.id)) return false;
-        seen.add(p.id);
-        return true;
+  const signDays = toSign
+    ? await loadPayslipDays({
+        employeeId: employee.id,
+        periodId: toSign.slip.periodId,
+        period: toSign.period,
+        tz,
+        locale,
       })
-      .sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
-    approveDays = punches
-      .filter((p) => !p.voidedAt)
-      .map((p) => ({
-        day: companyDayIso(p.clockIn, tz),
-        in: fmtTime(p.clockIn),
-        out: p.clockOut ? fmtTime(p.clockOut) : null,
-        hours: p.clockOut
-          ? (p.clockOut.getTime() - p.clockIn.getTime()) / 3_600_000
-          : 0,
-      }));
-  }
+    : [];
 
   const fmtDay = (iso: string) =>
     new Intl.DateTimeFormat(locale, {
@@ -120,32 +78,32 @@ export default async function KioskPay({
           <ArrowLeft className="h-6 w-6" /> {c.back}
         </Link>
       </div>
-      {sp.acked ? (
+      {sp.signed ? (
         <p className="flex items-center gap-3 rounded-xl border-2 border-brand-200 bg-brand-50 px-4 py-4 text-xl font-semibold text-brand-900">
-          <CheckCircle2 className="h-7 w-7 shrink-0" /> {c.payApprovedBanner}
+          <CheckCircle2 className="h-7 w-7 shrink-0" /> {c.paySignedBanner}
         </p>
       ) : null}
-      {toApprove && toApprove.period ? (
+      {toSign && toSign.period ? (
         <div className="space-y-4 rounded-xl border-2 border-brand-700 bg-brand-50 px-6 py-5 shadow-card">
           <p className="flex items-center gap-2 text-lg font-bold text-brand-900">
-            <BadgeCheck className="h-6 w-6 shrink-0" /> {c.payApproveTitle}
+            <PenLine className="h-6 w-6 shrink-0" /> {c.payApproveTitle}
           </p>
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-xl font-bold text-text">
-                {fmtDay(toApprove.period.startDate)} – {fmtDay(toApprove.period.endDate)}
+                {fmtDay(toSign.period.startDate)} – {fmtDay(toSign.period.endDate)}
               </p>
               <p className="text-lg text-text-muted">
-                {formatHoursMinutes(Number(toApprove.slip.hoursWorked))}
+                {formatHoursMinutes(Number(toSign.slip.hoursWorked))}
               </p>
             </div>
             <p className="text-4xl font-bold tabular-nums text-text">
-              {formatMoney(toApprove.slip.roundedPayCents, locale)}
+              {formatMoney(toSign.slip.roundedPayCents, locale)}
             </p>
           </div>
-          {approveDays.length > 0 ? (
+          {signDays.length > 0 ? (
             <div className="divide-y divide-brand-200 rounded-input border border-brand-200 bg-surface">
-              {approveDays.map((r, i) => (
+              {signDays.map((r, i) => (
                 <div
                   key={`${r.day}-${i}`}
                   className="flex items-center justify-between gap-3 px-4 py-3"
@@ -168,15 +126,12 @@ export default async function KioskPay({
               ))}
             </div>
           ) : null}
-          <form action={kioskAcknowledgePayslipAction}>
-            <input type="hidden" name="payslipId" value={toApprove.slip.id} />
-            <button
-              type="submit"
-              className="h-16 w-full rounded-xl bg-brand-700 text-2xl font-bold text-white active:bg-brand-800"
-            >
-              {c.payApprove}
-            </button>
-          </form>
+          <Link
+            href={`/kiosk/pay/sign/${toSign.slip.id}`}
+            className="flex h-16 w-full items-center justify-center gap-3 rounded-xl bg-brand-700 text-2xl font-bold text-white active:bg-brand-800"
+          >
+            <PenLine className="h-7 w-7" /> {c.payApprove}
+          </Link>
         </div>
       ) : null}
       <div className="divide-y-2 divide-border rounded-xl border-2 border-border bg-surface">
@@ -200,9 +155,16 @@ export default async function KioskPay({
                   {formatHoursMinutes(Number(slip.hoursWorked))}
                 </p>
               </div>
-              <p className="text-2xl font-bold tabular-nums">
-                {formatMoney(slip.roundedPayCents, locale)}
-              </p>
+              <div className="text-right">
+                <p className="text-2xl font-bold tabular-nums">
+                  {formatMoney(slip.roundedPayCents, locale)}
+                </p>
+                {slip.signedAt ? (
+                  <p className="flex items-center justify-end gap-1 text-base font-semibold text-brand-800">
+                    <CheckCircle2 className="h-4 w-4" /> {c.paySignedOn}
+                  </p>
+                ) : null}
+              </div>
             </div>
           ))
         )}

@@ -74,7 +74,7 @@ export async function validateSignaturePng(png: Buffer): Promise<SignatureCheck>
     .toBuffer({ resolveWithObject: true });
   let inkPixels = 0;
   for (let i = 3; i < data.length; i += info.channels) {
-    if (data[i] > 0) inkPixels += 1;
+    if ((data[i] ?? 0) > 0) inkPixels += 1;
   }
   if (inkPixels < SIGNATURE_MIN_INK_PX) {
     throw new SignatureInvalidError("Please sign before continuing.");

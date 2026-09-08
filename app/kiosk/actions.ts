@@ -217,38 +217,45 @@ export async function kioskClearSessionAction(): Promise<void> {
   jar.delete({ name: KIOSK_COOKIE_NAME, path: "/kiosk" });
 }
 
-const acknowledgeSchema = z.object({ payslipId: z.string().uuid() });
+const signSchema = z.object({
+  payslipId: z.string().uuid(),
+  signature: z.string().min(1),
+});
 
-/** Approve (acknowledge) a published payslip from the kiosk. */
-export async function kioskAcknowledgePayslipAction(
+/**
+ * Self-serve e-signature. The employee draws on the kiosk pad; this
+ * validates the PNG, stores it, and stamps the payslip (signing implies
+ * acknowledgement). Only this employee's own published payslips are
+ * signable, and each at most once.
+ */
+export async function kioskSignPayslipAction(
   formData: FormData,
-): Promise<void> {
+): Promise<{ ok: true; next: string } | { error: string }> {
   const employee = await requireKioskEmployee();
-  if (!employee) redirect("/kiosk");
-  const parsed = acknowledgeSchema.safeParse({
+  if (!employee) return { ok: true, next: "/kiosk" };
+  const lang = employee.language === "es" ? "es" : "en";
+  const { kioskCopy } = await import("@/lib/kiosk/copy");
+  const c = kioskCopy(lang);
+  const parsed = signSchema.safeParse({
     payslipId: formData.get("payslipId"),
+    signature: formData.get("signature"),
   });
-  // Invalid/foreign ids just land back on the list — the card only
-  // renders the employee's own published payslips, so this is an edge.
-  if (!parsed.success) redirect("/kiosk/pay");
-  const { listPublishedPayslipsForEmployee, markAcknowledged } = await import(
+  if (!parsed.success) return { error: c.paySignEmpty };
+  const { listPublishedPayslipsForEmployee } = await import(
     "@/lib/db/queries/payslips"
   );
-  // Ownership + published gate: only this employee's portal-visible
-  // payslips are acknowledgeable from the kiosk.
   const mine = await listPublishedPayslipsForEmployee(employee.id);
   const slip = mine.find((p) => p.id === parsed.data.payslipId);
-  if (!slip) redirect("/kiosk/pay");
-  const [linkedUser] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.employeeId, employee.id))
-    .limit(1);
-  await markAcknowledged(slip.id, {
-    id: linkedUser?.id ?? null,
-    role: "EMPLOYEE",
+  if (!slip) return { ok: true, next: "/kiosk/pay" };
+  const { signPayslipFromPad } = await import("@/lib/payslips/sign-flow");
+  const result = await signPayslipFromPad({
+    slip,
+    signature: parsed.data.signature,
+    via: "KIOSK",
+    copy: { empty: c.paySignEmpty, error: c.paySignError },
   });
-  redirect("/kiosk/pay?acked=1");
+  if ("error" in result) return result;
+  return { ok: true, next: "/kiosk/pay?signed=1" };
 }
 
 const timeOffSchema = z.object({
