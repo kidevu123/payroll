@@ -330,6 +330,13 @@
       "when": 1784752105119,
       "tag": "0046_brand_color_emerald",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788879272945,
+      "tag": "0047_payslip_signature",
+      "breakpoints": true
     }
   ]
 }

@@ -937,6 +937,17 @@ export const payslips = pgTable(
     disputeReason: text("dispute_reason"),
     disputeResolvedAt: timestamp("dispute_resolved_at", { withTimezone: true }),
     disputeResolvedById: uuid("dispute_resolved_by_id").references(() => users.id),
+    /**
+     * Tablet e-signature. The employee draws their signature on the
+     * warehouse kiosk (self-serve, KIOSK) or on the tablet the owner hands
+     * around on payday (PAYDAY). signaturePath is the PNG on disk under
+     * STORAGE_ROOT/uploads/payslip-signatures; the on-demand signature
+     * report PDFs inline it. Signing implies acknowledgement, and a
+     * payslip is signed at most once — the image is never overwritten.
+     */
+    signaturePath: text("signature_path"),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
+    signedVia: text("signed_via"),
   },
   (t) => [
     uniqueIndex("payslips_employee_period_unique").on(t.employeeId, t.periodId),

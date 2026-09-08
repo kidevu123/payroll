@@ -24,29 +24,36 @@ function secret(): string {
   return s;
 }
 
-function sign(body: string, key: string): string {
-  return createHmac("sha256", `${key}::kiosk`).update(body).digest("base64url");
+function sign(body: string, key: string, scope: string): string {
+  return createHmac("sha256", `${key}::${scope}`).update(body).digest("base64url");
 }
 
-export function sealKioskToken(
-  payload: KioskSessionPayload,
+/**
+ * Seal any JSON payload under a named scope. Scopes are part of the MAC
+ * key, so a token minted for one scope ("kiosk") never opens under
+ * another ("kiosk-payday") even when the payload shape overlaps.
+ */
+export function sealScopedToken(
+  payload: object,
+  scope: string,
   key: string = secret(),
 ): string {
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${body}.${sign(body, key)}`;
+  return `${body}.${sign(body, key, scope)}`;
 }
 
-export function openKioskToken(
+/** MAC-check + parse. Returns the raw JSON value; callers validate shape + exp. */
+export function openScopedToken(
   token: string | undefined | null,
+  scope: string,
   key: string = secret(),
-  nowS: number = Math.floor(Date.now() / 1000),
-): KioskSessionPayload | null {
+): unknown | null {
   if (!token) return null;
   const dot = token.lastIndexOf(".");
   if (dot <= 0) return null;
   const body = token.slice(0, dot);
   const mac = token.slice(dot + 1);
-  const expected = sign(body, key);
+  const expected = sign(body, key, scope);
   const macBuf = Buffer.from(mac);
   const expectedBuf = Buffer.from(expected);
   if (
@@ -55,12 +62,29 @@ export function openKioskToken(
   ) {
     return null;
   }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    return JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
   } catch {
     return null;
   }
+}
+
+const KIOSK_SCOPE = "kiosk";
+
+export function sealKioskToken(
+  payload: KioskSessionPayload,
+  key: string = secret(),
+): string {
+  return sealScopedToken(payload, KIOSK_SCOPE, key);
+}
+
+export function openKioskToken(
+  token: string | undefined | null,
+  key: string = secret(),
+  nowS: number = Math.floor(Date.now() / 1000),
+): KioskSessionPayload | null {
+  const parsed = openScopedToken(token, KIOSK_SCOPE, key);
+  if (parsed === null) return null;
   if (
     typeof parsed !== "object" ||
     parsed === null ||
