@@ -170,3 +170,34 @@ export async function deletePayrollDocAction(
   revalidatePath("/me/pay");
   return { ok: true };
 }
+
+/**
+ * Mint a payday-signing code for this period. The owner reads it off the
+ * screen and types it into the warehouse tablet (/kiosk/payday), which
+ * unlocks a names-only list of the period's payslips for three hours.
+ * Codes are single-use and expire in 15 minutes.
+ */
+export async function createPaydayCodeAction(
+  periodId: string,
+): Promise<{ code: string; expiresAt: string } | { error: string }> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(periodId).success) return { error: "Invalid period." };
+  const [period] = await db
+    .select({ id: payPeriods.id })
+    .from(payPeriods)
+    .where(eq(payPeriods.id, periodId))
+    .limit(1);
+  if (!period) return { error: "Period not found." };
+  const { issuePaydayCode } = await import("@/lib/kiosk/payday");
+  const { writeAudit } = await import("@/lib/db/audit");
+  const { code, expiresAt } = issuePaydayCode(periodId);
+  await writeAudit({
+    actorId: session.user.id,
+    actorRole: session.user.role,
+    action: "kiosk.payday.code_issue",
+    targetType: "PayPeriod",
+    targetId: periodId,
+    after: { expiresAt: expiresAt.toISOString() },
+  });
+  return { code, expiresAt: expiresAt.toISOString() };
+}

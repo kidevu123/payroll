@@ -1,4 +1,5 @@
 import { renderToBuffer } from "@react-pdf/renderer";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { AdminReport } from "./admin-report";
 import { PayslipCutSheet } from "./payslip-cut-sheet";
@@ -56,6 +57,41 @@ describe("admin report PDFs", () => {
     const buf = await renderToBuffer(<AdminReport data={sample} />);
     expect(buf.subarray(0, 5).toString("utf8")).toBe("%PDF-");
     expect(buf.length).toBeGreaterThan(1000);
+  }, 30_000);
+
+  it("renders a tablet signature on the sign line when present", async () => {
+    // Opaque black stroke on a transparent pad, like the kiosk produces.
+    const stroke = await sharp({
+      create: { width: 300, height: 8, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 1 } },
+    })
+      .png()
+      .toBuffer();
+    const pad = await sharp({
+      create: { width: 600, height: 200, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    })
+      .composite([{ input: stroke, left: 60, top: 110 }])
+      .png()
+      .toBuffer();
+    const signed: AdminReportInput = {
+      ...sample,
+      employees: [
+        {
+          ...sampleEmployee(1),
+          signaturePng: `data:image/png;base64,${pad.toString("base64")}`,
+          signedAt: "9/8/26",
+        },
+        sampleEmployee(2),
+      ],
+    };
+    const countImages = (b: Buffer) =>
+      (b.toString("latin1").match(/\/Subtype\s*\/Image/g) ?? []).length;
+    const plain = await renderToBuffer(<AdminReport data={sample} />);
+    expect(countImages(plain)).toBe(0);
+    const buf = await renderToBuffer(<AdminReport data={signed} />);
+    expect(buf.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+    // The transparent PNG lands as an image + its alpha soft mask; what
+    // matters is that an unsigned report has none and a signed one does.
+    expect(countImages(buf)).toBeGreaterThan(0);
   }, 30_000);
 
   it("renders the compact payslip cut sheet", async () => {

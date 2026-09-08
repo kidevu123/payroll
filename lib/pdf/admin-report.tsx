@@ -16,6 +16,7 @@
 
 import {
   Document,
+  Image,
   Page,
   StyleSheet,
   Text,
@@ -290,6 +291,29 @@ const styles = StyleSheet.create({
     borderColor: "#b6c2d3",
     height: 7,
     marginLeft: 3,
+  },
+  // Signed on the tablet: the drawn signature sits on the line, the
+  // signed date fills the DATE slot. Same row geometry, taller.
+  signImage: {
+    height: 16,
+    objectFit: "contain",
+    objectPositionX: 0,
+  },
+  signInked: {
+    flex: 1,
+    borderBottomWidth: 0.5,
+    borderColor: "#b6c2d3",
+    marginHorizontal: 3,
+    paddingBottom: 1,
+  },
+  dateInked: {
+    width: 42,
+    borderBottomWidth: 0.5,
+    borderColor: "#b6c2d3",
+    marginLeft: 3,
+    paddingBottom: 1,
+    fontSize: 6.5,
+    color: INK,
   },
 
   // ── Fixed footer ───────────────────────────────────────────────────────
@@ -609,12 +633,23 @@ function DetailCard({
           </View>
         </View>
 
-        <View style={styles.signRow}>
-          <Text style={styles.signLabel}>SIGN</Text>
-          <View style={styles.signBlank} />
-          <Text style={styles.signLabel}>DATE</Text>
-          <View style={styles.dateBlank} />
-        </View>
+        {employee.signaturePng ? (
+          <View style={styles.signRow}>
+            <Text style={styles.signLabel}>SIGN</Text>
+            <View style={styles.signInked}>
+              <Image src={employee.signaturePng} style={styles.signImage} />
+            </View>
+            <Text style={styles.signLabel}>DATE</Text>
+            <Text style={styles.dateInked}>{employee.signedAt ?? ""}</Text>
+          </View>
+        ) : (
+          <View style={styles.signRow}>
+            <Text style={styles.signLabel}>SIGN</Text>
+            <View style={styles.signBlank} />
+            <Text style={styles.signLabel}>DATE</Text>
+            <View style={styles.dateBlank} />
+          </View>
+        )}
       </View>
     </View>
   );

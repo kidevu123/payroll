@@ -57,6 +57,7 @@ import { buildDuplicatePunchDetails } from "@/lib/punches/duplicate-details";
 import { DisputesPanel } from "./disputes-panel";
 import { PeriodDetailBackButton } from "./back-button";
 import { CashDenominationButton } from "./cash-denomination-button";
+import { PaydaySigningButton } from "./payday-signing-button";
 import {
   PayslipPdfActions,
   payslipPdfHref,
@@ -604,6 +605,7 @@ export default async function PeriodReviewPage({
                 <Printer className="h-4 w-4" /> Signature report
               </PdfLink>
             </Button>
+            <PaydaySigningButton periodId={period.id} periodLabel={periodLabel} />
             <Button asChild variant="secondary" size="sm">
               <PdfLink
                 href={`/api/payroll/${period.id}/payslips-cut-sheet`}
@@ -649,8 +651,11 @@ export default async function PeriodReviewPage({
           under each bucket so admin sees exactly who's outstanding. */}
       {(() => {
         const active = allPayslips.filter((p) => !p.voidedAt);
+        // Signed = drew a signature on the tablet (implies acknowledged).
+        // Acknowledged = tapped OK on their phone but has not signed.
+        const signed = active.filter((p) => p.signedAt && !p.disputedAt);
         const ackd = active.filter(
-          (p) => p.acknowledgedAt && !p.disputedAt,
+          (p) => p.acknowledgedAt && !p.signedAt && !p.disputedAt,
         );
         const disputed = active.filter(
           (p) => p.disputedAt && !p.disputeResolvedAt,
@@ -663,8 +668,15 @@ export default async function PeriodReviewPage({
         if (active.length === 0) return null;
         const buckets = [
           {
+            key: "signed",
+            label: "Signed",
+            dot: "bg-brand-700",
+            count: signed.length,
+            names: signed.map((p) => nameOf(p.employeeId)).sort(),
+          },
+          {
             key: "acknowledged",
-            label: "Acknowledged",
+            label: "Acknowledged, not signed",
             dot: "bg-success-600",
             count: ackd.length,
             names: ackd.map((p) => nameOf(p.employeeId)).sort(),
@@ -691,13 +703,19 @@ export default async function PeriodReviewPage({
         return (
           <Card>
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
-              <CardTitle>Payslip acknowledgements</CardTitle>
+              <div className="space-y-1">
+                <CardTitle>Payslip sign-off</CardTitle>
+                <CardDescription>
+                  Signatures come from the warehouse tablet and print on the
+                  Signature report.
+                </CardDescription>
+              </div>
               <p className="text-caption text-text-muted tabular-nums">
                 <span className="text-subheading font-semibold text-text">
-                  {ackd.length}
+                  {signed.length}
                 </span>
                 <span className="text-text-subtle"> of {active.length}</span>{" "}
-                acknowledged
+                signed
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -708,8 +726,8 @@ export default async function PeriodReviewPage({
                 role="progressbar"
                 aria-valuemin={0}
                 aria-valuemax={active.length}
-                aria-valuenow={ackd.length}
-                aria-label="Payslips acknowledged"
+                aria-valuenow={signed.length}
+                aria-label="Payslips signed"
               >
                 {buckets
                   .filter((b) => b.count > 0)

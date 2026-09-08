@@ -161,6 +161,10 @@ export type AdminReportInput = {
       roundedCents: number;
     };
     taskPay: { description: string; amountCents: number }[];
+    /** Tablet e-signature as a PNG data URL; absent = blank sign line. */
+    signaturePng?: string;
+    /** Formatted signed date, printed in the DATE slot next to the signature. */
+    signedAt?: string;
   }[];
   generatedAt: string;
 };

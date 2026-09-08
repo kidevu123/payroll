@@ -21,6 +21,7 @@ import { paySchedules } from "@/lib/db/schema";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 import type { AdminReportInput } from "./types";
 import { companyDayIso } from "@/lib/time/company-day";
+import { readSignatureDataUrl } from "@/lib/payslips/signature-storage";
 
 function tzDayKey(d: Date, tz: string): string {
   return companyDayIso(d, tz);
@@ -346,6 +347,17 @@ export async function buildAdminReportArtifacts(
     // CSV / scrape). Without this fall-back the PDF renders blank IDs
     // for employees whose record predates the fix.
     const reportLegacyId = e.legacyId ?? e.ngtecoEmployeeRef ?? null;
+    // Tablet e-signature, when the employee has signed this payslip.
+    const signaturePng = await readSignatureDataUrl(storedPayslip?.signaturePath);
+    const signedAt =
+      signaturePng && storedPayslip?.signedAt
+        ? new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            month: "numeric",
+            day: "numeric",
+            year: "2-digit",
+          }).format(storedPayslip.signedAt)
+        : undefined;
     reportEmployees.push({
       displayName: e.displayName,
       legalName: e.legalName,
@@ -358,6 +370,7 @@ export async function buildAdminReportArtifacts(
         description: t.description,
         amountCents: t.amountCents,
       })),
+      ...(signaturePng ? { signaturePng, ...(signedAt ? { signedAt } : {}) } : {}),
     });
     for (const name of [e.displayName, e.legalName]) {
       const normalized = normalizePrintablePersonName(name);
