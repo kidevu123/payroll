@@ -2,14 +2,15 @@
 // the portal (payroll_runs.published_to_portal_at IS NOT NULL). Internal
 // runs never appear here.
 
-import Link from "next/link";
-import { PdfLink } from "@/components/domain/pdf-link";
-import { Download, FileText, Wallet } from "lucide-react";
+import { FileText, Wallet } from "lucide-react";
 import { inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
+import { DocLine, PayslipCard, type PayslipCardState } from "@/components/domain/payslip-card";
+import { MoneyDisplay } from "@/components/domain/money-display";
+import { HoursDisplay } from "@/components/domain/hours-display";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { ConfirmHoursHero } from "@/components/employee/confirm-hours-hero";
 import { requireSession } from "@/lib/auth-guards";
 import { listPublishedPayslipsForEmployee } from "@/lib/db/queries/payslips";
@@ -141,6 +142,34 @@ export default async function EmployeePayList() {
   }
   const orphanDocs = payrollDocs.filter((d) => !matchedIds.has(d.id));
 
+  // Year-to-date strip: this calendar year's published payslips.
+  const year = new Date().getUTCFullYear();
+  const ytdRows = rows.filter((r) => r.period.endDate.startsWith(String(year)));
+  const ytd = {
+    netCents: ytdRows.reduce((n, r) => n + r.payslip.roundedPayCents, 0),
+    hours: ytdRows.reduce((n, r) => n + Number(r.payslip.hoursWorked), 0),
+    count: ytdRows.length,
+  };
+
+  // Group by the month the period ends in, newest first.
+  const months: Array<{ key: string; label: string; rows: Row[] }> = [];
+  for (const r of rows) {
+    const key = r.period.endDate.slice(0, 7);
+    let m = months.find((x) => x.key === key);
+    if (!m) {
+      const [y, mo] = key.split("-").map(Number) as [number, number];
+      m = {
+        key,
+        label: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+          new Date(Date.UTC(y, mo - 1, 1)),
+        ),
+        rows: [],
+      };
+      months.push(m);
+    }
+    m.rows.push(r);
+  }
+
   return (
     <main className="space-y-6 px-4 py-6 sm:px-6 sm:py-8 max-w-3xl mx-auto">
       <PageHeader
@@ -154,6 +183,29 @@ export default async function EmployeePayList() {
           awaits confirmation; salaried employees never have one. */}
       {!isSalaried && <ConfirmHoursHero employeeId={session.user.employeeId} />}
 
+      {!isSalaried && ytd.count > 0 && (
+        <section className="flex flex-col gap-3 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:gap-6">
+          <div className="text-sm text-text-muted">{t("thisYear")}</div>
+          <div className="grid grid-cols-2 gap-x-6 sm:flex sm:divide-x sm:divide-border/60 [&>*+*]:sm:pl-6">
+            <div className="min-w-0">
+              <div className="text-micro uppercase text-text-subtle">{t("ytdNet")}</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight text-text">
+                <MoneyDisplay cents={ytd.netCents} monospace={false} />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-micro uppercase text-text-subtle">{t("ytdHours")}</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight text-text">
+                <HoursDisplay hours={ytd.hours} decimals={payRules.hoursDecimalPlaces} />
+              </div>
+            </div>
+            <div className="min-w-0 col-span-2 sm:col-span-1">
+              <div className="mt-0.5 text-sm tabular-nums text-text-muted">{t("ytdCount", { count: ytd.count })}</div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {rows.length === 0 && payrollDocs.length === 0 ? (
         <EmptyState
           icon={Wallet}
@@ -161,8 +213,12 @@ export default async function EmployeePayList() {
           description={t("emptyHint")}
         />
       ) : (
-        <div className="space-y-5">
-          {rows.map(({ payslip, period }) => {
+        <div className="space-y-6">
+          {months.map((m) => (
+            <section key={m.key} className="space-y-3" aria-label={m.label}>
+              <h2 className="text-micro uppercase text-text-subtle">{m.label}</h2>
+              <div className="space-y-3">
+          {m.rows.map(({ payslip, period }) => {
             const docs = docsByPeriodId.get(period.id) ?? [];
             const state: PayslipCardState =
               payslip.disputedAt && !payslip.disputeResolvedAt
@@ -199,54 +255,36 @@ export default async function EmployeePayList() {
               />
             );
           })}
+              </div>
+            </section>
+          ))}
 
           {orphanDocs.length > 0 && (
-            <section className="space-y-3 pt-5 border-t border-border/70">
-              <h2 className="text-xs font-medium uppercase tracking-wider text-text-subtle">
-                {t("otherDocs")}
-              </h2>
-              <ul className="space-y-1.5">
+            <section className="space-y-3" aria-label={t("otherDocs")}>
+              <h2 className="text-micro uppercase text-text-subtle">{t("otherDocs")}</h2>
+              <div className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
                 {orphanDocs.map((d) => (
-                  <DocPill key={d.id} doc={d} viewLabel={t("viewDoc")} />
+                  <DocLine
+                    key={d.id}
+                    icon={<FileText className="h-3.5 w-3.5 text-info-700" aria-hidden />}
+                    title={d.kind === "PAYSTUB" ? "Paystub" : d.kind === "W2" ? "W-2" : d.originalFilename}
+                    meta={[
+                      d.payPeriodStart && d.payPeriodEnd ? formatPeriodRange(d.payPeriodStart, d.payPeriodEnd) : null,
+                      d.amountCents !== null && d.amountCents > 0 ? `$${(d.amountCents / 100).toFixed(2)} take-home` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    href={`/api/payroll-docs/${d.id}`}
+                    filename={d.originalFilename || "paystub.pdf"}
+                    viewLabel={t("view")}
+                    shareLabel={t("share")}
+                  />
                 ))}
-              </ul>
+              </div>
             </section>
           )}
         </div>
       )}
     </main>
-  );
-}
-
-function DocPill({ doc: d, viewLabel }: { doc: PayrollPeriodDocument; viewLabel: string }) {
-  return (
-    <li className="group flex items-center justify-between gap-3 rounded-input border border-border/70 bg-surface px-3 py-2.5 shadow-[0_1px_2px_0_rgb(15_23_42_/_0.03)] transition-shadow duration-200 hover:shadow-card">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-input bg-brand-50 ring-1 ring-inset ring-brand-100">
-          <FileText className="h-3.5 w-3.5 text-brand-700" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-text antialiased">
-            {d.originalFilename}
-          </p>
-          <p className="text-[11px] text-text-muted leading-relaxed">
-            {d.kind}
-            {d.payPeriodStart && d.payPeriodEnd
-              ? ` · ${d.payPeriodStart} – ${d.payPeriodEnd}`
-              : ""}
-            {d.amountCents !== null && d.amountCents > 0
-              ? ` · $${(d.amountCents / 100).toFixed(2)}`
-              : ""}
-          </p>
-        </div>
-      </div>
-      <PdfLink
-        href={`/api/payroll-docs/${d.id}`}
-        filename="paystub.pdf"
-        className="inline-flex min-h-9 items-center gap-1 rounded-input border border-border bg-surface px-2.5 py-1.5 text-[11px] font-medium tracking-tight text-text-muted transition-colors hover:bg-surface-2 hover:text-text [@media(pointer:coarse)]:min-h-11"
-      >
-        <Download className="h-3 w-3" /> {viewLabel}
-      </PdfLink>
-    </li>
   );
 }

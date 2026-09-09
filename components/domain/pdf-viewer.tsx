@@ -20,6 +20,13 @@ export type ViewerDoc = {
   filename: string;
   /** Optional human title for the panel header; defaults to the filename. */
   title?: string;
+  /**
+   * "frame" (default) embeds the PDF in an iframe — fine in a normal
+   * browser. "pages" renders every page to a canvas with pdf.js — needed in
+   * the installed iOS PWA, where an iframe shows only the first page and
+   * offers no controls.
+   */
+  mode?: "frame" | "pages";
 };
 
 type PdfViewerContextValue = {
@@ -77,7 +84,30 @@ function PdfViewerOverlay({
     };
   }, [onClose]);
 
+  const pages = doc.mode === "pages";
+
+  async function shareFile(): Promise<boolean> {
+    if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") return false;
+    try {
+      const res = await fetch(doc.href, { headers: { Accept: "application/pdf" } });
+      if (!res.ok) return false;
+      const file = new File([await res.blob()], doc.filename, { type: "application/pdf" });
+      if (!navigator.canShare({ files: [file] })) return false;
+      await navigator.share({ files: [file] });
+      return true;
+    } catch {
+      return true; // dismissed share sheet is not a failure
+    }
+  }
+
   function print() {
+    if (pages) {
+      // No frame to print; the share sheet carries AirPrint on iOS.
+      void shareFile().then((ok) => {
+        if (!ok) window.open(doc.href, "_blank", "noopener");
+      });
+      return;
+    }
     const frameWindow = frameRef.current?.contentWindow;
     try {
       frameWindow?.focus();
@@ -90,6 +120,12 @@ function PdfViewerOverlay({
   }
 
   function save() {
+    if (pages) {
+      void shareFile().then((ok) => {
+        if (!ok) window.open(doc.href, "_blank", "noopener");
+      });
+      return;
+    }
     // `download` on a same-origin anchor overrides the route's inline
     // Content-Disposition and saves the file instead of navigating.
     const a = document.createElement("a");
@@ -142,15 +178,91 @@ function PdfViewerOverlay({
               <X className="h-4.5 w-4.5" aria-hidden />
             </button>
           </header>
-          <iframe
-            ref={frameRef}
-            src={doc.href}
-            title={title}
-            className="min-h-0 flex-1 bg-white"
-          />
+          {pages ? (
+            <PdfPages href={doc.href} />
+          ) : (
+            <iframe
+              ref={frameRef}
+              src={doc.href}
+              title={title}
+              className="min-h-0 flex-1 bg-white"
+            />
+          )}
         </div>
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * pdf.js page renderer: fetches the PDF once and paints each page to a
+ * canvas at device pixel ratio. Loaded on demand so the pdf.js bundle only
+ * ships when a document is actually opened in pages mode.
+ */
+function PdfPages({ href }: { href: string }) {
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const [state, setState] = React.useState<"loading" | "ready" | "error">("loading");
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const host = hostRef.current;
+    if (!host) return;
+    host.replaceChildren();
+    (async () => {
+      try {
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url,
+        ).toString();
+        const res = await fetch(href, { headers: { Accept: "application/pdf" } });
+        if (!res.ok) throw new Error(`fetch ${res.status}`);
+        const data = new Uint8Array(await res.arrayBuffer());
+        const pdf = await pdfjs.getDocument({ data }).promise;
+        if (cancelled) return;
+        const width = Math.max(320, host.clientWidth - 24);
+        const dpr = Math.min(3, window.devicePixelRatio || 1);
+        for (let n = 1; n <= pdf.numPages; n += 1) {
+          const page = await pdf.getPage(n);
+          if (cancelled) return;
+          const base = page.getViewport({ scale: 1 });
+          const scale = width / base.width;
+          const viewport = page.getViewport({ scale: scale * dpr });
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+          canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+          canvas.className = "mx-auto block bg-white shadow-card";
+          const ctx = canvas.getContext("2d");
+          if (!ctx) continue;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          if (cancelled) return;
+          host.appendChild(canvas);
+        }
+        setState("ready");
+      } catch {
+        if (!cancelled) setState("error");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [href]);
+
+  return (
+    <div className="min-h-0 flex-1 overflow-auto bg-surface-2 p-3">
+      {state === "loading" && (
+        <p className="py-10 text-center text-sm text-text-muted">Loading document…</p>
+      )}
+      {state === "error" && (
+        <p className="py-10 text-center text-sm text-danger-700">
+          This document could not be displayed.{" "}
+          <a href={href} target="_blank" rel="noopener" className="underline">Open it directly</a>.
+        </p>
+      )}
+      <div ref={hostRef} className="space-y-3" />
+    </div>
   );
 }

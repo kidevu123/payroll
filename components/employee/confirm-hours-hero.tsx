@@ -43,20 +43,27 @@ export async function ConfirmHoursHero({
     getSetting("payRules"),
   ]);
 
-  // Prefer the most recent period awaiting acknowledgement. generatedAt is
-  // the same ordering signal the home page uses for "latest payslip".
-  const pending = payslips
-    .filter(isAwaitingAck)
+  // Most recent PERIOD awaiting acknowledgement first, then the next, so
+  // confirming walks backwards through the weeks in order. (Sorting by
+  // generatedAt jumped around on re-generated payslips.)
+  const awaiting = payslips.filter(isAwaitingAck);
+  const periodsById = new Map(
+    (await Promise.all(awaiting.map((p) => getPeriodById(p.periodId))))
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .map((p) => [p.id, p]),
+  );
+  const pending = awaiting
+    .filter((p) => periodsById.has(p.periodId))
     .sort((a, b) => {
-      const at = a.generatedAt instanceof Date ? a.generatedAt.getTime() : 0;
-      const bt = b.generatedAt instanceof Date ? b.generatedAt.getTime() : 0;
-      return bt - at;
+      const as = periodsById.get(a.periodId)!.startDate;
+      const bs = periodsById.get(b.periodId)!.startDate;
+      return as < bs ? 1 : as > bs ? -1 : 0;
     });
 
   const top = pending[0];
   if (!top) return null;
 
-  const period = await getPeriodById(top.periodId);
+  const period = periodsById.get(top.periodId);
   if (!period) return null;
 
   const t = await getTranslations("employee.pay");
@@ -78,6 +85,9 @@ export async function ConfirmHoursHero({
             <p className="text-[11px] text-text-muted leading-relaxed">
               {period.startDate}{" "}
               <span className="text-text-subtle">–</span> {period.endDate}
+              {pending.length > 1 ? (
+                <span className="text-text-subtle"> · {pending.length - 1} more to confirm</span>
+              ) : null}
             </p>
           </div>
         </div>
@@ -111,6 +121,7 @@ export async function ConfirmHoursHero({
         </p>
 
         <ConfirmHoursActions
+          key={top.id}
           payslipId={top.id}
           disputeHref={disputeHref}
           copy={{

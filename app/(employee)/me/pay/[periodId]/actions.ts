@@ -34,6 +34,9 @@ export async function acknowledgePayslipAction(
   });
   revalidatePath(`/me/pay/${payslip.periodId}`);
   revalidatePath("/me/pay");
+  // The "Confirm your hours" hero on the home tab must move on to the next
+  // pending payslip (or disappear) — it was never revalidated here.
+  revalidatePath("/me/home");
 }
 
 export async function reportPayslipProblemAction(

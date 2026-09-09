@@ -44,10 +44,17 @@ function filenameFrom(header: string | null, fallback: string): string {
 export type PdfLinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   /** Fallback filename when Content-Disposition doesn't provide one. */
   filename?: string;
+  /**
+   * "share" (default): in the installed PWA hand the file to the native
+   * share sheet (AirPrint / Save to Files) — the print/download buttons.
+   * "view": always open the in-app viewer, which renders the pages itself,
+   * so a "View" button shows the document instead of a share sheet.
+   */
+  intent?: "share" | "view";
 };
 
 export const PdfLink = React.forwardRef<HTMLAnchorElement, PdfLinkProps>(
-  ({ href, filename = "document.pdf", onClick, children, ...rest }, ref) => {
+  ({ href, filename = "document.pdf", intent = "share", onClick, children, ...rest }, ref) => {
     const [busy, setBusy] = React.useState(false);
     const viewer = usePdfViewer();
 
@@ -62,7 +69,9 @@ export const PdfLink = React.forwardRef<HTMLAnchorElement, PdfLinkProps>(
 
       // Installed PWA: iOS has no share/print chrome around an inline PDF, so
       // hand the file to the native share sheet (AirPrint / Save to Files).
-      if (isStandalonePwa() && canShareFiles()) {
+      // A "view" link never does this — the owner's employees tapped View and
+      // got a share sheet instead of the paystub.
+      if (intent === "share" && isStandalonePwa() && canShareFiles()) {
         e.preventDefault();
         if (busy) return;
         setBusy(true);
@@ -92,10 +101,16 @@ export const PdfLink = React.forwardRef<HTMLAnchorElement, PdfLinkProps>(
         return;
       }
 
-      // Regular browser: open in the in-app viewer panel instead of a new tab.
+      // Open in the in-app viewer panel instead of a new tab. In the
+      // installed PWA the panel renders pages itself (pdf.js) because an
+      // iframe shows only the first page there.
       if (viewer) {
         e.preventDefault();
-        viewer.open({ href: String(href), filename });
+        viewer.open({
+          href: String(href),
+          filename,
+          mode: isStandalonePwa() ? "pages" : "frame",
+        });
       }
       // No viewer mounted: fall through to the anchor's same-tab navigation.
     };

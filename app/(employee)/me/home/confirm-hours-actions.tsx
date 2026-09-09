@@ -11,6 +11,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CircleCheck, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { acknowledgePayslipAction } from "@/app/(employee)/me/pay/[periodId]/actions";
@@ -31,9 +32,20 @@ export function ConfirmHoursActions({
   disputeHref: string;
   copy: ConfirmCopy;
 }) {
+  const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [confirmed, setConfirmed] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // After a confirm, re-render the server tree so the hero flips to the
+  // next payslip awaiting confirmation (or unmounts when none remain).
+  // The green "Confirmed" state shows for a beat first so the tap feels
+  // acknowledged rather than the card vanishing under the thumb.
+  React.useEffect(() => {
+    if (!confirmed) return;
+    const t = window.setTimeout(() => router.refresh(), 900);
+    return () => window.clearTimeout(t);
+  }, [confirmed, router]);
 
   if (confirmed) {
     return (
