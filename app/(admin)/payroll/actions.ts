@@ -290,7 +290,7 @@ export async function pollNowAction(): Promise<PollNowResult> {
     if (inProgress) {
       return {
         error:
-          "A poll is already running. Watch the status bar at the top — the API path usually finishes in seconds.",
+          "A poll is already running — it finishes in a few seconds and the button shows the result.",
       };
     }
     // A queued job runs the moment the queue frees up; a second click only

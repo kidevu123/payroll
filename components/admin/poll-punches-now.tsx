@@ -44,9 +44,19 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
   // feed: the feed arrives every 2s, so a fill keyed to it sat still and
   // then jumped ("reacts, stops, then moves").
   const [clickedAt, setClickedAt] = React.useState<number | null>(null);
+  // The poll-log row id that was current when the button was clicked. The
+  // poll THIS click started is a different row, so "finished" means a
+  // different id with a finishedAt — a stale result from a second ago can
+  // no longer end the animation on the spot.
+  const [idAtClick, setIdAtClick] = React.useState<string | null | undefined>(undefined);
 
   const finishedMs = status?.finishedAt ? new Date(status.finishedAt).getTime() : null;
-  const finishedAfterClick = clickedAt !== null && finishedMs !== null && finishedMs >= clickedAt - 2_000;
+  const finishedAfterClick =
+    clickedAt !== null &&
+    idAtClick !== undefined &&
+    !!status?.id &&
+    status.id !== idAtClick &&
+    finishedMs !== null;
   // "In flight" from the server's point of view. NOT the provider's
   // isActive — that stays true while the old banner would have been
   // visible (45s after success), which left the button on "Polling…"
@@ -55,10 +65,16 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
     status?.phase === "running" ||
     status?.phase === "stuck" ||
     (!!watch && status?.phase !== "succeeded" && status?.phase !== "failed" && !finishedAfterClick);
-  const running = busy || serverRunning || (clickedAt !== null && !finishedAfterClick);
+  // Keep the running state on screen for at least a beat: a 1-second API
+  // poll otherwise flashes and reads as "the button just twitched".
+  const MIN_RUNNING_MS = 1_200;
+  const rawRunning = busy || serverRunning || (clickedAt !== null && !finishedAfterClick);
   const now = useNow(
-    running || (finishedMs !== null && Date.now() - finishedMs < OUTCOME_HOLD_MS + 500),
+    rawRunning ||
+      (clickedAt !== null && Date.now() - clickedAt < MIN_RUNNING_MS + 500) ||
+      (finishedMs !== null && Date.now() - finishedMs < OUTCOME_HOLD_MS + 500),
   );
+  const running = rawRunning || (clickedAt !== null && now - clickedAt < MIN_RUNNING_MS);
   const elapsedS = running && clickedAt !== null ? Math.max(0, Math.floor((now - clickedAt) / 1000)) : 0;
   // Outcome flash: the poll finished after this click, within the hold window.
   const justFinished = !running && finishedAfterClick && finishedMs !== null && now - finishedMs < OUTCOME_HOLD_MS;
@@ -66,7 +82,10 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
 
   // Release the click anchor once the outcome has been shown.
   React.useEffect(() => {
-    if (clickedAt !== null && !running && !justFinished) setClickedAt(null);
+    if (clickedAt !== null && !running && !justFinished) {
+      setClickedAt(null);
+      setIdAtClick(undefined);
+    }
   }, [clickedAt, running, justFinished]);
 
   const last = status?.startedAt
@@ -84,11 +103,15 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
     setBusy(true);
     setResult(null);
     setClickedAt(Date.now());
+    setIdAtClick(status?.id ?? null);
     const r = await pollNowAction();
     setBusy(false);
     setResult(r);
     if ("ok" in r) startWatching("Poll punches");
-    else setClickedAt(null);
+    else {
+      setClickedAt(null);
+      setIdAtClick(undefined);
+    }
   }
 
   return (
@@ -98,7 +121,7 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
           <button
             type="button"
             onClick={onClick}
-            disabled={running}
+            disabled={running || outcome !== null}
             aria-live="polite"
             className={cn(
               "relative inline-flex h-9 min-w-[11rem] items-center justify-center gap-2 overflow-hidden rounded-input border px-3 text-sm font-medium transition-colors",
