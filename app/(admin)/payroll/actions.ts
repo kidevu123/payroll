@@ -247,7 +247,9 @@ export async function unmarkPaidAction(
 
 export type PollNowResult =
   | { error: string }
-  | { ok: true; queued: true; jobId: string };
+  | { ok: true; queued: true; jobId: string }
+  /** A poll was already running or queued; the caller should just watch it. */
+  | { ok: true; queued: false; attached: true };
 
 /**
  * Manually trigger a punch.poll run as a background job. The pg-boss
@@ -286,20 +288,16 @@ export async function pollNowAction(): Promise<PollNowResult> {
   const session = await requireAdmin();
   try {
     await reconcileOrphanedPolls();
+    // Already in flight (or queued): not an error. The button attaches to
+    // that poll and shows its progress — an error box here used to push
+    // the whole header around and read as "the poll is broken".
     const inProgress = await getInProgressPoll();
-    if (inProgress) {
-      return {
-        error:
-          "A poll is already running — it finishes in a few seconds and the button shows the result.",
-      };
-    }
+    if (inProgress) return { ok: true, queued: false, attached: true };
     // A queued job runs the moment the queue frees up; a second click only
     // stacks another login against NGTeco (five stacked clicks once tripped
     // its login endpoint and demoted a poll to the browser scraper).
     const { isPunchPollJobQueued } = await import("@/lib/db/queries/poll-history");
-    if (await isPunchPollJobQueued()) {
-      return { error: "A poll is already queued and will start in a moment." };
-    }
+    if (await isPunchPollJobQueued()) return { ok: true, queued: false, attached: true };
     // No poll is legitimately in flight, so any live headless Chrome is an
     // orphan from a prior scrape whose pg-boss job expired while Playwright
     // kept running. Kill it before starting so this poll begins clean — two

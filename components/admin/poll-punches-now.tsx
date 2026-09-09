@@ -49,14 +49,16 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
   // different id with a finishedAt — a stale result from a second ago can
   // no longer end the animation on the spot.
   const [idAtClick, setIdAtClick] = React.useState<string | null | undefined>(undefined);
+  // Click landed on a poll that was already in flight: finish with THAT
+  // row instead of waiting for a new id.
+  const [attached, setAttached] = React.useState(false);
 
   const finishedMs = status?.finishedAt ? new Date(status.finishedAt).getTime() : null;
   const finishedAfterClick =
     clickedAt !== null &&
-    idAtClick !== undefined &&
-    !!status?.id &&
-    status.id !== idAtClick &&
-    finishedMs !== null;
+    finishedMs !== null &&
+    finishedMs >= clickedAt - 5_000 &&
+    (attached || (idAtClick !== undefined && !!status?.id && status.id !== idAtClick));
   // "In flight" from the server's point of view. NOT the provider's
   // isActive — that stays true while the old banner would have been
   // visible (45s after success), which left the button on "Polling…"
@@ -85,6 +87,7 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
     if (clickedAt !== null && !running && !justFinished) {
       setClickedAt(null);
       setIdAtClick(undefined);
+      setAttached(false);
     }
   }, [clickedAt, running, justFinished]);
 
@@ -107,15 +110,17 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
     const r = await pollNowAction();
     setBusy(false);
     setResult(r);
-    if ("ok" in r) startWatching("Poll punches");
-    else {
+    if ("ok" in r) {
+      if (!r.queued) setAttached(true);
+      startWatching("Poll punches");
+    } else {
       setClickedAt(null);
       setIdAtClick(undefined);
     }
   }
 
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <div className="flex items-center gap-2">
         <div className="inline-flex items-center">
           <button
@@ -124,7 +129,9 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
             disabled={running || outcome !== null}
             aria-live="polite"
             className={cn(
-              "relative inline-flex h-9 min-w-[11rem] items-center justify-center gap-2 overflow-hidden rounded-input border px-3 text-sm font-medium transition-colors",
+              // Fixed width: the label changes ("Polling… 12s", "Synced · 3 new")
+              // and a growing button would nudge every control beside it.
+              "relative inline-flex h-9 w-[11.5rem] items-center justify-center gap-2 overflow-hidden rounded-input border px-3 text-sm font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60",
               outcome === "ok"
                 ? "border-success-200 bg-success-50 text-success-700"
@@ -170,23 +177,32 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
               )}
             </span>
           </button>
-          {running && (
-            <button
-              type="button"
-              onClick={cancel}
-              title="Stop this poll"
-              aria-label="Stop this poll"
-              className="inline-flex h-9 items-center justify-center rounded-r-input border border-brand-200 bg-surface px-2.5 text-danger-700 transition-colors hover:bg-danger-50"
-            >
-              <Square className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-        {last && !running && (
-          <span
-            className="min-w-0 max-w-[22rem] truncate text-xs text-text-muted"
-            title={lastLabel + (last.errorMessage ? ` · ${last.errorMessage}` : "")}
+          {/* Stop square keeps its slot when idle (invisible) so the group
+              never changes width. */}
+          <button
+            type="button"
+            onClick={cancel}
+            title="Stop this poll"
+            aria-label="Stop this poll"
+            aria-hidden={!running}
+            tabIndex={running ? 0 : -1}
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center rounded-r-input border border-brand-200 bg-surface text-danger-700 transition-colors hover:bg-danger-50",
+              !running && "pointer-events-none invisible",
+            )}
           >
+            <Square className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {/* The last-run line keeps a fixed slot too; while running it says so. */}
+        <span
+          className="w-[22rem] min-w-0 truncate text-xs text-text-muted"
+          title={last ? lastLabel + (last.errorMessage ? ` · ${last.errorMessage}` : "") : undefined}
+        >
+          {running ? (
+            <span className="text-brand-800">Polling NGTeco…</span>
+          ) : last ? (
+            <>
             Last: <span className={last.ok ? "" : "text-danger-700"}>{lastLabel}</span>
             {last.ok && last.pairsInserted !== null && (
               <>
@@ -201,12 +217,16 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
                 <span className="text-danger-700">{last.errorMessage}</span>
               </>
             )}
-          </span>
-        )}
+            </>
+          ) : null}
+        </span>
       </div>
 
       {result && "error" in result && (
-        <div className="flex items-start gap-2 rounded-card border border-danger-200 bg-danger-50 p-2 text-xs text-danger-800">
+        <div
+          role="alert"
+          className="absolute left-0 top-full z-20 mt-1.5 flex max-w-sm items-start gap-2 rounded-card border border-danger-200 bg-danger-50 px-3 py-2 text-xs text-danger-800 shadow-pop"
+        >
           <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
           <span>{result.error}</span>
         </div>
