@@ -24,12 +24,6 @@ function compactLabel(cents: number): string {
 
 type Props = {
   data: TrendPoint[];
-  /**
-   * Rail variant: taller line, no Y axis and no pinned end label. The
-   * card header already states the total, and a 48px axis inside a
-   * 300px rail left the line itself only half the width.
-   */
-  compact?: boolean;
 };
 
 type TooltipPayload = { payload: TrendPoint };
@@ -70,9 +64,8 @@ function TrendDot(props: {
   index?: number | undefined;
   value?: number | undefined;
   dataLength: number;
-  pinLabel?: boolean;
 }) {
-  const { cx, cy, index, value, dataLength, pinLabel = true } = props;
+  const { cx, cy, index, value, dataLength } = props;
   if (cx === undefined || cy === undefined) return null;
   const isLast = index === dataLength - 1;
   if (!isLast) {
@@ -85,14 +78,6 @@ function TrendDot(props: {
         stroke="var(--dash-bg)"
         strokeWidth={1}
       />
-    );
-  }
-  if (!pinLabel) {
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={9} fill={CHART.emerald} fillOpacity={0.16} />
-        <circle cx={cx} cy={cy} r={4} fill={CHART.emerald} stroke="var(--dash-bg)" strokeWidth={2} />
-      </g>
     );
   }
   const label = value !== undefined ? compactLabel(value) : "";
@@ -132,7 +117,7 @@ function TrendDot(props: {
   );
 }
 
-export function SpendTrendChart({ data, compact = false }: Props) {
+export function SpendTrendChart({ data }: Props) {
   if (data.length < 2) {
     return (
       <div
@@ -145,15 +130,11 @@ export function SpendTrendChart({ data, compact = false }: Props) {
   }
 
   return (
-    <div className={compact ? "h-24 w-full flex-1" : "h-14 w-full flex-1 sm:h-14"}>
+    <div className="h-14 w-full flex-1 sm:h-14">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart
           data={data}
-          margin={
-            compact
-              ? { top: 10, right: 10, bottom: 0, left: 10 }
-              : { top: 12, right: 12, bottom: 4, left: 4 }
-          }
+          margin={{ top: 12, right: 12, bottom: 4, left: 4 }}
         >
           <defs>
             <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
@@ -181,7 +162,6 @@ export function SpendTrendChart({ data, compact = false }: Props) {
             dy={6}
           />
           <YAxis
-            hide={compact}
             tickLine={false}
             axisLine={false}
             width={48}
@@ -218,7 +198,6 @@ export function SpendTrendChart({ data, compact = false }: Props) {
                 cy={p.cy}
                 index={p.index}
                 value={p.value}
-                pinLabel={!compact}
                 dataLength={data.length}
               />
             )}

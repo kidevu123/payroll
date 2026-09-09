@@ -165,8 +165,8 @@ function deriveUi(
       phase: "running",
       title: `${watch?.label ?? "NGTeco punch poll"} — running`,
       detail: longRun
-        ? `Still scraping NGTeco (${formatElapsed(status.elapsedMs)}). If this exceeds ~15 min, cancel and use Backfill missing days for multi-day recovery.`
-        : `Scraping today's punches from NGTeco (${formatElapsed(status.elapsedMs)}) — usually 2–5 min`,
+        ? `Still polling NGTeco (${formatElapsed(status.elapsedMs)}). A same-day poll is killed after 10 min; if this keeps running, Stop poll and use Backfill missing days.`
+        : `Pulling today's punches from NGTeco (${formatElapsed(status.elapsedMs)}) — usually under a minute via the API`,
       progress: "indeterminate",
     };
   }

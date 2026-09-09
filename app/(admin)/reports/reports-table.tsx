@@ -56,7 +56,6 @@ import {
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
 import { Button, IconButton } from "@/components/ui/button";
-import { MicroLabel } from "@/components/ui/typography";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -277,7 +276,7 @@ const ACTIONS_TRACK = "7.5rem";
 // under the schedule chip at the 1440px content cap; the chip and the
 // paid-via columns are the ones that give.
 const TABLE_GRID =
-  "lg:grid-cols-[minmax(10rem,1.2fr)_minmax(4.75rem,0.5fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_7.5rem]";
+  "lg:grid-cols-[minmax(11rem,1.2fr)_minmax(5rem,0.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_7.5rem]";
 
 export function ReportsTable({
   reports,
@@ -406,9 +405,12 @@ export function ReportsTable({
     }
   }
 
+  const periodCount = months.reduce((n, m) => n + m.periods.length, 0);
+
   return (
-    <div className="space-y-4">
+    <div className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
       <FilterBar
+        periodCount={periodCount}
         scheduleTab={scheduleTab}
         query={query}
         setQuery={setQuery}
@@ -428,18 +430,17 @@ export function ReportsTable({
       />
 
       {error && (
-        <div className="rounded-card border border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
+        <div className="border-b border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
           {error}
         </div>
       )}
 
-      {/* Column legend — mirrors TABLE_GRID so every month card below reads
-          as one continuous, aligned table. Desktop only; mobile rows stack.
-          Padding matches the rows' own box (px-5 + the card's 1px border)
-          so the two frames share a left edge. */}
+      {/* Column header — mirrors TABLE_GRID so every month section below
+          reads as one continuous, aligned table. Desktop only; mobile rows
+          stack. Sticky so the columns stay named while scrolling a year. */}
       <div
         className={cn(
-          "hidden lg:grid items-center gap-3 px-5 text-micro uppercase text-text-subtle",
+          "sticky top-0 z-10 hidden items-center gap-3 border-b border-border/70 bg-surface px-5 py-2 text-micro uppercase text-text-subtle lg:grid",
           TABLE_GRID,
         )}
       >
@@ -449,11 +450,11 @@ export function ReportsTable({
         <span>Status</span>
         <span className="text-right">Gross pay</span>
         <span className="text-right">Net pay</span>
-        <span className="text-right">Actions</span>
+        <span className="sr-only">Actions</span>
       </div>
 
       {months.length === 0 ? (
-        <div className="rounded-card border border-border/70 bg-surface p-10 text-center text-sm text-text-muted shadow-card">
+        <div className="p-10 text-center text-sm text-text-muted">
           No periods match these filters.
         </div>
       ) : (
@@ -486,6 +487,7 @@ const SELECT_CLASS =
   "h-9 rounded-input border border-border bg-surface px-2.5 text-xs font-medium text-text transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60";
 
 function FilterBar({
+  periodCount,
   scheduleTab,
   query,
   setQuery,
@@ -498,6 +500,7 @@ function FilterBar({
   hasActiveFilters,
   onClear,
 }: {
+  periodCount: number;
   scheduleTab: string;
   query: string;
   setQuery: (v: string) => void;
@@ -512,7 +515,7 @@ function FilterBar({
 }) {
   const router = useRouter();
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-card border border-border/70 bg-surface p-2.5 shadow-card">
+    <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2.5">
       <label className="relative min-w-[8rem] max-w-[16rem] flex-1">
         <Search
           className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle"
@@ -581,9 +584,12 @@ function FilterBar({
           onClick={onClear}
           className="h-9 text-xs"
         >
-          <X className="h-3.5 w-3.5" /> Clear filters
+          <X className="h-3.5 w-3.5" /> Clear
         </Button>
       )}
+      <span className="ml-auto whitespace-nowrap text-xs tabular-nums text-text-subtle">
+        {periodCount} {periodCount === 1 ? "period" : "periods"}
+      </span>
     </div>
   );
 }
@@ -653,27 +659,26 @@ function MonthCard({
   const runCount = month.periods.reduce((n, p) => n + p.runs.length, 0);
 
   return (
-    <section
-      aria-label={month.label}
-      className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card transition-shadow hover:shadow-card-strong"
-    >
+    <section aria-label={month.label} className="border-b border-border/60 last:border-b-0">
       {/* Month header. On lg it rides TABLE_GRID so the Total gross / Total
           net figures sit directly above the Gross pay / Net pay columns they
           total — previously this was a `flex justify-between` cluster pinned
           to the card's right edge, i.e. floating over the actions column and
           aligned with nothing. Below lg it falls back to the flex layout. */}
+      {/* Month band: name + count on the left, the month's gross and net
+          directly over the columns they total (TABLE_GRID via lg:contents). */}
       <header
         className={cn(
-          "flex items-center justify-between gap-3 border-b border-border/70 bg-surface-2/50 px-4 py-3 sm:px-5",
+          "flex items-center justify-between gap-3 border-b border-border/60 bg-surface-2/50 px-4 py-2 sm:px-5",
           "lg:grid lg:items-center lg:gap-3",
           TABLE_GRID,
         )}
       >
-        <div className="flex items-center gap-2.5 min-w-0 lg:col-span-4">
-          <h2 className="text-subheading tracking-tight text-text">
+        <div className="flex min-w-0 items-baseline gap-2 lg:col-span-4">
+          <h2 className="text-sm font-semibold tracking-tight text-text">
             {month.label}
           </h2>
-          <span className="rounded-chip bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-text-muted">
+          <span className="text-xs tabular-nums text-text-subtle">
             {month.periods.length}{" "}
             {month.periods.length === 1 ? "period" : "periods"}
             {runCount !== month.periods.length && (
@@ -685,25 +690,20 @@ function MonthCard({
           </span>
         </div>
         <div className="flex items-center gap-5 whitespace-nowrap lg:contents">
-          <div
-            className="hidden flex-col items-end leading-none sm:flex"
+          <span
+            className="hidden pr-2 text-right text-sm tabular-nums text-text-muted sm:block"
             title={
               grossIncomplete
                 ? "Partial: W2 paystub periods carry net pay only, so their gross isn't included here."
-                : undefined
+                : "Month gross"
             }
           >
-            <MicroLabel>Total gross{grossIncomplete ? "*" : ""}</MicroLabel>
-            <span className="mt-1 pr-2 tabular-nums text-subheading text-text-muted">
-              <MoneyDisplay cents={gross} />
-            </span>
-          </div>
-          <div className="flex flex-col items-end leading-none">
-            <MicroLabel>Total net</MicroLabel>
-            <span className="mt-1 tabular-nums text-subheading text-text">
-              <MoneyDisplay cents={net} />
-            </span>
-          </div>
+            <MoneyDisplay cents={gross} />
+            {grossIncomplete ? "*" : ""}
+          </span>
+          <span className="text-right text-sm font-semibold tabular-nums text-text" title="Month net">
+            <MoneyDisplay cents={net} />
+          </span>
           <span aria-hidden className="hidden lg:block" />
         </div>
       </header>
@@ -790,7 +790,7 @@ function PeriodLine({
       : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
-        <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
+        <div className="py-2.5 pl-4 pr-4 sm:pl-5 sm:pr-5">
           <div
             className={cn(
               "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2",
@@ -801,7 +801,7 @@ function PeriodLine({
                 so this row stays the same height as every other row. */}
             <Link
               href={rangeHref}
-              className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-semibold tracking-tight text-text whitespace-nowrap transition-colors hover:text-brand-700 lg:col-span-1"
+              className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-medium tracking-tight text-text whitespace-nowrap transition-colors hover:text-brand-700 lg:col-span-1"
             >
               {formatRange(group.periodStart, group.periodEnd)}
             </Link>
@@ -841,7 +841,7 @@ function PeriodLine({
 
             {/* 6 · Net */}
             <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
-              <span className="tabular-nums text-base font-semibold tracking-tight text-text">
+              <span className="tabular-nums text-sm font-semibold tracking-tight text-text">
                 <MoneyDisplay cents={net} />
               </span>
               <span className="mt-1 whitespace-nowrap tabular-nums text-[10px] leading-tight text-text-subtle">
@@ -850,7 +850,7 @@ function PeriodLine({
             </div>
 
             {/* 7 · Actions */}
-            <div className="flex items-center justify-end gap-0.5 justify-self-end">
+            <div className="flex items-center justify-end gap-0.5 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100">
                 <Button
                   asChild
                   size="sm"
@@ -911,7 +911,7 @@ function PeriodLine({
 
   return (
     <div className="group/row relative transition-colors hover:bg-surface-2/40">
-      <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
+      <div className="py-2.5 pl-4 pr-4 sm:pl-5 sm:pr-5">
         {/* Statement line — stacks on mobile, one aligned row on >=sm. The
             left identity column and the NET hero share a single baseline grid
             so chips sit centered, never floating after the date. */}
@@ -927,7 +927,7 @@ function PeriodLine({
           {/* 1 · Pay period */}
           <Link
             href={`/payroll/${group.periodId}`}
-            className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40 lg:col-span-1"
+            className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-medium tracking-tight text-text whitespace-nowrap transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/40 lg:col-span-1"
           >
             {formatRange(group.periodStart, canonicalEnd)}
           </Link>
@@ -972,7 +972,7 @@ function PeriodLine({
 
           {/* 6 · Net */}
           <div className="flex min-w-0 flex-col items-start leading-none lg:items-end">
-            <span className="tabular-nums text-base font-semibold tracking-tight text-text">
+            <span className="tabular-nums text-sm font-semibold tracking-tight text-text">
               <MoneyDisplay cents={net} />
             </span>
             {(gross > 0 && gross !== net) ||
@@ -1005,7 +1005,7 @@ function PeriodLine({
               the same width whether or not this period can be paid. A
               variable-width cluster used to resize the grid's last track per
               row, dragging all six other columns out of alignment. */}
-          <div className="flex items-center justify-end gap-0.5 justify-self-end">
+          <div className="flex items-center justify-end gap-0.5 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100">
             {canManageReports && periodState === "LOCKED" && (
               <IconButton
                 variant="secondary"
@@ -1169,8 +1169,7 @@ function PaymentMethodCell({
   if (state !== "PAID") {
     return <span className="text-xs text-text-subtle">—</span>;
   }
-  // Icon always; the words only when the table has room (2xl+). At the
-  // 1440 content cap the column is ~85px and "Bank transfer" clipped.
+  // Icon always; the words from lg, where the column has its own track.
   const Icon = method === "CASH" ? Banknote : Landmark;
   const label = method === "CASH" ? "Cash drawer" : "Bank transfer";
   return (
@@ -1179,8 +1178,8 @@ function PaymentMethodCell({
       title={label}
     >
       <Icon className="h-3.5 w-3.5 text-text-subtle" aria-hidden />
-      <span className="hidden 2xl:inline">{label}</span>
-      <span className="sr-only 2xl:hidden">{label}</span>
+      <span className="hidden lg:inline">{label}</span>
+      <span className="sr-only lg:hidden">{label}</span>
     </span>
   );
 }

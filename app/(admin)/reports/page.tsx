@@ -1,8 +1,12 @@
-// Reports landing — organized like a statement console (owner reference,
-// Jul 2026): title + Export on the header row, four KPI stat cards, a
-// filter bar (search / schedule / status / payment / sort), then the
-// month-grouped report table with aligned columns, and the insight rail
-// (mix donut, net trend, summary) on the right.
+// Reports landing — one statement. Title + Time-off tally + Export on the
+// header row, a year-to-date stat strip, then a single full-width table:
+// toolbar (search / schedule / status / paid-via / sort), sticky column
+// header, month bands with subtotals, dense period rows.
+//
+// Sep 2026 rethink (owner: "busy, wasted white space"): the right rail
+// (report-mix donut, net-pay trend, summary) and the four boxed KPI cards
+// are gone. The donut described the table's own row counts, the trend
+// belongs to the dashboard, and the summary repeated the KPIs.
 
 import Link from "next/link";
 import { Download, CalendarRange, ChevronDown } from "lucide-react";
@@ -26,8 +30,7 @@ import { db } from "@/lib/db";
 import { zohoOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ReportsTable } from "./reports-table";
-import { ReportsKpis } from "@/components/reports/reports-kpis";
-import { ReportsRail } from "@/components/reports/reports-rail";
+import { ReportsStatStrip } from "@/components/reports/stat-strip";
 import { requireSession } from "@/lib/auth-guards";
 import {
   parseScheduleTab,
@@ -106,25 +109,15 @@ export default async function ReportsPage({
         </div>
       </div>
 
-      <ReportsKpis ytd={overview.ytd} />
+      <ReportsStatStrip ytd={overview.ytd} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-4">
-          <ReportsTable
-            reports={periodRows}
-            zohoOrgs={orgs}
-            drawerBalanceCents={drawerBalanceCents}
-            canManageReports={session.user.role !== "ACCOUNTANT"}
-            scheduleTab={tab}
-          />
-        </div>
-
-        {/* top-4, not the old 3.5rem topbar offset — the admin shell has no
-            desktop topbar, so that offset left the rail hanging in space. */}
-        <aside className="lg:sticky lg:top-4 lg:self-start">
-          <ReportsRail overview={overview} />
-        </aside>
-      </div>
+      <ReportsTable
+        reports={periodRows}
+        zohoOrgs={orgs}
+        drawerBalanceCents={drawerBalanceCents}
+        canManageReports={session.user.role !== "ACCOUNTANT"}
+        scheduleTab={tab}
+      />
     </div>
   );
 }
