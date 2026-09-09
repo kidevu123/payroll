@@ -139,6 +139,11 @@ export type ReportRow = {
   amountCents: number;
   /** Sum of gross_pay_cents for this run's payslips. Zero for runs without payslips. */
   grossPayCents: number;
+  /** Payslips on this run that actually pay something (zero-pay rows are
+   *  schedule members who did not work). Absent on synthetic paystub rows. */
+  employeesPaid?: number;
+  /** Sum of hours_worked across this run's active payslips. */
+  hoursWorked?: number;
   /** Sum of amountCents on non-deleted PAYSTUB documents for the period.
    *  Represents the after-tax net from accountant-prepared paystubs (W2/
    *  salaried employees). Same value on every run sharing a period. */
@@ -350,6 +355,21 @@ export async function listReports(
         WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
           AND ${payslips.voidedAt} IS NULL
       ), 0)`,
+      // Same "has pay" rule as lib/payroll/payslip-pay.ts, in SQL.
+      employeesPaid: sql<number>`COALESCE((
+        SELECT COUNT(*)::int
+        FROM ${payslips}
+        WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
+          AND ${payslips.voidedAt} IS NULL
+          AND (${payslips.hoursWorked} > 0 OR ${payslips.grossPayCents} > 0
+               OR ${payslips.taskPayCents} > 0 OR ${payslips.roundedPayCents} > 0)
+      ), 0)`,
+      hoursWorked: sql<string>`COALESCE((
+        SELECT SUM(${payslips.hoursWorked})::text
+        FROM ${payslips}
+        WHERE ${payslips.payrollRunId} = ${payrollRuns.id}
+          AND ${payslips.voidedAt} IS NULL
+      ), '0')`,
       createdByName: payrollRuns.createdByName,
       approverDisplay: users.email,
       postedAt: payrollRuns.postedAt,
@@ -460,6 +480,8 @@ export async function listReports(
     amountCents:
       r.payslipSum > 0 ? r.payslipSum : r.totalAmount ?? 0,
     grossPayCents: r.grossPaySum ?? 0,
+    employeesPaid: r.employeesPaid ?? 0,
+    hoursWorked: Number(r.hoursWorked ?? 0),
     docNetPayCents: docNetByPeriod.get(r.periodId ?? "") ?? 0,
     replacedRunNetCents: replacedRunNetByPeriod.get(r.periodId ?? "") ?? 0,
     tempLaborCents: tempByPeriod.get(r.periodId) ?? 0,

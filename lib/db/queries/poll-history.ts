@@ -60,7 +60,31 @@ export async function isPunchPollJobActive(): Promise<boolean> {
 }
 
 const ORPHAN_NO_WORKER_MS = 20 * 60 * 1000;
-const ORPHAN_MAX_MS = 100 * 60 * 1000;
+// The runner hard-kills a same-day poll at 10 min and a backfill at 30;
+// anything older than this cannot still be doing work.
+const ORPHAN_MAX_MS = 35 * 60 * 1000;
+
+/**
+ * Boot-time sweep: this is a single-node app, so at process start no poll
+ * can be in flight. Any open row was orphaned by a restart (a deploy
+ * mid-poll) — and pg-boss keeps that job "active" until its own expiry,
+ * which made reconcileOrphanedPolls() think a worker was still alive and
+ * left the banner on "running" for over an hour.
+ */
+export async function closePollsInterruptedByRestart(): Promise<number> {
+  const open = await db
+    .select({ id: ngtecoPollLog.id })
+    .from(ngtecoPollLog)
+    .where(isNull(ngtecoPollLog.finishedAt));
+  for (const row of open) {
+    await finishPoll(row.id, {
+      ok: false,
+      errorMessage:
+        "Poll was interrupted by an app restart. Run Poll now again — today only takes under a minute.",
+    });
+  }
+  return open.length;
+}
 
 /**
  * Close poll-log rows left open when pg-boss expired the job at 15 min

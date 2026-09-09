@@ -33,7 +33,7 @@ import { useRouter } from "next/navigation";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { periodNetCents } from "@/lib/reports/period-net";
 import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
-import { cn } from "@/lib/utils";
+import { cn, formatHours } from "@/lib/utils";
 import {
   Download,
   Eye,
@@ -123,6 +123,9 @@ type GroupedReport = {
   tempLaborCents: number;
   docNetPayCents: number;
   replacedRunNetCents: number;
+  /** Sum over the period's runs; null when no run carries the figure. */
+  employeesPaid: number | null;
+  hoursWorked: number | null;
   runs: ReportRow[];
 };
 
@@ -151,11 +154,21 @@ function groupByPeriod(reports: ReportRow[]): GroupedReport[] {
         tempLaborCents: r.tempLaborCents,
         docNetPayCents: r.docNetPayCents,
         replacedRunNetCents: r.replacedRunNetCents,
+        employeesPaid: null,
+        hoursWorked: null,
         runs: [],
       });
     }
     const group = groups[idx];
-    if (group) group.runs.push(r);
+    if (group) {
+      group.runs.push(r);
+      if (r.employeesPaid !== undefined) {
+        group.employeesPaid = (group.employeesPaid ?? 0) + r.employeesPaid;
+      }
+      if (r.hoursWorked !== undefined) {
+        group.hoursWorked = (group.hoursWorked ?? 0) + r.hoursWorked;
+      }
+    }
   }
   return groups;
 }
@@ -275,8 +288,12 @@ const ACTIONS_TRACK = "7.5rem";
 // The pay-period track has a floor so "Aug 03 – Aug 09, 2026" never clips
 // under the schedule chip at the 1440px content cap; the chip and the
 // paid-via columns are the ones that give.
+// Nine tracks: period | schedule | employees | hours | paid via | status |
+// gross | net | actions. Employees and hours were added when the rail was
+// removed — a full-width table with six columns spread its text across
+// dead space; a ledger this wide should carry the figures people look up.
 const TABLE_GRID =
-  "lg:grid-cols-[minmax(11rem,1.2fr)_minmax(5rem,0.6fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_7.5rem]";
+  "lg:grid-cols-[minmax(11rem,1.15fr)_minmax(5.5rem,0.6fr)_4.5rem_5rem_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_6.5rem]";
 
 export function ReportsTable({
   reports,
@@ -446,6 +463,8 @@ export function ReportsTable({
       >
         <span>Pay period</span>
         <span>Schedule</span>
+        <span className="text-right">Paid</span>
+        <span className="pr-4 text-right">Hours</span>
         <span>Paid via</span>
         <span>Status</span>
         <span className="text-right">Gross pay</span>
@@ -674,7 +693,7 @@ function MonthCard({
           TABLE_GRID,
         )}
       >
-        <div className="flex min-w-0 items-baseline gap-2 lg:col-span-4">
+        <div className="flex min-w-0 items-baseline gap-2 lg:col-span-6">
           <h2 className="text-sm font-semibold tracking-tight text-text">
             {month.label}
           </h2>
@@ -821,7 +840,15 @@ function PeriodLine({
               <SchedulePill name={group.scheduleName ?? "Salaried"} />
             </div>
 
-            {/* 3 · Payment method — W2 paystubs pay out via bank transfer */}
+            {/* 3-4 · Employees / hours — a paystub carries neither */}
+            <div className="hidden text-right text-sm tabular-nums text-text-subtle lg:block">
+              {docs.length}
+            </div>
+            <div className="hidden pr-4 text-right text-sm tabular-nums text-text-subtle lg:block">
+              —
+            </div>
+
+            {/* 5 · Payment method — W2 paystubs pay out via bank transfer */}
             <div className="hidden min-w-0 lg:flex">
               <PaymentMethodCell
                 state="PAID"
@@ -850,12 +877,12 @@ function PeriodLine({
             </div>
 
             {/* 7 · Actions */}
-            <div className="flex items-center justify-end gap-0.5 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100">
+            <div className="flex items-center justify-end gap-0.5 justify-self-end text-text-muted">
                 <Button
                   asChild
                   size="sm"
                   variant="ghost"
-                  className="h-9 w-9 p-0"
+                  className="h-8 w-8 p-0"
                   title={docs.length === 1 ? "View paystub" : "Manage paystubs"}
                 >
                   {docs.length === 1 ? (
@@ -876,7 +903,7 @@ function PeriodLine({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-9 w-9 p-0"
+                      className="h-8 w-8 p-0"
                       title="Paystub actions"
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -947,7 +974,21 @@ function PeriodLine({
             <SchedulePill name={group.scheduleName} />
           </div>
 
-          {/* 3 · Payment method */}
+          {/* 3 · Employees paid */}
+          <div className="hidden text-right text-sm tabular-nums text-text-muted lg:block">
+            {group.employeesPaid ?? <span className="text-text-subtle">—</span>}
+          </div>
+
+          {/* 4 · Hours */}
+          <div className="hidden pr-4 text-right text-sm tabular-nums text-text-muted lg:block">
+            {group.hoursWorked ? (
+              formatHours(group.hoursWorked)
+            ) : (
+              <span className="text-text-subtle">—</span>
+            )}
+          </div>
+
+          {/* 5 · Payment method */}
           <div className="hidden min-w-0 lg:flex">
             <PaymentMethodCell state={periodState} method={periodPaymentMethod} />
           </div>
@@ -1005,7 +1046,7 @@ function PeriodLine({
               the same width whether or not this period can be paid. A
               variable-width cluster used to resize the grid's last track per
               row, dragging all six other columns out of alignment. */}
-          <div className="flex items-center justify-end gap-0.5 justify-self-end opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100">
+          <div className="flex items-center justify-end gap-0.5 justify-self-end text-text-muted">
             {canManageReports && periodState === "LOCKED" && (
               <IconButton
                 variant="secondary"
@@ -1013,7 +1054,7 @@ function PeriodLine({
                 onClick={() => setPayOpen((v) => !v)}
                 aria-label="Pay from cash drawer"
                 title={`Pay from cash drawer — $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
-                className="h-9 w-9"
+                className="h-8 w-8"
               >
                 <Banknote className="h-3.5 w-3.5" aria-hidden />
               </IconButton>
@@ -1329,7 +1370,7 @@ function RunActions({
         asChild
         size="sm"
         variant="ghost"
-        className="h-9 w-9 p-0"
+        className="h-8 w-8 p-0"
         title="Open admin report"
       >
         <Link href={`/payroll/${run.periodId}`}>
@@ -1407,7 +1448,7 @@ function RowOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-9 w-9 p-0" title="More actions">
+        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="More actions">
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

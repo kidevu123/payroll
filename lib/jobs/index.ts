@@ -72,6 +72,17 @@ export function getBoss(): Promise<PgBoss> {
 }
 
 async function registerJobs(boss: PgBoss): Promise<void> {
+  // Close poll-log rows a restart orphaned before any worker starts.
+  try {
+    const { closePollsInterruptedByRestart } = await import(
+      "@/lib/db/queries/poll-history"
+    );
+    const closed = await closePollsInterruptedByRestart();
+    if (closed > 0) logger.warn({ closed }, "poll-log: closed rows interrupted by restart");
+  } catch (err) {
+    logger.warn({ err }, "poll-log: restart sweep failed");
+  }
+
   // Master kill switch — when automation.cronEnabled === false, every
   // cron schedule is skipped (and any stale ones get unscheduled). The
   // owner uses this for full-manual mode while reconciling data.

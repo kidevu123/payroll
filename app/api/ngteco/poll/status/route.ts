@@ -9,7 +9,8 @@ import {
   reconcileOrphanedPolls,
 } from "@/lib/db/queries/poll-history";
 
-const STUCK_MS = 90 * 60 * 1000;
+// Past the runner's longest hard timeout (30 min backfill) plus slack.
+const STUCK_MS = 35 * 60 * 1000;
 
 export type PollPhase =
   | "idle"
