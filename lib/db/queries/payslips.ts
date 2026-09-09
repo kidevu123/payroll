@@ -573,3 +573,18 @@ export async function getPayslipById(id: string): Promise<Payslip | null> {
   const [row] = await db.select().from(payslips).where(eq(payslips.id, id)).limit(1);
   return row ?? null;
 }
+
+/** Open employee disputes (raised, not yet resolved), newest first. */
+export async function listOpenDisputes(): Promise<Payslip[]> {
+  return db
+    .select()
+    .from(payslips)
+    .where(
+      and(
+        isNotNull(payslips.disputedAt),
+        isNull(payslips.disputeResolvedAt),
+        isNull(payslips.voidedAt),
+      ),
+    )
+    .orderBy(sql`${payslips.disputedAt} DESC`);
+}

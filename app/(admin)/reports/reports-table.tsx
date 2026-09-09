@@ -33,8 +33,11 @@ import { useRouter } from "next/navigation";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { periodNetCents } from "@/lib/reports/period-net";
 import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
-import { cn, formatHours } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   Printer,
@@ -288,12 +291,10 @@ const ACTIONS_TRACK = "7.5rem";
 // The pay-period track has a floor so "Aug 03 – Aug 09, 2026" never clips
 // under the schedule chip at the 1440px content cap; the chip and the
 // paid-via columns are the ones that give.
-// Nine tracks: period | schedule | employees | hours | paid via | status |
-// gross | net | actions. Employees and hours were added when the rail was
-// removed — a full-width table with six columns spread its text across
-// dead space; a ledger this wide should carry the figures people look up.
+// Eight tracks (owner mock): period | schedule | paid via | status |
+// gross | net | employees | actions.
 const TABLE_GRID =
-  "lg:grid-cols-[minmax(11rem,1.15fr)_minmax(5.5rem,0.6fr)_4.5rem_5rem_minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_6.5rem]";
+  "lg:grid-cols-[minmax(11rem,1.2fr)_minmax(6.5rem,0.7fr)_minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.9fr)_5.5rem_6.5rem]";
 
 export function ReportsTable({
   reports,
@@ -318,6 +319,12 @@ export function ReportsTable({
   const [status, setStatus] = React.useState<StatusFilter>("all");
   const [method, setMethod] = React.useState<MethodFilter>("all");
   const [sort, setSort] = React.useState<SortKey>("newest");
+  const [page, setPage] = React.useState(1);
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(() => new Set());
+  // Any filter change lands back on page 1.
+  React.useEffect(() => {
+    setPage(1);
+  }, [query, status, method, sort, scheduleTab]);
 
   const haute = zohoOrgs.find((o) => /haute/i.test(o.name));
   const boomin = zohoOrgs.find((o) => /boomin/i.test(o.name));
@@ -409,8 +416,12 @@ export function ReportsTable({
   const filtered = groupByPeriod(reports).filter((g) =>
     matchesFilters(g, query, status, method),
   );
-  const ordered =
+  const orderedAll =
     sort === "oldest" ? [...filtered].reverse() : filtered;
+  const totalPeriods = orderedAll.length;
+  const pageCount = Math.max(1, Math.ceil(totalPeriods / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const ordered = orderedAll.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const months = groupByMonth(ordered);
   if (sort === "net-desc" || sort === "net-asc") {
     for (const m of months) {
@@ -422,7 +433,7 @@ export function ReportsTable({
     }
   }
 
-  const periodCount = months.reduce((n, m) => n + m.periods.length, 0);
+  const periodCount = totalPeriods;
 
   return (
     <div className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
@@ -463,13 +474,12 @@ export function ReportsTable({
       >
         <span>Pay period</span>
         <span>Schedule</span>
-        <span className="text-right">Paid</span>
-        <span className="pr-4 text-right">Hours</span>
         <span>Paid via</span>
         <span>Status</span>
         <span className="text-right">Gross pay</span>
         <span className="text-right">Net pay</span>
-        <span className="sr-only">Actions</span>
+        <span className="text-right">Employees</span>
+        <span className="text-right">Actions</span>
       </div>
 
       {months.length === 0 ? (
@@ -481,6 +491,15 @@ export function ReportsTable({
           <MonthCard
             key={m.key}
             month={m}
+            collapsed={collapsed.has(m.key)}
+            onToggle={() =>
+              setCollapsed((prev) => {
+                const next = new Set(prev);
+                if (next.has(m.key)) next.delete(m.key);
+                else next.add(m.key);
+                return next;
+              })
+            }
             busyId={busyId}
             setError={setError}
             confirmDelete={confirmDelete}
@@ -495,6 +514,82 @@ export function ReportsTable({
             canManageReports={canManageReports}
           />
         ))
+      )}
+
+      <Pager
+        page={safePage}
+        pageCount={pageCount}
+        from={totalPeriods === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}
+        to={Math.min(totalPeriods, safePage * PAGE_SIZE)}
+        total={totalPeriods}
+        onPage={setPage}
+      />
+    </div>
+  );
+}
+
+const PAGE_SIZE = 25;
+
+/** Page numbers with an ellipsis gap, like the mock: 1 2 3 4 5 … 14. */
+function pageNumbers(page: number, count: number): Array<number | "gap"> {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
+  const set = new Set<number>([1, 2, 3, 4, 5, count, page - 1, page, page + 1]);
+  const nums = [...set].filter((n) => n >= 1 && n <= count).sort((a, b) => a - b);
+  const out: Array<number | "gap"> = [];
+  for (let i = 0; i < nums.length; i += 1) {
+    const n = nums[i]!;
+    if (i > 0 && n - nums[i - 1]! > 1) out.push("gap");
+    out.push(n);
+  }
+  return out;
+}
+
+function Pager({
+  page,
+  pageCount,
+  from,
+  to,
+  total,
+  onPage,
+}: {
+  page: number;
+  pageCount: number;
+  from: number;
+  to: number;
+  total: number;
+  onPage: (p: number) => void;
+}) {
+  const btn =
+    "inline-flex h-8 min-w-8 items-center justify-center rounded-input border px-2 text-xs font-medium tabular-nums transition-colors disabled:opacity-40";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-xs text-text-muted sm:px-5">
+      <span className="tabular-nums">
+        Showing {from}–{to} of {total} pay {total === 1 ? "period" : "periods"}
+      </span>
+      {pageCount > 1 && (
+        <nav aria-label="Pagination" className="flex items-center gap-1">
+          <button type="button" className={cn(btn, "border-border text-text-muted hover:bg-surface-2")} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page">
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          </button>
+          {pageNumbers(page, pageCount).map((n, i) =>
+            n === "gap" ? (
+              <span key={`gap-${i}`} className="px-1 text-text-subtle">…</span>
+            ) : (
+              <button
+                key={n}
+                type="button"
+                aria-current={n === page ? "page" : undefined}
+                onClick={() => onPage(n)}
+                className={cn(btn, n === page ? "border-brand-700 bg-brand-50 text-brand-800" : "border-border text-text-muted hover:bg-surface-2")}
+              >
+                {n}
+              </button>
+            ),
+          )}
+          <button type="button" className={cn(btn, "border-border text-text-muted hover:bg-surface-2")} disabled={page >= pageCount} onClick={() => onPage(page + 1)} aria-label="Next page">
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </nav>
       )}
     </div>
   );
@@ -665,8 +760,10 @@ type SharedHandlers = {
 
 function MonthCard({
   month,
+  collapsed,
+  onToggle,
   ...handlers
-}: { month: MonthGroup } & SharedHandlers) {
+}: { month: MonthGroup; collapsed: boolean; onToggle: () => void } & SharedHandlers) {
   const net = monthNet(month);
   const gross = monthGross(month);
   // W2 paystub periods have no gross figure (paystubs carry net only), so a
@@ -676,6 +773,7 @@ function MonthCard({
     (p) => periodGross(p) === 0 && periodNet(p) > 0,
   );
   const runCount = month.periods.reduce((n, p) => n + p.runs.length, 0);
+  const employees = month.periods.reduce((n, p) => n + (p.employeesPaid ?? 0), 0);
 
   return (
     <section aria-label={month.label} className="border-b border-border/60 last:border-b-0">
@@ -693,7 +791,16 @@ function MonthCard({
           TABLE_GRID,
         )}
       >
-        <div className="flex min-w-0 items-baseline gap-2 lg:col-span-6">
+        <div className="flex min-w-0 items-center gap-2 lg:col-span-4">
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? `Expand ${month.label}` : `Collapse ${month.label}`}
+            className="-ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+          >
+            <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} aria-hidden />
+          </button>
           <h2 className="text-sm font-semibold tracking-tight text-text">
             {month.label}
           </h2>
@@ -723,16 +830,21 @@ function MonthCard({
           <span className="text-right text-sm font-semibold tabular-nums text-text" title="Month net">
             <MoneyDisplay cents={net} />
           </span>
+          <span className="hidden text-right text-sm tabular-nums text-text-muted lg:block" title="Employees paid">
+            {employees > 0 ? employees : ""}
+          </span>
           <span aria-hidden className="hidden lg:block" />
         </div>
       </header>
 
       {/* Period statement lines, hairline-separated */}
-      <div className="divide-y divide-border/60">
-        {month.periods.map((p) => (
-          <PeriodLine key={p.periodId} group={p} {...handlers} />
-        ))}
-      </div>
+      {!collapsed && (
+        <div className="divide-y divide-border/60">
+          {month.periods.map((p) => (
+            <PeriodLine key={p.periodId} group={p} {...handlers} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -809,7 +921,7 @@ function PeriodLine({
       : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
-        <div className="py-2.5 pl-4 pr-4 sm:pl-5 sm:pr-5">
+        <div className="py-2 pl-4 pr-4 sm:pl-5 sm:pr-5">
           <div
             className={cn(
               "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2",
@@ -840,15 +952,7 @@ function PeriodLine({
               <SchedulePill name={group.scheduleName ?? "Salaried"} />
             </div>
 
-            {/* 3-4 · Employees / hours — a paystub carries neither */}
-            <div className="hidden text-right text-sm tabular-nums text-text-subtle lg:block">
-              {docs.length}
-            </div>
-            <div className="hidden pr-4 text-right text-sm tabular-nums text-text-subtle lg:block">
-              —
-            </div>
-
-            {/* 5 · Payment method — W2 paystubs pay out via bank transfer */}
+            {/* 3 · Payment method — W2 paystubs pay out via bank transfer */}
             <div className="hidden min-w-0 lg:flex">
               <PaymentMethodCell
                 state="PAID"
@@ -876,7 +980,12 @@ function PeriodLine({
               </span>
             </div>
 
-            {/* 7 · Actions */}
+            {/* 7 · Employees — one paystub per person */}
+            <div className="hidden text-right text-sm tabular-nums text-text-muted lg:block">
+              {docs.length}
+            </div>
+
+            {/* 8 · Actions */}
             <div className="flex items-center justify-end gap-0.5 justify-self-end text-text-muted">
                 <Button
                   asChild
@@ -938,7 +1047,7 @@ function PeriodLine({
 
   return (
     <div className="group/row relative transition-colors hover:bg-surface-2/40">
-      <div className="py-2.5 pl-4 pr-4 sm:pl-5 sm:pr-5">
+      <div className="py-2 pl-4 pr-4 sm:pl-5 sm:pr-5">
         {/* Statement line — stacks on mobile, one aligned row on >=sm. The
             left identity column and the NET hero share a single baseline grid
             so chips sit centered, never floating after the date. */}
@@ -974,21 +1083,7 @@ function PeriodLine({
             <SchedulePill name={group.scheduleName} />
           </div>
 
-          {/* 3 · Employees paid */}
-          <div className="hidden text-right text-sm tabular-nums text-text-muted lg:block">
-            {group.employeesPaid ?? <span className="text-text-subtle">—</span>}
-          </div>
-
-          {/* 4 · Hours */}
-          <div className="hidden pr-4 text-right text-sm tabular-nums text-text-muted lg:block">
-            {group.hoursWorked ? (
-              formatHours(group.hoursWorked)
-            ) : (
-              <span className="text-text-subtle">—</span>
-            )}
-          </div>
-
-          {/* 5 · Payment method */}
+          {/* 3 · Payment method */}
           <div className="hidden min-w-0 lg:flex">
             <PaymentMethodCell state={periodState} method={periodPaymentMethod} />
           </div>
@@ -1042,10 +1137,13 @@ function PeriodLine({
             ) : null}
           </div>
 
-          {/* 7 · Actions — every control is a 36px square so the cluster is
-              the same width whether or not this period can be paid. A
-              variable-width cluster used to resize the grid's last track per
-              row, dragging all six other columns out of alignment. */}
+          {/* 7 · Employees paid this period */}
+          <div className="hidden text-right text-sm tabular-nums text-text-muted lg:block">
+            {group.employeesPaid ?? <span className="text-text-subtle">—</span>}
+          </div>
+
+          {/* 8 · Actions — fixed-width cluster so the last track never
+              resizes per row. */}
           <div className="flex items-center justify-end gap-0.5 justify-self-end text-text-muted">
             {canManageReports && periodState === "LOCKED" && (
               <IconButton
