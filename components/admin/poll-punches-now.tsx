@@ -23,9 +23,6 @@ type LastPoll = {
   errorMessage: string | null;
 };
 
-/** The API path usually finishes in a few seconds; the fill reaches ~90%
- *  by here and then creeps, so a slow run never looks "done" early. */
-const EXPECTED_MS = 20_000;
 const OUTCOME_HOLD_MS = 6_000;
 
 function useNow(active: boolean): number {
@@ -39,30 +36,38 @@ function useNow(active: boolean): number {
 }
 
 export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | null }) {
-  const { startWatching, status, isActive, cancel } = usePollStatus();
+  const { startWatching, status, watch, cancel } = usePollStatus();
   const lastLabel = usePollLastLabel(initialLast);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<PollNowResult | null>(null);
+  // Anchor the whole animation on the CLICK, not on the server's status
+  // feed: the feed arrives every 2s, so a fill keyed to it sat still and
+  // then jumped ("reacts, stops, then moves").
+  const [clickedAt, setClickedAt] = React.useState<number | null>(null);
 
-  const running = busy || isActive;
-  const startedMs = status?.startedAt ? new Date(status.startedAt).getTime() : null;
   const finishedMs = status?.finishedAt ? new Date(status.finishedAt).getTime() : null;
-  // Tick while running and for the outcome hold after it finishes; the
-  // interval stops itself once the hold window has passed.
+  const finishedAfterClick = clickedAt !== null && finishedMs !== null && finishedMs >= clickedAt - 2_000;
+  // "In flight" from the server's point of view. NOT the provider's
+  // isActive — that stays true while the old banner would have been
+  // visible (45s after success), which left the button on "Polling…"
+  // long after the poll had finished.
+  const serverRunning =
+    status?.phase === "running" ||
+    status?.phase === "stuck" ||
+    (!!watch && status?.phase !== "succeeded" && status?.phase !== "failed" && !finishedAfterClick);
+  const running = busy || serverRunning || (clickedAt !== null && !finishedAfterClick);
   const now = useNow(
     running || (finishedMs !== null && Date.now() - finishedMs < OUTCOME_HOLD_MS + 500),
   );
-  const elapsedS = running && startedMs ? Math.max(0, Math.floor((now - startedMs) / 1000)) : 0;
-  // Fill: fast to 90% over EXPECTED_MS, then a slow creep toward 98%.
-  const fillPct = running
-    ? startedMs
-      ? Math.min(98, 90 * Math.min(1, (now - startedMs) / EXPECTED_MS) + 8 * Math.min(1, (now - startedMs) / (EXPECTED_MS * 6)))
-      : 6
-    : 0;
-  // Outcome flash: the poll just finished (within the hold window).
-  const justFinished =
-    !running && finishedMs !== null && now - finishedMs < OUTCOME_HOLD_MS && status !== null;
+  const elapsedS = running && clickedAt !== null ? Math.max(0, Math.floor((now - clickedAt) / 1000)) : 0;
+  // Outcome flash: the poll finished after this click, within the hold window.
+  const justFinished = !running && finishedAfterClick && finishedMs !== null && now - finishedMs < OUTCOME_HOLD_MS;
   const outcome = justFinished ? (status?.ok ? "ok" : "fail") : null;
+
+  // Release the click anchor once the outcome has been shown.
+  React.useEffect(() => {
+    if (clickedAt !== null && !running && !justFinished) setClickedAt(null);
+  }, [clickedAt, running, justFinished]);
 
   const last = status?.startedAt
     ? {
@@ -78,10 +83,12 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
   async function onClick() {
     setBusy(true);
     setResult(null);
+    setClickedAt(Date.now());
     const r = await pollNowAction();
     setBusy(false);
     setResult(r);
     if ("ok" in r) startWatching("Poll punches");
+    else setClickedAt(null);
   }
 
   return (
@@ -106,12 +113,17 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
               running && "rounded-r-none border-r-0",
             )}
           >
-            {/* Fill layer: grows with elapsed time while running. */}
-            <span
-              aria-hidden
-              className="absolute inset-y-0 left-0 bg-brand-100 transition-[width] duration-300 ease-out"
-              style={{ width: running ? `${fillPct}%` : "0%" }}
-            />
+            {/* Fill layer: a single CSS animation from the click — fast at
+                first (the API usually answers in seconds), then creeping so
+                a slow run never looks finished early. Keyed on clickedAt so
+                each click restarts it. */}
+            {running && (
+              <span
+                key={clickedAt ?? 0}
+                aria-hidden
+                className="absolute inset-y-0 left-0 bg-brand-100 motion-safe:animate-[poll-fill_40s_cubic-bezier(0.15,0.8,0.25,1)_forwards]"
+              />
+            )}
             <span className="relative inline-flex items-center gap-2 tabular-nums">
               {outcome === "ok" ? (
                 <>

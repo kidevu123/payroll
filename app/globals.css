@@ -547,3 +547,11 @@ td.num,
     display: none !important;
   }
 }
+
+/* Poll punches now: the button's own progress fill (see poll-punches-now.tsx). */
+@keyframes poll-fill {
+  from { width: 0%; }
+  15% { width: 55%; }
+  40% { width: 82%; }
+  to { width: 97%; }
+}

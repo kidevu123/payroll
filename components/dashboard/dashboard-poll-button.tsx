@@ -11,9 +11,10 @@ import { usePollStatus } from "@/components/admin/poll-status-provider";
 import { DASH } from "@/components/dashboard/theme";
 
 export function DashboardPollButton() {
-  const { startWatching, isActive } = usePollStatus();
+  const { startWatching, status } = usePollStatus();
   const [busy, setBusy] = React.useState(false);
-  const inProgress = busy || isActive;
+  // Phase-based, not the provider's isActive (which lingers after success).
+  const inProgress = busy || status?.phase === "running" || status?.phase === "stuck";
 
   async function onClick() {
     if (inProgress) return;
