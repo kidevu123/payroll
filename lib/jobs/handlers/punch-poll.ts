@@ -150,6 +150,29 @@ async function rosterSyncAfterSuccessfulScrape(runId: string): Promise<void> {
   }
 }
 
+/** Run `fn` up to `attempts` times, sleeping `delaysMs[i]` between tries. */
+async function withRetries<T>(
+  fn: () => Promise<T>,
+  opts: { attempts: number; delaysMs: number[]; runId: string },
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < opts.attempts; i += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const delay = opts.delaysMs[i];
+      if (i === opts.attempts - 1 || delay === undefined) break;
+      logger.warn(
+        { runId: opts.runId, attempt: i + 1, err: err instanceof Error ? err.message : String(err) },
+        "punch.poll: NGTeco API attempt failed; retrying",
+      );
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr;
+}
+
 export async function handlePunchPoll(
   opts: PollOptions = {},
 ): Promise<PollSummary> {
@@ -286,16 +309,22 @@ export async function handlePunchPoll(
         const { ngtecoApiLogin, fetchNgtecoTransactions } = await import(
           "@/lib/ngteco/api-client"
         );
-        const { access } = await ngtecoApiLogin(
-          ngteco.portalUrl,
-          username,
-          password,
+        // NGTeco's login endpoint occasionally answers without a token —
+        // seen when two polls (the hourly cron and a manual click) logged
+        // in within the same second. Retry with a short backoff before
+        // treating the API as down; one flaky login must not demote a
+        // poll to the browser scraper.
+        const fetched = await withRetries(
+          async () => {
+            const { access } = await ngtecoApiLogin(ngteco.portalUrl, username, password);
+            return fetchNgtecoTransactions(ngteco.portalUrl, access, {
+              startDate: apiStartDate,
+              endDate: apiEndDate,
+              timezone: tz,
+            });
+          },
+          { attempts: 3, delaysMs: [2_000, 5_000], runId },
         );
-        const fetched = await fetchNgtecoTransactions(ngteco.portalUrl, access, {
-          startDate: apiStartDate,
-          endDate: apiEndDate,
-          timezone: tz,
-        });
         logger.info(
           {
             runId,
@@ -310,14 +339,24 @@ export async function handlePunchPoll(
         );
         result = { events: fetched.events, durationMs: Date.now() - t0 };
       } catch (apiErr) {
-        logger.warn(
-          {
-            runId,
-            err: apiErr instanceof Error ? apiErr.message : String(apiErr),
-          },
-          "punch.poll: API path failed — falling back to browser scrape",
-        );
-        result = await scrapeViewAttendance(scraperArgs);
+        const message = apiErr instanceof Error ? apiErr.message : String(apiErr);
+        // The browser scraper is the path the API replaced BECAUSE it
+        // fabricated punches (see above). It is no longer an automatic
+        // fallback: the owner must opt in with NGTECO_SCRAPER_FALLBACK=1.
+        // Otherwise the poll fails loudly and the next hourly tick retries.
+        if (process.env.NGTECO_SCRAPER_FALLBACK === "1") {
+          logger.warn(
+            { runId, err: message },
+            "punch.poll: API path failed after retries — falling back to browser scrape (NGTECO_SCRAPER_FALLBACK=1)",
+          );
+          result = await scrapeViewAttendance(scraperArgs);
+        } else {
+          logger.error(
+            { runId, err: message },
+            "punch.poll: API path failed after retries; scraper fallback is disabled",
+          );
+          throw new Error(`NGTeco API poll failed after 3 attempts: ${message}`);
+        }
       }
     } else {
       result = await scrapeViewAttendance(scraperArgs);

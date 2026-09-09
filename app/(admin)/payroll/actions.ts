@@ -290,8 +290,15 @@ export async function pollNowAction(): Promise<PollNowResult> {
     if (inProgress) {
       return {
         error:
-          "A poll is already running. Watch the status bar at the top — it can take several minutes while NGTeco loads.",
+          "A poll is already running. Watch the status bar at the top — the API path usually finishes in seconds.",
       };
+    }
+    // A queued job runs the moment the queue frees up; a second click only
+    // stacks another login against NGTeco (five stacked clicks once tripped
+    // its login endpoint and demoted a poll to the browser scraper).
+    const { isPunchPollJobQueued } = await import("@/lib/db/queries/poll-history");
+    if (await isPunchPollJobQueued()) {
+      return { error: "A poll is already queued and will start in a moment." };
     }
     // No poll is legitimately in flight, so any live headless Chrome is an
     // orphan from a prior scrape whose pg-boss job expired while Playwright

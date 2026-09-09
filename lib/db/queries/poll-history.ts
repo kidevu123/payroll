@@ -47,6 +47,19 @@ export async function finishPoll(
     .where(and(eq(ngtecoPollLog.id, id), isNull(ngtecoPollLog.finishedAt)));
 }
 
+/** True when a poll job is queued but not yet picked up (singleton queue: it
+ *  will run the moment the current one finishes — a second click just stacks). */
+export async function isPunchPollJobQueued(): Promise<boolean> {
+  const result = await db.execute(sql`
+    SELECT 1
+    FROM pgboss.job
+    WHERE name = 'ngteco.punch.poll'
+      AND state IN ('created', 'retry')
+    LIMIT 1
+  `);
+  return result.length > 0;
+}
+
 /** True when pg-boss still has an active worker on ngteco.punch.poll. */
 export async function isPunchPollJobActive(): Promise<boolean> {
   const result = await db.execute(sql`
