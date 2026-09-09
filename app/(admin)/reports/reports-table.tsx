@@ -81,13 +81,6 @@ import {
 } from "./actions";
 import { markPaidAction } from "../payroll/actions";
 
-/** Cadence accent rail. A single, quiet brand-tinted edge so the row reads
- *  as part of one cohesive statement — the cadence itself is spelled out by
- *  the SchedulePill, so the rail no longer needs to carry color meaning. */
-function cadenceAccent(name: string | null | undefined): string {
-  return name ? "bg-brand-700" : "bg-border-strong";
-}
-
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_LONG = [
   "January",
@@ -280,8 +273,11 @@ function matchesFilters(
  *  header lined up with nothing and rows didn't line up with each other. A
  *  fixed track makes all containers resolve identically. */
 const ACTIONS_TRACK = "7.5rem";
+// The pay-period track has a floor so "Aug 03 – Aug 09, 2026" never clips
+// under the schedule chip at the 1440px content cap; the chip and the
+// paid-via columns are the ones that give.
 const TABLE_GRID =
-  "lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_7.5rem]";
+  "lg:grid-cols-[minmax(10rem,1.2fr)_minmax(4.75rem,0.5fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.85fr)_minmax(0,0.95fr)_7.5rem]";
 
 export function ReportsTable({
   reports,
@@ -439,8 +435,8 @@ export function ReportsTable({
 
       {/* Column legend — mirrors TABLE_GRID so every month card below reads
           as one continuous, aligned table. Desktop only; mobile rows stack.
-          Padding matches the rows' own box (px-5 + the card's 1px border and
-          3px accent rail) so the two frames share a left edge. */}
+          Padding matches the rows' own box (px-5 + the card's 1px border)
+          so the two frames share a left edge. */}
       <div
         className={cn(
           "hidden lg:grid items-center gap-3 px-5 text-micro uppercase text-text-subtle",
@@ -449,7 +445,7 @@ export function ReportsTable({
       >
         <span>Pay period</span>
         <span>Schedule</span>
-        <span>Payment method</span>
+        <span>Paid via</span>
         <span>Status</span>
         <span className="text-right">Gross pay</span>
         <span className="text-right">Net pay</span>
@@ -517,7 +513,7 @@ function FilterBar({
   const router = useRouter();
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-card border border-border/70 bg-surface p-2.5 shadow-card">
-      <label className="relative min-w-[10rem] flex-1">
+      <label className="relative min-w-[8rem] max-w-[16rem] flex-1">
         <Search
           className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle"
           aria-hidden
@@ -557,7 +553,7 @@ function FilterBar({
         ]}
       />
       <FilterSelect
-        label="Payment method"
+        label="Paid via"
         value={method}
         onChange={(v) => setMethod(v as MethodFilter)}
         options={[
@@ -567,14 +563,14 @@ function FilterBar({
         ]}
       />
       <FilterSelect
-        label="Sort by"
+        label="Sort"
         value={sort}
         onChange={(v) => setSort(v as SortKey)}
         options={[
-          ["newest", "Pay period (desc)"],
-          ["oldest", "Pay period (asc)"],
-          ["net-desc", "Net pay (high)"],
-          ["net-asc", "Net pay (low)"],
+          ["newest", "Newest first"],
+          ["oldest", "Oldest first"],
+          ["net-desc", "Net pay, high to low"],
+          ["net-asc", "Net pay, low to high"],
         ]}
       />
       {hasActiveFilters && (
@@ -603,24 +599,22 @@ function FilterSelect({
   onChange: (v: string) => void;
   options: Array<[string, string]>;
 }) {
+  // Self-labeling options ("Status: Completed") — an outside label pushed
+  // the bar onto two lines at the 1440px content cap, and a bare "All"
+  // select says nothing.
   return (
-    <label className="flex items-center gap-1.5">
-      <span className="hidden text-micro uppercase text-text-subtle xl:inline">
-        {label}
-      </span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={SELECT_CLASS}
-      >
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>
-            {l}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={SELECT_CLASS}
+    >
+      {options.map(([v, l]) => (
+        <option key={v} value={v}>
+          {label}: {l}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -676,10 +670,6 @@ function MonthCard({
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0 lg:col-span-4">
-          <span
-            aria-hidden="true"
-            className="h-4 w-1 shrink-0 rounded-full bg-brand-700"
-          />
           <h2 className="text-subheading tracking-tight text-text">
             {month.label}
           </h2>
@@ -704,7 +694,7 @@ function MonthCard({
             }
           >
             <MicroLabel>Total gross{grossIncomplete ? "*" : ""}</MicroLabel>
-            <span className="mt-1 tabular-nums text-subheading text-text-muted">
+            <span className="mt-1 pr-2 tabular-nums text-subheading text-text-muted">
               <MoneyDisplay cents={gross} />
             </span>
           </div>
@@ -745,7 +735,6 @@ function PeriodLine({
 }: { group: GroupedReport } & SharedHandlers) {
   const net = periodNet(group);
   const gross = periodGross(group);
-  const accent = cadenceAccent(group.scheduleName);
   const canonicalEnd = canonicalEndForScheduleName(
     group.periodStart,
     group.periodEnd,
@@ -801,10 +790,6 @@ function PeriodLine({
       : `/payroll/${group.periodId}`;
     return (
       <div className="group/row relative transition-colors hover:bg-surface-2/40">
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-[3px] bg-brand-700 opacity-70 transition-opacity group-hover/row:opacity-100"
-        />
         <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
           <div
             className={cn(
@@ -812,19 +797,14 @@ function PeriodLine({
               TABLE_GRID,
             )}
           >
-            {/* 1 · Pay period + docs count */}
-            <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 lg:col-span-1">
-              <Link
-                href={rangeHref}
-                className="rounded-input tabular-nums text-sm font-semibold tracking-tight text-text tabular-nums whitespace-nowrap transition-colors hover:text-brand-700"
-              >
-                {formatRange(group.periodStart, group.periodEnd)}
-              </Link>
-              <span className="inline-flex items-center gap-1 rounded-chip border border-info-100 bg-info-50 px-2 py-0.5 text-[10px] font-medium text-info-800">
-                <FileText className="h-3 w-3" /> {docs.length}{" "}
-                {docs.length === 1 ? "paystub" : "paystubs"}
-              </span>
-            </div>
+            {/* 1 · Pay period. The paystub count lives in the net footnote
+                so this row stays the same height as every other row. */}
+            <Link
+              href={rangeHref}
+              className="col-span-2 min-w-0 justify-self-start rounded-input tabular-nums text-sm font-semibold tracking-tight text-text whitespace-nowrap transition-colors hover:text-brand-700 lg:col-span-1"
+            >
+              {formatRange(group.periodStart, group.periodEnd)}
+            </Link>
 
             {/* Mobile chip cluster */}
             <div className="col-span-2 flex flex-wrap items-center gap-1.5 lg:hidden">
@@ -855,7 +835,7 @@ function PeriodLine({
             </div>
 
             {/* 5 · Gross — the W2 paystub carries net only */}
-            <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-subtle lg:block">
+            <div className="hidden pr-2 text-right tabular-nums text-sm text-text-subtle lg:block">
               —
             </div>
 
@@ -864,8 +844,8 @@ function PeriodLine({
               <span className="tabular-nums text-base font-semibold tracking-tight text-text">
                 <MoneyDisplay cents={net} />
               </span>
-              <span className="mt-1 tabular-nums text-[10px] leading-tight tabular-nums text-text-subtle">
-                W2 net · uploaded paystubs
+              <span className="mt-1 whitespace-nowrap tabular-nums text-[10px] leading-tight text-text-subtle">
+                W2 net · {docs.length} {docs.length === 1 ? "paystub" : "paystubs"}
               </span>
             </div>
 
@@ -931,13 +911,6 @@ function PeriodLine({
 
   return (
     <div className="group/row relative transition-colors hover:bg-surface-2/40">
-      {/* Cadence accent rail — a thin colored edge so weekly / semi-monthly /
-          monthly read at a glance without parsing the pill. Brightens on hover. */}
-      <span
-        aria-hidden="true"
-        className={`absolute inset-y-0 left-0 w-[3px] ${accent} opacity-70 transition-opacity group-hover/row:opacity-100`}
-      />
-
       <div className="py-3 pl-4 pr-4 sm:pl-5 sm:pr-5">
         {/* Statement line — stacks on mobile, one aligned row on >=sm. The
             left identity column and the NET hero share a single baseline grid
@@ -989,7 +962,7 @@ function PeriodLine({
           </div>
 
           {/* 5 · Gross (own column at lg; folded into the net addenda below lg) */}
-          <div className="hidden text-right tabular-nums text-sm tabular-nums text-text-muted lg:block">
+          <div className="hidden pr-2 text-right tabular-nums text-sm text-text-muted lg:block">
             {gross > 0 ? (
               <MoneyDisplay cents={gross} />
             ) : (
@@ -1196,16 +1169,18 @@ function PaymentMethodCell({
   if (state !== "PAID") {
     return <span className="text-xs text-text-subtle">—</span>;
   }
-  if (method === "CASH") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
-        <Banknote className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Cash drawer
-      </span>
-    );
-  }
+  // Icon always; the words only when the table has room (2xl+). At the
+  // 1440 content cap the column is ~85px and "Bank transfer" clipped.
+  const Icon = method === "CASH" ? Banknote : Landmark;
+  const label = method === "CASH" ? "Cash drawer" : "Bank transfer";
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap">
-      <Landmark className="h-3.5 w-3.5 text-text-subtle" aria-hidden /> Bank transfer
+    <span
+      className="inline-flex items-center gap-1.5 text-xs text-text-muted whitespace-nowrap"
+      title={label}
+    >
+      <Icon className="h-3.5 w-3.5 text-text-subtle" aria-hidden />
+      <span className="hidden 2xl:inline">{label}</span>
+      <span className="sr-only 2xl:hidden">{label}</span>
     </span>
   );
 }
@@ -1236,21 +1211,18 @@ function PaymentChip({
  * table read as ragged.
  */
 function VisibilityChip({ published }: { published: boolean }) {
-  const label = published ? "Visible to employees" : "Internal only";
+  // Published is the normal state, so it gets no mark — a green check
+  // next to a green "Completed" chip on every row was pure repetition.
+  // Only the exception (still internal, employees can't see it) is flagged.
+  if (published) return null;
+  const label = "Internal only — not yet visible to employees";
   return (
     <span
       title={label}
       aria-label={label}
-      className={cn(
-        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full",
-        published ? "text-success-700" : "text-text-subtle",
-      )}
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-warning-700"
     >
-      {published ? (
-        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-      ) : (
-        <CircleDot className="h-3.5 w-3.5" aria-hidden />
-      )}
+      <CircleDot className="h-3.5 w-3.5" aria-hidden />
     </span>
   );
 }

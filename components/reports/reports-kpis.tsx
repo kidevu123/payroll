@@ -1,4 +1,9 @@
-// Reports overview KPI row — Gross pay, Net pay, Deductions, Employees paid.
+// Reports overview KPI row — Gross pay, Net pay, Pay runs, Employees paid.
+//
+// "Deductions" (gross minus net) used to sit third. This is a gross-pay
+// system: net only differs from gross by nearest-dollar rounding, so the
+// tile read "$0.00" every week and taught nothing. Pay runs is the count
+// people actually ask for.
 //
 // The icon plates are MONOCHROME on purpose. They used to carry four different
 // accents (emerald, emerald, a hardcoded #fbbf24, a hardcoded #60a5fa) that
@@ -7,7 +12,7 @@
 // surface. Color in this app means something (status, direction); a stat tile's
 // icon is just a signpost, so it stays quiet and the number does the talking.
 
-import { DollarSign, Wallet, Percent, Users } from "lucide-react";
+import { DollarSign, Wallet, Layers, Users } from "lucide-react";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import type { ReportsOverview } from "@/lib/reports/reports-overview";
 
@@ -44,7 +49,6 @@ function KpiCard({
 }
 
 export function ReportsKpis({ ytd }: { ytd: ReportsOverview["ytd"] }) {
-  const deductions = Math.max(0, ytd.totalGrossCents - ytd.totalNetCents);
   return (
     <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard label="Gross pay" icon={DollarSign} sub="Year to date">
@@ -53,8 +57,8 @@ export function ReportsKpis({ ytd }: { ytd: ReportsOverview["ytd"] }) {
       <KpiCard label="Net pay" icon={Wallet} sub="Year to date">
         <MoneyDisplay cents={ytd.totalNetCents} monospace={false} />
       </KpiCard>
-      <KpiCard label="Deductions" icon={Percent} sub="Gross minus net, YTD">
-        <MoneyDisplay cents={deductions} monospace={false} />
+      <KpiCard label="Pay runs" icon={Layers} sub="Year to date">
+        {ytd.totalReports}
       </KpiCard>
       <KpiCard label="Employees paid" icon={Users} sub="Year to date">
         {ytd.employeesPaid}
