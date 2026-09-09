@@ -1,5 +1,5 @@
-// Shared tab strip for filtering /payroll and /reports by pay-schedule
-// kind. Renders as ?schedule=weekly|semi|salaried query param the server
+// Shared tab strip for filtering /payroll and /time by pay-schedule
+// kind. Underline tabs, the same treatment as the Reports page's tabs. Renders as ?schedule=weekly|semi|salaried query param the server
 // component reads. "All" clears the filter. Every tab — including
 // Salaried — stays on the same base path; the consuming page renders
 // the appropriate UI per tab (salaried tab on /payroll renders
@@ -18,26 +18,6 @@ const LABELS: Record<ScheduleTab, string> = {
   salaried: "Salaried",
 };
 
-// Active palette per tab. Inactive shares one neutral palette so the
-// strip reads as a unified segmented control instead of four loose
-// links. Each active tint is desaturated (50/100 instead of 600) so
-// the chip doesn't shout.
-const ACTIVE_TONE: Record<ScheduleTab, string> = {
-  // text-surface (not text-white): bg-text is near-white in dark mode, so
-  // white text on it was invisible. text-surface inverts cleanly in both
-  // themes — dark text on the light pill (dark mode), white text on the dark
-  // pill (light mode).
-  all: "bg-text text-surface shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.12)]",
-  weekly:
-    "bg-blue-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
-  semi:
-    "bg-cyan-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
-  monthly:
-    "bg-amber-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
-  salaried:
-    "bg-emerald-600 text-white shadow-[inset_0_1px_0_0_rgb(255_255_255_/_0.16)]",
-};
-
 export function ScheduleTabs({
   current,
   basePath,
@@ -53,19 +33,8 @@ export function ScheduleTabs({
 }) {
   const tabs: ScheduleTab[] = ["all", "weekly", "semi", "monthly", "salaried"];
   return (
-    <div className="max-w-full overflow-x-auto pb-1">
-      <div
-        role="tablist"
-        className={cn(
-          // Premium segmented control: hairline border, surface-2 trough,
-          // single rounded-lg silhouette, every tab gets the same chip
-          // shape (active and inactive both rounded-md, just different
-          // fills) so the strip reads as ONE control instead of four
-          // floating buttons.
-          "inline-flex min-w-max items-center gap-0.5 rounded-lg border border-border/70 bg-surface-2/60 p-0.5 text-[12px] font-medium tracking-tight",
-          "shadow-[inset_0_1px_2px_0_rgb(15_23_42_/_0.04)]",
-        )}
-      >
+    <div className="max-w-full overflow-x-auto">
+      <div role="tablist" className="flex min-w-max gap-6 border-b border-border/70">
         {tabs.map((t) => {
           const isActive = current === t;
           const href =
@@ -77,11 +46,11 @@ export function ScheduleTabs({
               role="tab"
               aria-selected={isActive}
               className={cn(
-                "inline-flex h-7 items-center justify-center rounded-md px-3 transition-colors antialiased",
+                "-mb-px border-b-2 px-1 pb-2.5 pt-1 text-sm font-medium transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
                 isActive
-                  ? ACTIVE_TONE[t]
-                  : "text-text-muted hover:text-text hover:bg-surface-2/40",
+                  ? "border-brand-700 text-brand-700"
+                  : "border-transparent text-text-muted hover:text-text",
               )}
             >
               {LABELS[t]}

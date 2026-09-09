@@ -9,6 +9,7 @@ import {
   Plus,
   Sparkles,
   TimerReset,
+  Upload,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -16,6 +17,9 @@ import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
 import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
+import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
+import { getLastPoll } from "@/lib/db/queries/poll-history";
 import {
   ScheduleTabs,
   parseScheduleTab,
@@ -502,7 +506,7 @@ export default async function TimePage({
           }
           description={
             clockFirst
-              ? "Time fills from the NGTeco clock automatically — you do not need a CSV for day-to-day tracking. Make sure employees are on this pay schedule, then run Poll punches now on Payroll to sync, or add a manual punch below. CSV upload is only for one-off payroll runs."
+              ? "Time fills from the NGTeco clock automatically — you do not need a CSV for day-to-day tracking. Make sure employees are on this pay schedule, then run Poll punches now above to sync, or add a manual punch below. CSV upload is only for one-off payroll runs."
               : "Pick a schedule tab (Weekly, Semi-monthly, or Monthly), or add a manual punch to get started."
           }
           action={
@@ -700,6 +704,10 @@ export default async function TimePage({
         ? today
         : (days[days.length - 1] ?? today);
 
+  // Punch sync controls moved here from /payroll (owner: "there is no
+  // reason for poll now to be on the payroll page — it belongs on Time").
+  const lastPoll = await getLastPoll();
+
   const stateBadge = (() => {
     switch (period.state) {
       case "UPCOMING":
@@ -777,11 +785,34 @@ export default async function TimePage({
         </div>
 
         <div className="flex flex-col items-end gap-3 shrink-0">
-          <Button asChild size="sm" variant="secondary">
-            <Link href="/punches/new">
-              <Plus className="h-3.5 w-3.5" /> Add manual punch
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <PollPunchesNowButton
+              initialLast={
+                lastPoll
+                  ? {
+                      startedAt: lastPoll.startedAt.toISOString(),
+                      finishedAt: lastPoll.finishedAt?.toISOString() ?? null,
+                      ok: lastPoll.ok,
+                      triggeredBy: lastPoll.triggeredBy,
+                      pairsInserted: lastPoll.pairsInserted,
+                      pairsUpdated: lastPoll.pairsUpdated,
+                      errorMessage: lastPoll.errorMessage,
+                    }
+                  : null
+              }
+            />
+            <BackfillPunchesButton />
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/run-payroll/upload">
+                <Upload className="h-4 w-4" /> Upload CSV
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="secondary">
+              <Link href="/punches/new">
+                <Plus className="h-3.5 w-3.5" /> Add manual punch
+              </Link>
+            </Button>
+          </div>
           <div className="flex items-center gap-3 text-caption text-text-muted font-medium">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />

@@ -2,10 +2,11 @@
 // single job: see the periods that still need work, and keep punches in sync.
 //
 // Visual layout (post-redesign):
-//   • Page header with one ambient sync action group (top-right): "Poll
-//     punches now" + "Backfill missing days", plus a quiet "Upload CSV"
-//     fallback. This is the page's ONE global action — no per-period run
-//     triggers live here anymore.
+//   • Reports-style header (breadcrumb, title, one-line context) with a
+//     link to Reports. Punch sync (Poll now / Backfill / Upload CSV) moved
+//     to /time in Sep 2026 — owner: it belongs with the punches.
+//   • Four KPI cards: awaiting payment, in progress, needs processing,
+//     incomplete punches — same card treatment as /reports.
 //   • ScheduleTabs strip.
 //   • "Recent periods" list (open + locked only — paid lives in /reports) as
 //     the visual focus. Each row links to /payroll/[periodId].
@@ -18,7 +19,7 @@
 import Link from "next/link";
 import {
   Wallet,
-  Upload,
+  FileText,
   Briefcase,
   Pencil,
   ChevronRight,
@@ -55,9 +56,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
-import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
-import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
-import { getLastPoll } from "@/lib/db/queries/poll-history";
+import { PeriodsKpiCards } from "@/components/payroll/periods-kpi-cards";
 import { PeriodDeleteButton } from "./period-delete-button";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +79,7 @@ export default async function PayrollPage({
     return <SalariedTabBody currentTab={tab} />;
   }
 
-  const [openPeriods, lastPoll, company] = await Promise.all([
+  const [openPeriods, company] = await Promise.all([
     (async () => {
       // "Recent periods" = the period(s) the admin still has work to do on.
       // PAID periods are historical — they belong in /reports, not on the
@@ -104,7 +103,6 @@ export default async function PayrollPage({
         : base.where(stateFilter);
       return q.orderBy(desc(payPeriods.startDate)).limit(8);
     })(),
-    getLastPoll(),
     getSetting("company").catch(() => null),
   ]);
 
@@ -211,60 +209,50 @@ export default async function PayrollPage({
   const periodSummary =
     summaryParts.length > 0 ? summaryParts.join(" · ") : undefined;
 
+  const kpis = {
+    awaiting: periods.filter((p) => p.phase === "AWAITING_PAYMENT"),
+    running: periods.filter((p) => p.phase === "RUNNING"),
+    toProcess: periods.filter((p) => p.phase === "NEEDS_PROCESSING"),
+    incomplete: periods.reduce((n, p) => n + p.incomplete, 0),
+  };
+
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Periods"
-        description={
-          <>
-            Open and locked pay periods that still need work. Paid periods live
-            in{" "}
-            <Link
-              href="/reports"
-              className="text-brand-700 underline underline-offset-2 hover:text-brand-800"
-            >
-              Reports
-            </Link>
-            .
-          </>
-        }
-        meta={periodSummary}
-        actions={
-          // The page's single ambient sync action. Poll + Backfill are the
-          // primary punch-sync controls; Upload CSV is a quiet fallback the
-          // owner rarely needs.
-          <div className="flex flex-wrap items-center gap-2">
-            <PollPunchesNowButton
-              initialLast={
-                lastPoll
-                  ? {
-                      startedAt: lastPoll.startedAt.toISOString(),
-                      finishedAt: lastPoll.finishedAt?.toISOString() ?? null,
-                      ok: lastPoll.ok,
-                      triggeredBy: lastPoll.triggeredBy,
-                      pairsInserted: lastPoll.pairsInserted,
-                      pairsUpdated: lastPoll.pairsUpdated,
-                      errorMessage: lastPoll.errorMessage,
-                    }
-                  : null
-              }
-            />
-            <BackfillPunchesButton />
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/run-payroll/upload">
-                <Upload className="h-4 w-4" /> Upload CSV
-              </Link>
-            </Button>
-          </div>
-        }
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-text-subtle">
+            <span>Payroll</span>
+            <ChevronRight className="h-3 w-3" aria-hidden />
+          </nav>
+          <h1 className="mt-0.5 text-title tracking-tight antialiased text-text">Pay Periods</h1>
+          <p className="mt-1 text-sm text-text-muted">
+            Open and locked pay periods that still need work. Paid periods live in Reports.
+            {periodSummary ? <span className="text-text-subtle"> · {periodSummary}</span> : null}
+          </p>
+        </div>
+        <Button asChild variant="secondary" size="sm" className="h-10">
+          <Link href="/reports">
+            <FileText className="h-4 w-4" /> Reports
+          </Link>
+        </Button>
+      </div>
+
+      <PeriodsKpiCards
+        awaitingCount={kpis.awaiting.length}
+        awaitingCents={kpis.awaiting.reduce((n, p) => n + (p.figures.totalCents ?? 0), 0)}
+        runningCount={kpis.running.length}
+        runningHours={kpis.running.reduce((n, p) => n + p.figures.hours, 0)}
+        toProcessCount={kpis.toProcess.length}
+        incompletePunches={kpis.incomplete}
       />
+
       <ScheduleTabs current={tab} basePath="/payroll" />
 
       {/* One table, grouped by lifecycle phase. The group header names the
           state once; the row itself carries the figures. (Before: a card per
           row inside a card, a colored bar + a chip + a sentence all saying
           the same thing, and no numbers at all.) */}
-      <Card className="overflow-hidden">
+      <div className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
         {periods.length === 0 ? (
           <EmptyState
             icon={Wallet}
@@ -274,7 +262,7 @@ export default async function PayrollPage({
         ) : (
           <>
             <div
-              className={`hidden md:grid ${LIST_GRID} items-center gap-x-4 border-b border-border/60 bg-surface-2/40 px-5 py-2.5 text-micro uppercase text-text-subtle`}
+              className={`hidden md:grid ${LIST_GRID} items-center gap-x-4 border-b border-border/70 bg-surface px-5 py-2 text-micro uppercase text-text-subtle`}
             >
               <div>Pay period</div>
               <div>Schedule</div>
@@ -306,9 +294,12 @@ export default async function PayrollPage({
                 </div>
               </section>
             ))}
+            <div className="border-t border-border/70 px-5 py-3 text-xs tabular-nums text-text-muted">
+              Showing {periods.length} {periods.length === 1 ? "period" : "periods"} that still need work
+            </div>
           </>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
@@ -357,7 +348,7 @@ function PeriodRow({ p }: { p: PeriodRowData }) {
   const detail = phaseDetail(p.phase, p.startDate, p.displayEnd, p.progress);
   return (
     <div
-      className={`group relative grid grid-cols-1 gap-y-2 px-5 py-3.5 transition-colors hover:bg-surface-2/40 focus-within:bg-surface-2/40 md:grid md:items-center md:gap-x-4 ${LIST_GRID}`}
+      className={`group relative grid grid-cols-1 gap-y-2 px-5 py-2.5 transition-colors hover:bg-surface-2/40 focus-within:bg-surface-2/40 md:grid md:items-center md:gap-x-4 ${LIST_GRID}`}
     >
       {/* Stretched link: the whole row is the target; the delete control
           sits above it (z-10) so it stays independently clickable. */}
@@ -503,7 +494,7 @@ async function SalariedTabBody({ currentTab }: { currentTab: ScheduleTab }) {
           tab strip never shifts vertically when you switch cadences. The
           salaried-specific note moved below the tabs. */}
       <PageHeader
-        title="Periods"
+        title="Pay Periods"
         description={
           <>
             Salaried staff are paid externally. Historical reports live in{" "}
