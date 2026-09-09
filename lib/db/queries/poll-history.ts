@@ -83,6 +83,18 @@ export async function closePollsInterruptedByRestart(): Promise<number> {
         "Poll was interrupted by an app restart. Run Poll now again — today only takes under a minute.",
     });
   }
+  // The pg-boss job the dead process was working is still "active" too.
+  // The poll queue is a singleton, so until that row expires nothing else
+  // on the queue can start — the hourly cron silently skips. Fail it now;
+  // at process start no poll can be running.
+  await db.execute(sql`
+    UPDATE pgboss.job
+    SET state = 'failed',
+        completed_on = now(),
+        output = '{"reason":"interrupted by app restart"}'::jsonb
+    WHERE name = 'ngteco.punch.poll'
+      AND state = 'active'
+  `);
   return open.length;
 }
 

@@ -5,8 +5,15 @@ export const NGTECO_PUNCH_POLL_QUEUE = "ngteco.punch.poll";
 /** Today-only manual poll — should finish in a few minutes. */
 export const PUNCH_POLL_TODAY_EXPIRE_SECONDS = 900;
 
-/** Explicit multi-day backfill — may take longer. */
-export const PUNCH_POLL_BACKFILL_EXPIRE_SECONDS = 7_200;
+/**
+ * Explicit multi-day backfill — may take longer. Sized just past the
+ * runner's 30-min backfill hard timeout: the queue is a singleton, so an
+ * "active" job left behind by a container restart blocks every later poll
+ * until it expires. At 7,200s that was up to two hours of missed hourly
+ * polls per deploy (Sep 2026); the boot sweep in lib/jobs/index.ts now
+ * fails such jobs immediately and this ceiling is the backstop.
+ */
+export const PUNCH_POLL_BACKFILL_EXPIRE_SECONDS = 2_400;
 
 export const punchPollTodaySendOptions = {
   expireInSeconds: PUNCH_POLL_TODAY_EXPIRE_SECONDS,
