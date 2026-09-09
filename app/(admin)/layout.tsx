@@ -11,7 +11,6 @@ import { getTranslations } from "next-intl/server";
 import { MobileQuickNav } from "@/components/admin/mobile-nav";
 import { FeedbackLauncher } from "@/components/admin/feedback-launcher";
 import {
-  PollStatusBar,
   PollStatusProvider,
 } from "@/components/admin/poll-status-provider";
 import { getSetting } from "@/lib/settings/runtime";
@@ -263,7 +262,6 @@ export default async function AdminLayout({
           footer={{ sha, shaFull, serverTime }}
         >
           {/* NGTeco poll progress — shown on every admin page. */}
-          <PollStatusBar />
           {children}
         </DashboardDarkShell>
         {/* Mobile navigation — hands off to the dark shell's icon rail at md. */}
