@@ -721,7 +721,10 @@ function fakeFetch(responses: { status: number; body: unknown }[]) {
   const impl = (async (url: string | URL | Request, init?: RequestInit) => {
     calls.push({ url: String(url), init });
     const r = responses[i++] ?? { status: 500, body: {} };
-    return new Response(JSON.stringify(r.body), {
+    // 204 is a null-body status: passing a body to the Response constructor
+    // throws TypeError before the client ever sees the response.
+    const body = r.status === 204 ? null : JSON.stringify(r.body);
+    return new Response(body, {
       status: r.status,
       headers: { "content-type": "application/json" },
     });
@@ -798,13 +801,20 @@ describe("AuthentikClient", () => {
   });
 
   it("throws AuthentikApiError on a non-2xx, and never puts the token in the message", async () => {
-    const { impl } = fakeFetch([{ status: 403, body: { detail: "forbidden" } }]);
+    // Two queued responses: the assertions below make two calls.
+    const { impl } = fakeFetch([
+      { status: 403, body: { detail: "forbidden" } },
+      { status: 403, body: { detail: "forbidden" } },
+    ]);
     const client = createAuthentikClient(CONFIG, impl);
     await expect(client.findUserByEmail("x@y.com")).rejects.toBeInstanceOf(AuthentikApiError);
-    await client.findUserByEmail("x@y.com").catch((err: AuthentikApiError) => {
-      expect(err.status).toBe(403);
-      expect(err.message).not.toContain("secret-token-value");
-    });
+    const err = await client.findUserByEmail("x@y.com").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AuthentikApiError);
+    expect((err as AuthentikApiError).status).toBe(403);
+    // Neither the token nor the queried email may reach an error string: both
+    // end up in logs.
+    expect((err as AuthentikApiError).message).not.toContain("secret-token-value");
+    expect((err as AuthentikApiError).message).not.toContain("x@y.com");
   });
 });
 ```
