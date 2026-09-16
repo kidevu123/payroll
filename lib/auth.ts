@@ -31,6 +31,24 @@ export type Role =
   | "ACCOUNTANT"
   | "EMPLOYEE";
 
+/**
+ * The Authentik subject, derived identically wherever it is needed. The
+ * signIn callback below uses this to resolve the account (never to bind it —
+ * binding happens only at provisioning, lib/authentik/provision.ts); the jwt
+ * callback re-resolves against the same identity on every token refresh
+ * (read-only, via resolveAuthentikIdentity) to pick up role/employee changes
+ * without forcing a re-login. Both callbacks must derive the subject the same
+ * way: if they ever diverged, jwt could fail to find the very user signIn
+ * just admitted, returning null and invalidating a token that was minted
+ * moments ago.
+ */
+function authentikSubjectFrom(
+  profile: { sub?: string | null } | null | undefined,
+  account: { providerAccountId?: string | null } | null,
+): string | null {
+  return (profile?.sub as string | undefined) ?? (account?.providerAccountId as string | undefined) ?? null;
+}
+
 export async function hashPassword(plain: string): Promise<string> {
   return argonHash(plain, ARGON);
 }
@@ -124,28 +142,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "authentik") {
-        if (!user.email) return false;
-        const dbUser = await findUserByEmail(user.email);
-        return !!(dbUser && !dbUser.disabledAt);
+        const { resolveAuthentikSignIn } = await import("@/lib/authentik/sign-in");
+        const resolved = await resolveAuthentikSignIn({
+          sub: authentikSubjectFrom(profile, account),
+          email: user.email ?? null,
+          name: (profile?.name as string | undefined) ?? user.name ?? null,
+        });
+        return "user" in resolved;
       }
       return true;
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account, profile, trigger }) {
       if (user) {
         // Stamp the sign-in time once; used below to cap staff sessions.
         token.signedInAt = Math.floor(Date.now() / 1000);
       }
       if (user) {
         if (account?.provider === "authentik") {
-          const dbUser = await findUserByEmail(user.email!);
-          if (dbUser) {
-            token.id = dbUser.id;
-            token.role = dbUser.role;
-            token.employeeId = dbUser.employeeId ?? undefined;
-            token.mustChangePassword = dbUser.mustChangePassword;
-          }
+          // resolveAuthentikSignIn already ran in the signIn callback and
+          // applied the merge; this only reads the row back, via the
+          // read-only resolver so a conflict/merge audit row is never
+          // written twice for the same login.
+          const { resolveAuthentikIdentity } = await import("@/lib/authentik/sign-in");
+          const resolved = await resolveAuthentikIdentity({
+            sub: authentikSubjectFrom(profile, account),
+            email: user.email ?? null,
+          });
+          // A refused identity must not ride away with a half-populated
+          // token: an undefined token.id skips the disabled-user check and
+          // the staff session cap below.
+          if (!("user" in resolved)) return null;
+          const dbUser = resolved.user;
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.employeeId = dbUser.employeeId ?? undefined;
+          token.mustChangePassword = dbUser.mustChangePassword;
         } else {
           if (user.id !== undefined) token.id = user.id;
           token.role = (user as { role: Role }).role;

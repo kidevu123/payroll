@@ -189,6 +189,20 @@ export const users = pgTable(
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    // Authentik SSO link. All three (`authentikSub`, `authentikPk`,
+    // `authentikUsername`) are written together by the provisioner, at the
+    // moment it links or creates the Authentik account — never at sign-in.
+    // `authentikSub` (the OIDC subject) is the join key sign-in uses forever
+    // after; `authentikPk` / `authentikUsername` are the handle for admin-API
+    // calls. Binding the subject at provisioning time, when payroll knows
+    // exactly which Authentik account it just created or matched, is what
+    // closes the email takeover: sign-in never binds, so there is no window
+    // where an attacker who has set their Authentik email to a payroll
+    // user's address can claim the account.
+    authentikSub: text("authentik_sub"),
+    authentikPk: integer("authentik_pk"),
+    authentikUsername: text("authentik_username"),
+    authentikSyncedAt: timestamp("authentik_synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -196,7 +210,12 @@ export const users = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_unique").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_unique").on(t.email),
+    // Nullable, so Postgres allows many unlinked rows; one payroll user per
+    // Authentik subject once linked.
+    uniqueIndex("users_authentik_sub_unique").on(t.authentikSub),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

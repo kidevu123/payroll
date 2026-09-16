@@ -397,3 +397,24 @@ export async function archiveEmployee(
   });
 }
 
+/**
+ * Narrow setter used by the Authentik profile merge. Deliberately not
+ * updateEmployee(): the merge touches exactly one field and must not run the
+ * full employee-update validation or its side effects.
+ *
+ * Optional `executor` mirrors LinkExecutor in lib/db/queries/users.ts — the
+ * sign-in merge writes this and its audit row inside one db.transaction, so
+ * this needs to accept the transaction handle instead of always hitting the
+ * pool directly.
+ */
+export async function setEmployeeDisplayName(
+  employeeId: string,
+  displayName: string,
+  executor: Pick<typeof db, "update"> = db,
+): Promise<void> {
+  await executor
+    .update(employees)
+    .set({ displayName, updatedAt: new Date() })
+    .where(eq(employees.id, employeeId));
+}
+

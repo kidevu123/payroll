@@ -281,6 +281,10 @@ export async function createStaffUser(
     targetId: row.id,
     after: { email: row.email, role: row.role },
   });
+  // Best-effort IdP push. Import lazily so this query module stays usable in
+  // scripts and tests that never touch Authentik.
+  const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+  await provisionPayrollUserBestEffort(row.id);
   return { user: row, tempPassword: tempPlain };
 }
 
@@ -324,6 +328,10 @@ export async function inviteEmployeeUser(
     });
     const refreshed = await findUserById(existingByEmployee.id);
     if (!refreshed) throw new Error("inviteEmployeeUser: refresh failed");
+    // Best-effort IdP push. Import lazily so this query module stays usable in
+    // scripts and tests that never touch Authentik.
+    const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+    await provisionPayrollUserBestEffort(existingByEmployee.id);
     return { user: refreshed, tempPassword: tempPlain };
   }
   const collision = await findUserByEmail(input.email);
@@ -365,5 +373,107 @@ export async function inviteEmployeeUser(
     targetId: row.id,
     after: { email: row.email, role: row.role, employeeId: row.employeeId },
   });
+  // Best-effort IdP push. Import lazily so this query module stays usable in
+  // scripts and tests that never touch Authentik.
+  const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+  await provisionPayrollUserBestEffort(row.id);
   return { user: row, tempPassword: tempPlain };
+}
+
+export async function findUserByAuthentikSub(sub: string): Promise<User | null> {
+  const [row] = await db
+    .select()
+    .from(users)
+    .where(eq(users.authentikSub, sub))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Record what we now know about a user's Authentik account. Fields are
+ * written only when supplied. All three — `authentikSub`, `authentikPk`,
+ * `authentikUsername` — are written together by the provisioner at link/
+ * create time; sign-in never calls this. The signature still accepts `sub`
+ * on its own because nothing requires the caller to have pk/username in
+ * hand at the same time it learns the subject.
+ */
+export type LinkExecutor = Pick<typeof db, "update" | "insert">;
+
+export async function linkAuthentikAccount(
+  userId: string,
+  link: { sub?: string; pk?: number; username?: string },
+  executor: LinkExecutor = db,
+): Promise<void> {
+  await executor
+    .update(users)
+    .set({
+      ...(link.sub !== undefined ? { authentikSub: link.sub } : {}),
+      ...(link.pk !== undefined ? { authentikPk: link.pk } : {}),
+      ...(link.username !== undefined ? { authentikUsername: link.username } : {}),
+      authentikSyncedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
+
+/** Apply IdP-owned profile fields. Only email lives on the user row. */
+export async function applyAuthentikProfile(
+  userId: string,
+  patch: { email: string },
+  executor: LinkExecutor = db,
+): Promise<void> {
+  await executor
+    .update(users)
+    .set({ email: patch.email, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+/** Enabled payroll users with no Authentik account linked yet. */
+export async function listUsersMissingAuthentik(): Promise<User[]> {
+  return db
+    .select()
+    .from(users)
+    .where(sql`${users.disabledAt} is null and ${users.authentikPk} is null`);
+}
+
+/**
+ * Users with a bound Authentik subject — sign-in rejects authentication for
+ * any of these if a different Authentik identity ever presents (binding
+ * happens only at provisioning; sign-in never re-binds). Listed for the
+ * escape-hatch UI at /settings/sso ("Linked accounts").
+ */
+export async function listLinkedAuthentikUsers(): Promise<
+  Array<Pick<User, "id" | "email" | "role"> & { authentikUsername: string | null }>
+> {
+  return db
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      authentikUsername: users.authentikUsername,
+    })
+    .from(users)
+    .where(sql`${users.authentikSub} is not null`);
+}
+
+/**
+ * Clear a user's Authentik link. The escape hatch for a re-created
+ * identity: once a subject is bound, sign-in refuses a different one, and
+ * without this the only remedy is SQL. Binding happens only at
+ * provisioning, never at sign-in, so clearing the link does not restore SSO
+ * access by itself — the account is re-bound by the next provisioning
+ * sweep (nightly, or an admin running it manually), and the user can't sign
+ * in with SSO again until that sweep runs.
+ */
+export async function unlinkAuthentikAccount(userId: string): Promise<void> {
+  await db
+    .update(users)
+    .set({
+      authentikSub: null,
+      authentikPk: null,
+      authentikUsername: null,
+      authentikSyncedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
 }
