@@ -124,11 +124,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       if (account?.provider === "authentik") {
-        if (!user.email) return false;
-        const dbUser = await findUserByEmail(user.email);
-        return !!(dbUser && !dbUser.disabledAt);
+        const { resolveAuthentikSignIn } = await import("@/lib/authentik/sign-in");
+        const resolved = await resolveAuthentikSignIn({
+          sub: (profile?.sub as string | undefined) ?? account.providerAccountId ?? null,
+          email: user.email ?? null,
+          name: (profile?.name as string | undefined) ?? user.name ?? null,
+        });
+        return "user" in resolved;
       }
       return true;
     },
@@ -139,8 +143,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       if (user) {
         if (account?.provider === "authentik") {
-          const dbUser = await findUserByEmail(user.email!);
-          if (dbUser) {
+          // resolveAuthentikSignIn already ran in the signIn callback and
+          // applied the merge; re-resolving here only reads the row back.
+          const { resolveAuthentikSignIn } = await import("@/lib/authentik/sign-in");
+          const resolved = await resolveAuthentikSignIn({
+            sub: (account.providerAccountId as string | undefined) ?? null,
+            email: user.email ?? null,
+            name: user.name ?? null,
+          });
+          if ("user" in resolved) {
+            const dbUser = resolved.user;
             token.id = dbUser.id;
             token.role = dbUser.role;
             token.employeeId = dbUser.employeeId ?? undefined;
