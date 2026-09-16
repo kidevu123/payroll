@@ -8,6 +8,7 @@
 //   • payroll.run.detect-exceptions — Phase 3 — runs after ingest
 //   • payroll.run.fix-window-expire — Phase 3 — scheduled per-run
 //   • payroll.run.publish — Phase 3 — admin approve → PDFs + notify
+//   • authentik.reconcile — nightly IdP provisioning sweep
 //   Phase 5 will add: notifications.dispatch
 
 import type PgBoss from "pg-boss";
@@ -18,6 +19,10 @@ import { handlePayrollRunTick } from "./handlers/payroll-run-tick";
 import { handleDetectExceptions } from "./handlers/detect-exceptions";
 import { handleFixWindowExpire } from "./handlers/fix-window-expire";
 import { handlePayrollRunPublish } from "./handlers/payroll-run-publish";
+import {
+  AUTHENTIK_RECONCILE_QUEUE,
+  handleAuthentikReconcile,
+} from "./handlers/authentik-reconcile";
 import { getSetting } from "@/lib/settings/runtime";
 import {
   NGTECO_PUNCH_POLL_QUEUE,
@@ -117,6 +122,23 @@ async function registerJobs(boss: PgBoss): Promise<void> {
     await boss.schedule("period.rollover", "30 0 * * *", undefined, tzOpts);
   } else {
     await boss.unschedule("period.rollover").catch(() => undefined);
+  }
+
+  // ── authentik.reconcile — nightly sweep for unlinked payroll users ─────
+  await boss.createQueue(AUTHENTIK_RECONCILE_QUEUE);
+  await boss.work(AUTHENTIK_RECONCILE_QUEUE, async () => {
+    await handleAuthentikReconcile();
+  });
+  const sso = await getSetting("sso").catch(() => null);
+  if (cronEnabled && sso?.autoProvision !== false) {
+    await boss.schedule(
+      AUTHENTIK_RECONCILE_QUEUE,
+      sso?.reconcileCron ?? "0 3 * * *",
+      undefined,
+      tzOpts,
+    );
+  } else {
+    await boss.unschedule(AUTHENTIK_RECONCILE_QUEUE).catch(() => undefined);
   }
 
   // ── ngteco.import ──────────────────────────────────────────────────────
