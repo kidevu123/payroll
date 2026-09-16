@@ -432,3 +432,40 @@ export async function listUsersMissingAuthentik(): Promise<User[]> {
     .from(users)
     .where(sql`${users.disabledAt} is null and ${users.authentikPk} is null`);
 }
+
+/**
+ * Users with a bound Authentik subject — the ones sign-in refuses to
+ * re-bind if their Authentik identity is ever re-created. Listed for the
+ * escape-hatch UI at /settings/sso ("Linked accounts").
+ */
+export async function listLinkedAuthentikUsers(): Promise<
+  Array<Pick<User, "id" | "email" | "role"> & { authentikUsername: string | null }>
+> {
+  return db
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      authentikUsername: users.authentikUsername,
+    })
+    .from(users)
+    .where(sql`${users.authentikSub} is not null`);
+}
+
+/**
+ * Clear a user's Authentik link so the next SSO login can bind afresh.
+ * The escape hatch for a re-created identity: once a subject is bound,
+ * sign-in refuses a different one, and without this the only remedy is SQL.
+ */
+export async function unlinkAuthentikAccount(userId: string): Promise<void> {
+  await db
+    .update(users)
+    .set({
+      authentikSub: null,
+      authentikPk: null,
+      authentikUsername: null,
+      authentikSyncedAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
