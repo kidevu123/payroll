@@ -286,6 +286,17 @@ export const rolePermissionsSchema = z.object({
 });
 export type RolePermissionsSettings = z.infer<typeof rolePermissionsSchema>;
 
+// ─── SSO (Authentik) ─────────────────────────────────────────────────────────
+// Authentik is the source of truth for display name and email. Payroll pushes
+// missing users into it and never edits an existing Authentik account.
+
+export const ssoSchema = z.object({
+  autoProvision: z.boolean().default(true),
+  groupName: z.string().min(1).max(120).default("payroll-users"),
+  reconcileCron: z.string().min(1).max(120).default("0 3 * * *"),
+});
+export type SsoSettings = z.infer<typeof ssoSchema>;
+
 // ─── Registry ────────────────────────────────────────────────────────────────
 // One source of truth that maps a key to its schema. The runtime layer uses this
 // to validate reads and writes.
@@ -300,6 +311,7 @@ export const settingsRegistry = {
   security: securitySchema,
   googleCalendar: googleCalendarSchema,
   rolePermissions: rolePermissionsSchema,
+  sso: ssoSchema,
 } as const;
 
 export type SettingKey = keyof typeof settingsRegistry;
