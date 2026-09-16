@@ -281,6 +281,10 @@ export async function createStaffUser(
     targetId: row.id,
     after: { email: row.email, role: row.role },
   });
+  // Best-effort IdP push. Import lazily so this query module stays usable in
+  // scripts and tests that never touch Authentik.
+  const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+  await provisionPayrollUserBestEffort(row.id);
   return { user: row, tempPassword: tempPlain };
 }
 
@@ -324,6 +328,10 @@ export async function inviteEmployeeUser(
     });
     const refreshed = await findUserById(existingByEmployee.id);
     if (!refreshed) throw new Error("inviteEmployeeUser: refresh failed");
+    // Best-effort IdP push. Import lazily so this query module stays usable in
+    // scripts and tests that never touch Authentik.
+    const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+    await provisionPayrollUserBestEffort(existingByEmployee.id);
     return { user: refreshed, tempPassword: tempPlain };
   }
   const collision = await findUserByEmail(input.email);
@@ -365,6 +373,10 @@ export async function inviteEmployeeUser(
     targetId: row.id,
     after: { email: row.email, role: row.role, employeeId: row.employeeId },
   });
+  // Best-effort IdP push. Import lazily so this query module stays usable in
+  // scripts and tests that never touch Authentik.
+  const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+  await provisionPayrollUserBestEffort(row.id);
   return { user: row, tempPassword: tempPlain };
 }
 

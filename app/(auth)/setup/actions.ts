@@ -45,6 +45,9 @@ export async function createOwner(formData: FormData): Promise<{ error?: string 
     throw err;
   }
 
+  const { provisionPayrollUserBestEffort } = await import("@/lib/authentik/provision");
+  await provisionPayrollUserBestEffort(user.id);
+
   await setSetting(
     "company",
     {
