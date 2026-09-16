@@ -144,20 +144,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         if (account?.provider === "authentik") {
           // resolveAuthentikSignIn already ran in the signIn callback and
-          // applied the merge; re-resolving here only reads the row back.
-          const { resolveAuthentikSignIn } = await import("@/lib/authentik/sign-in");
-          const resolved = await resolveAuthentikSignIn({
+          // applied the merge; this only reads the row back, via the
+          // read-only resolver so a conflict/merge audit row is never
+          // written twice for the same login.
+          const { resolveAuthentikIdentity } = await import("@/lib/authentik/sign-in");
+          const resolved = await resolveAuthentikIdentity({
             sub: (account.providerAccountId as string | undefined) ?? null,
             email: user.email ?? null,
-            name: user.name ?? null,
           });
-          if ("user" in resolved) {
-            const dbUser = resolved.user;
-            token.id = dbUser.id;
-            token.role = dbUser.role;
-            token.employeeId = dbUser.employeeId ?? undefined;
-            token.mustChangePassword = dbUser.mustChangePassword;
-          }
+          // A refused identity must not ride away with a half-populated
+          // token: an undefined token.id skips the disabled-user check and
+          // the staff session cap below.
+          if (!("user" in resolved)) return null;
+          const dbUser = resolved.user;
+          token.id = dbUser.id;
+          token.role = dbUser.role;
+          token.employeeId = dbUser.employeeId ?? undefined;
+          token.mustChangePassword = dbUser.mustChangePassword;
         } else {
           if (user.id !== undefined) token.id = user.id;
           token.role = (user as { role: Role }).role;
