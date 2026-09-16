@@ -4,6 +4,14 @@
 // user is a no-op, an email match links without writing to the IdP, and an
 // ambiguous username stops and reports instead of guessing.
 //
+// This is where the login binding is established. Both the link path and the
+// create path record the Authentik account's `uuid` as `authentik_sub`
+// alongside `pk`/`username`, at the moment payroll knows precisely which
+// Authentik account it just matched or created. Sign-in (lib/authentik/
+// sign-in.ts) never binds a subject — it only resolves by one already
+// written here. That split is what closes the email-takeover hole: there is
+// no login-time window where a subject gets bound by trusting an email.
+//
 // Failure is never fatal to the caller. A payroll user must be creatable when
 // the IdP is down; the nightly reconcile picks up whatever was missed.
 
@@ -113,8 +121,17 @@ export async function provisionPayrollUser(
     }
 
     let authentikPk: number;
+    let authentikSub: string;
     if (decision.action === "link") {
+      // decideProvision only returns "link" when matchByEmail was non-null
+      // (it is the source of decision.authentikPk/username), so this account
+      // is always in hand here — but TS can't see that link across the two
+      // call sites, so fail loudly instead of asserting past it.
+      if (!matchByEmail) {
+        throw new Error("Internal error: link decision with no matched Authentik account.");
+      }
       authentikPk = decision.authentikPk;
+      authentikSub = matchByEmail.uuid;
     } else {
       const created = await client.createUser({
         username: decision.username,
@@ -123,6 +140,7 @@ export async function provisionPayrollUser(
         attributes: { payroll_user_id: user.id, payroll_role: user.role },
       });
       authentikPk = created.pk;
+      authentikSub = created.uuid;
     }
 
     // Group membership is best-effort on top of a successful create/link:
@@ -145,7 +163,11 @@ export async function provisionPayrollUser(
     // variable across a nested function boundary.)
     const email = user.email;
     await db.transaction(async (tx) => {
-      await linkAuthentikAccount(userId, { pk: authentikPk, username: decision.username }, tx);
+      await linkAuthentikAccount(
+        userId,
+        { sub: authentikSub, pk: authentikPk, username: decision.username },
+        tx,
+      );
       await writeAudit(
         {
           actorId: null,

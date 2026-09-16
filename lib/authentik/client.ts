@@ -31,6 +31,7 @@ export class AuthentikApiError extends Error {
 
 const akUserSchema = z.object({
   pk: z.number(),
+  uuid: z.string(),
   username: z.string(),
   name: z.string().default(""),
   email: z.string().default(""),
@@ -43,6 +44,7 @@ const akGroupListSchema = z.object({
 
 export type AuthentikUser = {
   pk: number;
+  uuid: string;
   username: string;
   name: string;
   email: string;
@@ -73,6 +75,7 @@ export function readAuthentikConfig(): { apiUrl: string; token: string } | null 
 function toUser(raw: z.infer<typeof akUserSchema>): AuthentikUser {
   return {
     pk: raw.pk,
+    uuid: raw.uuid,
     username: raw.username,
     name: raw.name,
     email: raw.email,

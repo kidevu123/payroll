@@ -1,13 +1,17 @@
 // Resolve an Authentik OIDC identity to a payroll user, then let Authentik's
 // profile win.
 //
-// Resolution order is sub, then email. Email is a ONE-TIME BOOTSTRAP for the
-// link: the sub is written only the first time it is genuinely empty. Once a
-// payroll user has a bound authentik_sub, only that exact sub can resolve the
-// account again — a login whose sub differs from an existing binding is
-// refused outright, even if its email matches. Without that refusal, anyone
-// who can set their own IdP email to a payroll user's address could steal
-// that account (role, employee linkage, pay) out from under its real owner.
+// A payroll user must be PROVISIONED before they can sign in via SSO.
+// Provisioning (lib/authentik/provision.ts) is what binds `authentik_sub` —
+// at link/create time, when payroll knows precisely which Authentik account
+// it matched or created. Sign-in never binds: it resolves by subject alone,
+// via findUserByAuthentikSub, and refuses anyone it can't find that way. This
+// is deliberate — email is not a resolution path at all, so there is no
+// login-time window where a person who has set their Authentik email to a
+// payroll user's address could claim that account (role, employee linkage,
+// pay) out from under its real owner. The unprovisioned-user consequence is
+// intended, not an oversight: provisioning runs on user creation and
+// nightly, and /settings/sso lists anyone still missing.
 //
 // Payroll stays the source of truth for role, employee linkage, pay, and
 // enabled/disabled. This function never creates a payroll user: an Authentik
@@ -18,7 +22,6 @@ import { db } from "@/lib/db";
 import {
   findUserByAuthentikSub,
   findUserByEmail,
-  linkAuthentikAccount,
   applyAuthentikProfile,
   findUserById,
   recordSuccessfulLogin,
@@ -30,17 +33,7 @@ import { computeProfileMerge } from "./merge";
 
 export type SignInResolution =
   | { user: User }
-  | { rejected: "no-payroll-user" | "disabled" | "no-identity" | "sub-mismatch" };
-
-// Internal to this module: the read-only resolver needs to carry the
-// mismatched user's id out of a rejection so the writing wrapper below can
-// audit it, without the resolver itself doing any writes. SignInResolution
-// (the public return type) drops that id once the audit row has been
-// written — callers outside this module never see it.
-type IdentityResolution =
-  | { user: User }
-  | { rejected: "no-payroll-user" | "disabled" | "no-identity" }
-  | { rejected: "sub-mismatch"; userId: string };
+  | { rejected: "no-payroll-user" | "disabled" | "no-identity" };
 
 /**
  * Resolve an Authentik identity to a payroll user. Read-only: no links, no
@@ -50,30 +43,14 @@ type IdentityResolution =
 export async function resolveAuthentikIdentity(input: {
   sub: string | null;
   email: string | null;
-}): Promise<IdentityResolution> {
+}): Promise<SignInResolution> {
   const sub = input.sub?.trim() ?? "";
   const email = input.email?.trim() ?? "";
   if (sub.length === 0 && email.length === 0) return { rejected: "no-identity" };
 
-  let user = sub.length > 0 ? await findUserByAuthentikSub(sub) : null;
-  const resolvedBySub = user !== null;
-  if (!user && email.length > 0) user = await findUserByEmail(email);
+  const user = sub.length > 0 ? await findUserByAuthentikSub(sub) : null;
   if (!user) return { rejected: "no-payroll-user" };
   if (user.disabledAt) return { rejected: "disabled" };
-
-  // Reached this user via email, but it already has a DIFFERENT sub bound.
-  // Email is only the bootstrap path; once a subject is bound, that subject
-  // is the only key that resolves this account. Letting an email match win
-  // here would let a second Authentik identity steal a bound payroll
-  // account by claiming its email address.
-  if (
-    !resolvedBySub &&
-    sub.length > 0 &&
-    user.authentikSub !== null &&
-    user.authentikSub !== sub
-  ) {
-    return { rejected: "sub-mismatch", userId: user.id };
-  }
 
   return { user };
 }
@@ -86,33 +63,11 @@ export async function resolveAuthentikSignIn(input: {
   const identity = await resolveAuthentikIdentity({ sub: input.sub, email: input.email });
 
   if (!("user" in identity)) {
-    if (identity.rejected === "sub-mismatch") {
-      logger.warn(
-        { userId: identity.userId },
-        "authentik: sign-in subject does not match the bound account, login refused",
-      );
-      await writeAudit({
-        actorId: null,
-        actorRole: null,
-        action: "authentik.link.conflict",
-        targetType: "User",
-        targetId: identity.userId,
-      });
-      return { rejected: "sub-mismatch" };
-    }
     return identity;
   }
 
   const user = identity.user;
-  const sub = input.sub?.trim() ?? "";
   const email = input.email?.trim() ?? "";
-
-  // Bootstrap only: bind the subject the first time it is genuinely empty.
-  // Never overwrite an existing binding here — resolveAuthentikIdentity
-  // above already refused any sub that conflicts with one.
-  if (sub.length > 0 && user.authentikSub === null) {
-    await linkAuthentikAccount(user.id, { sub });
-  }
 
   // Does another payroll user already hold the incoming email?
   const emailOwner = email.length > 0 ? await findUserByEmail(email) : null;

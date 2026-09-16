@@ -24,6 +24,7 @@ function fakeFetch(responses: { status: number; body: unknown }[]) {
 
 const AK_USER = {
   pk: 12,
+  uuid: "b1f2c3d4-0000-4000-8000-abcdef123456",
   username: "juanh",
   name: "Juan Herrera",
   email: "juan@gmail.com",
@@ -36,6 +37,7 @@ describe("AuthentikClient", () => {
     const user = await createAuthentikClient(CONFIG, impl).findUserByEmail("juan@gmail.com");
     expect(user).toEqual({
       pk: 12,
+      uuid: "b1f2c3d4-0000-4000-8000-abcdef123456",
       username: "juanh",
       name: "Juan Herrera",
       email: "juan@gmail.com",

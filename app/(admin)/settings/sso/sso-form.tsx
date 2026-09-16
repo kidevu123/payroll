@@ -175,11 +175,12 @@ export function SsoForm({
     if (
       !window.confirm(
         `Unlink ${user.email} from Authentik?\n\n` +
-          "The next SSO sign-in will re-bind this account to whichever " +
-          "Authentik identity signs in with it. Only do this if you know " +
-          "this person's Authentik identity was deleted and re-created — " +
-          "unlinking a live, correctly-bound identity briefly reopens the " +
-          "account to whichever identity signs in next.",
+          "This account will not be reachable by SSO again until the next " +
+          "sync (Run sync now, or the nightly sweep) re-provisions and " +
+          "re-binds it. Only do this if you know this person's Authentik " +
+          "identity was deleted and re-created — unlinking a live, " +
+          "correctly-bound identity locks that person out of SSO until " +
+          "the next sync runs.",
       )
     ) {
       return;
@@ -363,20 +364,20 @@ export function SsoForm({
         <CardHeader>
           <CardTitle>Linked accounts</CardTitle>
           <CardDescription>
-            Payroll users bound to an Authentik identity. Once bound,
-            sign-in refuses any other Authentik identity for that account —
-            Unlink clears the binding so the next SSO sign-in can bind
-            fresh. Only use this when a person&rsquo;s Authentik identity
-            was deleted and re-created; unlinking a live, correctly-bound
-            identity briefly reopens the account to whichever identity
-            signs in next.
+            Payroll users bound to an Authentik identity. The binding is set
+            when the account is provisioned (created or linked), not at
+            sign-in, and sign-in refuses any Authentik identity except the
+            one bound here. Unlink clears the binding — the account is then
+            unreachable by SSO until the next sync (Run sync now, or the
+            nightly sweep) re-provisions and re-binds it. Only use this when
+            a person&rsquo;s Authentik identity was deleted and re-created.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {unlinkError && <p className="text-sm text-danger-700">{unlinkError}</p>}
           {linked.length === 0 ? (
             <p className="text-sm text-text-muted">
-              No payroll user has signed in via Authentik yet.
+              No payroll user has been provisioned to Authentik yet.
             </p>
           ) : (
             <div className="rounded-card border border-border overflow-x-auto">

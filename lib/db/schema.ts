@@ -189,12 +189,16 @@ export const users = pgTable(
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
-    // Authentik SSO link. `authentikSub` is the OIDC subject, learned on the
-    // first successful SSO login (matched by email that one time) and used as
-    // the join key forever after, so an email change on either side cannot
-    // orphan the account. `authentikPk` / `authentikUsername` are learned by
-    // the provisioner and are the handle for admin-API calls. Either may be
-    // present without the other.
+    // Authentik SSO link. All three (`authentikSub`, `authentikPk`,
+    // `authentikUsername`) are written together by the provisioner, at the
+    // moment it links or creates the Authentik account — never at sign-in.
+    // `authentikSub` (the OIDC subject) is the join key sign-in uses forever
+    // after; `authentikPk` / `authentikUsername` are the handle for admin-API
+    // calls. Binding the subject at provisioning time, when payroll knows
+    // exactly which Authentik account it just created or matched, is what
+    // closes the email takeover: sign-in never binds, so there is no window
+    // where an attacker who has set their Authentik email to a payroll
+    // user's address can claim the account.
     authentikSub: text("authentik_sub"),
     authentikPk: integer("authentik_pk"),
     authentikUsername: text("authentik_username"),

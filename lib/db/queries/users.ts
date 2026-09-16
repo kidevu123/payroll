@@ -391,9 +391,11 @@ export async function findUserByAuthentikSub(sub: string): Promise<User | null> 
 
 /**
  * Record what we now know about a user's Authentik account. Fields are
- * written only when supplied — `authentikSub` is learned at login,
- * `authentikPk`/`authentikUsername` by the provisioner, and neither should
- * clobber the other.
+ * written only when supplied. All three — `authentikSub`, `authentikPk`,
+ * `authentikUsername` — are written together by the provisioner at link/
+ * create time; sign-in never calls this. The signature still accepts `sub`
+ * on its own because nothing requires the caller to have pk/username in
+ * hand at the same time it learns the subject.
  */
 export type LinkExecutor = Pick<typeof db, "update" | "insert">;
 

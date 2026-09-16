@@ -33,14 +33,14 @@ export type Role =
 
 /**
  * The Authentik subject, derived identically wherever it is needed. The
- * signIn callback below uses this to resolve/bind the account; the jwt
+ * signIn callback below uses this to resolve the account (never to bind it —
+ * binding happens only at provisioning, lib/authentik/provision.ts); the jwt
  * callback re-resolves against the same identity on every token refresh
- * (read-only, via resolveAuthentikIdentity) to pick up role/employee
- * changes without forcing a re-login. If the two callbacks ever derived the
- * subject differently, signIn could bind one value while jwt resolves by
- * the other -- landing in the sub-mismatch branch and returning null, which
- * permanently locks the user out of an account signIn had just linked and
- * audited as successful.
+ * (read-only, via resolveAuthentikIdentity) to pick up role/employee changes
+ * without forcing a re-login. Both callbacks must derive the subject the same
+ * way: if they ever diverged, jwt could fail to find the very user signIn
+ * just admitted, returning null and invalidating a token that was minted
+ * moments ago.
  */
 function authentikSubjectFrom(
   profile: { sub?: string | null } | null | undefined,

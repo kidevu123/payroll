@@ -62,12 +62,36 @@ and no secrets).
   paperwork) is deliberately **not** touched by the merge — only
   `users.email`, the login identifier.
 
-The join key is the OIDC subject (`authentik_sub`), not email. Email is a
-**one-time bootstrap**: the first successful SSO login for an account with
-no subject bound yet matches by email and writes the subject. Every later
-login must present that exact subject — a login with a different subject
-is refused outright, even if its email matches, so a second Authentik
-identity can't steal a bound payroll account by claiming its email address.
+The join key is the OIDC subject (`authentik_sub`), and **only the
+provisioner writes it** (`lib/authentik/provision.ts`, at link or create
+time — see "How provisioning works" above). Sign-in never binds a subject;
+it only resolves one that provisioning already wrote, via an exact
+`authentik_sub` match. Email plays no part in sign-in resolution at all.
+
+This requires the Authentik provider's `sub_mode` to be **`user_uuid`**, so
+the OIDC subject Authentik issues is exactly `str(user.uuid)` — the same
+`uuid` the admin API returns for that account. If `sub_mode` is anything
+else (the historical default is `hashed_user_id`), the value payroll
+recorded at provisioning will never match what sign-in receives from a real
+login, and every SSO sign-in for that account will be refused as
+`no-payroll-user`.
+
+**A payroll user must be provisioned before their first SSO login** —
+provisioning is what creates the binding sign-in depends on. This runs
+automatically on user creation and nightly (see above), and anyone still
+missing shows up on `/settings/sso`. There is no fallback for an
+unprovisioned user; that is intended, not a bug — a login-time fallback is
+exactly the hole this design closes. (This is a deliberate behavior change:
+earlier revisions of this feature let a first SSO login bootstrap the bind
+by matching email, which meant any Authentik user who could set their own
+email to a payroll user's address could claim that account on its first SSO
+login. Provisioning has always known precisely which Authentik account it
+matched or created, so moving the write there removes the login-time
+guesswork instead of merely narrowing it.)
+
+Once a subject is bound, sign-in refuses any other subject for that
+account, even if its email matches — so a second Authentik identity can't
+steal a bound payroll account by claiming its email address.
 
 If the incoming email from Authentik would collide with a *different*
 payroll user's email, the merge skips the email change, writes an
@@ -118,11 +142,18 @@ and re-added, a tenant migration — the account becomes unreachable by SSO
 because its stored subject no longer exists. **Unlink** on `/settings/sso`
 clears the stored `authentik_sub`/`authentik_pk`/`authentik_username`
 binding for that payroll user (audited as `authentik.user.unlinked`, with
-the cleared values in `before`). It requires a confirm step. After
-unlinking, the next SSO sign-in binds fresh to whichever Authentik
-identity presents — so only unlink when you're sure the old binding is
-stale; a premature unlink lets a different Authentik identity claim the
-account on the next login.
+the cleared values in `before`). It requires a confirm step.
+
+Unlinking does **not** let the next SSO sign-in bind fresh — sign-in never
+binds. Clearing `authentik_pk` puts the user back into
+`listUsersMissingAuthentik()`, so the account is unreachable by SSO until
+the next provisioning pass (a manual **Run sync now**, or the nightly
+`authentik.reconcile` sweep) re-provisions it — matching by email or
+creating a new Authentik account, exactly as it would for a brand-new
+payroll user — and writes a fresh `authentik_sub`. Only unlink when you're
+sure the old binding is stale: it does not immediately reopen the account
+to anyone, but it does lock the real owner out of SSO until that next sync
+runs.
 
 ## Where the API token lives
 
