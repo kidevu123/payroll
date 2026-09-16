@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getSetting, setSetting } from "@/lib/settings/runtime";
-import { ssoSchema } from "@/lib/settings/schemas";
+import { ssoSchema, reconcileCronField } from "@/lib/settings/schemas";
 import { writeAudit } from "@/lib/db/audit";
 import { provisionMissingUsers, type ProvisionOutcome } from "@/lib/authentik/provision";
 import { AUTHENTIK_RECONCILE_QUEUE } from "@/lib/jobs/handlers/authentik-reconcile";
@@ -14,13 +14,18 @@ import {
   unlinkAuthentikAccount,
 } from "@/lib/db/queries/users";
 
-// groupName/reconcileCron reuse ssoSchema's own field validators (including
-// the cron regex) so a malformed value is caught here, with a friendly
-// {error} return, instead of throwing out of setSetting's schema.parse.
+// groupName reuses ssoSchema's own field validator. reconcileCron uses the
+// standalone `reconcileCronField` (the same regex, exported unwrapped)
+// rather than `ssoSchema.shape.reconcileCron` — that field is wrapped in a
+// preprocess that degrades an invalid stored cron to the default on read,
+// and reusing it here would let a bad value typed into the form silently
+// fall back to the default instead of being rejected. Validating here keeps
+// a malformed value caught with a friendly {error} return, instead of
+// throwing out of setSetting's schema.parse.
 const formSchema = z.object({
   autoProvision: z.union([z.literal("on"), z.literal(undefined)]).optional(),
   groupName: ssoSchema.shape.groupName,
-  reconcileCron: ssoSchema.shape.reconcileCron,
+  reconcileCron: reconcileCronField,
 });
 
 export async function saveSsoSettings(
@@ -112,8 +117,10 @@ const idSchema = z.string().uuid();
  * user is bound to an Authentik subject, sign-in refuses any other subject
  * for that account. If Authentik ever re-creates the employee's identity
  * (deleted and re-added, tenant migration, etc.) the account becomes
- * unreachable by SSO until an admin clears the stale link here — the next
- * SSO sign-in then binds fresh to whichever Authentik identity presents.
+ * unreachable by SSO until an admin clears the stale link here. Clearing it
+ * only removes the link — the account is re-bound by the next provisioning
+ * sweep (the nightly job, or an admin pressing "Run sync now"), so the user
+ * still can't sign in with SSO until that sweep runs.
  */
 export async function unlinkSsoAction(
   userId: string,

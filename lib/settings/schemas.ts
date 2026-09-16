@@ -300,19 +300,42 @@ const CRON_FIELD_PATTERN = "(\\*|\\d+|\\*/\\d+|\\d+(-\\d+)?(,\\d+(-\\d+)?)*)";
 const CRON_EXPRESSION = new RegExp(
   `^${CRON_FIELD_PATTERN}(\\s+${CRON_FIELD_PATTERN}){4}$`,
 );
+const RECONCILE_CRON_DEFAULT = "0 3 * * *";
+const RECONCILE_CRON_MESSAGE =
+  'Cron must be 5 fields: "<minute> <hour> <day-of-month> <month> <day-of-week>" (e.g. "0 3 * * *" for 3am daily).';
+
+// Exported so actions.ts's write-time form schema can validate a submitted
+// cron against this exact rule, unaffected by the read-side preprocess
+// below — see the comment there.
+export const reconcileCronField = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(CRON_EXPRESSION, RECONCILE_CRON_MESSAGE);
 
 export const ssoSchema = z.object({
   autoProvision: z.boolean().default(true),
   groupName: z.string().min(1).max(120).default("payroll-users"),
+  // getSetting parses every stored row through this schema, including on
+  // plain reads (it's the one schema settingsRegistry has for "sso"), so a
+  // stored cron the regex rejects — one using month/day names, a step
+  // range, or a "?", or just a value that predates a regex tightening —
+  // used to 500 the one settings page an admin would use to fix it.
+  // Preprocess degrades instead: a reconcileCron that fails the regex is
+  // swapped for the schema default before validation runs, same
+  // tolerate-and-default spirit as stripRetiredKinds above. This only
+  // loosens the READ path — write-time validation stays strict because
+  // actions.ts's form schema validates against `reconcileCronField`
+  // directly, not through this preprocess, so a bad value typed into the
+  // form is still rejected with the message below.
   reconcileCron: z
-    .string()
-    .min(1)
-    .max(120)
-    .regex(
-      CRON_EXPRESSION,
-      'Cron must be 5 fields: "<minute> <hour> <day-of-month> <month> <day-of-week>" (e.g. "0 3 * * *" for 3am daily).',
-    )
-    .default("0 3 * * *"),
+    .preprocess((value) => {
+      if (typeof value === "string" && !CRON_EXPRESSION.test(value)) {
+        return RECONCILE_CRON_DEFAULT;
+      }
+      return value;
+    }, reconcileCronField)
+    .default(RECONCILE_CRON_DEFAULT),
 });
 export type SsoSettings = z.infer<typeof ssoSchema>;
 

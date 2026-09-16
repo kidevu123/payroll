@@ -437,8 +437,9 @@ export async function listUsersMissingAuthentik(): Promise<User[]> {
 }
 
 /**
- * Users with a bound Authentik subject — the ones sign-in refuses to
- * re-bind if their Authentik identity is ever re-created. Listed for the
+ * Users with a bound Authentik subject — sign-in rejects authentication for
+ * any of these if a different Authentik identity ever presents (binding
+ * happens only at provisioning; sign-in never re-binds). Listed for the
  * escape-hatch UI at /settings/sso ("Linked accounts").
  */
 export async function listLinkedAuthentikUsers(): Promise<
@@ -456,9 +457,13 @@ export async function listLinkedAuthentikUsers(): Promise<
 }
 
 /**
- * Clear a user's Authentik link so the next SSO login can bind afresh.
- * The escape hatch for a re-created identity: once a subject is bound,
- * sign-in refuses a different one, and without this the only remedy is SQL.
+ * Clear a user's Authentik link. The escape hatch for a re-created
+ * identity: once a subject is bound, sign-in refuses a different one, and
+ * without this the only remedy is SQL. Binding happens only at
+ * provisioning, never at sign-in, so clearing the link does not restore SSO
+ * access by itself — the account is re-bound by the next provisioning
+ * sweep (nightly, or an admin running it manually), and the user can't sign
+ * in with SSO again until that sweep runs.
  */
 export async function unlinkAuthentikAccount(userId: string): Promise<void> {
   await db
