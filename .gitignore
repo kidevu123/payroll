@@ -51,3 +51,6 @@ __pycache__
 
 # macOS AppleDouble junk
 ._*
+
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/
