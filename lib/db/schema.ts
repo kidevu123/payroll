@@ -189,6 +189,16 @@ export const users = pgTable(
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    // Authentik SSO link. `authentikSub` is the OIDC subject, learned on the
+    // first successful SSO login (matched by email that one time) and used as
+    // the join key forever after, so an email change on either side cannot
+    // orphan the account. `authentikPk` / `authentikUsername` are learned by
+    // the provisioner and are the handle for admin-API calls. Either may be
+    // present without the other.
+    authentikSub: text("authentik_sub"),
+    authentikPk: integer("authentik_pk"),
+    authentikUsername: text("authentik_username"),
+    authentikSyncedAt: timestamp("authentik_synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -196,7 +206,12 @@ export const users = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_unique").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_unique").on(t.email),
+    // Nullable, so Postgres allows many unlinked rows; one payroll user per
+    // Authentik subject once linked.
+    uniqueIndex("users_authentik_sub_unique").on(t.authentikSub),
+  ],
 );
 
 // ─────────────────────────────────────────────────────────────────────────────

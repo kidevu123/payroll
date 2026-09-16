@@ -337,6 +337,13 @@
       "when": 1788881154007,
       "tag": "0047_payslip_signature",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789567658068,
+      "tag": "0048_lumpy_talos",
+      "breakpoints": true
     }
   ]
 }

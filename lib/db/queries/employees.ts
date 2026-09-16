@@ -397,3 +397,18 @@ export async function archiveEmployee(
   });
 }
 
+/**
+ * Narrow setter used by the Authentik profile merge. Deliberately not
+ * updateEmployee(): the merge touches exactly one field and must not run the
+ * full employee-update validation or its side effects.
+ */
+export async function setEmployeeDisplayName(
+  employeeId: string,
+  displayName: string,
+): Promise<void> {
+  await db
+    .update(employees)
+    .set({ displayName, updatedAt: new Date() })
+    .where(eq(employees.id, employeeId));
+}
+

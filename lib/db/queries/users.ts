@@ -367,3 +367,53 @@ export async function inviteEmployeeUser(
   });
   return { user: row, tempPassword: tempPlain };
 }
+
+export async function findUserByAuthentikSub(sub: string): Promise<User | null> {
+  const [row] = await db
+    .select()
+    .from(users)
+    .where(eq(users.authentikSub, sub))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * Record what we now know about a user's Authentik account. Fields are
+ * written only when supplied — `authentikSub` is learned at login,
+ * `authentikPk`/`authentikUsername` by the provisioner, and neither should
+ * clobber the other.
+ */
+export async function linkAuthentikAccount(
+  userId: string,
+  link: { sub?: string; pk?: number; username?: string },
+): Promise<void> {
+  await db
+    .update(users)
+    .set({
+      ...(link.sub !== undefined ? { authentikSub: link.sub } : {}),
+      ...(link.pk !== undefined ? { authentikPk: link.pk } : {}),
+      ...(link.username !== undefined ? { authentikUsername: link.username } : {}),
+      authentikSyncedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+}
+
+/** Apply IdP-owned profile fields. Only email lives on the user row. */
+export async function applyAuthentikProfile(
+  userId: string,
+  patch: { email: string },
+): Promise<void> {
+  await db
+    .update(users)
+    .set({ email: patch.email, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
+/** Enabled payroll users with no Authentik account linked yet. */
+export async function listUsersMissingAuthentik(): Promise<User[]> {
+  return db
+    .select()
+    .from(users)
+    .where(sql`${users.disabledAt} is null and ${users.authentikPk} is null`);
+}
