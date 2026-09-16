@@ -1,22 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { auth, signIn } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { hasAnyUser } from "@/lib/db/queries/users";
 import { AuthLayout } from "@/components/brand/auth-layout";
-import { Button } from "@/components/ui/button";
 import { LoginForm } from "./login-form";
+import { SsoSignInForm } from "./sso-sign-in-form";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; error?: string }>;
 }) {
   if (!(await hasAnyUser())) redirect("/setup");
   const session = await auth();
   if (session) redirect("/");
   const t = await getTranslations("auth");
-  const { from } = await searchParams;
+  const { from, error } = await searchParams;
   const oidcEnabled = Boolean(process.env.AUTHENTIK_CLIENT_ID);
 
   return (
@@ -36,16 +36,12 @@ export default async function LoginPage({
       <div className="space-y-5">
         {oidcEnabled && (
           <>
-            <form
-              action={async () => {
-                "use server";
-                await signIn("authentik", { redirectTo: from || "/" });
-              }}
-            >
-              <Button type="submit" size="lg" className="w-full">
-                Sign in with SSO
-              </Button>
-            </form>
+            {error === "AccessDenied" && (
+              <div className="rounded-input border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800">
+                That account is not set up in payroll yet. Ask the office to add you.
+              </div>
+            )}
+            <SsoSignInForm callbackUrl={from || "/"} />
             <div className="flex items-center gap-3 text-xs text-text-muted">
               <hr className="flex-1" />
               <span>or sign in with email</span>
