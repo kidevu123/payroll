@@ -89,7 +89,7 @@ No silent duplicates, no silent mislinks, and the ambiguous case self-heals once
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `findUserByAuthentikSub(sub: string): Promise<User | null>`; `linkAuthentikAccount(userId: string, link: { sub?: string; pk?: number; username?: string }): Promise<void>`; `applyAuthentikProfile(userId: string, patch: { email?: string }): Promise<void>`; `listUsersMissingAuthentik(): Promise<User[]>`; `setEmployeeDisplayName(employeeId: string, displayName: string): Promise<void>`. New `User` fields: `authentikSub: string | null`, `authentikPk: number | null`, `authentikUsername: string | null`, `authentikSyncedAt: Date | null`.
+- Produces: `findUserByAuthentikSub(sub: string): Promise<User | null>`; `linkAuthentikAccount(userId: string, link: { sub?: string; pk?: number; username?: string }): Promise<void>`; `applyAuthentikProfile(userId: string, patch: { email: string }): Promise<void>`; `listUsersMissingAuthentik(): Promise<User[]>`; `setEmployeeDisplayName(employeeId: string, displayName: string): Promise<void>`. New `User` fields: `authentikSub: string | null`, `authentikPk: number | null`, `authentikUsername: string | null`, `authentikSyncedAt: Date | null`.
 
 - [ ] **Step 1: Add the columns to the schema**
 
