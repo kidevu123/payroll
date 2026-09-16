@@ -418,8 +418,9 @@ export async function linkAuthentikAccount(
 export async function applyAuthentikProfile(
   userId: string,
   patch: { email: string },
+  executor: LinkExecutor = db,
 ): Promise<void> {
-  await db
+  await executor
     .update(users)
     .set({ email: patch.email, updatedAt: new Date() })
     .where(eq(users.id, userId));

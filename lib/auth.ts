@@ -31,6 +31,24 @@ export type Role =
   | "ACCOUNTANT"
   | "EMPLOYEE";
 
+/**
+ * The Authentik subject, derived identically wherever it is needed. The
+ * signIn callback below uses this to resolve/bind the account; the jwt
+ * callback re-resolves against the same identity on every token refresh
+ * (read-only, via resolveAuthentikIdentity) to pick up role/employee
+ * changes without forcing a re-login. If the two callbacks ever derived the
+ * subject differently, signIn could bind one value while jwt resolves by
+ * the other -- landing in the sub-mismatch branch and returning null, which
+ * permanently locks the user out of an account signIn had just linked and
+ * audited as successful.
+ */
+function authentikSubjectFrom(
+  profile: { sub?: string | null } | null | undefined,
+  account: { providerAccountId?: string | null } | null,
+): string | null {
+  return (profile?.sub as string | undefined) ?? (account?.providerAccountId as string | undefined) ?? null;
+}
+
 export async function hashPassword(plain: string): Promise<string> {
   return argonHash(plain, ARGON);
 }
@@ -128,7 +146,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider === "authentik") {
         const { resolveAuthentikSignIn } = await import("@/lib/authentik/sign-in");
         const resolved = await resolveAuthentikSignIn({
-          sub: (profile?.sub as string | undefined) ?? account.providerAccountId ?? null,
+          sub: authentikSubjectFrom(profile, account),
           email: user.email ?? null,
           name: (profile?.name as string | undefined) ?? user.name ?? null,
         });
@@ -136,7 +154,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account, profile, trigger }) {
       if (user) {
         // Stamp the sign-in time once; used below to cap staff sessions.
         token.signedInAt = Math.floor(Date.now() / 1000);
@@ -149,7 +167,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // written twice for the same login.
           const { resolveAuthentikIdentity } = await import("@/lib/authentik/sign-in");
           const resolved = await resolveAuthentikIdentity({
-            sub: (account.providerAccountId as string | undefined) ?? null,
+            sub: authentikSubjectFrom(profile, account),
             email: user.email ?? null,
           });
           // A refused identity must not ride away with a half-populated

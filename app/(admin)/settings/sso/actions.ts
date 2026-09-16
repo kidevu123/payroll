@@ -3,18 +3,24 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-guards";
-import { setSetting } from "@/lib/settings/runtime";
+import { getSetting, setSetting } from "@/lib/settings/runtime";
+import { ssoSchema } from "@/lib/settings/schemas";
 import { writeAudit } from "@/lib/db/audit";
 import { provisionMissingUsers, type ProvisionOutcome } from "@/lib/authentik/provision";
+import { AUTHENTIK_RECONCILE_QUEUE } from "@/lib/jobs/handlers/authentik-reconcile";
+import { logger } from "@/lib/telemetry";
 import {
   findUserById,
   unlinkAuthentikAccount,
 } from "@/lib/db/queries/users";
 
+// groupName/reconcileCron reuse ssoSchema's own field validators (including
+// the cron regex) so a malformed value is caught here, with a friendly
+// {error} return, instead of throwing out of setSetting's schema.parse.
 const formSchema = z.object({
   autoProvision: z.union([z.literal("on"), z.literal(undefined)]).optional(),
-  groupName: z.string().min(1).max(120),
-  reconcileCron: z.string().min(1).max(120),
+  groupName: ssoSchema.shape.groupName,
+  reconcileCron: ssoSchema.shape.reconcileCron,
 });
 
 export async function saveSsoSettings(
@@ -29,15 +35,52 @@ export async function saveSsoSettings(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  const autoProvision = parsed.data.autoProvision === "on";
   await setSetting(
     "sso",
     {
-      autoProvision: parsed.data.autoProvision === "on",
+      autoProvision,
       groupName: parsed.data.groupName,
       reconcileCron: parsed.data.reconcileCron,
     },
     { actorId: session.user.id, actorRole: session.user.role },
   );
+
+  // pg-boss schedules are armed at process startup in registerJobs(), so a
+  // fresh save here would otherwise be invisible until the next restart —
+  // same reasoning and shape as updateAutomationAction in
+  // app/(admin)/settings/automation/actions.ts. Re-arm immediately against
+  // the running boss instance.
+  try {
+    const { getBoss } = await import("@/lib/jobs");
+    const boss = await getBoss();
+    const automation = await getSetting("automation").catch(() => null);
+    const company = await getSetting("company").catch(() => null);
+    const cronEnabled = automation?.cronEnabled ?? true;
+    const tzOpts = { tz: company?.timezone ?? "America/New_York" };
+    if (cronEnabled && autoProvision) {
+      await boss.schedule(
+        AUTHENTIK_RECONCILE_QUEUE,
+        parsed.data.reconcileCron,
+        undefined,
+        tzOpts,
+      );
+    } else {
+      await boss.unschedule(AUTHENTIK_RECONCILE_QUEUE).catch(() => undefined);
+    }
+    logger.info(
+      { autoProvision, reconcileCron: parsed.data.reconcileCron },
+      "sso: live schedule rearmed",
+    );
+  } catch (err) {
+    // Don't fail the save — the setting is persisted, the next process
+    // start will pick it up. Log so the discrepancy is visible.
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err) },
+      "sso: live rearm failed; new cron applies after next restart",
+    );
+  }
+
   revalidatePath("/settings/sso");
 }
 

@@ -14,6 +14,7 @@
 // identity with no payroll account is refused.
 
 import type { User } from "@/lib/db/schema";
+import { db } from "@/lib/db";
 import {
   findUserByAuthentikSub,
   findUserByEmail,
@@ -149,27 +150,46 @@ export async function resolveAuthentikSignIn(input: {
   }
 
   if (merge.email) {
-    await applyAuthentikProfile(user.id, { email: merge.email.to });
-    await writeAudit({
-      actorId: user.id,
-      actorRole: user.role,
-      action: "authentik.merge.applied",
-      targetType: "User",
-      targetId: user.id,
-      before: { email: merge.email.from },
-      after: { email: merge.email.to },
+    // Mutation and its audit row are one transaction: a crash between them
+    // would leave an unaudited change to a login identifier, and the repo's
+    // rule is that every mutation is audited before commit (Task 6 fixed
+    // this same pattern in the provisioner).
+    const emailChange = merge.email;
+    await db.transaction(async (tx) => {
+      await applyAuthentikProfile(user.id, { email: emailChange.to }, tx);
+      await writeAudit(
+        {
+          actorId: user.id,
+          actorRole: user.role,
+          action: "authentik.merge.applied",
+          targetType: "User",
+          targetId: user.id,
+          before: { email: emailChange.from },
+          after: { email: emailChange.to },
+        },
+        tx,
+      );
     });
   }
 
   if (merge.displayName && user.employeeId) {
-    await setEmployeeDisplayName(user.employeeId, merge.displayName.to);
-    await writeAudit({
-      actorId: user.id,
-      actorRole: user.role,
-      action: "authentik.merge.applied",
-      targetType: "Employee",
-      targetId: user.employeeId,
-      after: { displayName: merge.displayName.to },
+    // Same reasoning as the email branch above: this name prints on
+    // payslips, so its mutation and audit row must commit together.
+    const displayNameChange = merge.displayName;
+    const employeeId = user.employeeId;
+    await db.transaction(async (tx) => {
+      await setEmployeeDisplayName(employeeId, displayNameChange.to, tx);
+      await writeAudit(
+        {
+          actorId: user.id,
+          actorRole: user.role,
+          action: "authentik.merge.applied",
+          targetType: "Employee",
+          targetId: employeeId,
+          after: { displayName: displayNameChange.to },
+        },
+        tx,
+      );
     });
   }
 

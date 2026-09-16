@@ -290,10 +290,29 @@ export type RolePermissionsSettings = z.infer<typeof rolePermissionsSchema>;
 // Authentik is the source of truth for display name and email. Payroll pushes
 // missing users into it and never edits an existing Authentik account.
 
+// Standard five-field cron: minute hour day-of-month month day-of-week, each
+// a digit/star/step/range/list. Rejects the expression at save time instead
+// of letting boss.schedule throw at process boot — this setting registers
+// BEFORE payroll.run.tick, ngteco.import, ngteco.punch.poll and
+// ngteco.chrome-reaper in lib/jobs/index.ts, so one bad value here used to
+// take all of those down with it.
+const CRON_FIELD_PATTERN = "(\\*|\\d+|\\*/\\d+|\\d+(-\\d+)?(,\\d+(-\\d+)?)*)";
+const CRON_EXPRESSION = new RegExp(
+  `^${CRON_FIELD_PATTERN}(\\s+${CRON_FIELD_PATTERN}){4}$`,
+);
+
 export const ssoSchema = z.object({
   autoProvision: z.boolean().default(true),
   groupName: z.string().min(1).max(120).default("payroll-users"),
-  reconcileCron: z.string().min(1).max(120).default("0 3 * * *"),
+  reconcileCron: z
+    .string()
+    .min(1)
+    .max(120)
+    .regex(
+      CRON_EXPRESSION,
+      'Cron must be 5 fields: "<minute> <hour> <day-of-month> <month> <day-of-week>" (e.g. "0 3 * * *" for 3am daily).',
+    )
+    .default("0 3 * * *"),
 });
 export type SsoSettings = z.infer<typeof ssoSchema>;
 

@@ -31,18 +31,24 @@ export type ProvisionOutcome =
   | { status: "needs-review"; userId: string; email: string; username: string; reason: string }
   | { status: "failed"; userId: string; email: string; error: string };
 
-/** Name to give the IdP: the linked employee's preferred/display name, else the email local-part. */
+/**
+ * Name to give the IdP: the linked employee's displayName, else the email
+ * local-part. Must be `displayName` and nothing else — the sign-in merge
+ * (lib/authentik/sign-in.ts) writes Authentik's `name` straight back into
+ * `employees.displayName`, the name printed on payslips and the onboarding
+ * PDF. Seeding from a different field (e.g. preferredName) would mean the
+ * employee's first SSO login silently overwrites their payslip name with
+ * whatever this function seeded — the two sides must describe the same
+ * field for the round trip to be a no-op.
+ */
 async function displayNameFor(employeeId: string | null, email: string): Promise<string> {
   if (employeeId) {
     const [row] = await db
-      .select({
-        displayName: employees.displayName,
-        preferredName: employees.preferredName,
-      })
+      .select({ displayName: employees.displayName })
       .from(employees)
       .where(eq(employees.id, employeeId))
       .limit(1);
-    const name = row?.preferredName?.trim() || row?.displayName?.trim();
+    const name = row?.displayName?.trim();
     if (name) return name;
   }
   return email.split("@")[0] ?? email;
@@ -207,15 +213,42 @@ export async function provisionMissingUsers(opts?: {
   return outcomes;
 }
 
+// Overall wall-clock budget for one best-effort provisioning pass. A single
+// pass can make up to five sequential HTTP requests to the IdP (email
+// lookup, username lookup, create, group lookup, add-to-group), each with
+// its own 10s abort budget — unbounded, that is ~50s hung onto staff
+// creation, employee invitation, and first-run setup, all of which await
+// this function. Anything this deadline abandons mid-flight is picked up by
+// the nightly authentik.reconcile sweep, which is why it is safe to walk
+// away here instead of waiting the request out.
+const BEST_EFFORT_PROVISION_TIMEOUT_MS = 8_000;
+
 /**
  * Fire-and-forget push used at user-creation call sites. Never throws, never
- * blocks: creating a payroll user must succeed even with the IdP unreachable.
+ * blocks: creating a payroll user must succeed even with the IdP unreachable
+ * or slow. Bounded by BEST_EFFORT_PROVISION_TIMEOUT_MS regardless of how many
+ * requests provisionPayrollUser has in flight — the nightly reconcile does
+ * not share this budget and keeps its full per-request timeouts.
  */
 export async function provisionPayrollUserBestEffort(userId: string): Promise<void> {
   try {
     const settings = await getSetting("sso").catch(() => null);
     if (settings?.autoProvision === false) return;
-    await provisionPayrollUser(userId);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timed-out">((resolve) => {
+      timer = setTimeout(() => resolve("timed-out"), BEST_EFFORT_PROVISION_TIMEOUT_MS);
+    });
+    try {
+      const result = await Promise.race([provisionPayrollUser(userId), timeout]);
+      if (result === "timed-out") {
+        logger.warn(
+          { userId, timeoutMs: BEST_EFFORT_PROVISION_TIMEOUT_MS },
+          "authentik: best-effort provisioning timed out; nightly reconcile will retry",
+        );
+      }
+    } finally {
+      clearTimeout(timer);
+    }
   } catch (err) {
     logger.warn({ err, userId }, "authentik: best-effort provisioning failed");
   }

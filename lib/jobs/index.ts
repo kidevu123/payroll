@@ -131,12 +131,26 @@ async function registerJobs(boss: PgBoss): Promise<void> {
   });
   const sso = await getSetting("sso").catch(() => null);
   if (cronEnabled && sso?.autoProvision !== false) {
-    await boss.schedule(
-      AUTHENTIK_RECONCILE_QUEUE,
-      sso?.reconcileCron ?? "0 3 * * *",
-      undefined,
-      tzOpts,
-    );
+    // Zod validates reconcileCron on save (lib/settings/schemas.ts), but a
+    // value written before that validation existed, or edited directly in
+    // the database, could still be malformed — boss.schedule throws on an
+    // invalid expression, and this registers before payroll.run.tick,
+    // ngteco.import, ngteco.punch.poll and ngteco.chrome-reaper below, so an
+    // uncaught throw here would silently stop all of those from
+    // registering. Log and move on instead.
+    try {
+      await boss.schedule(
+        AUTHENTIK_RECONCILE_QUEUE,
+        sso?.reconcileCron ?? "0 3 * * *",
+        undefined,
+        tzOpts,
+      );
+    } catch (err) {
+      logger.error(
+        { err, reconcileCron: sso?.reconcileCron },
+        "authentik.reconcile: failed to schedule, stored cron may be invalid; other jobs still registering",
+      );
+    }
   } else {
     await boss.unschedule(AUTHENTIK_RECONCILE_QUEUE).catch(() => undefined);
   }

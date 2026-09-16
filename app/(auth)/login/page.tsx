@@ -41,6 +41,19 @@ export default async function LoginPage({
                 That account is not set up in payroll yet. Ask the office to add you.
               </div>
             )}
+            {/*
+             * Auth.js collapses every other refusal reason (provider
+             * outage, network error, misconfiguration) into error values
+             * this page cannot tell apart -- so this is a single neutral
+             * fallback, not a per-reason message. Plain English for
+             * warehouse staff: no internal system names, no log
+             * references.
+             */}
+            {error && error !== "AccessDenied" && (
+              <div className="rounded-input border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800">
+                Something went wrong signing in. Try again, or ask the office for help.
+              </div>
+            )}
             <SsoSignInForm callbackUrl={from || "/"} />
             <div className="flex items-center gap-3 text-xs text-text-muted">
               <hr className="flex-1" />
