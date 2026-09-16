@@ -24,7 +24,8 @@ export type ProvisionOutcome =
       userId: string;
       email: string;
       username: string;
-      authentikPk: number;
+      /** Absent on a dry run: a preview has no real account to point at. */
+      authentikPk?: number;
     }
   | { status: "skipped"; userId: string; email: string; reason: string }
   | { status: "needs-review"; userId: string; email: string; username: string; reason: string }
@@ -51,15 +52,20 @@ export async function provisionPayrollUser(
   userId: string,
   opts?: { client?: AuthentikClient; dryRun?: boolean },
 ): Promise<ProvisionOutcome> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) return { status: "failed", userId, email: "", error: "User not found." };
-
-  const client = opts?.client ?? getAuthentikClient();
-  if (!client) {
-    return { status: "skipped", userId, email: user.email, reason: "not-configured" };
-  }
-
+  // Everything, including the lookup, sits inside the try: a transient DB
+  // error here must become a "failed" outcome, not an exception. An exception
+  // would escape provisionMissingUsers' loop and abort the sweep for every
+  // remaining user.
+  let user: typeof users.$inferSelect | undefined;
   try {
+    [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return { status: "failed", userId, email: "", error: "User not found." };
+
+    const client = opts?.client ?? getAuthentikClient();
+    if (!client) {
+      return { status: "skipped", userId, email: user.email, reason: "not-configured" };
+    }
+
     const name = await displayNameFor(user.employeeId, user.email);
     const candidateUsername = deriveAuthentikUsername({ name, email: user.email });
     const matchByEmail = await client.findUserByEmail(user.email);
@@ -89,12 +95,14 @@ export async function provisionPayrollUser(
     }
 
     if (opts?.dryRun) {
+      // No pk is invented for a would-be creation: authentikPk is optional on
+      // the outcome precisely so a preview cannot be mistaken for a real link.
       return {
         status: decision.action === "link" ? "linked" : "created",
         userId,
         email: user.email,
         username: decision.username,
-        authentikPk: decision.action === "link" ? decision.authentikPk : -1,
+        ...(decision.action === "link" ? { authentikPk: decision.authentikPk } : {}),
       };
     }
 
@@ -123,14 +131,27 @@ export async function provisionPayrollUser(
       logger.warn({ err, groupName }, "authentik: group membership failed");
     }
 
-    await linkAuthentikAccount(userId, { pk: authentikPk, username: decision.username });
-    await writeAudit({
-      actorId: null,
-      actorRole: null,
-      action: decision.action === "link" ? "authentik.user.linked" : "authentik.user.provisioned",
-      targetType: "User",
-      targetId: userId,
-      after: { authentikPk, username: decision.username, email: user.email },
+    // The link and its audit row are one transaction: a crash between them
+    // would leave an unaudited Authentik link, and the repo's rule is that
+    // every mutation is audited before commit.
+    // (email captured here, not read as `user.email` inside the closure: TS
+    // cannot carry the earlier `if (!user) return` narrowing of a `let`
+    // variable across a nested function boundary.)
+    const email = user.email;
+    await db.transaction(async (tx) => {
+      await linkAuthentikAccount(userId, { pk: authentikPk, username: decision.username }, tx);
+      await writeAudit(
+        {
+          actorId: null,
+          actorRole: null,
+          action:
+            decision.action === "link" ? "authentik.user.linked" : "authentik.user.provisioned",
+          targetType: "User",
+          targetId: userId,
+          after: { authentikPk, username: decision.username, email },
+        },
+        tx,
+      );
     });
 
     return {
@@ -142,6 +163,7 @@ export async function provisionPayrollUser(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    const email = user?.email ?? "";
     logger.warn({ err, userId }, "authentik: provisioning failed");
     await writeAudit({
       actorId: null,
@@ -151,7 +173,7 @@ export async function provisionPayrollUser(
       targetId: userId,
       after: { error: message },
     }).catch(() => undefined);
-    return { status: "failed", userId, email: user.email, error: message };
+    return { status: "failed", userId, email, error: message };
   }
 }
 
@@ -165,11 +187,22 @@ export async function provisionMissingUsers(opts?: {
   const missing = await listUsersMissingAuthentik();
   const outcomes: ProvisionOutcome[] = [];
   for (const user of missing) {
-    outcomes.push(
-      await provisionPayrollUser(user.id, {
-        ...(opts?.dryRun ? { dryRun: true } : {}),
-      }),
-    );
+    // Belt and braces: provisionPayrollUser is written not to throw, but one
+    // user must never be able to abort the sweep for the rest.
+    try {
+      outcomes.push(
+        await provisionPayrollUser(user.id, {
+          ...(opts?.dryRun ? { dryRun: true } : {}),
+        }),
+      );
+    } catch (err) {
+      outcomes.push({
+        status: "failed",
+        userId: user.id,
+        email: user.email,
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
   }
   return outcomes;
 }

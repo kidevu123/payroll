@@ -383,11 +383,14 @@ export async function findUserByAuthentikSub(sub: string): Promise<User | null> 
  * `authentikPk`/`authentikUsername` by the provisioner, and neither should
  * clobber the other.
  */
+export type LinkExecutor = Pick<typeof db, "update" | "insert">;
+
 export async function linkAuthentikAccount(
   userId: string,
   link: { sub?: string; pk?: number; username?: string },
+  executor: LinkExecutor = db,
 ): Promise<void> {
-  await db
+  await executor
     .update(users)
     .set({
       ...(link.sub !== undefined ? { authentikSub: link.sub } : {}),
