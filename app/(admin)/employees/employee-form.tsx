@@ -89,6 +89,17 @@ export function EmployeeForm(props: Props) {
   })();
   const [classification, setClassification] =
     React.useState<Classification>(initialClassification);
+  // Controlled so the Zelle contact field can appear on demand. React
+  // resets form fields after a form action, which would snap a select back
+  // to the stored value after a failed save. The submitted value rides on
+  // a hidden input fed from state, and the visible select opts out of the
+  // form (form attribute) so the reset never touches it.
+  const [payoutPreference, setPayoutPreference] = React.useState<string>(
+    e?.payoutPreference ?? "",
+  );
+  const [zelleContact, setZelleContact] = React.useState(
+    e?.zelleContact ?? "",
+  );
 
   // Hidden values submitted to the server actions (which still take
   // payType + payScheduleId so we don't have to rev the schema).
@@ -410,6 +421,46 @@ export function EmployeeForm(props: Props) {
             when that account is missing in Zoho.
           </p>
         </div>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="payoutPreference">Preferred payment</Label>
+          <input
+            type="hidden"
+            name="payoutPreference"
+            value={payoutPreference}
+          />
+          <select
+            id="payoutPreference"
+            form="payout-preference-detached"
+            value={payoutPreference}
+            onChange={(ev) => setPayoutPreference(ev.target.value)}
+            className="h-10 w-full rounded-input border border-border bg-surface px-3 text-sm"
+          >
+            <option value="">Not set</option>
+            <option value="CASH">Cash</option>
+            <option value="ZELLE">Zelle</option>
+          </select>
+          <p className="text-xs text-text-muted">
+            For the office&apos;s reference only. Employees can also set this
+            from their own profile.
+          </p>
+        </div>
+        {payoutPreference === "ZELLE" && (
+          <div className="space-y-1">
+            <Label htmlFor="zelleContact">Zelle phone or email</Label>
+            <Input
+              id="zelleContact"
+              name="zelleContact"
+              value={zelleContact}
+              onChange={(ev) => setZelleContact(ev.target.value)}
+              placeholder="+15551234567 or name@example.com"
+              maxLength={254}
+              autoComplete="off"
+              required
+            />
+          </div>
+        )}
       </div>
       <div className="space-y-1">
         <Label htmlFor="kioskPin">

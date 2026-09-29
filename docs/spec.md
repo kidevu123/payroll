@@ -243,7 +243,7 @@ Bottom nav, four tabs: **Home · Time · Pay · Profile**
 - **Home** — week stats, alerts, quick actions
 - **Time** — calendar strip, per-day cards, fix-request affordance
 - **Pay** — payslip list with state pills, download, acknowledge (phone). On the warehouse tablet the employee instead draws an e-signature for their own payslip — self-serve on the PIN kiosk, or in "payday mode" where the owner unlocks a names-only list for one period with a 6-digit office code and hands the tablet around. Signing implies acknowledgement. The on-demand Signature report embeds each drawn signature on that employee's line; the shared paper sign sheet (which exposed everyone's pay to everyone) is no longer needed.
-- **Profile** — photo, contact, language toggle, notification preferences, password, sign out
+- **Profile** — photo, contact, language toggle, notification preferences, password, sign out. Also a payout preference: the employee picks Cash or Zelle and, for Zelle, enters the phone or email their Zelle is registered under. It is reference information for the office (shown on the admin employee page, editable on the admin employee form) and never changes payroll math, the period payment method, or the cash drawer.
 
 ### Admin
 

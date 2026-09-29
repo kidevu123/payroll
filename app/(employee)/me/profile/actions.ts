@@ -9,6 +9,10 @@ import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { hashPassword } from "@/lib/auth";
 import { writeAudit } from "@/lib/db/audit";
+import {
+  resolvePayoutPreference,
+  type PayoutPreferenceError,
+} from "@/lib/employees/zelle-contact";
 
 const schema = z.object({
   displayName: z.string().min(1).max(120),
@@ -86,4 +90,48 @@ export async function setKioskPinAction(
   });
   revalidatePath("/me/profile");
   return { ok: true };
+}
+
+const payoutSchema = z.object({
+  preference: z.string().max(20).nullable(),
+  zelleContact: z.string().max(254).nullable(),
+});
+
+/**
+ * Employee self-service payout preference (cash or Zelle + the phone or
+ * email their Zelle is registered under). Display-only for the office;
+ * nothing in payroll reads it. Goes through updateEmployee, which writes
+ * the employee.update audit row in the same transaction. Error codes map
+ * to i18n strings in the form.
+ */
+export async function savePayoutPreferenceAction(
+  formData: FormData,
+): Promise<{
+  error?: PayoutPreferenceError | "NOT_LINKED";
+  ok?: true;
+  /** The contact as stored (normalized), so the form can show it. */
+  zelleContact?: string | null;
+}> {
+  const session = await requireSession();
+  if (!session.user.employeeId) return { error: "NOT_LINKED" };
+  const preference = formData.get("payoutPreference");
+  const zelleContact = formData.get("zelleContact");
+  const parsed = payoutSchema.safeParse({
+    preference: typeof preference === "string" ? preference : null,
+    zelleContact: typeof zelleContact === "string" ? zelleContact : null,
+  });
+  if (!parsed.success) return { error: "ZELLE_CONTACT_INVALID" };
+  const resolved = resolvePayoutPreference(parsed.data);
+  if (!resolved.ok) return { error: resolved.error };
+  // Employees choose between the two options; clearing back to "not set"
+  // is an office-only action on the admin employee form.
+  if (resolved.value.payoutPreference === null) {
+    return { error: "PREFERENCE_INVALID" };
+  }
+  await updateEmployee(session.user.employeeId, resolved.value, {
+    id: session.user.id,
+    role: session.user.role,
+  });
+  revalidatePath("/me/profile");
+  return { ok: true, zelleContact: resolved.value.zelleContact };
 }

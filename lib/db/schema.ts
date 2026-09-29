@@ -78,6 +78,12 @@ export const payTypeEnum = pgEnum("pay_type", [
 export const languageEnum = pgEnum("language", ["en", "es"]);
 
 export const paymentMethodEnum = pgEnum("payment_method", ["BANK", "CASH"]);
+// How an EMPLOYEE would like to be paid. Not the same thing as
+// payment_method above, which records how a pay PERIOD was actually paid.
+export const payoutPreferenceEnum = pgEnum("payout_preference", [
+  "CASH",
+  "ZELLE",
+]);
 export const cashDrawerKindEnum = pgEnum("cash_drawer_kind", [
   "DEPOSIT",
   "WITHDRAWAL",
@@ -339,6 +345,16 @@ export const employees = pgTable(
      * the employee's NGTeco clock ID.
      */
     kioskPinHash: text("kiosk_pin_hash"),
+    /**
+     * How the employee would like to receive their pay, and the phone
+     * (+1XXXXXXXXXX) or email their Zelle is registered under. Null
+     * preference = not set. Display-only for the office: payroll math,
+     * the period payment method and the cash drawer never read these.
+     * Values are normalized by lib/employees/zelle-contact.ts;
+     * zelleContact is always null unless the preference is ZELLE.
+     */
+    payoutPreference: payoutPreferenceEnum("payout_preference"),
+    zelleContact: text("zelle_contact"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

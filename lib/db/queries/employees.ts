@@ -268,6 +268,8 @@ const UPDATABLE_FIELDS = new Set<keyof UpdateEmployeePatch>([
   "zohoExpenseAccount",
   "zohoPaidThrough",
   "kioskPinHash",
+  "payoutPreference",
+  "zelleContact",
 ]);
 
 function whitelistPatch(patch: UpdateEmployeePatch): UpdateEmployeePatch {

@@ -18,8 +18,29 @@ import {
 } from "@/lib/db/queries/employees";
 import { addRate } from "@/lib/db/queries/rate-history";
 import { recomputePayslip } from "@/lib/db/queries/payslips";
+import {
+  resolvePayoutPreference,
+  type PayoutPreferenceError,
+} from "@/lib/employees/zelle-contact";
 
 const idSchema = z.string().uuid();
+
+const PAYOUT_ERROR_MESSAGES: Record<PayoutPreferenceError, string> = {
+  PREFERENCE_INVALID: "Preferred payment must be Cash or Zelle.",
+  ZELLE_CONTACT_REQUIRED: "Enter the Zelle phone or email.",
+  ZELLE_CONTACT_INVALID:
+    "Zelle contact must be a valid US phone number or email.",
+};
+
+/** Same resolver the employee profile uses, so both entry points agree. */
+function readPayoutPreference(formData: FormData) {
+  const preference = formData.get("payoutPreference");
+  const zelleContact = formData.get("zelleContact");
+  return resolvePayoutPreference({
+    preference: typeof preference === "string" ? preference : null,
+    zelleContact: typeof zelleContact === "string" ? zelleContact : null,
+  });
+}
 
 const createSchema = z.object({
   displayName: z.string().min(1).max(120),
@@ -97,6 +118,8 @@ export async function createEmployeeAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const d = parsed.data;
+  const payout = readPayoutPreference(formData);
+  if (!payout.ok) return { error: PAYOUT_ERROR_MESSAGES[payout.error] };
   const employee = await createEmployee(
     {
       displayName: d.displayName,
@@ -113,6 +136,7 @@ export async function createEmployeeAction(
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
       zohoExpenseAccount: d.zohoExpenseAccount ?? null,
       zohoPaidThrough: d.zohoPaidThrough ?? null,
+      ...payout.value,
       ...(d.kioskPin ? { kioskPinHash: await hashPassword(d.kioskPin) } : {}),
       // Prefer the dollar field; fall back to cents for legacy callers.
       ...(d.initialHourlyRateDollars !== undefined && d.initialHourlyRateDollars !== null
@@ -202,6 +226,8 @@ export async function updateEmployeeAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
   const d = parsed.data;
+  const payout = readPayoutPreference(formData);
+  if (!payout.ok) return { error: PAYOUT_ERROR_MESSAGES[payout.error] };
   const before = await getEmployee(id);
   if (!before) return { error: "Employee not found." };
   if (before.status === "TERMINATED") {
@@ -257,6 +283,7 @@ export async function updateEmployeeAction(
       ngtecoEmployeeRef: d.ngtecoEmployeeRef ?? null,
       zohoExpenseAccount: d.zohoExpenseAccount ?? null,
       zohoPaidThrough: d.zohoPaidThrough ?? null,
+      ...payout.value,
       ...(d.kioskPin ? { kioskPinHash: await hashPassword(d.kioskPin) } : {}),
     },
     { id: session.user.id, role: session.user.role },

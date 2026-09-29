@@ -393,7 +393,21 @@
       "kioskPinSaving": "Saving...",
       "kioskPinSaved": "PIN saved. Use it at the kiosk with your clock ID.",
       "clockIdLabel": "Your clock ID",
-      "clockIdMissing": "Not set yet — ask the office."
+      "clockIdMissing": "Not set yet — ask the office.",
+      "payoutTitle": "How you want to be paid",
+      "payoutHint": "Tell the office how you would like to receive your pay.",
+      "payoutCash": "Cash",
+      "payoutZelle": "Zelle",
+      "zelleContactLabel": "Zelle phone or email",
+      "zelleContactHint": "Use the phone number or email your Zelle is registered with.",
+      "zelleContactPlaceholder": "Phone number or email",
+      "payoutChoose": "Choose cash or Zelle.",
+      "zelleContactRequired": "Enter the phone number or email for your Zelle.",
+      "zelleContactInvalid": "Enter a valid US phone number or email address.",
+      "payoutNotLinked": "Your account is not linked to an employee record.",
+      "payoutSave": "Save",
+      "payoutSaving": "Saving...",
+      "payoutSaved": "Saved. The office can see your choice."
     },
     "notifications": {
       "back": "Back",

@@ -393,7 +393,21 @@
       "kioskPinSaving": "Guardando...",
       "kioskPinSaved": "PIN guardado. Uselo en el kiosco con su numero de reloj.",
       "clockIdLabel": "Su numero de reloj",
-      "clockIdMissing": "Sin asignar — pregunte en la oficina."
+      "clockIdMissing": "Sin asignar — pregunte en la oficina.",
+      "payoutTitle": "Cómo quiere recibir su pago",
+      "payoutHint": "Indique a la oficina cómo prefiere recibir su pago.",
+      "payoutCash": "Efectivo",
+      "payoutZelle": "Zelle",
+      "zelleContactLabel": "Teléfono o correo de Zelle",
+      "zelleContactHint": "Use el teléfono o correo con el que está registrado su Zelle.",
+      "zelleContactPlaceholder": "Teléfono o correo electrónico",
+      "payoutChoose": "Elija efectivo o Zelle.",
+      "zelleContactRequired": "Ingrese el teléfono o correo de su Zelle.",
+      "zelleContactInvalid": "Ingrese un teléfono de EE. UU. o un correo electrónico válido.",
+      "payoutNotLinked": "Su cuenta no está vinculada a un registro de empleado.",
+      "payoutSave": "Guardar",
+      "payoutSaving": "Guardando...",
+      "payoutSaved": "Guardado. La oficina puede ver su elección."
     },
     "notifications": {
       "back": "Atrás",

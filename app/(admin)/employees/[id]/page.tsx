@@ -14,6 +14,7 @@ import {
   Phone,
   Languages,
   Link as LinkIcon,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,6 +168,21 @@ export default async function EmployeeDetailPage({
                 Icon={Phone}
                 label="Phone"
                 value={employee.phone ?? <span className="text-text-subtle">—</span>}
+              />
+              <Stat
+                Icon={Wallet}
+                label="Paid by"
+                value={
+                  employee.payoutPreference === "ZELLE" ? (
+                    <span className="truncate block">
+                      Zelle · {employee.zelleContact}
+                    </span>
+                  ) : employee.payoutPreference === "CASH" ? (
+                    "Cash"
+                  ) : (
+                    <span className="text-text-subtle">Not set</span>
+                  )
+                }
               />
               <Stat
                 Icon={Mail}
