@@ -129,8 +129,8 @@ LX120 by copying the file and running `systemctl daemon-reload`:
 
 - **Before a rebuild**, tag the image the running app container uses as
   `payroll-app:previous`. If no container is running, skip.
-- **After a successful rebuild**, run `docker builder prune -f` with a
-  storage cap, so the build cache cannot grow without bound. A failed prune
+- **After a successful rebuild**, run `docker builder prune -f --keep-storage 2gb`,
+  so the build cache is capped at 2 GB instead of growing without bound. A failed prune
   must not fail the deploy.
 
 Rollback, documented in `docs/runbook.md`:
@@ -143,7 +143,7 @@ stops the timer first and the fix is a `git revert` pushed afterwards.
 
 A temporary LXC on the Proxmox host, used only for this work.
 
-- Unprivileged Debian or Ubuntu container with nesting enabled so Docker
+- Unprivileged Debian 12 container with nesting enabled so Docker
   can run inside it, a 30 GB disk on `local-lvm` (about 100 GB free),
   4 cores, 8 GB memory.
 - It receives a copy of the repository at the branch under test. It never
