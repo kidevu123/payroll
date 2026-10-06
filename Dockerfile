@@ -4,10 +4,10 @@
 # Stages:
 #   deps  — install full deps with native modules (argon2, postgres.js).
 #   build — compile Next.js with output: standalone.
-#   run   — the runtime image: minimal Node + the standalone bundle +
-#           the migrate script + the seed script + Playwright dependencies.
-#           Playwright is baked in now (Phase 2 uses it) so we don't have to
-#           rebuild later when the scraper lands.
+#   prod-deps — production-only node_modules for the runtime image.
+#   run   — the runtime image: slim Node + the standalone bundle + the
+#           migrate/seed scripts + production node_modules + the Chromium
+#           headless shell (the NGTeco scraper's only browser).
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 1: deps
@@ -22,6 +22,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY package.json package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 1b: prod-deps
+# ──────────────────────────────────────────────────────────────────────────────
+# Production dependencies only. This is what the runtime image ships. The
+# full install above stays for the build stage (typescript, eslint, vitest,
+# esbuild); copying THAT tree into the runtime image cost 1.14 GB.
+#
+# Same base and build tools as `deps` so native modules resolve identically.
+FROM node:22-bookworm-slim AS prod-deps
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates python3 build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
+    && npm cache clean --force
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 2: build
@@ -73,24 +92,56 @@ RUN npx --yes esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx lib/pdf/a
     --out-extension:.js=.js \
     && ls -la /app/.next/pdf/
 
+# Bundle the MCP server here, where esbuild is installed. It used to run in
+# the runtime stage, which was the only reason that stage needed a
+# developer tool. Output path and flags are unchanged.
+RUN npx esbuild mcp-server/src/index.ts \
+    --bundle \
+    --platform=node \
+    --target=node22 \
+    --format=cjs \
+    --outfile=mcp-server/run.cjs \
+    --tsconfig=mcp-server/tsconfig.json \
+    --packages=external \
+    --alias:@/lib=./lib
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: run
 # ──────────────────────────────────────────────────────────────────────────────
-# Use Microsoft's Playwright image as the runtime base — Phase 2 needs it and
-# baking it in now avoids a rebuild later. It's larger (~500MB) but the spec
-# explicitly accepts that (§19).
+# Slim Node plus exactly one browser. The previous base was Microsoft's
+# Playwright image, which ships Chromium, Firefox AND WebKit (2.3 GB); the
+# scraper only ever launches Chromium headless.
 #
-# Image version MUST match the `playwright` npm dependency in package.json
-# exactly — Playwright bundles its browsers at /ms-playwright keyed on
-# the package version. A drift (eg. 1.48 image vs 1.59 npm) makes
-# `chromium.launchPersistentContext` fail with "Executable doesn't exist
-# at /ms-playwright/chromium_headless_shell-NNNN/...". Bump in lockstep.
-FROM mcr.microsoft.com/playwright:v1.59.1-jammy AS run
+# Node 24 on purpose: that is what the Playwright image ran, so the runtime
+# Node major is unchanged.
+FROM node:24-bookworm-slim AS run
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# procps provides pgrep/pkill, which lib/ngteco/chromium-reaper.ts shells
+# out to. The old base happened to include it. Without it the reaper fails
+# SILENTLY (it swallows the error and reports zero browsers), so orphaned
+# headless Chromes would pile up again.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Production node_modules first: this layer and the browser layer below only
+# change when package-lock.json changes, so routine deploys reuse both.
+COPY --from=prod-deps /app/node_modules ./node_modules
+
+# Install the browser FROM the app's own playwright package, so the browser
+# build always matches the library. (The old base needed its image tag
+# bumped in lockstep with package.json by hand.) --only-shell installs the
+# headless shell, the binary `headless: true` launches; its process name is
+# what the reaper matches. --with-deps pulls the system libraries Playwright
+# lists for this distribution.
+RUN node node_modules/playwright/cli.js install --with-deps --only-shell chromium \
+    && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/*
 
 # Stamped at build time by deploy/lxc/payroll-deploy.service. Used by
 # instrumentation.ts to emit milo_build_info{sha,branch,version} so the
@@ -112,24 +163,16 @@ COPY --from=build /app/.git-sha /app/.git-sha
 COPY --from=build /app/.next/pdf ./.next/pdf
 COPY --from=build /app/public ./public
 
-# Drizzle and the migrate/seed scripts live outside the standalone bundle.
+# Drizzle and the migrate/seed/repair scripts live outside the standalone
+# bundle and run through tsx, so their sources ship as-is.
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/lib ./lib
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/tsconfig.json ./tsconfig.json
-COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+# Includes mcp-server/run.cjs, bundled in the build stage.
 COPY --from=build /app/mcp-server ./mcp-server
-RUN npx esbuild mcp-server/src/index.ts \
-    --bundle \
-    --platform=node \
-    --target=node22 \
-    --format=cjs \
-    --outfile=mcp-server/run.cjs \
-    --tsconfig=mcp-server/tsconfig.json \
-    --packages=external \
-    --alias:@/lib=./lib
 
 # Default storage root — host-mounted in compose.
 RUN mkdir -p /data/uploads /data/payslips /data/ngteco /data/backups
