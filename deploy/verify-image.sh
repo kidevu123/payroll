@@ -14,7 +14,12 @@ MAX_MB="${1:-1600}"
 fail=0
 pass() { echo "PASS  $1${2:+  $2}"; }
 bad()  { echo "FAIL  $1${2:+  $2}"; fail=1; }
-in_app() { docker compose exec -T app "$@"; }
+# Plain `docker exec` against the resolved container, not `docker compose
+# exec`: compose prints its own warnings (an unset variable in the compose
+# file, for one) on stderr, and they would land in the captured output.
+APP=$(docker compose ps -q app 2>/dev/null)
+[ -n "$APP" ] || { echo "FAIL  no running app container (run from the compose directory)"; exit 1; }
+in_app() { docker exec "$APP" "$@"; }
 
 # size ------------------------------------------------------------------
 bytes=$(docker image inspect payroll-app:latest --format '{{.Size}}' 2>/dev/null || echo 0)
@@ -48,13 +53,18 @@ out=$(in_app node -e '(async()=>{const {chromium}=require("playwright");const ct
 echo "$out" | grep -q '^verify [0-9]' && pass chromium "$out" || bad chromium "$out"
 
 # reaper: an orphaned browser is found by pgrep and removed by pkill -----
+# Same binaries and pattern as lib/ngteco/chromium-reaper.ts. The pattern is
+# assembled inside the shell so this script's own command line does not
+# contain it; otherwise `pkill -f` matches (and kills) the check itself.
 out=$(in_app sh -c '
+  pat="chrome-head""less"
   node -e "(async()=>{const {chromium}=require(\"playwright\");await chromium.launchPersistentContext(\"/tmp/verify-orphan\",{headless:true});setTimeout(()=>{},60000)})()" >/dev/null 2>&1 &
-  i=0; while [ $i -lt 20 ]; do n=$(pgrep -f chrome-headless | wc -l); [ "$n" -gt 0 ] && break; i=$((i+1)); sleep 1; done
-  before=$(pgrep -f chrome-headless | wc -l)
-  pkill -9 -f chrome-headless; sleep 1
-  after=$(pgrep -f chrome-headless | wc -l)
-  pkill -9 -f verify-orphan >/dev/null 2>&1
+  launcher=$!
+  i=0; while [ $i -lt 20 ]; do n=$(pgrep -f "$pat" | wc -l); [ "$n" -gt 0 ] && break; i=$((i+1)); sleep 1; done
+  before=$(pgrep -f "$pat" | wc -l)
+  pkill -9 -f "$pat"; sleep 1
+  after=$(pgrep -f "$pat" | wc -l)
+  kill -9 "$launcher" >/dev/null 2>&1
   echo "before=$before after=$after"' 2>&1)
 case "$out" in
   *"before=0"*|*"not found"*) bad reaper "$out" ;;
@@ -68,7 +78,7 @@ rc=${PIPESTATUS[0]}
 [ "$rc" = "0" ] && pass tsx-script || bad tsx-script "exit $rc: $(echo "$out" | tr '\n' ' ')"
 
 # mcp --------------------------------------------------------------------
-st=$(docker inspect --format '{{.State.Health.Status}}' "$(docker compose ps -q mcp)" 2>/dev/null)
+st=$(docker inspect --format '{{.State.Health.Status}}' "$(docker compose ps -q mcp 2>/dev/null)" 2>/dev/null)
 [ "$st" = "healthy" ] && pass mcp || bad mcp "health=${st:-none}"
 
 # metrics: the Prometheus exporter (OpenTelemetry) is listening ----------
