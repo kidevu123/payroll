@@ -37,7 +37,7 @@ export function PeriodDeleteButton({
         }}
         title="Delete this period (cascade)"
         aria-label="Delete this period"
-        className="h-8 min-h-0 w-8 p-0 text-text-subtle hover:bg-danger-50 hover:text-danger-700"
+        className="h-8 min-h-0 w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 p-0 text-text-subtle hover:bg-danger-50 hover:text-danger-700"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </Button>

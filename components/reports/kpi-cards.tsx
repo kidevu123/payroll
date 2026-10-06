@@ -37,13 +37,13 @@ function Card({
 }) {
   const plate = tone === "brand" ? "bg-brand-50 text-brand-700" : "bg-info-50 text-info-700";
   return (
-    <div className="flex items-start gap-4 rounded-card border border-border/70 bg-surface px-5 py-4 shadow-card">
-      <span aria-hidden className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-input ${plate}`}>
+    <div className="flex items-start gap-4 rounded-card border border-border/70 bg-surface px-3.5 py-3 shadow-card sm:px-5 sm:py-4">
+      <span aria-hidden className={`mt-0.5 hidden h-12 w-12 shrink-0 items-center justify-center rounded-input sm:flex ${plate}`}>
         <Icon className="h-6 w-6" />
       </span>
       <div className="min-w-0">
-        <div className="text-sm text-text-muted">{label}</div>
-        <div className="mt-0.5 truncate text-metric tabular-nums tracking-tight text-text">{value}</div>
+        <div className="truncate text-sm text-text-muted">{label}</div>
+        <div className="mt-0.5 truncate text-metric tabular-nums tracking-tight text-text max-sm:text-xl">{value}</div>
         <div className="mt-1">{context}</div>
       </div>
     </div>
@@ -63,7 +63,7 @@ export function ReportsKpiCards({
   const paid = employeesActive + employeesInactive;
   const awaiting = summary.byMethod.slices.find((s) => s.key === "UNPAID")?.periods ?? 0;
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
       <Card label="Gross wages" tone="brand" icon={DollarSign}
         value={<MoneyDisplay cents={c.grossCents} monospace={false} />}
         context={<Delta pct={c.grossDeltaPct} priorYear={c.priorYear} />} />

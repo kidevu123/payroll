@@ -146,7 +146,7 @@ export default async function NotificationsPage() {
 
       {/* Overview tiles — tinted icon circle left, headline figure on top,
           matching the reference mock. Real metrics only. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
         <OverviewTile
           Icon={Send}
           tone="bg-info-50 text-info-700"
@@ -455,10 +455,10 @@ function OverviewTile({
   sub: string;
 }) {
   return (
-    <div className="flex items-start gap-3.5 rounded-card border border-border/70 bg-surface p-4 shadow-card">
+    <div className="flex items-start gap-3.5 rounded-card border border-border/70 bg-surface p-3 shadow-card sm:p-4">
       <span
         aria-hidden
-        className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tone}`}
+        className={`mt-0.5 hidden h-11 w-11 shrink-0 items-center justify-center rounded-full sm:flex ${tone}`}
       >
         <Icon className="h-5 w-5" />
       </span>

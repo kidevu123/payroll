@@ -76,31 +76,31 @@ export default async function AuditPage({
           name="actor"
           defaultValue={params.actor ?? ""}
           placeholder="Actor user id"
-          className="h-9 md:col-span-2 rounded-input border border-border bg-surface px-3"
+          className="h-11 md:h-9 md:col-span-2 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="type"
           defaultValue={params.type ?? ""}
           placeholder="Target type (Employee, Shift, …)"
-          className="h-9 rounded-input border border-border bg-surface px-3"
+          className="h-11 md:h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="action"
           defaultValue={params.action ?? ""}
           placeholder="Action keyword"
-          className="h-9 rounded-input border border-border bg-surface px-3"
+          className="h-11 md:h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="from"
           type="date"
           defaultValue={params.from ?? ""}
-          className="h-9 rounded-input border border-border bg-surface px-3"
+          className="h-11 md:h-9 rounded-input border border-border bg-surface px-3"
         />
         <input
           name="to"
           type="date"
           defaultValue={params.to ?? ""}
-          className="h-9 rounded-input border border-border bg-surface px-3"
+          className="h-11 md:h-9 rounded-input border border-border bg-surface px-3"
         />
         <div className="md:col-span-6 flex justify-end gap-2">
           <Button type="submit" size="sm" variant="secondary">

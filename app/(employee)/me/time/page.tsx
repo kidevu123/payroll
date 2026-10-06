@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HoursDisplay } from "@/components/domain/hours-display";
@@ -35,6 +35,18 @@ function fmtTime(d: Date | null, tz: string, locale: string): string {
     minute: "2-digit",
     timeZone: tz,
   }).format(d);
+}
+
+// Calendar days are rendered from their ISO key at noon UTC so the label
+// can never roll to the neighbouring day in the viewer's timezone.
+function fmtDay(
+  iso: string,
+  locale: string,
+  opts: Intl.DateTimeFormatOptions,
+): string {
+  return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(
+    new Date(`${iso}T12:00:00Z`),
+  );
 }
 
 function startOfWeek(iso: string, startDayOfWeek: number): string {
@@ -116,13 +128,15 @@ export default async function EmployeeTime() {
         density="employee"
         title={t("title")}
         description={t("subtitle")}
-        meta={today}
+        meta={fmtDay(today, dateLocale, { weekday: "long", month: "long", day: "numeric" })}
         actions={<AutoRefresh intervalMs={60_000} label={t("updatesLabel")} />}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("todayLabel")} · {today}</CardTitle>
+          <CardTitle>
+            {t("todayLabel")} · {fmtDay(today, dateLocale, { weekday: "short", month: "short", day: "numeric" })}
+          </CardTitle>
           <CardDescription>
             {t.rich("todaySubtitle", {
               hours: () => (
@@ -159,13 +173,13 @@ export default async function EmployeeTime() {
                   <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1 min-w-0">
                     <span>
                       <span className="text-text-muted">{t("in")}: </span>
-                      <span className="font-mono">
+                      <span className="tabular-nums font-medium">
                         {fmtTime(p.clockIn, company.timezone, dateLocale)}
                       </span>
                     </span>
                     <span>
                       <span className="text-text-muted">{t("out")}: </span>
-                      <span className="font-mono">
+                      <span className="tabular-nums font-medium">
                         {fmtTime(p.clockOut, company.timezone, dateLocale)}
                       </span>
                     </span>
@@ -203,31 +217,61 @@ export default async function EmployeeTime() {
         <div className="space-y-3">
           {weekKeys.map((wk) => {
             const days = byWeek.get(wk)!;
+            let weekMs = 0;
+            for (const list of days.values()) {
+              for (const p of list) {
+                if (p.voidedAt || !p.clockOut) continue;
+                weekMs += p.clockOut.getTime() - p.clockIn.getTime();
+              }
+            }
             return (
               <Card key={wk}>
-                <CardHeader>
+                <CardHeader className="flex-row items-baseline justify-between gap-3">
                   <CardTitle>
-                    {t("weekOf", { date: wk })}
+                    {t("weekOf", {
+                      date: fmtDay(wk, dateLocale, { month: "short", day: "numeric" }),
+                    })}
                   </CardTitle>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-text">
+                    <HoursDisplay
+                      hours={weekMs / MS_PER_HOUR}
+                      decimals={payRules.hoursDecimalPlaces}
+                    />{" "}
+                    <span className="text-xs font-normal text-text-muted">
+                      {t("hours").toLowerCase()}
+                    </span>
+                  </span>
                 </CardHeader>
-                <CardContent className="divide-y divide-border">
+                <CardContent className="divide-y divide-border/60 py-1">
                   {[...days.keys()].sort().map((d) => {
                     const list = days.get(d)!;
                     let totalMs = 0;
                     let edited = false;
-                    for (const p of list) {
-                      if (p.voidedAt) continue;
+                    const live = list
+                      .filter((p) => !p.voidedAt)
+                      .sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
+                    for (const p of live) {
                       if (p.editedAt) edited = true;
                       if (p.clockOut) totalMs += p.clockOut.getTime() - p.clockIn.getTime();
                     }
+                    const firstIn = live[0]?.clockIn ?? null;
+                    const lastOut = live[live.length - 1]?.clockOut ?? null;
                     return (
                       <Link
                         key={d}
                         href={`/me/time/${d}`}
-                        className="flex min-h-11 items-center justify-between gap-3 rounded-input text-sm transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+                        className="-mx-2 flex min-h-14 items-center justify-between gap-3 rounded-input px-2 py-2 text-sm transition-colors hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
                       >
-                        <span className="font-medium tabular-nums text-text">
-                          {d}
+                        <span className="min-w-0">
+                          <span className="block font-medium text-text first-letter:uppercase">
+                            {fmtDay(d, dateLocale, { weekday: "short", month: "short", day: "numeric" })}
+                          </span>
+                          {firstIn ? (
+                            <span className="block truncate text-xs tabular-nums text-text-muted">
+                              {fmtTime(firstIn, company.timezone, dateLocale)} –{" "}
+                              {fmtTime(lastOut, company.timezone, dateLocale)}
+                            </span>
+                          ) : null}
                         </span>
                         <span className="flex items-center gap-2.5 text-xs text-text-muted">
                           {edited ? (
@@ -241,6 +285,7 @@ export default async function EmployeeTime() {
                               decimals={payRules.hoursDecimalPlaces}
                             />
                           </span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-text-subtle" aria-hidden />
                         </span>
                       </Link>
                     );

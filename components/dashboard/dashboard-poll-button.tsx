@@ -32,7 +32,7 @@ export function DashboardPollButton() {
       type="button"
       onClick={onClick}
       disabled={inProgress}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold transition-opacity disabled:opacity-70"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] [@media(pointer:coarse)]:min-h-11 font-semibold transition-opacity disabled:opacity-70"
       style={{
         color: DASH.onAccent,
         background: DASH.accentGradient,

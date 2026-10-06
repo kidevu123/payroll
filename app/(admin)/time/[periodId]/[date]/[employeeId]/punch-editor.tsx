@@ -647,7 +647,7 @@ function EditablePunch({
         timezone={timezone}
         rightSlot={
           periodLocked ? null : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 max-sm:w-full max-sm:pt-1 max-sm:[&>button]:min-h-11 max-sm:[&>button]:flex-1">
               <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
                 Edit
               </Button>

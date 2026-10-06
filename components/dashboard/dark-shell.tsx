@@ -197,7 +197,7 @@ export function DashboardDarkShell({
           <Link
             href="/notifications"
             aria-label="Notifications"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full"
+            className="relative flex h-11 w-11 items-center justify-center rounded-full"
             style={{ color: DASH.textMuted, background: DASH.surfaceRaised }}
           >
             <Bell className="h-4 w-4" aria-hidden />

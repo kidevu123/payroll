@@ -16,6 +16,7 @@ import {
 import { and, asc, desc, eq, gt, lt, lte, gte, sql } from "drizzle-orm";
 import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { Button } from "@/components/ui/button";
 import { PollPunchesNowButton } from "@/components/admin/poll-punches-now";
 import { BackfillPunchesButton } from "@/components/admin/backfill-punches";
@@ -704,6 +705,75 @@ export default async function TimePage({
         ? today
         : (days[days.length - 1] ?? today);
 
+  // Per-cell state for the phone views (the desktop grid derives the same
+  // thing inline, per cell).
+  const cellFor = (e: (typeof employees)[number], d: string) => {
+    const list = grid.get(e.id)?.get(d) ?? [];
+    const offType = timeOffByDay.get(`${e.id}|${d}`);
+    let state: CellState;
+    if (list.length === 0) {
+      if (offType) state = timeOffStateFor(offType);
+      else if (d > today) state = "future";
+      else state = "missed";
+    } else if (
+      list.some(
+        (p) =>
+          isAmbiguousSinglePunch(p) ||
+          isMissingClockInPunch(p) ||
+          isOpenShiftPunch(p),
+      )
+    ) {
+      state = "incomplete";
+    } else state = "complete";
+    if (e.status !== "ACTIVE") state = "inactive";
+    const sorted = [...list].sort(
+      (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
+    );
+    const closedMs = sorted.reduce(
+      (acc, p) =>
+        p.clockOut ? acc + (p.clockOut.getTime() - p.clockIn.getTime()) : acc,
+      0,
+    );
+    return {
+      e,
+      state,
+      sorted,
+      closedMs,
+      cellPeriodId: resolveTimeCellPeriodId({
+        currentPeriodId: period.id,
+        punches: sorted,
+      }),
+    };
+  };
+  const mobileRows = employees.map((e) => cellFor(e, selectedDay));
+  // Days with at least one unpaired / open punch get a dot on the day strip.
+  // Today is excluded: a shift still on the clock is not a problem yet.
+  const issuesByDay = new Map(
+    days.map((d) => [
+      d,
+      d === today
+        ? 0
+        : employees.reduce(
+            (n, e) => n + (cellFor(e, d).state === "incomplete" ? 1 : 0),
+            0,
+          ),
+    ]),
+  );
+  const mobileSummary = (() => {
+    const count = (st: CellState[]) =>
+      mobileRows.filter((r) => st.includes(r.state)).length;
+    const parts = [
+      [count(["complete"]), "complete"],
+      [count(["incomplete"]), "unpaired"],
+      [count(["missed"]), "missing"],
+      [count(["pto", "sick", "unpaid", "other"]), "off"],
+    ] as const;
+    return parts
+      .filter(([n]) => n > 0)
+      .map(([n, label]) => `${n} ${label}`)
+      .join(" · ");
+  })();
+
   // Punch sync controls moved here from /payroll (owner: "there is no
   // reason for poll now to be on the payroll page — it belongs on Time").
   const lastPoll = await getLastPoll();
@@ -723,9 +793,12 @@ export default async function TimePage({
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-1.5">
+      {/* Page header. Below lg everything stacks in one column: the action
+          cluster used to be a shrink-0 right-aligned flex row, which on a
+          phone could not wrap and pushed the whole page ~670px wider than
+          the screen. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-2.5 lg:space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h1 className="text-title tracking-tight antialiased text-text">Time</h1>
             <span
@@ -734,27 +807,27 @@ export default async function TimePage({
               {stateBadge.label}
             </span>
           </div>
-          {/* Period date range with prev/next navigation */}
-          <div className="flex items-center gap-1">
+          {/* Period range with prev/next navigation. On touch it is one
+              full-width segmented control with 44px targets; on desktop it
+              collapses back to the quiet inline pager. */}
+          <div className="flex items-center gap-1 max-lg:rounded-input max-lg:border max-lg:border-border max-lg:bg-surface max-lg:p-0.5 max-lg:shadow-card">
             {adjacent.prevId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.prevId })}`}
-                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2/40 text-text-muted hover:text-text transition-colors"
+                className="h-11 w-11 lg:h-8 lg:w-8 shrink-0 inline-flex items-center justify-center rounded-input lg:rounded hover:bg-surface-2/40 active:bg-surface-2/60 text-text-muted hover:text-text transition-colors"
                 aria-label="Previous period"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
               </Link>
             ) : (
-              <span className="h-8 w-8 inline-flex items-center justify-center text-text-subtle/20">
-                <ChevronLeft className="h-3.5 w-3.5" />
+              <span className="h-11 w-11 lg:h-8 lg:w-8 shrink-0 inline-flex items-center justify-center text-text-subtle/20">
+                <ChevronLeft className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
               </span>
             )}
-            <span className="text-body text-text-muted font-medium tabular-nums px-0.5">
-              {period.startDate}
-              <span className="mx-1.5 text-text-subtle">&rarr;</span>
-              {lastDay}
+            <span className="min-w-0 flex-1 truncate text-center text-body font-medium tabular-nums text-text lg:flex-none lg:px-0.5 lg:text-left lg:text-text-muted">
+              {formatPeriodRange(period.startDate, lastDay)}
               {period.state === "UPCOMING" && (
-                <span className="ml-2.5 text-micro uppercase text-brand-600">
+                <span className="ml-2.5 hidden text-micro uppercase text-brand-600 lg:inline">
                   live · punches will land here
                 </span>
               )}
@@ -762,58 +835,84 @@ export default async function TimePage({
             {adjacent.nextId ? (
               <Link
                 href={`/time?${new URLSearchParams({ ...(tab !== "all" ? { schedule: tab } : {}), period: adjacent.nextId })}`}
-                className="h-8 w-8 inline-flex items-center justify-center rounded hover:bg-surface-2/40 text-text-muted hover:text-text transition-colors"
+                className="h-11 w-11 lg:h-8 lg:w-8 shrink-0 inline-flex items-center justify-center rounded-input lg:rounded hover:bg-surface-2/40 active:bg-surface-2/60 text-text-muted hover:text-text transition-colors"
                 aria-label="Next period"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
               </Link>
             ) : (
-              <span className="h-8 w-8 inline-flex items-center justify-center text-text-subtle/20">
-                <ChevronRight className="h-3.5 w-3.5" />
+              <span className="h-11 w-11 lg:h-8 lg:w-8 shrink-0 inline-flex items-center justify-center text-text-subtle/20">
+                <ChevronRight className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
               </span>
             )}
             {/* Jump straight back to the current period (drops ?period= so the
                 page auto-selects today's period for this schedule). */}
             <Link
               href={`/time${tab !== "all" ? `?schedule=${tab}` : ""}`}
-              className="ml-1 h-6 inline-flex items-center rounded px-2 text-micro uppercase text-text-muted hover:bg-surface-2/40 hover:text-text transition-colors"
+              className="h-11 lg:h-6 shrink-0 inline-flex items-center rounded-input lg:rounded px-3 lg:px-2 lg:ml-1 text-micro uppercase text-text-muted hover:bg-surface-2/40 active:bg-surface-2/60 hover:text-text transition-colors max-lg:border-l max-lg:border-border/70 max-lg:rounded-l-none"
             >
               Today
             </Link>
           </div>
+          {period.state === "UPCOMING" && (
+            <p className="text-caption font-medium text-brand-700 lg:hidden">
+              Live period · punches will land here
+            </p>
+          )}
           <ScheduleTabs current={tab} basePath="/time" />
         </div>
 
-        <div className="flex flex-col items-end gap-3 shrink-0">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <PollPunchesNowButton
-              initialLast={
-                lastPoll
-                  ? {
-                      startedAt: lastPoll.startedAt.toISOString(),
-                      finishedAt: lastPoll.finishedAt?.toISOString() ?? null,
-                      ok: lastPoll.ok,
-                      triggeredBy: lastPoll.triggeredBy,
-                      pairsInserted: lastPoll.pairsInserted,
-                      pairsUpdated: lastPoll.pairsUpdated,
-                      errorMessage: lastPoll.errorMessage,
-                    }
-                  : null
-              }
-            />
-            <BackfillPunchesButton />
-            <Button asChild variant="ghost" size="sm">
+        <div className="flex min-w-0 max-w-full flex-col gap-3 lg:items-end">
+          {/* Phone: sync is the full-width lead action, the three secondary
+              actions share one row beneath it. From sm up it is the original
+              wrapping row. */}
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
+            <div className="order-1 col-span-3 min-w-0 sm:order-none">
+              <PollPunchesNowButton
+                initialLast={
+                  lastPoll
+                    ? {
+                        startedAt: lastPoll.startedAt.toISOString(),
+                        finishedAt: lastPoll.finishedAt?.toISOString() ?? null,
+                        ok: lastPoll.ok,
+                        triggeredBy: lastPoll.triggeredBy,
+                        pairsInserted: lastPoll.pairsInserted,
+                        pairsUpdated: lastPoll.pairsUpdated,
+                        errorMessage: lastPoll.errorMessage,
+                      }
+                    : null
+                }
+              />
+            </div>
+            <div className="order-3 min-w-0 sm:order-none">
+              <BackfillPunchesButton />
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="order-3 max-sm:min-h-11 max-sm:border max-sm:border-border max-sm:bg-surface max-sm:px-2 sm:order-none"
+            >
               <Link href="/run-payroll/upload">
                 <Upload className="h-4 w-4" /> Upload CSV
               </Link>
             </Button>
-            <Button asChild size="sm" variant="secondary">
+            <Button
+              asChild
+              size="sm"
+              variant="secondary"
+              className="order-2 max-sm:min-h-11 max-sm:px-2 sm:order-none"
+            >
               <Link href="/punches/new">
-                <Plus className="h-3.5 w-3.5" /> Add manual punch
+                <Plus className="h-3.5 w-3.5" />
+                <span className="sm:hidden">Add punch</span>
+                <span className="hidden sm:inline">Add manual punch</span>
               </Link>
             </Button>
           </div>
-          <div className="flex items-center gap-3 text-caption text-text-muted font-medium">
+          {/* The legend decodes the desktop grid's colored cells; the phone
+              list labels every row in words, so it is not needed there. */}
+          <div className="hidden lg:flex items-center gap-3 text-caption text-text-muted font-medium">
             <Legend label="Complete" state="complete" />
             <Legend label="Incomplete" state="incomplete" />
             <Legend label="Missed" state="missed" />
@@ -824,7 +923,7 @@ export default async function TimePage({
 
       {/* KPI row — five attendance metrics (matches #57). */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
-        <KpiCard icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
+        <KpiCard wide icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
         <KpiCard icon={Users} tone="blue" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
         <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
         <KpiCard icon={CalendarX2} tone="cyan" value={openNow} label="Open shifts" sub="In progress now" />
@@ -837,117 +936,163 @@ export default async function TimePage({
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-3">
-          {/* ── Mobile: day pills + single-day attendance list (#68) ── */}
-          <div className="lg:hidden -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-            {days.map((d) => {
-              const isSel = d === selectedDay;
-              const dt = new Date(`${d}T12:00:00Z`);
-              const dow = new Intl.DateTimeFormat("en-US", {
-                weekday: "short",
-                timeZone: "UTC",
-              }).format(dt);
-              const dom = new Intl.DateTimeFormat("en-US", {
-                month: "numeric",
+          {/* ── Phone / tablet: day strip + single-day attendance list ──
+              The strip is a 7-column grid, so a weekly period fits the
+              screen with no sideways scrolling and a monthly period wraps
+              into a mini calendar. A weekly strip pins under the top bar so
+              the day can be switched from anywhere in the list. */}
+          <nav
+            aria-label="Day"
+            className={`lg:hidden rounded-card border border-border bg-surface p-1.5 shadow-card ${
+              days.length <= 7
+                ? "sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-20 md:top-2"
+                : ""
+            }`}
+          >
+            <div className="grid grid-cols-7 gap-1">
+              {days.length > 7 &&
+                ["M", "T", "W", "T", "F", "S", "S"].map((l, i) => (
+                  <span
+                    key={i}
+                    aria-hidden
+                    className="pb-0.5 text-center text-[11px] font-medium text-text-subtle"
+                  >
+                    {l}
+                  </span>
+                ))}
+              {days.map((d, i) => {
+                const isSel = d === selectedDay;
+                const isToday = d === today;
+                const dt = new Date(`${d}T12:00:00Z`);
+                const dow = new Intl.DateTimeFormat("en-US", {
+                  weekday: "short",
+                  timeZone: "UTC",
+                }).format(dt);
+                const issues = issuesByDay.get(d) ?? 0;
+                return (
+                  <Link
+                    key={d}
+                    href={`/time?${new URLSearchParams({
+                      ...(tab !== "all" ? { schedule: tab } : {}),
+                      ...(period.id ? { period: period.id } : {}),
+                      day: d,
+                    })}`}
+                    aria-current={isSel ? "date" : undefined}
+                    aria-label={`${new Intl.DateTimeFormat("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    }).format(dt)}${issues > 0 ? `, ${issues} incomplete` : ""}`}
+                    // Monthly strips start on whatever weekday the 1st is.
+                    style={
+                      i === 0 && days.length > 7
+                        ? { gridColumnStart: ((dt.getUTCDay() + 6) % 7) + 1 }
+                        : undefined
+                    }
+                    className={`relative flex min-h-[3.25rem] flex-col items-center justify-center rounded-input transition-colors ${
+                      isSel
+                        ? "bg-brand-700 text-white shadow-card"
+                        : isToday
+                          ? "text-brand-700 active:bg-surface-2/60"
+                          : "text-text-muted active:bg-surface-2/60"
+                    }`}
+                  >
+                    {days.length <= 7 && (
+                      <span className={`text-[11px] font-medium uppercase tracking-wide ${isSel ? "text-white/80" : ""}`}>
+                        {dow}
+                      </span>
+                    )}
+                    <span className={`text-sm tabular-nums ${isSel || isToday ? "font-bold" : "font-semibold text-text"}`}>
+                      {dt.getUTCDate()}
+                    </span>
+                    {issues > 0 && (
+                      <span
+                        aria-hidden
+                        className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${isSel ? "bg-white" : "bg-warning-500"}`}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+
+          <div className="lg:hidden flex items-baseline justify-between gap-3 px-1 pt-1">
+            <h2 className="text-subheading text-text">
+              {new Intl.DateTimeFormat("en-US", {
+                weekday: "long",
+                month: "short",
                 day: "numeric",
                 timeZone: "UTC",
-              }).format(dt);
-              return (
-                <Link
-                  key={d}
-                  href={`/time?${new URLSearchParams({
-                    ...(tab !== "all" ? { schedule: tab } : {}),
-                    ...(period.id ? { period: period.id } : {}),
-                    day: d,
-                  })}`}
-                  className={`flex shrink-0 flex-col items-center rounded-xl border px-3 py-1.5 text-center transition-colors ${
-                    isSel
-                      ? "border-brand-400 bg-brand-50 text-brand-700"
-                      : "border-border bg-surface text-text-muted"
-                  }`}
-                >
-                  <span className="text-micro uppercase">{dow}</span>
-                  <span className="text-xs font-bold tabular-nums">{dom}</span>
-                </Link>
-              );
-            })}
+              }).format(new Date(`${selectedDay}T12:00:00Z`))}
+              {selectedDay === today && (
+                <span className="ml-2 align-middle text-caption font-medium text-brand-700">
+                  Today
+                </span>
+              )}
+            </h2>
+            <p className="shrink-0 text-caption tabular-nums text-text-muted">
+              {mobileSummary}
+            </p>
           </div>
 
-          <ul className="lg:hidden space-y-2">
-            {employees.map((e) => {
-              const list = grid.get(e.id)?.get(selectedDay) ?? [];
-              const offType = timeOffByDay.get(`${e.id}|${selectedDay}`);
-              const isFutureDay = selectedDay > today;
-              let state: CellState;
-              if (list.length === 0) {
-                if (offType) state = timeOffStateFor(offType);
-                else if (isFutureDay) state = "future";
-                else state = "missed";
-              } else if (
-                list.some(
-                  (p) =>
-                    isAmbiguousSinglePunch(p) ||
-                    isMissingClockInPunch(p) ||
-                    isOpenShiftPunch(p),
-                )
-              ) {
-                state = "incomplete";
-              } else state = "complete";
-              if (e.status !== "ACTIVE") state = "inactive";
-              const sorted = [...list].sort(
-                (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
-              );
+          <ul className="lg:hidden divide-y divide-border/60 overflow-hidden rounded-card border border-border bg-surface shadow-card">
+            {mobileRows.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-text-muted">
+                No hourly employees on this schedule.
+              </li>
+            )}
+            {mobileRows.map(({ e, state, sorted, cellPeriodId, closedMs }) => {
               const first = sorted[0];
               const last = sorted[sorted.length - 1];
-              const closedMs = sorted.reduce(
-                (acc, p) =>
-                  p.clockOut ? acc + (p.clockOut.getTime() - p.clockIn.getTime()) : acc,
-                0,
-              );
               const totalMin = Math.round(closedMs / 60000);
-              const cellPeriodId = resolveTimeCellPeriodId({
-                currentPeriodId: period.id,
-                punches: sorted,
-              });
               const meta = MOBILE_STATUS[state];
               const range = first
                 ? `${formatTimeShort(first.clockIn, company.timezone)} – ${
                     last && last.clockOut
                       ? formatTimeShort(last.clockOut, company.timezone)
-                      : "—"
+                      : "open"
                   }`
-                : "—";
+                : state === "future"
+                  ? "Not yet worked"
+                  : state === "missed"
+                    ? "No punches"
+                    : "—";
               const hLabel =
                 totalMin > 0 ? `${Math.floor(totalMin / 60)}h ${totalMin % 60}m` : "";
               const inner = (
-                <div className="flex items-center gap-3 rounded-card border border-border bg-surface p-3">
+                <div className="flex min-h-[3.75rem] items-center gap-3 px-3.5 py-2.5">
                   <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-                    style={{
-                      background: "color-mix(in srgb, var(--dash-cyan) 16%, transparent)",
-                      color: "var(--dash-cyan)",
-                    }}
+                    aria-hidden
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[11px] font-semibold text-text-muted"
                   >
                     {timeInitials(e.displayName)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-text">
+                    <div className="truncate text-sm font-medium text-text">
                       {e.displayName}
                     </div>
                     <div className="truncate text-xs tabular-nums text-text-muted">
                       {range}
                       {hLabel ? ` · ${hLabel}` : ""}
+                      {sorted.length > 1 ? ` · ${sorted.length} punches` : ""}
                     </div>
                   </div>
-                  <span
-                    className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                    style={{
-                      background: `color-mix(in srgb, ${meta.color} 16%, transparent)`,
-                      color: meta.color,
-                    }}
-                  >
-                    {meta.label}
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-text-subtle" aria-hidden />
+                  {state !== "future" && (
+                    <span
+                      className="inline-flex shrink-0 items-center rounded-chip px-2 py-0.5 text-[11px] font-semibold"
+                      style={{
+                        background: `color-mix(in srgb, ${meta.color} 16%, transparent)`,
+                        color: meta.color,
+                      }}
+                    >
+                      {meta.label}
+                    </span>
+                  )}
+                  {cellPeriodId ? (
+                    <ChevronRight className="h-4 w-4 shrink-0 text-text-subtle" aria-hidden />
+                  ) : null}
                 </div>
               );
               return (
@@ -955,7 +1100,7 @@ export default async function TimePage({
                   {cellPeriodId ? (
                     <Link
                       href={`/time/${cellPeriodId}/${selectedDay}/${e.id}?${new URLSearchParams({ returnTo })}`}
-                      className="block"
+                      className="block transition-colors active:bg-surface-2/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-700/60"
                     >
                       {inner}
                     </Link>
@@ -991,14 +1136,16 @@ export default async function TimePage({
                   >
                     <span className={`flex flex-col items-center leading-tight ${isToday ? "text-brand-700" : "text-text-subtle"}`}>
                       <span className="text-micro uppercase">
-                        {new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(
-                          new Date(`${d}T00:00:00Z`),
-                        )}
+                        {new Intl.DateTimeFormat("en-US", {
+                          weekday: "short",
+                          timeZone: "UTC",
+                        }).format(new Date(`${d}T00:00:00Z`))}
                       </span>
                       <span className="tabular-nums text-[11px] font-semibold mt-0.5">
                         {new Intl.DateTimeFormat("en-US", {
                           month: "numeric",
                           day: "numeric",
+                          timeZone: "UTC",
                         }).format(new Date(`${d}T00:00:00Z`))}
                       </span>
                     </span>
@@ -1108,8 +1255,14 @@ export default async function TimePage({
             insight (#57). Missed-punch review sits at the top: it's the only
             card that needs an admin decision, and it lives next to the time
             grid it corrects (moved here from the Calendar rail). */}
-        <aside className="space-y-3">
-          <MissedPunchRailCard timezone={company.timezone} />
+        {/* Below xl the rail dissolves into the page column (display:
+            contents) so the pending-review card — the only one that needs a
+            decision — can be ordered ABOVE the attendance list instead of
+            sitting under 20+ employee rows. */}
+        <aside className="contents xl:block xl:space-y-3">
+          <div className="order-first empty:hidden xl:order-none">
+            <MissedPunchRailCard timezone={company.timezone} />
+          </div>
           <TodaySummaryCard summary={todaySummary} total={summaryTotal} />
           <ExceptionsQueueCard
             missing={staleOpenPunchCount}
@@ -1262,28 +1415,43 @@ function KpiCard({
   value,
   label,
   sub,
+  wide = false,
 }: {
   icon: LucideIcon;
   tone: keyof typeof KPI_TONE;
   value: string | number;
   label: string;
   sub: string;
+  /** Spans both columns of the phone grid (icon beside the figure) so five
+   *  cards tile 1 + 2 + 2 instead of leaving an orphan in the last row. */
+  wide?: boolean;
 }) {
   const c = KPI_TONE[tone];
   return (
-    <div className="rounded-card border border-border bg-surface p-3 shadow-card">
+    <div
+      // Phone: the icon plate tucks into the top-right corner so the figure
+      // leads and each card is ~80px instead of ~150px — five stacked plates
+      // pushed the roster a full screen down.
+      className={`relative rounded-card border border-border bg-surface p-3 shadow-card ${
+        wide ? "max-sm:col-span-2" : ""
+      }`}
+    >
       <span
-        className="flex h-8 w-8 items-center justify-center rounded-lg"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg max-sm:absolute max-sm:right-3 max-sm:top-3 max-sm:h-7 max-sm:w-7"
         style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
       >
         <Icon className="h-4 w-4" />
       </span>
-      <div className="mt-2 text-xl font-bold leading-tight tabular-nums tracking-tight text-text">
-        {value}
-      </div>
-      <div className="text-[12px] font-medium text-text-muted">{label}</div>
-      <div className="text-[11px] font-medium" style={{ color: c }}>
-        {sub}
+      <div className="min-w-0">
+        <div
+          className="mt-2 text-xl font-bold leading-tight tabular-nums tracking-tight text-text max-sm:mt-0 max-sm:pr-9"
+        >
+          {value}
+        </div>
+        <div className="truncate text-[12px] font-medium text-text-muted">{label}</div>
+        <div className="truncate text-[11px] font-medium" style={{ color: c }}>
+          {sub}
+        </div>
       </div>
     </div>
   );
@@ -1485,7 +1653,7 @@ function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
       {overtimeRisk > 0 && (
         <Link
           href="/time"
-          className="mt-2.5 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2/40"
+          className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-input border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2/40"
         >
           Review overtime risk <ChevronRight className="h-3.5 w-3.5" />
         </Link>

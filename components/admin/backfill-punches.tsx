@@ -50,10 +50,11 @@ export function BackfillPunchesButton(): React.JSX.Element {
 
   return (
     <div className="space-y-2">
-      <div className="relative inline-block" ref={wrapRef}>
+      <div className="relative block sm:inline-block" ref={wrapRef}>
         <Button
           size="sm"
           variant="ghost"
+          className="max-sm:min-h-11 max-sm:w-full max-sm:border max-sm:border-border max-sm:bg-surface max-sm:px-2"
           disabled={busy || inProgress}
           onClick={() => setOpen((v) => !v)}
         >
@@ -63,14 +64,17 @@ export function BackfillPunchesButton(): React.JSX.Element {
             </>
           ) : (
             <>
-              <History className="h-4 w-4" /> Backfill missing days
+              <History className="h-4 w-4" />
+              <span>
+                Backfill<span className="hidden sm:inline"> missing days</span>
+              </span>
             </>
           )}
         </Button>
         {open && (
           <div
             role="menu"
-            className="absolute right-0 top-9 z-50 w-56 rounded-card border border-border bg-surface shadow-pop overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-50 w-56 rounded-card border border-border bg-surface shadow-pop overflow-hidden"
           >
             <div className="px-3 py-2 border-b border-border/70 text-micro uppercase text-text-subtle">
               Re-scan how far back?
@@ -80,7 +84,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
                 key={p.daysBack}
                 type="button"
                 onClick={() => run(p.daysBack)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-2/40 transition-colors"
+                className="w-full min-h-11 px-3 py-2 text-left text-sm hover:bg-surface-2/40 transition-colors"
               >
                 {p.label}
               </button>

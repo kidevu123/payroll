@@ -121,8 +121,8 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2">
-        <div className="inline-flex items-center">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex items-center sm:inline-flex">
           <button
             type="button"
             onClick={onClick}
@@ -131,7 +131,7 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
             className={cn(
               // Fixed width: the label changes ("Polling… 12s", "Synced · 3 new")
               // and a growing button would nudge every control beside it.
-              "relative inline-flex h-9 w-[11.5rem] items-center justify-center gap-2 overflow-hidden rounded-input border px-3 text-sm font-medium transition-colors",
+              "relative inline-flex h-11 w-full min-w-0 flex-1 sm:h-9 sm:w-[11.5rem] sm:flex-none items-center justify-center gap-2 overflow-hidden rounded-input border px-3 text-sm font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60",
               outcome === "ok"
                 ? "border-success-200 bg-success-50 text-success-700"
@@ -187,8 +187,11 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
             aria-hidden={!running}
             tabIndex={running ? 0 : -1}
             className={cn(
-              "inline-flex h-9 w-9 items-center justify-center rounded-r-input border border-brand-200 bg-surface text-danger-700 transition-colors hover:bg-danger-50",
-              !running && "pointer-events-none invisible",
+              "inline-flex h-11 w-11 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-r-input border border-brand-200 bg-surface text-danger-700 transition-colors hover:bg-danger-50",
+              // Idle: the slot is reserved (invisible) on desktop so the group
+              // never changes width; on a phone the button is full-width, so
+              // the slot is dropped instead of leaving a dead gap.
+              !running && "pointer-events-none invisible max-sm:hidden",
             )}
           >
             <Square className="h-3.5 w-3.5" />
@@ -196,7 +199,7 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
         </div>
         {/* The last-run line keeps a fixed slot too; while running it says so. */}
         <span
-          className="w-[22rem] min-w-0 truncate text-xs text-text-muted"
+          className="w-full min-w-0 truncate text-xs text-text-muted sm:w-[22rem]"
           title={last ? lastLabel + (last.errorMessage ? ` · ${last.errorMessage}` : "") : undefined}
         >
           {running ? (

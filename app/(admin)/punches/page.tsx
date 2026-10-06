@@ -110,7 +110,7 @@ export default async function PunchesAdmin({
               <select
                 name="employeeId"
                 defaultValue={params.employeeId ?? ""}
-                className="h-9 w-full rounded-input border border-border bg-surface px-2 text-sm"
+                className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface px-2 text-sm"
               >
                 <option value="">All</option>
                 {employees.map((e) => (
@@ -126,7 +126,7 @@ export default async function PunchesAdmin({
                 type="date"
                 name="from"
                 defaultValue={params.from ?? ""}
-                className="h-9 w-full rounded-input border border-border bg-surface px-2 text-sm"
+                className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface px-2 text-sm"
               />
             </div>
             <div className="space-y-1">
@@ -135,7 +135,7 @@ export default async function PunchesAdmin({
                 type="date"
                 name="to"
                 defaultValue={params.to ?? ""}
-                className="h-9 w-full rounded-input border border-border bg-surface px-2 text-sm"
+                className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface px-2 text-sm"
               />
             </div>
             <div className="space-y-1">
@@ -143,7 +143,7 @@ export default async function PunchesAdmin({
               <select
                 name="source"
                 defaultValue={params.source ?? ""}
-                className="h-9 w-full rounded-input border border-border bg-surface px-2 text-sm"
+                className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface px-2 text-sm"
               >
                 <option value="">All</option>
                 <option value="MANUAL_ADMIN">MANUAL_ADMIN</option>

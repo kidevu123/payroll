@@ -7,6 +7,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { safeLocalReturnTo } from "@/lib/time/grid-links";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { reconcileOrphanDayPairs } from "@/lib/punches/reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "@/lib/punches/superseded-ambiguous";
 import { mergeChainedDaySegments } from "@/lib/punches/merge-chained-day-segments";
@@ -65,8 +66,8 @@ export default async function PunchEditorPage({
   });
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Button asChild variant="ghost" size="sm">
+    <div className="max-w-2xl mx-auto space-y-5 sm:space-y-6">
+      <Button asChild variant="ghost" size="sm" className="-ml-2 max-sm:min-h-11">
         <Link href={backHref}>
           <ArrowLeft className="h-4 w-4" /> Back to grid
         </Link>
@@ -74,7 +75,13 @@ export default async function PunchEditorPage({
       <div>
         <h1 className="text-title tracking-tight antialiased text-text">{employee.displayName}</h1>
         <p className="text-sm text-text-muted">
-          {date} · period {period.startDate} – {period.endDate}
+          {new Intl.DateTimeFormat("en-US", {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+          }).format(new Date(`${date}T12:00:00Z`))}{" "}
+          · period {formatPeriodRange(period.startDate, period.endDate)}
         </p>
       </div>
       <PunchEditor

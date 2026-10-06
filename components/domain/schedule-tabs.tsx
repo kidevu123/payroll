@@ -33,7 +33,7 @@ export function ScheduleTabs({
 }) {
   const tabs: ScheduleTab[] = ["all", "weekly", "semi", "monthly", "salaried"];
   return (
-    <div className="max-w-full overflow-x-auto">
+    <div className="max-w-full overflow-x-auto [scrollbar-width:none]">
       <div role="tablist" className="flex min-w-max gap-6 border-b border-border/70">
         {tabs.map((t) => {
           const isActive = current === t;
@@ -46,7 +46,9 @@ export function ScheduleTabs({
               role="tab"
               aria-selected={isActive}
               className={cn(
-                "-mb-px border-b-2 px-1 pb-2.5 pt-1 text-sm font-medium transition-colors",
+                // 44px tall on touch (it was 36px); the underline stays on the
+                // strip's bottom border either way.
+                "-mb-px inline-flex items-center border-b-2 px-1 pb-2.5 pt-1 text-sm font-medium transition-colors max-md:min-h-11 max-md:pb-2 max-md:pt-2",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60 focus-visible:ring-offset-1 focus-visible:ring-offset-surface",
                 isActive
                   ? "border-brand-700 text-brand-700"

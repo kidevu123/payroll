@@ -63,13 +63,17 @@ export function PunchRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[10rem_1fr_1fr_4rem_auto_auto] items-center gap-3 rounded-input border border-border bg-surface px-3 py-2.5 text-sm",
+        // Phone: the day sits on its own line, then in – out with the hours
+        // right-aligned, then any actions full-width. The six fixed desktop
+        // tracks (10rem day column + two auto columns) cannot fit 390px and
+        // pushed the action buttons off the screen.
+        "grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 sm:grid-cols-[10rem_1fr_1fr_4rem_auto_auto] sm:gap-3 rounded-input border border-border bg-surface px-3 py-2.5 text-sm",
         punch.voidedAt && "opacity-50 line-through",
         (missingIn || ambiguous) && "border-warning-200/80 bg-warning-50/40",
         className,
       )}
     >
-      <div className="text-text-muted">{formatDay(punch.clockIn, timezone)}</div>
+      <div className="text-text-muted max-sm:col-span-3 max-sm:text-xs">{formatDay(punch.clockIn, timezone)}</div>
       <div className="tabular-nums">
         {ambiguous ? (
           <span className="text-warning-800 text-micro uppercase">
@@ -84,6 +88,7 @@ export function PunchRow({
         )}
       </div>
       <div className="tabular-nums">
+        <span aria-hidden className="mr-2 text-text-subtle sm:hidden">–</span>
         {ambiguous ? (
           <span className="tabular-nums text-warning-900">
             {formatClock(punch.clockIn, timezone)}
@@ -95,13 +100,17 @@ export function PunchRow({
         )}
       </div>
       {missingIn || ambiguous ? (
-        <span className="text-micro uppercase text-warning-800">
+        <span className="text-micro uppercase text-warning-800 max-sm:justify-self-end">
           fix
         </span>
       ) : (
-        <HoursDisplay hours={durationHours(punch)} decimals={decimals} />
+        <HoursDisplay
+          hours={durationHours(punch)}
+          decimals={decimals}
+          className="max-sm:justify-self-end max-sm:font-medium"
+        />
       )}
-      <div className="flex items-center gap-1 text-xs text-text-muted">
+      <div className="flex items-center gap-1 text-xs text-text-muted max-sm:col-span-3 max-sm:empty:hidden">
         {edited ? (
           <>
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -109,7 +118,7 @@ export function PunchRow({
           </>
         ) : null}
       </div>
-      <div className="flex items-center gap-2 justify-self-end">{rightSlot}</div>
+      <div className="flex items-center gap-2 justify-self-end max-sm:col-span-3 max-sm:justify-self-stretch max-sm:empty:hidden">{rightSlot}</div>
     </div>
   );
 }

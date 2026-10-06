@@ -29,17 +29,17 @@ function Card({
         : "bg-warning-50 text-warning-700";
   const body = (
     <>
-      <span aria-hidden className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-input ${plate}`}>
+      <span aria-hidden className={`mt-0.5 hidden h-12 w-12 shrink-0 items-center justify-center rounded-input sm:flex ${plate}`}>
         <Icon className="h-6 w-6" />
       </span>
       <div className="min-w-0">
-        <div className="text-sm text-text-muted">{label}</div>
-        <div className="mt-0.5 truncate text-metric tabular-nums tracking-tight text-text">{value}</div>
+        <div className="truncate text-sm text-text-muted">{label}</div>
+        <div className="mt-0.5 truncate text-metric tabular-nums tracking-tight text-text max-sm:text-xl">{value}</div>
         <div className="mt-1 text-caption text-text-subtle">{context}</div>
       </div>
     </>
   );
-  const cls = "flex items-start gap-4 rounded-card border border-border/70 bg-surface px-5 py-4 shadow-card";
+  const cls = "flex items-start gap-4 rounded-card border border-border/70 bg-surface px-3.5 py-3 shadow-card sm:px-5 sm:py-4";
   return href ? (
     <Link href={href} className={`${cls} transition-colors hover:bg-surface-2/40`}>
       {body}
@@ -65,7 +65,7 @@ export function PeriodsKpiCards({
   incompletePunches: number;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
       <Card
         label="Awaiting payment"
         tone="brand"

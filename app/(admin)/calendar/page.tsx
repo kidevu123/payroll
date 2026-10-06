@@ -820,7 +820,7 @@ function TabPill({
   return (
     <Link
       href={href}
-      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+      className={`-mb-px inline-flex items-center border-b-2 px-3 py-2 text-sm font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
         active
           ? "border-brand-700 text-text"
           : "border-transparent text-text-muted hover:text-text"

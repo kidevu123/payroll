@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   CalendarRange,
@@ -63,8 +63,13 @@ const TOOL_TABS: readonly Tab[] = [
 
 export function SettingsNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const activeHref =
+    CONFIG_TABS.find(
+      (t) => pathname === t.href || pathname.startsWith(`${t.href}/`),
+    )?.href ?? "";
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       <header className="page-header-rule pb-4">
         <h1 className="text-title tracking-tight antialiased text-text">
           Settings
@@ -73,10 +78,45 @@ export function SettingsNav({ children }: { children: React.ReactNode }) {
           Company profile, pay rules, integrations, and admin tools.
         </p>
       </header>
-      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5 lg:gap-8">
+        {/* Below lg the 21-link list sat above every settings page — about
+            900px of scrolling before the form. A native picker does the same
+            job in one 44px row and uses the platform's own wheel. */}
+        <div className="lg:hidden">
+          <label
+            htmlFor="settings-section"
+            className="mb-1.5 block text-micro uppercase text-text-subtle"
+          >
+            Section
+          </label>
+          <select
+            id="settings-section"
+            value={activeHref}
+            onChange={(e) => {
+              if (e.target.value) router.push(e.target.value);
+            }}
+            className="h-11 w-full rounded-input border border-border bg-surface px-3 text-body font-medium text-text shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+          >
+            {activeHref === "" && <option value="">Choose a section</option>}
+            <optgroup label="Settings">
+              {CONFIG_TABS.map((t) => (
+                <option key={t.href} value={t.href}>
+                  {t.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Admin tools">
+              {TOOL_TABS.map((t) => (
+                <option key={t.href} value={t.href}>
+                  {t.label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
         <nav
           aria-label="Settings sections"
-          className="lg:sticky lg:top-6 self-start rounded-card border border-border/70 bg-surface p-2 shadow-card space-y-3"
+          className="hidden lg:block lg:sticky lg:top-6 self-start rounded-card border border-border/70 bg-surface p-2 shadow-card space-y-3"
         >
           <ul className="space-y-0.5">
             {CONFIG_TABS.map(({ href, label, icon: Icon }) => {

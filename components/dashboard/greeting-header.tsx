@@ -80,7 +80,7 @@ export function GreetingHeader({
           </span>
           <Link
             href="/settings"
-            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium"
+            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] [@media(pointer:coarse)]:min-h-11 font-medium"
             style={{
               color: DASH.text,
               background: DASH.surface,
@@ -92,7 +92,7 @@ export function GreetingHeader({
           </Link>
           <Link
             href={quickActionHref}
-            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-semibold"
+            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] [@media(pointer:coarse)]:min-h-11 font-semibold"
             style={{
               color: DASH.onAccent,
               background: DASH.accentGradient,

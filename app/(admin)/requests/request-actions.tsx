@@ -247,7 +247,7 @@ export function EditApprovedTimeOffAction({
       <select
         name="type"
         defaultValue={request.type}
-        className="h-9 w-full rounded-input border border-border bg-surface px-2 text-xs"
+        className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface px-2 text-xs"
       >
         <option value="UNPAID">Unpaid</option>
         <option value="SICK">Sick</option>

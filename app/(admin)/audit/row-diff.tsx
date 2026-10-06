@@ -65,7 +65,10 @@ export function AuditRowDiff({
         onClick={() => setOpen((o) => !o)}
         disabled={!hasPayload}
         className={cn(
-          "w-full flex items-start gap-3 p-3 text-left text-xs",
+          // Phone: three stacked lines (action / target / when + actor). The
+          // five fixed-width desktop columns add up to ~700px and used to
+          // push the page 300px wider than the screen.
+          "w-full flex flex-wrap items-start gap-x-3 gap-y-1 p-3 text-left text-xs md:flex-nowrap",
           hasPayload ? "hover:bg-surface-2/40" : "opacity-90 cursor-default",
         )}
       >
@@ -76,19 +79,19 @@ export function AuditRowDiff({
             <span className="block h-4 w-4" />
           )}
         </span>
-        <span className="font-mono text-[11px] text-text-muted w-44 shrink-0">{when}</span>
-        <span className="font-medium w-48 shrink-0 truncate">{action}</span>
-        <span className="flex-1 truncate">
+        <span className="order-4 pl-7 font-mono text-[11px] text-text-muted md:order-none md:w-44 md:shrink-0 md:pl-0">{when}</span>
+        <span className="order-1 min-w-0 flex-1 truncate font-medium max-md:text-sm md:order-none md:w-48 md:flex-none md:shrink-0">{action}</span>
+        <span className="order-3 w-full truncate pl-7 md:order-none md:w-auto md:flex-1 md:pl-0">
           {targetType}
           <span className="ml-1 text-text-muted">{targetId}</span>
         </span>
-        <span className="w-32 shrink-0 truncate text-text-muted">
+        <span className="order-5 truncate text-text-muted md:order-none md:w-32 md:shrink-0">
           {actorRole ?? "—"}
           {actorId ? ` ${actorId.slice(0, 8)}…` : ""}
         </span>
-        <span className="w-24 shrink-0 truncate text-text-muted">{ip ?? "—"}</span>
+        <span className="hidden w-24 shrink-0 truncate text-text-muted md:block">{ip ?? "—"}</span>
         {changed.length > 0 ? (
-          <span className="rounded bg-warning-50 text-warning-800 border border-warning-200 px-1.5 py-0.5">
+          <span className="order-2 shrink-0 rounded bg-warning-50 text-warning-800 border border-warning-200 px-1.5 py-0.5 md:order-none">
             {changed.length} change{changed.length === 1 ? "" : "s"}
           </span>
         ) : null}

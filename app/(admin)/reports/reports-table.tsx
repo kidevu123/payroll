@@ -641,7 +641,7 @@ function FilterBar({
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search pay runs..."
           aria-label="Search pay runs"
-          className="h-9 w-full rounded-input border border-border bg-surface pl-8 pr-2.5 text-xs text-text placeholder:text-text-subtle transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+          className="h-9 [@media(pointer:coarse)]:h-11 w-full rounded-input border border-border bg-surface pl-8 pr-2.5 text-xs text-text placeholder:text-text-subtle transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
         />
       </label>
       <FilterSelect

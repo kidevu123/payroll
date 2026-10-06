@@ -344,6 +344,51 @@ body {
   font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
 }
 
+/* ── Phone rules ─────────────────────────────────────────────────────────
+   Unlayered on purpose: these must win over the utility layer no matter
+   which size class a given field happens to carry. */
+
+/* No double-tap-to-zoom delay on anything tappable. */
+a,
+button,
+summary,
+label,
+[role="button"],
+[role="tab"] {
+  touch-action: manipulation;
+}
+
+@media (max-width: 767px) {
+  /* The micro label is 10px on desktop, where it sits beside dense tables.
+     On a phone that is below the legible floor, so the token itself steps up
+     to 11px (and eases its tracking so labels do not get wider). */
+  :root {
+    --text-micro: 0.6875rem;
+    --text-micro--letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Same floor for the hand-written 9px / 10px sizes (avatar initials, count
+     bubbles, legend chips): 11px is the smallest text a phone shows. */
+  .text-\[9px\],
+  .text-\[10px\] {
+    font-size: 0.6875rem;
+  }
+}
+
+@media (max-width: 767px) and (pointer: coarse) {
+  /* iOS Safari zooms the whole page when a focused field's text is smaller
+     than 16px, and does not zoom back out. Most fields here are text-sm
+     (14px). Phone-only: the kiosk tablet sizes its own display-scale
+     inputs. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Admin shell backstop: #admin-root carries the theme class (.dark) and wraps
    the whole dark shell. Give it the themed canvas background + full viewport
    min-height so short pages never let the white <body> show below the app.

@@ -78,7 +78,19 @@ export default async function EmployeeDay({
       </Button>
       <PageHeader
         density="employee"
-        title={date}
+        title={
+          <span className="first-letter:uppercase inline-block">
+            {/^\d{4}-\d{2}-\d{2}$/.test(date) &&
+            !Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())
+              ? new Intl.DateTimeFormat(dateLocale, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  timeZone: "UTC",
+                }).format(new Date(`${date}T12:00:00Z`))
+              : date}
+          </span>
+        }
         meta={
           <span className="inline-flex items-baseline gap-1">
             <HoursDisplay

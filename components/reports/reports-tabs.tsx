@@ -15,7 +15,7 @@ export function ReportsTabs({ active, panels }: { active: ReportsTabKey; panels:
   const params = useSearchParams();
   return (
     <div className="space-y-3">
-      <div role="tablist" className="flex gap-6 border-b border-border/70">
+      <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-border/70 [scrollbar-width:none]">
         {TABS.map(([key, label]) => (
           <button
             key={key}
@@ -30,7 +30,7 @@ export function ReportsTabs({ active, panels }: { active: ReportsTabKey; panels:
               router.push(qs ? `/reports?${qs}` : "/reports");
             }}
             className={cn(
-              "-mb-px border-b-2 px-1 pb-2.5 pt-1 text-sm font-medium transition-colors",
+              "-mb-px shrink-0 whitespace-nowrap border-b-2 px-1 pb-2.5 pt-1 text-sm font-medium transition-colors max-md:min-h-11",
               active === key ? "border-brand-700 text-brand-700" : "border-transparent text-text-muted hover:text-text",
             )}
           >
