@@ -23,10 +23,14 @@ WorkingDirectory=/opt/payroll
 # Before a rebuild the current image is tagged payroll-app:previous, so a
 # rollback is a retag + restart (see docs/runbook.md "Roll back a deploy")
 # instead of another full build. After a successful rebuild, dangling
-# images are removed and the build cache is capped at 2 GB; uncapped, it
-# grew by gigabytes per deploy until builds failed with "no space left on
-# device". Both cleanups are best-effort and can never fail the deploy.
-# (The cache flag was renamed between Docker releases, hence the fallback.)
+# images and dangling build cache are removed. Left alone, the cache grew
+# by gigabytes per deploy until builds failed with "no space left on
+# device". Only DANGLING cache goes: the live cache (the layers of the
+# current image, ~2-3 GB) is what makes a routine deploy a 2-minute cached
+# build instead of a 15-minute cold one. A hard size cap was tried and
+# rejected: Docker's --max-used-space refuses to prune below the live set,
+# so it reclaimed nothing. Both cleanups are best-effort and can never
+# fail the deploy.
 ExecStart=/bin/bash -c '\
   set -euo pipefail; \
   cd "$PAYROLL_DIR"; \
@@ -43,13 +47,13 @@ ExecStart=/bin/bash -c '\
     /usr/bin/docker tag payroll-app:latest payroll-app:previous 2>/dev/null || true; \
     /usr/bin/docker compose up -d --build --remove-orphans; \
     /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-    (/usr/bin/docker builder prune -f --max-used-space 2gb || /usr/bin/docker builder prune -f --keep-storage 2gb) >/dev/null 2>&1 || true; \
+    /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
   elif [ -n "$running" ] && [ "$running" != "$after" ]; then \
     echo "container drift detected (running=$running, head=$after) — rebuilding"; \
     /usr/bin/docker tag payroll-app:latest payroll-app:previous 2>/dev/null || true; \
     /usr/bin/docker compose up -d --build --remove-orphans; \
     /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-    (/usr/bin/docker builder prune -f --max-used-space 2gb || /usr/bin/docker builder prune -f --keep-storage 2gb) >/dev/null 2>&1 || true; \
+    /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
   else \
     echo "no changes ($after); ensuring services are up"; \
     /usr/bin/docker compose up -d --remove-orphans; \
