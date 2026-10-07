@@ -104,6 +104,21 @@ cat /etc/systemd/system/payroll-deploy.service.d/override.conf
 
 Branch should match what you pushed to.
 
+### A build failed and the timer stopped rebuilding
+
+When `docker compose up --build` fails, the unit writes the commit SHA to
+`/opt/payroll/.deploy-failed-sha`, prunes the build's leftovers, and then
+skips rebuilding that SHA on later ticks (it still keeps the old services
+up). `journalctl -u payroll-deploy -n 80` shows the build error. Fix the
+cause, then either push a new commit or delete the marker file to re-arm:
+
+```
+rm -f /opt/payroll/.deploy-failed-sha && systemctl start payroll-deploy.service
+```
+
+The usual cause on LX120 is disk: a cold build (empty build cache) needs
+roughly 10 GB free; a cached one about 3 GB. Check `df -h /` first.
+
 ### Manual rebuild
 
 ```

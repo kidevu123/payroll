@@ -20,17 +20,24 @@ WorkingDirectory=/opt/payroll
 # condition catches the historical silent-fail trap: a build error left
 # the timer thinking "no changes" forever even though the container was
 # stale.
-# Before a rebuild the current image is tagged payroll-app:previous, so a
-# rollback is a retag + restart (see docs/runbook.md "Roll back a deploy")
-# instead of another full build. After a successful rebuild, dangling
-# images and dangling build cache are removed. Left alone, the cache grew
-# by gigabytes per deploy until builds failed with "no space left on
-# device". Only DANGLING cache goes: the live cache (the layers of the
-# current image, ~2-3 GB) is what makes a routine deploy a 2-minute cached
-# build instead of a 15-minute cold one. A hard size cap was tried and
-# rejected: Docker's --max-used-space refuses to prune below the live set,
-# so it reclaimed nothing. Both cleanups are best-effort and can never
-# fail the deploy.
+# Before a rebuild, the image the RUNNING app container uses is tagged
+# payroll-app:previous, so a rollback is a retag + restart (see
+# docs/runbook.md "Roll back a deploy") instead of another full build. It is
+# the running container's image on purpose, not :latest — a build that dies
+# mid-export can leave :latest pointing at a half-written image, and tagging
+# THAT as previous would overwrite the only good rollback.
+# After a build, successful or not, dangling images and dangling build cache
+# are removed. Left alone, the cache grew by gigabytes per deploy until
+# builds failed with "no space left on device"; a failed export leaves
+# gigabytes of leftovers too. Only DANGLING cache goes: the live cache (the
+# current image's layers, ~2-3 GB) is what makes a routine deploy a
+# 2-minute cached build instead of a 15-minute cold one. A hard size cap was
+# tried and rejected: Docker's --max-used-space refuses to prune below the
+# live set, so it reclaimed nothing.
+# A failed build writes its SHA to .deploy-failed-sha and the unit stops
+# rebuilding that SHA on every 60-second tick (it still ensures the old
+# services are up). The next commit, or deleting the marker, re-arms it. The
+# cleanups are best-effort and never change the unit's exit code.
 ExecStart=/bin/bash -c '\
   set -euo pipefail; \
   cd "$PAYROLL_DIR"; \
@@ -42,18 +49,33 @@ ExecStart=/bin/bash -c '\
   export BUILD_GIT_BRANCH="$PAYROLL_BRANCH"; \
   running=$(/usr/bin/docker compose exec -T app cat /app/.git-sha 2>/dev/null | tr -d "[:space:]" || true); \
   /usr/bin/docker ps -aq --filter status=exited --filter status=created --filter label=com.docker.compose.project=payroll | xargs -r /usr/bin/docker rm -f >/dev/null 2>&1 || true; \
-  if [ "$before" != "$after" ]; then \
+  marker="$PAYROLL_DIR/.deploy-failed-sha"; \
+  failed=$(cat "$marker" 2>/dev/null || true); \
+  rebuild() { \
+    cid=$(/usr/bin/docker compose ps -q app 2>/dev/null | head -1 || true); \
+    if [ -n "$cid" ]; then img=$(/usr/bin/docker inspect -f "{{.Image}}" "$cid" 2>/dev/null || true); [ -n "$img" ] && /usr/bin/docker tag "$img" payroll-app:previous >/dev/null 2>&1 || true; fi; \
+    echo "free disk before build: $(df -h / | tail -1 | tr -s " " | cut -d " " -f4)"; \
+    if /usr/bin/docker compose up -d --build --remove-orphans; then \
+      rm -f "$marker"; \
+      /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
+      /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+    else \
+      echo "$after" > "$marker"; \
+      /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
+      /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+      echo "build of $after FAILED; leftovers pruned; not retrying until a new commit lands or $marker is removed"; \
+      exit 1; \
+    fi; \
+  }; \
+  if [ "$failed" = "$after" ]; then \
+    echo "build of $after failed earlier (see $marker); skipping rebuild, ensuring services are up"; \
+    /usr/bin/docker compose up -d --remove-orphans; \
+  elif [ "$before" != "$after" ]; then \
     echo "deploying $before -> $after"; \
-    /usr/bin/docker tag payroll-app:latest payroll-app:previous 2>/dev/null || true; \
-    /usr/bin/docker compose up -d --build --remove-orphans; \
-    /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-    /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+    rebuild; \
   elif [ -n "$running" ] && [ "$running" != "$after" ]; then \
     echo "container drift detected (running=$running, head=$after) — rebuilding"; \
-    /usr/bin/docker tag payroll-app:latest payroll-app:previous 2>/dev/null || true; \
-    /usr/bin/docker compose up -d --build --remove-orphans; \
-    /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-    /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+    rebuild; \
   else \
     echo "no changes ($after); ensuring services are up"; \
     /usr/bin/docker compose up -d --remove-orphans; \
