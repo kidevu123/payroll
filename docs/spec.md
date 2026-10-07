@@ -434,7 +434,7 @@ If something is hardcoded that's plausibly company-specific, that's a bug.
 
 ## 19. Deployment (Proxmox LXC)
 
-- Single Dockerfile, multi-stage, final image bumped by Playwright (~500MB; accepted).
+- Single Dockerfile, multi-stage. The runtime image is slim Node plus the Chromium headless shell (the scraper's only browser) and production dependencies only.
 - `docker-compose.yml`: app, postgres, backup sidecar (cron `pg_dump` to `/data/backups`).
 - All config via env. `.env.example` committed.
 - `/data` is a host mount: `uploads/`, `payslips/`, `ngteco/`, `backups/`.

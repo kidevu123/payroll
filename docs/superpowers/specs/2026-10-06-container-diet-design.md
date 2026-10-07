@@ -16,7 +16,15 @@ disk and a rollback takes seconds.
 
 Success means all of the following:
 
-- The image is at or under 1.6 GB, measured.
+- The image is at or under 1.6 GB, measured. Outcome: 2.21 GB. The first
+  build came out at 2.52 GB because production dependencies alone are 955 MB
+  (OpenTelemetry 248, Next 172, its SWC binary 137) and Chromium plus its
+  libraries are 591 MB; with the user's approval (2026-10-06) two further
+  trims were added within the no-app-changes rule: the SWC binary is dropped
+  from the runtime image, and the standalone bundle's traced `node_modules`
+  is merged into the production install instead of shipped twice. Reaching
+  1.6 GB would need a hand-curated dependency list, which was rejected as
+  Approach 2.
 - Every check in "Verification" passes in the build sandbox before LX120
   sees the image, and the production checks pass after the deploy.
 - No app code, database schema, port, volume, environment variable or
@@ -129,9 +137,13 @@ LX120 by copying the file and running `systemctl daemon-reload`:
 
 - **Before a rebuild**, tag the image the running app container uses as
   `payroll-app:previous`. If no container is running, skip.
-- **After a successful rebuild**, run `docker builder prune -f --keep-storage 2gb`,
-  so the build cache is capped at 2 GB instead of growing without bound. A failed prune
-  must not fail the deploy.
+- **After a successful rebuild**, remove dangling images and dangling build
+  cache (`docker image prune -f`, `docker builder prune -f`). Implementation
+  note: a 2 GB cap was planned here, but on Docker 29 `--max-used-space`
+  refuses to prune below the live cache (the current image's own layers,
+  2-3 GB) and reclaimed nothing, while a dangling-only prune bounds growth
+  to that live set and keeps routine deploys as fast cached builds. A failed
+  prune must not fail the deploy.
 
 Rollback, documented in `docs/runbook.md`:
 `docker tag payroll-app:previous payroll-app:latest`, then
@@ -177,7 +189,7 @@ Each item is a pass/fail check with the observed output recorded.
    - `web-push` loads;
    - the Prometheus endpoint on port 9464 answers (OpenTelemetry);
    - the MCP container reports healthy on `/health`;
-   - `scripts/repair-orphan-day-pairs.ts --dry-run` runs to completion
+   - `scripts/repair-duplicate-punches.ts --dry-run` runs to completion
      (tsx, `lib/`, drizzle).
 6. Phone check with Playwright's WebKit engine and an iPhone profile, run
    from the developer's Mac against the sandbox: log in as an employee and
