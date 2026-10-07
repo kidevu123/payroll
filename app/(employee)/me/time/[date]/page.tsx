@@ -17,17 +17,10 @@ import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
 import { buildEmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 import { companyDayIso } from "@/lib/time/company-day";
+import { formatClockTime } from "@/lib/time/format";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
-function fmtTime(d: Date | null, tz: string, locale: string): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: tz,
-  }).format(d);
-}
 
 export default async function EmployeeDay({
   params,
@@ -130,13 +123,13 @@ export default async function EmployeeDay({
                   <span>
                     <span className="text-text-muted">{t("in")}: </span>
                     <span className="tabular-nums">
-                      {fmtTime(p.clockIn, company.timezone, dateLocale)}
+                      {formatClockTime(p.clockIn, company.timezone, dateLocale)}
                     </span>
                   </span>
                   <span>
                     <span className="text-text-muted">{t("out")}: </span>
                     <span className="tabular-nums">
-                      {fmtTime(p.clockOut, company.timezone, dateLocale)}
+                      {formatClockTime(p.clockOut, company.timezone, dateLocale)}
                     </span>
                   </span>
                 </span>

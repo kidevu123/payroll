@@ -14,6 +14,7 @@
 // is responsible for converting timestamps to the company-tz day before
 // passing them in.
 
+import { utcDayIso } from "@/lib/time/format";
 import type { PayPeriodSettings } from "@/lib/settings/schemas";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -33,12 +34,6 @@ function parseDay(iso: string): Date {
   return new Date(Date.UTC(y, mo - 1, d));
 }
 
-function formatDay(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = `${d.getUTCMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getUTCDate()}`.padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function addDays(d: Date, n: number): Date {
   return new Date(d.getTime() + n * MS_PER_DAY);
@@ -68,7 +63,7 @@ export function getPeriodBounds(
     const periodIndex = Math.floor(offset / length);
     const start = addDays(anchor, periodIndex * length);
     const end = addDays(start, length - 1);
-    return { startDate: formatDay(start), endDate: formatDay(end) };
+    return { startDate: utcDayIso(start), endDate: utcDayIso(end) };
   }
 
   // No anchor. For weekly+ periods, back up to the most recent
@@ -76,13 +71,13 @@ export function getPeriodBounds(
   // weekly anchor is meaningless; treat the target itself as the start.
   if (length < 7) {
     const end = addDays(target, length - 1);
-    return { startDate: formatDay(target), endDate: formatDay(end) };
+    return { startDate: utcDayIso(target), endDate: utcDayIso(end) };
   }
   const targetDow = target.getUTCDay(); // 0=Sun..6=Sat
   const backStep = (targetDow - settings.startDayOfWeek + 7) % 7;
   const start = addDays(target, -backStep);
   const end = addDays(start, length - 1);
-  return { startDate: formatDay(start), endDate: formatDay(end) };
+  return { startDate: utcDayIso(start), endDate: utcDayIso(end) };
 }
 
 /**
@@ -93,7 +88,7 @@ export function getNextPeriodBounds(
   settings: PayPeriodSettings,
 ): PeriodBounds {
   const start = addDays(parseDay(current.endDate), 1);
-  return getPeriodBounds(formatDay(start), settings);
+  return getPeriodBounds(utcDayIso(start), settings);
 }
 
 /**
@@ -118,7 +113,7 @@ export function canonicalEndForSchedule(
 ): string {
   if (scheduleKind !== "WEEKLY") return storedEndDate;
   const start = parseDay(startDate);
-  const canonical = formatDay(addDays(start, 6));
+  const canonical = utcDayIso(addDays(start, 6));
   return canonical > storedEndDate ? canonical : storedEndDate;
 }
 
@@ -156,8 +151,8 @@ export function getMonthlyCalendarBounds(date: string): PeriodBounds {
   const m = target.getUTCMonth();
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   return {
-    startDate: formatDay(new Date(Date.UTC(y, m, 1))),
-    endDate: formatDay(new Date(Date.UTC(y, m, lastDay))),
+    startDate: utcDayIso(new Date(Date.UTC(y, m, 1))),
+    endDate: utcDayIso(new Date(Date.UTC(y, m, lastDay))),
   };
 }
 
@@ -173,13 +168,13 @@ export function getSemiMonthlyBounds(date: string): PeriodBounds {
   const dom = target.getUTCDate();
   if (dom <= 15) {
     return {
-      startDate: formatDay(new Date(Date.UTC(y, m, 1))),
-      endDate: formatDay(new Date(Date.UTC(y, m, 15))),
+      startDate: utcDayIso(new Date(Date.UTC(y, m, 1))),
+      endDate: utcDayIso(new Date(Date.UTC(y, m, 15))),
     };
   }
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   return {
-    startDate: formatDay(new Date(Date.UTC(y, m, 16))),
-    endDate: formatDay(new Date(Date.UTC(y, m, lastDay))),
+    startDate: utcDayIso(new Date(Date.UTC(y, m, 16))),
+    endDate: utcDayIso(new Date(Date.UTC(y, m, lastDay))),
   };
 }

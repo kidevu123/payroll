@@ -25,6 +25,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
+import { formatClockTime } from "@/lib/time/format";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
 import { PayslipPdfActions } from "@/components/domain/payslip-pdf-actions";
@@ -32,14 +33,6 @@ import { PrintPageButton } from "@/components/employee/print-page-button";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
-function fmtTime(d: Date | null, tz: string, locale: string): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: tz,
-  }).format(d);
-}
 
 function fmtDayLabel(iso: string, tz: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
@@ -437,14 +430,14 @@ async function PayslipBody({
                                 <span className="text-text-muted">
                                   {t("in")}{" "}
                                   <span className="whitespace-nowrap tabular-nums text-text">
-                                    {fmtTime(r.inT, tz, dateLocale)}
+                                    {formatClockTime(r.inT, tz, dateLocale)}
                                   </span>
                                   <span className="mx-1.5 text-text-subtle">
                                     →
                                   </span>
                                   {t("out")}{" "}
                                   <span className="whitespace-nowrap tabular-nums text-text">
-                                    {fmtTime(r.outT, tz, dateLocale)}
+                                    {formatClockTime(r.outT, tz, dateLocale)}
                                   </span>
                                 </span>
                               </span>
@@ -507,10 +500,10 @@ async function PayslipBody({
                               {i === 0 ? fmtDayLabel(d, tz, dateLocale) : ""}
                             </td>
                             <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
-                              {fmtTime(r.inT, tz, dateLocale)}
+                              {formatClockTime(r.inT, tz, dateLocale)}
                             </td>
                             <td className="px-3 py-3 tabular-nums text-xs text-text-muted tabular-nums">
-                              {fmtTime(r.outT, tz, dateLocale)}
+                              {formatClockTime(r.outT, tz, dateLocale)}
                             </td>
                             <td className="px-3 py-3 text-right tabular-nums text-xs tabular-nums text-text">
                               {r.hours !== null ? r.hours.toFixed(2) : "—"}

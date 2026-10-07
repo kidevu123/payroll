@@ -18,24 +18,14 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { companyDayIso } from "@/lib/time/company-day";
+import { formatClockTime } from "@/lib/time/format";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 
 // Stable ISO-style date key (YYYY-MM-DD) — locale-independent, used for
 // grouping/filtering. Keep en-CA so the format never shifts.
-function dayKey(d: Date, tz: string): string {
-  return companyDayIso(d, tz);
-}
 
-function fmtTime(d: Date | null, tz: string, locale: string): string {
-  if (!d) return "—";
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: tz,
-  }).format(d);
-}
 
 // Calendar days are rendered from their ISO key at noon UTC so the label
 // can never roll to the neighbouring day in the viewer's timezone.
@@ -90,7 +80,7 @@ export default async function EmployeeTime() {
   const punches = dedupNearDuplicatePunches(
     await listPunches({ employeeId: session.user.employeeId }),
   );
-  const today = dayKey(new Date(), company.timezone);
+  const today = companyDayIso(new Date(), company.timezone);
   const fiveWeeksAgo = new Date(`${today}T00:00:00Z`).getTime() - 35 * MS_PER_DAY;
   const recent = punches.filter(
     (p) => p.clockIn.getTime() >= fiveWeeksAgo,
@@ -99,7 +89,7 @@ export default async function EmployeeTime() {
   // Group: week-start-iso -> day-iso -> punches[]
   const byWeek = new Map<string, Map<string, typeof punches>>();
   for (const p of recent) {
-    const day = dayKey(p.clockIn, company.timezone);
+    const day = companyDayIso(p.clockIn, company.timezone);
     const week = startOfWeek(day, payPeriod.startDayOfWeek);
     let weekMap = byWeek.get(week);
     if (!weekMap) {
@@ -114,7 +104,7 @@ export default async function EmployeeTime() {
 
   // Today's punches — surfaced front-and-center.
   const todayPunches = punches.filter(
-    (p) => dayKey(p.clockIn, company.timezone) === today,
+    (p) => companyDayIso(p.clockIn, company.timezone) === today,
   );
   let todayMs = 0;
   for (const p of todayPunches) {
@@ -174,13 +164,13 @@ export default async function EmployeeTime() {
                     <span>
                       <span className="text-text-muted">{t("in")}: </span>
                       <span className="tabular-nums font-medium">
-                        {fmtTime(p.clockIn, company.timezone, dateLocale)}
+                        {formatClockTime(p.clockIn, company.timezone, dateLocale)}
                       </span>
                     </span>
                     <span>
                       <span className="text-text-muted">{t("out")}: </span>
                       <span className="tabular-nums font-medium">
-                        {fmtTime(p.clockOut, company.timezone, dateLocale)}
+                        {formatClockTime(p.clockOut, company.timezone, dateLocale)}
                       </span>
                     </span>
                   </span>
@@ -268,8 +258,8 @@ export default async function EmployeeTime() {
                           </span>
                           {firstIn ? (
                             <span className="block truncate text-xs tabular-nums text-text-muted">
-                              {fmtTime(firstIn, company.timezone, dateLocale)} –{" "}
-                              {fmtTime(lastOut, company.timezone, dateLocale)}
+                              {formatClockTime(firstIn, company.timezone, dateLocale)} –{" "}
+                              {formatClockTime(lastOut, company.timezone, dateLocale)}
                             </span>
                           ) : null}
                         </span>

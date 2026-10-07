@@ -1,3 +1,4 @@
+import { eachDayIso, utcDayIso } from "@/lib/time/format";
 import { companyDayIso } from "@/lib/time/company-day";
 // Missed-punch detection per spec §6.2. Pure function: takes employees,
 // punches, holidays, time-off, and a period; returns the alerts that should
@@ -67,22 +68,7 @@ export type DetectedAlert = {
 };
 
 /** Iterate days from startDate to endDate inclusive, both YYYY-MM-DD strings. */
-function eachDay(startIso: string, endIso: string): string[] {
-  const out: string[] = [];
-  const start = new Date(`${startIso}T00:00:00Z`);
-  const end = new Date(`${endIso}T00:00:00Z`);
-  for (let d = start; d <= end; d = new Date(d.getTime() + MS_PER_DAY)) {
-    out.push(formatDay(d));
-  }
-  return out;
-}
 
-function formatDay(d: Date): string {
-  const y = d.getUTCFullYear();
-  const m = `${d.getUTCMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getUTCDate()}`.padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function dayInTimezone(d: Date, tz: string): string {
   return companyDayIso(d, tz);
@@ -121,7 +107,7 @@ function withinTimeOff(
  */
 export function detectExceptions(input: DetectInput): DetectedAlert[] {
   const alerts: DetectedAlert[] = [];
-  const days = eachDay(input.period.startDate, input.period.endDate);
+  const days = eachDayIso(input.period.startDate, input.period.endDate);
   const holidaySet = new Set(input.holidays);
   const workingSet = new Set(input.workingDays);
   const today = dayInTimezone(input.now, input.timezone);

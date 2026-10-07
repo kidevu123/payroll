@@ -38,9 +38,6 @@ function fmt(d: Date | null, tz: string): string {
   }).format(d);
 }
 
-function dayKey(d: Date, tz: string): string {
-  return companyDayIso(d, tz);
-}
 
 export default async function PunchesAdmin({
   searchParams,
@@ -68,7 +65,7 @@ export default async function PunchesAdmin({
   const filtered = allPunches
     .filter((p) => {
       if (sourceFilter && p.source !== sourceFilter) return false;
-      const day = dayKey(p.clockIn, company.timezone);
+      const day = companyDayIso(p.clockIn, company.timezone);
       if (fromDay && day < fromDay) return false;
       if (toDay && day > toDay) return false;
       return true;
@@ -197,7 +194,7 @@ export default async function PunchesAdmin({
             {filtered.map((p) => {
               const emp = empById.get(p.employeeId);
               const period = periodById.get(p.periodId);
-              const day = dayKey(p.clockIn, company.timezone);
+              const day = companyDayIso(p.clockIn, company.timezone);
               const outOfPeriod =
                 period &&
                 (day < period.startDate || day > period.endDate);

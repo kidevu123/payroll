@@ -21,6 +21,7 @@ import { writeAudit } from "@/lib/db/audit";
 import type { RawPunchEvent } from "@/lib/ngteco/scraper";
 import { normalizeRef } from "@/lib/ngteco/normalize-ref";
 import { localMidnightUtc, addDaysIso } from "@/lib/utils";
+import { companyDayIso } from "@/lib/time/company-day";
 import { pairPunchEvents, DUPLICATE_PUNCH_WINDOW_MS } from "./pair-events";
 import { reconcileOrphanDayPairs } from "./reconcile-orphan-day-pairs";
 import { voidSupersededAmbiguousPunches } from "./superseded-ambiguous";
@@ -54,9 +55,6 @@ export type PollImportSummary = {
 // test that reference it via "./poll-importer" keep working.
 export { normalizeRef };
 
-function dayKey(iso: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
-}
 
 export function localDayBoundsForPollImport(
   dayIso: string,
@@ -147,7 +145,7 @@ export async function importPunchPoll(
       summary.unmatchedRefs++;
       continue;
     }
-    const day = dayKey(ev.punchAt, options.timezone);
+    const day = companyDayIso(new Date(ev.punchAt), options.timezone);
     const k = `${empId}|${day}`;
     const g = groups.get(k) ?? { empId, day, events: [] };
     g.events.push(ev);

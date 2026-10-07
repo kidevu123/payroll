@@ -43,23 +43,11 @@ import { payPeriods, paySchedules } from "@/lib/db/schema";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
 import { MissedPunchRailCard } from "@/components/domain/missed-punch-rail-card";
 import { companyDayIso } from "@/lib/time/company-day";
+import { todayInCompanyTz, eachDayIso } from "@/lib/time/format";
 
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-function todayInTimezone(tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
 
-function eachDay(startIso: string, endIso: string): string[] {
-  const out: string[] = [];
-  const start = new Date(`${startIso}T00:00:00Z`);
-  const end = new Date(`${endIso}T00:00:00Z`);
-  for (let d = start; d <= end; d = new Date(d.getTime() + MS_PER_DAY)) {
-    out.push(d.toISOString().slice(0, 10));
-  }
-  return out;
-}
 
 function dayOf(d: Date, tz: string): string {
   return companyDayIso(d, tz);
@@ -420,7 +408,7 @@ export default async function TimePage({
   searchParams: Promise<{ schedule?: string; period?: string; day?: string }>;
 }) {
   const company = await getSetting("company");
-  const today = todayInTimezone(company.timezone);
+  const today = todayInCompanyTz(company.timezone);
   const sp = await searchParams;
   const tab = parseScheduleTab(sp.schedule);
   // Time only filters on punch-bearing cadences. The "SALARIED" synthetic
@@ -541,7 +529,7 @@ export default async function TimePage({
   })();
   const lastDay =
     period.endDate < canonicalEnd ? canonicalEnd : period.endDate;
-  const days = eachDay(period.startDate, lastDay);
+  const days = eachDayIso(period.startDate, lastDay);
   const [allActive, punches, approvedTimeOff, adjacent] = await Promise.all([
     listEmployees({ status: "ACTIVE" }),
     // Always load by date range. Filtering by period.id hid punches that
@@ -597,7 +585,7 @@ export default async function TimePage({
   // cells from prior days — exactly what an operator notices when a
   // sync was missed. The Backfill alert renders only when this is > 0,
   // so when the system is healthy the /time page stays uncluttered.
-  const todayIso = todayInTimezone(company.timezone);
+  const todayIso = todayInCompanyTz(company.timezone);
   const staleOpenPunchCount = punchesInRange.reduce((n, p) => {
     if (p.clockOut !== null) return n;
     const d = dayOf(p.clockIn, company.timezone);
