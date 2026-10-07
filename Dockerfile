@@ -4,7 +4,9 @@
 # Stages:
 #   deps  — install full deps with native modules (argon2, postgres.js).
 #   build — compile Next.js with output: standalone.
-#   prod-deps — production-only node_modules for the runtime image.
+#   prod-deps — production-only node_modules.
+#   runtime-modules / standalone — prod-deps merged with the few packages
+#           only Next's trace has; the bundle without its duplicate copy.
 #   run   — the runtime image: slim Node + the standalone bundle + the
 #           migrate/seed scripts + production node_modules + the Chromium
 #           headless shell (the NGTeco scraper's only browser).
@@ -39,8 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
+# @next/swc-* is the SWC compiler binary (137 MB). Only `next build` and
+# `next dev` load it; the build stage has its own copy and the running
+# server never touches it.
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
-    && npm cache clean --force
+    && npm cache clean --force \
+    && rm -rf node_modules/@next/swc-*
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 2: build
@@ -106,6 +112,27 @@ RUN npx esbuild mcp-server/src/index.ts \
     --alias:@/lib=./lib
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Stage 2b: runtime-modules + standalone
+# ──────────────────────────────────────────────────────────────────────────────
+# The standalone bundle carries its own node_modules: the ~3,500 files
+# Next.js traced as needed by the server. Almost all of them are also in the
+# production install, so shipping both stored ~100 MB twice. But NOT all:
+# six packages (typescript, source-map, source-map-support, buffer-from,
+# has-flag, supports-color) are traced by Next yet absent from an
+# --omit=dev install, so the traced copy cannot simply be dropped.
+#
+# So: merge. Start from the production install and add only what it lacks
+# (`cp -n` never overwrites), then ship the bundle without its node_modules.
+# Where both trees have a file the production install wins, which is the
+# precedence the image has always had.
+FROM prod-deps AS runtime-modules
+COPY --from=build /app/.next/standalone/node_modules /tmp/traced
+RUN cp -an /tmp/traced/. /app/node_modules/ && rm -rf /tmp/traced
+
+FROM build AS standalone
+RUN rm -rf /app/.next/standalone/node_modules
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Stage 3: run
 # ──────────────────────────────────────────────────────────────────────────────
 # Slim Node plus exactly one browser. The previous base was Microsoft's
@@ -130,9 +157,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates procps \
     && rm -rf /var/lib/apt/lists/*
 
-# Production node_modules first: this layer and the browser layer below only
-# change when package-lock.json changes, so routine deploys reuse both.
-COPY --from=prod-deps /app/node_modules ./node_modules
+# node_modules first: this layer and the browser layer below only change
+# when package-lock.json (or the set of files Next traces) changes, so
+# routine deploys reuse both.
+COPY --from=runtime-modules /app/node_modules ./node_modules
 
 # Install the browser FROM the app's own playwright package, so the browser
 # build always matches the library. (The old base needed its image tag
@@ -151,8 +179,9 @@ ARG BUILD_GIT_BRANCH=unknown
 ENV BUILD_GIT_SHA=$BUILD_GIT_SHA
 ENV BUILD_GIT_BRANCH=$BUILD_GIT_BRANCH
 
-# Copy the standalone bundle and static files from the build stage.
-COPY --from=build /app/.next/standalone ./
+# The standalone bundle (minus its node_modules, merged above) and static
+# files.
+COPY --from=standalone /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 # Carry the SHA stamp into the runtime image. Used by the deploy
 # drift-detection check AND by lib/telemetry.ts to emit
