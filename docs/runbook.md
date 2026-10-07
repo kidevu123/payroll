@@ -112,6 +112,28 @@ sudo systemctl start payroll-deploy.service
 
 The unit is `Type=oneshot` so this just runs the cycle once.
 
+### Roll back a deploy
+
+Every deploy tags the image it replaces as `payroll-app:previous`. To go
+back to it:
+
+```
+ssh root@192.168.1.190 -t 'pct exec 120 -- bash -lc "
+  systemctl stop payroll-deploy.timer &&
+  cd /opt/payroll &&
+  docker tag payroll-app:previous payroll-app:latest &&
+  docker compose up -d --no-build app mcp &&
+  docker compose exec -T app cat /app/.git-sha"'
+```
+
+The timer must be stopped first: it rebuilds from git whenever the running
+SHA differs from the branch head, which would undo the rollback within a
+minute. Then revert the bad commit, push, and start the timer again
+(`systemctl start payroll-deploy.timer`); the next tick deploys the revert.
+
+A rollback does not touch the database. If the bad deploy ran a migration,
+restore from the pre-deploy dump as well (see "Restore drill").
+
 ## Backups
 
 Daily `pg_dump --format=custom` lands in `/data/backups/payroll-<timestamp>.dump`. Retention is 30 days (configurable via `BACKUP_RETENTION_DAYS` in `/etc/payroll/.env`).
