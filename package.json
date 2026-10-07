@@ -18,7 +18,9 @@
     "seed": "tsx scripts/seed.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "mcp:stdio": "tsx --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --stdio",
-    "mcp:http": "tsx --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --http"
+    "mcp:http": "tsx --tsconfig mcp-server/tsconfig.json mcp-server/src/index.ts --http",
+    "golden:record": "node scripts/golden/run.mjs record",
+    "golden:check": "node scripts/golden/run.mjs check"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
