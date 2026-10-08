@@ -13,6 +13,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import { formatMoney } from "@/lib/utils";
 
 type Actor = {
   id: string;
@@ -131,7 +132,7 @@ export async function recordWithdrawal(
     const balance = await getDrawerBalanceCents(t);
     if (balance - input.amountCents < 0) {
       throw new Error(
-        `Insufficient cash on hand. Drawer balance is $${(balance / 100).toFixed(2)}; tried to withdraw $${(input.amountCents / 100).toFixed(2)}.`,
+        `Insufficient cash on hand. Drawer balance is ${formatMoney(balance)}; tried to withdraw ${formatMoney(input.amountCents)}.`,
       );
     }
     const [row] = await t

@@ -20,6 +20,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { db } from "@/lib/db";
 import { payrollRuns, type PayrollPeriodDocument } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
+import { formatMoney } from "@/lib/utils";
 
 /**
  * Match a doc to a displayed period via:
@@ -270,7 +271,7 @@ export default async function EmployeePayList() {
                     title={d.kind === "PAYSTUB" ? "Paystub" : d.kind === "W2" ? "W-2" : d.originalFilename}
                     meta={[
                       d.payPeriodStart && d.payPeriodEnd ? formatPeriodRange(d.payPeriodStart, d.payPeriodEnd) : null,
-                      d.amountCents !== null && d.amountCents > 0 ? `$${(d.amountCents / 100).toFixed(2)} take-home` : null,
+                      d.amountCents !== null && d.amountCents > 0 ? `${formatMoney(d.amountCents)} take-home` : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}

@@ -13,6 +13,7 @@ import {
   previewPeriodEmployeeSummaryAction,
   tagLegacyPeriodsBySchedule_Action,
 } from "./actions";
+import { formatMoney } from "@/lib/utils";
 
 type BackfillRow = {
   runId: string;
@@ -214,7 +215,7 @@ export function CleanupTools() {
                 {backfillResult.fixed.map((r) => (
                   <li key={r.runId}>
                     <code className="font-mono">{r.runId.slice(0, 8)}</code>:{" "}
-                    NULL → ${(r.newTotal / 100).toFixed(2)}
+                    NULL → {formatMoney(r.newTotal)}
                   </li>
                 ))}
               </ul>
@@ -578,8 +579,8 @@ function PairSide({
                   className={emp.voided ? "line-through opacity-60" : ""}
                 >
                   {emp.legacyId ? `#${emp.legacyId} · ` : ""}
-                  {emp.displayName} · {emp.hours.toFixed(2)}h · $
-                  {(emp.roundedCents / 100).toFixed(2)}
+                  {emp.displayName} · {emp.hours.toFixed(2)}h ·{" "}
+                  {formatMoney(emp.roundedCents)}
                   {emp.voided && " (voided)"}
                 </li>
               ))}

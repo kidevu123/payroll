@@ -23,6 +23,7 @@ import {
 } from "./actions";
 import { normalizeDateForGuess } from "@/lib/punches/normalize-date";
 import { PreviewRow } from "./upload-preview-row";
+import { formatMoney } from "@/lib/utils";
 
 type SuccessState = { runId: string; summary: ManualImportSummary };
 type PreviewState = {
@@ -260,7 +261,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                       <li key={o.runId}>
                         • {o.startDate} – {o.endDate} · <span className="font-mono">{o.source}</span> · {o.state}
                         {o.totalAmountCents
-                          ? ` · $${(o.totalAmountCents / 100).toFixed(2)}`
+                          ? ` · ${formatMoney(o.totalAmountCents)}`
                           : ""}
                       </li>
                     ))}

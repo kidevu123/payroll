@@ -20,7 +20,7 @@ import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 export type PayslipCardDoc = {
   id: string;
@@ -167,7 +167,7 @@ function docTitle(d: PayslipCardDoc): string {
 function docMeta(d: PayslipCardDoc): string {
   const parts: string[] = [];
   if (d.payPeriodStart && d.payPeriodEnd) parts.push(formatPeriodRange(d.payPeriodStart, d.payPeriodEnd));
-  if (d.amountCents !== null && d.amountCents > 0) parts.push(`$${(d.amountCents / 100).toFixed(2)} take-home`);
+  if (d.amountCents !== null && d.amountCents > 0) parts.push(`${formatMoney(d.amountCents)} take-home`);
   return parts.join(" · ");
 }
 

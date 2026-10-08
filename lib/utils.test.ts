@@ -2,8 +2,8 @@
 // landing in Phase 1 against /lib/payroll/computePay.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import fs, { readFileSync } from "node:fs";
+import path, { join } from "node:path";
 import {
   cn,
   formatMoney,
@@ -151,5 +151,28 @@ describe("cn (tailwind-merge type scale)", () => {
       [...theme.matchAll(/^\s*--text-([a-z]+):\s/gm)].map((m) => m[1]!),
     );
     expect([...declared].sort()).toEqual([...SCALE].sort());
+  });
+});
+
+describe("money convention: formatMoney is the only place cents become dollars", () => {
+  // A "$" followed by a hand-built (cents / 100).toFixed(2) prints $1234.50
+  // where formatMoney prints $1,234.50. Two machine-facing texts are exempt:
+  // they are sent to Zoho, where the plain form is the existing contract.
+  const EXEMPT = new Set(["lib/zoho/push.ts", "lib/pdf/build-admin-report.ts"]);
+  const HAND_BUILT = /\$\s*\$?\{\s*(?:Math\.abs)?\(+[^{}`]*?\/ 100\)\.toFixed\(2\)/;
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) return e.name === "node_modules" ? [] : walk(p);
+      return /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [p] : [];
+    });
+  it("no on-screen dollar string is built by hand", () => {
+    const root = path.resolve(__dirname, "..");
+    const offenders = ["app", "components", "lib"]
+      .flatMap((d) => walk(path.join(root, d)))
+      .map((f) => path.relative(root, f))
+      .filter((rel) => !EXEMPT.has(rel))
+      .filter((rel) => HAND_BUILT.test(fs.readFileSync(path.join(root, rel), "utf8")));
+    expect(offenders).toEqual([]);
   });
 });

@@ -38,6 +38,7 @@ import { ArchiveEmployeeButton } from "./archive-button";
 import { AccountSection } from "./account-section";
 import { RecomputePayslipsButton } from "./recompute-button";
 import { PayslipBatchPrintList } from "@/components/domain/payslip-batch-print-list";
+import { formatMoney } from "@/lib/utils";
 
 export default async function EmployeeDetailPage({
   params,
@@ -250,7 +251,7 @@ export default async function EmployeeDetailPage({
                       ? `${period.startDate} – ${period.endDate}`
                       : "Unknown period",
                     hoursLabel: `${Number(payslip.hoursWorked).toFixed(2)} h`,
-                    payLabel: `$${(payslip.roundedPayCents / 100).toFixed(2)}`,
+                    payLabel: formatMoney(payslip.roundedPayCents),
                     acknowledged: Boolean(payslip.acknowledgedAt),
                     pdfPath: payslip.pdfPath,
                   }))}

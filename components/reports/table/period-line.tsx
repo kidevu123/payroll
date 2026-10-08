@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { formatPeriodRange as formatRange } from "@/lib/payroll/format-period";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 import { Banknote } from "lucide-react";
 import { IconButton } from "@/components/ui/button";
 import { MoneyDisplay } from "@/components/domain/money-display";
@@ -71,7 +71,7 @@ export function PeriodLine({
     if (cents > drawerBalanceCents) {
       setPaying(false);
       setError(
-        `Drawer has $${(drawerBalanceCents / 100).toFixed(2)} on hand — short by $${((cents - drawerBalanceCents) / 100).toFixed(2)}.`,
+        `Drawer has ${formatMoney(drawerBalanceCents)} on hand — short by ${formatMoney(cents - drawerBalanceCents)}.`,
       );
       return;
     }
@@ -203,7 +203,7 @@ export function PeriodLine({
                 sizePx="sm"
                 onClick={() => setPayOpen((v) => !v)}
                 aria-label="Pay from cash drawer"
-                title={`Pay from cash drawer — $${(drawerBalanceCents / 100).toFixed(2)} on hand`}
+                title={`Pay from cash drawer — ${formatMoney(drawerBalanceCents)} on hand`}
                 className="h-8 w-8"
               >
                 <Banknote className="h-3.5 w-3.5" aria-hidden />

@@ -20,6 +20,7 @@ import {
   uploadPayrollDocAction,
 } from "./payroll-docs-actions";
 import { ZohoDocStatus } from "@/components/domain/zoho-doc-status";
+import { formatMoney } from "@/lib/utils";
 
 type EmployeeLite = Pick<
   Employee,
@@ -338,7 +339,7 @@ function DocRow({
             className="text-xs font-medium text-success-700 shrink-0"
             title="Net pay (post-tax) — pushed to Zoho when this is the latest paystub for the period."
           >
-            · ${(doc.amountCents / 100).toFixed(2)} net
+            · {formatMoney(doc.amountCents)} net
           </span>
         )}
         {doc.kind === "PAYSTUB" && doc.amountCents === null && (

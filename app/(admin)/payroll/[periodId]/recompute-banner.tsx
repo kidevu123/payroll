@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { recomputeAllPayslipsOnPeriodAction } from "../actions";
+import { formatMoney } from "@/lib/utils";
 
 type DriftEntry = {
   employeeName: string;
@@ -67,8 +68,8 @@ export function RecomputeBanner({
           {totalRecovered !== 0 && (
             <span>
               {" "}
-              Net adjustment: {totalRecovered > 0 ? "−" : "+"}$
-              {Math.abs(totalRecovered / 100).toFixed(2)}.
+              Net adjustment: {totalRecovered > 0 ? "−" : "+"}
+              {formatMoney(Math.abs(totalRecovered))}.
             </span>
           )}
         </div>

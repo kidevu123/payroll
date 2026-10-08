@@ -1,5 +1,6 @@
 // Labels and small formatters for the pay-period detail page. Moved out of
 // app/(admin)/payroll/[periodId]/page.tsx so they can be tested.
+import { formatMoney } from "@/lib/utils";
 
 export function formatHm(d: Date | null, tz: string): string {
   if (!d) return "—";
@@ -28,12 +29,12 @@ export function rateLabel(employee: {
   if (employee.payType === "FLAT_TASK") {
     return `Per task · ${
       employee.hourlyRateCents !== null
-        ? `$${(employee.hourlyRateCents / 100).toFixed(2)}`
+        ? formatMoney(employee.hourlyRateCents)
         : "—"
     }`;
   }
   return employee.hourlyRateCents !== null
-    ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
+    ? `${formatMoney(employee.hourlyRateCents)}/hr`
     : "—";
 }
 
