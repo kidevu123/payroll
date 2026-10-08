@@ -13,7 +13,7 @@ Type=oneshot
 TimeoutStartSec=1800
 # These are filled in by the install.sh override.conf:
 Environment=PAYROLL_DIR=/opt/payroll
-Environment=PAYROLL_BRANCH=rebuild/foundation
+Environment=PAYROLL_BRANCH=main
 WorkingDirectory=/opt/payroll
 # Pull, then rebuild iff (a) git HEAD changed OR (b) the running
 # container's stamped /app/.git-sha doesn't match git HEAD. The second

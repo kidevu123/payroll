@@ -38,7 +38,7 @@ services:
       args:
         # Stamped at build time; surfaced via milo_build_info gauge.
         BUILD_GIT_SHA: ${BUILD_GIT_SHA:-dev}
-        BUILD_GIT_BRANCH: ${BUILD_GIT_BRANCH:-rebuild/foundation}
+        BUILD_GIT_BRANCH: ${BUILD_GIT_BRANCH:-main}
     restart: unless-stopped
     depends_on:
       db:

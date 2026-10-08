@@ -12,7 +12,7 @@ set -euo pipefail
 PROXMOX="root@192.168.1.190"
 CTID=120
 APP_DIR=/opt/payroll
-BRANCH=rebuild/foundation
+BRANCH=main
 
 echo "==> Pushing $BRANCH to origin"
 git push origin "$BRANCH"

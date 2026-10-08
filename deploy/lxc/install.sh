@@ -13,16 +13,16 @@
 # Re-running is safe; each step is idempotent.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/rebuild/foundation/deploy/lxc/install.sh | bash -s -- rebuild/foundation
+#   curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/main/deploy/lxc/install.sh | bash -s -- rebuild/foundation
 #
 # Or, if you've already cloned:
 #   bash deploy/lxc/install.sh [branch]
 #
-# Default branch is rebuild/foundation. Switch to main once Phase 1 ships.
+# Default branch is main.
 
 set -euo pipefail
 
-BRANCH="${1:-rebuild/foundation}"
+BRANCH="${1:-main}"
 REPO_URL="${REPO_URL:-https://github.com/kidevu123/payroll.git}"
 APP_DIR="${APP_DIR:-/opt/payroll}"
 ENV_DIR="/etc/payroll"

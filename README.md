@@ -68,8 +68,8 @@ First visit goes to `/setup` (no users yet). Create the OWNER, then sign in.
 One-shot install on the LXC (run as root):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/rebuild/foundation/deploy/lxc/install.sh \
-  | bash -s -- rebuild/foundation
+curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/main/deploy/lxc/install.sh \
+  | bash -s -- main
 ```
 
 What it does:
@@ -83,7 +83,7 @@ What it does:
 After that, your dev loop is:
 
 ```bash
-git push origin rebuild/foundation
+git push origin main
 # ...wait up to ~60s
 # LX120 has it.
 ```
