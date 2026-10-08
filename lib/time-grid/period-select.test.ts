@@ -9,18 +9,25 @@ describe("nextWindowAfter", () => {
   it("biweekly: 14 days", () => {
     expect(nextWindowAfter("2026-10-04", "BIWEEKLY")).toEqual({ start: "2026-10-05", end: "2026-10-18" });
   });
-  it("monthly and semi-monthly: a period ending mid-month rolls to the next full calendar month", () => {
-    // A period that ends mid-month (semi-monthly 1st-15th) rolls to the next month.
-    expect(nextWindowAfter("2026-10-15", "SEMI_MONTHLY")).toEqual({ start: "2026-11-01", end: "2026-11-30" });
+  it("monthly: a period ending mid-month rolls to the next full calendar month", () => {
     expect(nextWindowAfter("2026-12-15", "MONTHLY")).toEqual({ start: "2027-01-01", end: "2027-01-31" });
   });
-  it("a period ending on the last day of a month rolls to the very next month, not the one after", () => {
-    // Was a bug: prevEnd + 1 day is already the 1st, and the rule then added
-    // another month, so after Nov 30 the grid offered January.
+  it("monthly: a period ending on a month's last day rolls to the very next month", () => {
+    // Was a bug: after Nov 30 the grid offered January.
     expect(nextWindowAfter("2026-11-30", "MONTHLY")).toEqual({ start: "2026-12-01", end: "2026-12-31" });
-    expect(nextWindowAfter("2026-12-31", "SEMI_MONTHLY")).toEqual({ start: "2027-01-01", end: "2027-01-31" });
     expect(nextWindowAfter("2027-01-31", "MONTHLY")).toEqual({ start: "2027-02-01", end: "2027-02-28" });
     expect(nextWindowAfter("2028-01-31", "MONTHLY")).toEqual({ start: "2028-02-01", end: "2028-02-29" });
+  });
+  it("semi-monthly: the next half month (1st-15th or 16th-end), never a whole month", () => {
+    // Was a bug: a semi-monthly tab was offered a full calendar month.
+    expect(nextWindowAfter("2026-10-15", "SEMI_MONTHLY")).toEqual({ start: "2026-10-16", end: "2026-10-31" });
+    expect(nextWindowAfter("2026-10-31", "SEMI_MONTHLY")).toEqual({ start: "2026-11-01", end: "2026-11-15" });
+    expect(nextWindowAfter("2026-12-31", "SEMI_MONTHLY")).toEqual({ start: "2027-01-01", end: "2027-01-15" });
+    expect(nextWindowAfter("2028-02-15", "SEMI_MONTHLY")).toEqual({ start: "2028-02-16", end: "2028-02-29" });
+  });
+  it("semi-monthly: an off-boundary end still starts on the next 1st or 16th, never overlapping", () => {
+    expect(nextWindowAfter("2026-10-10", "SEMI_MONTHLY")).toEqual({ start: "2026-10-16", end: "2026-10-31" });
+    expect(nextWindowAfter("2026-10-20", "SEMI_MONTHLY")).toEqual({ start: "2026-11-01", end: "2026-11-15" });
   });
 });
 

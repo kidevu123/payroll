@@ -40,15 +40,8 @@ export type EmployeeListFilters = {
    *   - string  → employees on this exact pay schedule
    *   - "none"  → employees without any schedule (employees.pay_schedule_id IS NULL)
    *   - undefined → no filter
-   *
-   * `payScheduleIdOrNull`: same shape as the exact-match form, but ALSO
-   * matches employees with NULL pay_schedule_id (legacy ride-along).
-   * Do NOT use it to decide who is paid: the publish handler, run detail,
-   * admin report and period detail all use the exact match, by owner
-   * directive (the wildcard paid one employee on two runs).
    */
   payScheduleId?: string | "none";
-  payScheduleIdOrNull?: string;
 };
 
 export async function listEmployees(
@@ -63,10 +56,6 @@ export async function listEmployees(
     conditions.push(sql`${employees.payScheduleId} IS NULL`);
   } else if (filters.payScheduleId) {
     conditions.push(eq(employees.payScheduleId, filters.payScheduleId));
-  } else if (filters.payScheduleIdOrNull) {
-    conditions.push(
-      sql`(${employees.payScheduleId} = ${filters.payScheduleIdOrNull} OR ${employees.payScheduleId} IS NULL)`,
-    );
   }
   if (filters.search) {
     const term = `%${filters.search}%`;

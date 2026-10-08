@@ -15,8 +15,8 @@ export type PeriodView = {
 
 /**
  * The window that immediately follows `prevEnd` for a cadence: the next 7
- * (or 14) days for weekly/biweekly, otherwise the next full calendar month
- * that starts after `prevEnd`.
+ * (or 14) days for weekly/biweekly, the next half month for semi-monthly,
+ * and the next full calendar month that starts after `prevEnd` for monthly.
  */
 export function nextWindowAfter(prevEnd: string, kind: PeriodKind): { start: string; end: string } {
   const startDate = new Date(`${prevEnd}T00:00:00Z`);
@@ -26,10 +26,20 @@ export function nextWindowAfter(prevEnd: string, kind: PeriodKind): { start: str
     end.setUTCDate(end.getUTCDate() + (kind === "WEEKLY" ? 6 : 13));
     return { start: startDate.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
   }
-  // A period that ended on a month's last day: the day after is already the
-  // 1st, so THAT month is the next window. Only a mid-month end rolls on to
-  // the following month. (Adding a month in both cases skipped one: after
-  // Nov 30 the grid offered January.)
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  if (kind === "SEMI_MONTHLY") {
+    // Half months: 1st-15th and 16th-end. The next window starts on the first
+    // 1st or 16th that is on or after the day following prevEnd.
+    const day = startDate.getUTCDate();
+    const y = startDate.getUTCFullYear();
+    const m = startDate.getUTCMonth();
+    if (day === 1) return { start: iso(new Date(Date.UTC(y, m, 1))), end: iso(new Date(Date.UTC(y, m, 15))) };
+    if (day <= 16) return { start: iso(new Date(Date.UTC(y, m, 16))), end: iso(new Date(Date.UTC(y, m + 1, 0))) };
+    return { start: iso(new Date(Date.UTC(y, m + 1, 1))), end: iso(new Date(Date.UTC(y, m + 1, 15))) };
+  }
+  // Monthly. A period that ended on a month's last day: the day after is
+  // already the 1st, so THAT month is the next window. Only a mid-month end
+  // rolls on to the following month.
   const start = new Date(startDate);
   if (start.getUTCDate() !== 1) {
     start.setUTCDate(1);

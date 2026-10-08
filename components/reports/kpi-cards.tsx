@@ -6,6 +6,7 @@
 import { ArrowDownRight, ArrowUpRight, CalendarDays, DollarSign, Users, Wallet } from "lucide-react";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import type { YearSummary } from "@/lib/reports/year-summary";
+import { KpiCard } from "@/components/ui/kpi-card";
 
 function Delta({ pct, priorYear }: { pct: number | null; priorYear: number }) {
   if (pct === null) {
@@ -19,34 +20,6 @@ function Delta({ pct, priorYear }: { pct: number | null; priorYear: number }) {
       {up ? "+" : ""}
       {pct}% vs {priorYear}
     </span>
-  );
-}
-
-function Card({
-  label,
-  tone,
-  icon: Icon,
-  value,
-  context,
-}: {
-  label: string;
-  tone: "brand" | "info";
-  icon: React.ComponentType<{ className?: string }>;
-  value: React.ReactNode;
-  context: React.ReactNode;
-}) {
-  const plate = tone === "brand" ? "bg-brand-50 text-brand-700" : "bg-info-50 text-info-700";
-  return (
-    <div className="flex items-start gap-4 rounded-card border border-border/70 bg-surface px-3.5 py-3 shadow-card sm:px-5 sm:py-4">
-      <span aria-hidden className={`mt-0.5 hidden h-12 w-12 shrink-0 items-center justify-center rounded-input sm:flex ${plate}`}>
-        <Icon className="h-6 w-6" />
-      </span>
-      <div className="min-w-0">
-        <div className="truncate text-sm text-text-muted">{label}</div>
-        <div className="mt-0.5 truncate text-metric tabular-nums tracking-tight text-text max-sm:text-xl">{value}</div>
-        <div className="mt-1">{context}</div>
-      </div>
-    </div>
   );
 }
 
@@ -64,16 +37,16 @@ export function ReportsKpiCards({
   const awaiting = summary.byMethod.slices.find((s) => s.key === "UNPAID")?.periods ?? 0;
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
-      <Card label="Gross wages" tone="brand" icon={DollarSign}
+      <KpiCard label="Gross wages" tone="brand" icon={DollarSign}
         value={<MoneyDisplay cents={c.grossCents} monospace={false} />}
         context={<Delta pct={c.grossDeltaPct} priorYear={c.priorYear} />} />
-      <Card label="Take-home pay" tone="info" icon={Wallet}
+      <KpiCard label="Take-home pay" tone="info" icon={Wallet}
         value={<MoneyDisplay cents={c.netCents} monospace={false} />}
         context={<Delta pct={c.netDeltaPct} priorYear={c.priorYear} />} />
-      <Card label="Pay runs" tone="brand" icon={CalendarDays}
+      <KpiCard label="Pay runs" tone="brand" icon={CalendarDays}
         value={summary.periodCount}
         context={<span className="text-caption text-text-subtle tabular-nums">{awaiting} awaiting payment</span>} />
-      <Card label="Employees paid" tone="info" icon={Users}
+      <KpiCard label="Employees paid" tone="info" icon={Users}
         value={paid}
         context={<span className="text-caption text-text-subtle tabular-nums">{employeesActive} active · {employeesInactive} inactive</span>} />
     </div>
