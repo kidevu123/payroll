@@ -8,7 +8,6 @@ import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
 import type React from "react";
 import {
-  ArrowLeft,
   ChevronRight,
   Download,
   AlertTriangle,
@@ -33,7 +32,6 @@ import { HoursDisplay } from "@/components/domain/hours-display";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
-import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
 import { listRates } from "@/lib/db/queries/rate-history";
 import { getSetting } from "@/lib/settings/runtime";
@@ -71,72 +69,22 @@ import {
   buildPayrollCashInputs,
 } from "@/lib/payroll/cash-denominations";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
-
-function formatHm(d: Date | null, tz: string): string {
-  if (!d) return "—";
-  const dt = d instanceof Date ? d : new Date(d);
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: tz,
-  }).format(dt);
-}
-
-function formatDayLabel(dateIso: string, tz: string): string {
-  const d = new Date(`${dateIso}T12:00:00Z`);
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    timeZone: tz,
-  }).format(d);
-}
-
-function rateLabel(employee: {
-  payType: string;
-  hourlyRateCents: number | null;
-}): string {
-  if (employee.payType === "FLAT_TASK") {
-    return `Per task · ${
-      employee.hourlyRateCents !== null
-        ? `$${(employee.hourlyRateCents / 100).toFixed(2)}`
-        : "—"
-    }`;
-  }
-  return employee.hourlyRateCents !== null
-    ? `$${(employee.hourlyRateCents / 100).toFixed(2)}/hr`
-    : "—";
-}
-
-function formatShortDate(d: Date | string, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    month: "short",
-    day: "numeric",
-  }).format(d instanceof Date ? d : new Date(d));
-}
-
-/** Inclusive day count between two ISO dates. */
-function periodDayCount(startIso: string, endIso: string): number {
-  const a = Date.UTC(
-    Number(startIso.slice(0, 4)),
-    Number(startIso.slice(5, 7)) - 1,
-    Number(startIso.slice(8, 10)),
-  );
-  const b = Date.UTC(
-    Number(endIso.slice(0, 4)),
-    Number(endIso.slice(5, 7)) - 1,
-    Number(endIso.slice(8, 10)),
-  );
-  return Math.round((b - a) / 86_400_000) + 1;
-}
-
-const ROUNDING_LABEL: Record<string, string> = {
-  NONE: "Pay is not rounded",
-  NEAREST_DOLLAR: "Pay is rounded to the nearest dollar",
-  NEAREST_QUARTER: "Pay is rounded to the nearest quarter",
-  NEAREST_FIFTEEN_MIN_HOURS: "Hours are rounded to the nearest 15 minutes",
-};
+import {
+  ROUNDING_LABEL,
+  formatDayLabel,
+  formatHm,
+  formatShortDate,
+  periodDayCount,
+  rateLabel,
+} from "@/lib/payroll/period-view";
+import {
+  buildDisplayRows,
+  filterPeriodEmployees,
+  groupPeriodPunches,
+  signOffGroups,
+  sumLiveTotals,
+  sumStoredPayslips,
+} from "@/lib/payroll/period-rows";
 
 function issueLabel(row: {
   incomplete: number;
@@ -234,48 +182,20 @@ export default async function PeriodReviewPage({
   const runCohort: string[] | null = Array.isArray(run?.cohortEmployeeIds)
     ? (run!.cohortEmployeeIds as string[])
     : null;
-  const cohortSet = runCohort ? new Set(runCohort) : null;
-  // Strict schedule isolation. Owner has been explicit, repeatedly:
-  // weekly and semi-monthly periods must NOT mix employees. The prior
-  // OR e.payScheduleId === null was leaking unassigned employees onto
-  // every schedule's period.
-  //
-  //   With cohort     → exact set, no further filter.
-  //   With schedule   → exact match. Employees with no schedule still
-  //                     appear because they're treated as wildcards
-  //                     (legacy onboarding state); future tightening
-  //                     would remove this once every employee has a
-  //                     schedule attached.
-  //   No schedule     → all (legacy fallback for periods that pre-date
-  //                     the schedule tagging).
-  // SALARIED staff are excluded from the punch-driven totals — they
-  // surface in the W2 upload section underneath instead.
-  const employees = (
-    cohortSet
-      ? allEmployees.filter((e) => cohortSet.has(e.id))
-      : effectiveScheduleId
-        ? allEmployees.filter(
-            (e) => e.payScheduleId === effectiveScheduleId,
-          )
-        : allEmployees
-  ).filter((e) => e.payType !== "SALARIED");
+  // Who belongs on this period (cohort > schedule > everyone; never salaried):
+  // lib/payroll/period-rows.ts filterPeriodEmployees.
+  const employees = filterPeriodEmployees(allEmployees, {
+    cohort: runCohort,
+    scheduleId: effectiveScheduleId,
+  });
 
-  const punchesByEmployee = new Map<string, typeof punches>();
-  for (const p of punches) {
-    if (runScheduleId) {
-      const e = employees.find((x) => x.id === p.employeeId);
-      if (!e) continue;
-    }
-    const list = punchesByEmployee.get(p.employeeId) ?? [];
-    list.push(p);
-    punchesByEmployee.set(p.employeeId, list);
-  }
-  // Collapse near-duplicates (poll vs CSV producing two rows for the
-  // same physical shift). Display + computePay both consume the deduped
-  // list so the period detail and the payslip stay consistent.
-  for (const [empId, list] of punchesByEmployee) {
-    punchesByEmployee.set(empId, dedupNearDuplicatePunches(list));
-  }
+  // Display + computePay both consume the deduped list so the period detail
+  // and the payslip stay consistent.
+  const punchesByEmployee = groupPeriodPunches(
+    punches,
+    employees.map((e) => e.id),
+    !!runScheduleId,
+  );
 
   const tasks = await db
     .select()
@@ -335,22 +255,8 @@ export default async function PeriodReviewPage({
   // payslips are the canonical "what was actually paid" — live computePay
   // can under-report when punch data wasn't fully imported. Sum the
   // non-voided payslips and use that as the period total instead.
-  const payslipSum = allPayslips
-    .filter((p) => !p.voidedAt)
-    .reduce((s, p) => s + p.roundedPayCents, 0);
-  const payslipHours = allPayslips
-    .filter((p) => !p.voidedAt)
-    .reduce((s, p) => s + Number(p.hoursWorked ?? 0), 0);
-
-  const liveTotals = rendered.reduce(
-    (acc, r) => {
-      acc.hours += r.result.totalHours;
-      acc.gross += r.result.grossCents;
-      acc.rounded += r.result.roundedCents;
-      return acc;
-    },
-    { hours: 0, gross: 0, rounded: 0 },
-  );
+  const { sum: payslipSum, hours: payslipHours } = sumStoredPayslips(allPayslips);
+  const liveTotals = sumLiveTotals(rendered);
 
   // Use stored payslip data when it's authoritative: PAID periods,
   // employee-visible published periods, legacy imports, or periods where
@@ -369,59 +275,14 @@ export default async function PeriodReviewPage({
     allPayslips.filter((p) => !p.voidedAt).map((p) => [p.employeeId, p]),
   );
 
-  // When useStoredTotals is true, build rows from the payslips themselves
-  // (so legacy periods with sparse punch data still show every employee
-  // who got paid). For employees not in `rendered`, append synthetic rows
-  // sourced from the payslip.
-  //
-  // Drift detection: legacy-imported payslips sometimes carry stored
-  // hours that don't reconcile with the punches in our system (the
-  // legacy app may have double-counted, or punch data may not have
-  // been imported alongside). Stamp `hoursDriftLive` on the row when
-  // stored hours and live punch hours disagree by >0.5h so the table
-  // can surface a warning chip and let the admin recompute.
-  type RowLike = (typeof rendered)[number] & {
-    storedHours?: number;
-    liveHours?: number;
-    hoursDrift?: boolean;
-  };
-  const renderedById = new Map(rendered.map((r) => [r.employee.id, r]));
-  let displayRows: RowLike[] = rendered;
-  if (useStoredTotals) {
-    displayRows = [];
-    for (const py of allPayslips) {
-      if (py.voidedAt) continue;
-      const emp = allEmployees.find((e) => e.id === py.employeeId);
-      if (!emp) continue;
-      const existing = renderedById.get(emp.id);
-      const storedHours = Number(py.hoursWorked ?? 0);
-      const liveHours = existing?.result.totalHours ?? 0;
-      const drift = Math.abs(storedHours - liveHours) > 0.5;
-      const result = {
-        ...(existing?.result ?? {
-          regularCents: 0,
-          overtimeCents: 0,
-          taskCents: 0,
-          byDay: [],
-        }),
-        totalHours: storedHours,
-        grossCents: py.grossPayCents,
-        roundedCents: py.roundedPayCents,
-      } as RowLike["result"];
-      displayRows.push({
-        employee: emp,
-        result,
-        incomplete: existing?.incomplete ?? 0,
-        punches: existing?.punches ?? [],
-        storedHours,
-        liveHours,
-        hoursDrift: drift,
-      });
-    }
-    displayRows.sort((a, b) =>
-      a.employee.displayName.localeCompare(b.employee.displayName),
-    );
-  }
+  // Stored: rows come from the payslips (with drift detection). Live: the
+  // computed rows as they are. lib/payroll/period-rows.ts buildDisplayRows.
+  const displayRows = buildDisplayRows({
+    rendered,
+    payslips: allPayslips,
+    allEmployees,
+    useStored: useStoredTotals,
+  });
 
   const totals = useStoredTotals
     ? { hours: payslipHours, gross: payslipSum, rounded: payslipSum }
@@ -653,18 +514,9 @@ export default async function PeriodReviewPage({
       {(() => {
         // Only payslips that pay something: zero-pay rows (did not work
         // this week) are internal bookkeeping, never something to sign.
-        const active = allPayslips.filter((p) => !p.voidedAt && payslipHasPay(p));
-        // Signed = drew a signature on the tablet (implies acknowledged).
-        // Acknowledged = tapped OK on their phone but has not signed.
-        const signed = active.filter((p) => p.signedAt && !p.disputedAt);
-        const ackd = active.filter(
-          (p) => p.acknowledgedAt && !p.signedAt && !p.disputedAt,
-        );
-        const disputed = active.filter(
-          (p) => p.disputedAt && !p.disputeResolvedAt,
-        );
-        const pending = active.filter(
-          (p) => !p.acknowledgedAt && !p.disputedAt,
+        const { active, signed, ackd, disputed, pending } = signOffGroups(
+          allPayslips,
+          payslipHasPay,
         );
         const nameOf = (id: string) =>
           allEmployees.find((e) => e.id === id)?.displayName ?? "—";
@@ -926,8 +778,8 @@ export default async function PeriodReviewPage({
                               ...("hoursDrift" in row
                                 ? {
                                     hoursDrift: row.hoursDrift,
-                                    storedHours: (row as RowLike).storedHours,
-                                    liveHours: (row as RowLike).liveHours,
+                                    storedHours: row.storedHours,
+                                    liveHours: row.liveHours,
                                   }
                                 : {}),
                             })}
@@ -1043,8 +895,8 @@ export default async function PeriodReviewPage({
                             ...("hoursDrift" in row
                               ? {
                                   hoursDrift: row.hoursDrift,
-                                  storedHours: (row as RowLike).storedHours,
-                                  liveHours: (row as RowLike).liveHours,
+                                  storedHours: row.storedHours,
+                                  liveHours: row.liveHours,
                                 }
                               : {}),
                           })}
