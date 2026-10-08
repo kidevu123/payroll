@@ -14,15 +14,9 @@ import {
 import { formatMoney } from "@/lib/utils";
 import { DashCard, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
+import { initialsFor } from "@/lib/text/initials";
 
 // ── Shared: dark avatar (photo or initials) ──────────────────────────────────
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 function DashAvatar({
   name,
@@ -51,7 +45,7 @@ function DashAvatar({
       style={{ ...dim, background: "rgba(34,211,238,0.18)", color: DASH.cyanBright }}
       className="inline-flex shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
     >
-      {initialsOf(name)}
+      {initialsFor(name)}
     </span>
   );
 }

@@ -11,16 +11,10 @@ import {
   findIconPath,
 } from "@/lib/branding/storage";
 import { getSetting } from "@/lib/settings/runtime";
+import { initialsFor } from "@/lib/text/initials";
 
 const ALLOWED_SIZES = ["192", "512", "maskable-512"] as const;
 type AllowedSize = (typeof ALLOWED_SIZES)[number];
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "P";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 export async function GET(
   _req: Request,
@@ -44,7 +38,7 @@ export async function GET(
   const company = await getSetting("company").catch(() => null);
   const fallbackSize = size === "192" ? 192 : 512;
   const svg = fallbackIconSvg(
-    initialsFor(company?.name ?? "Payroll"),
+    initialsFor(company?.name ?? "Payroll", "P"),
     company?.brandColorHex ?? "#067049",
     fallbackSize,
   );

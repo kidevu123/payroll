@@ -6,6 +6,7 @@
 import { ImageResponse } from "next/og";
 import { readAsset } from "@/lib/branding/storage";
 import { getSetting } from "@/lib/settings/runtime";
+import { initialsFor } from "@/lib/text/initials";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -14,13 +15,6 @@ export const dynamic = "force-dynamic";
 const CACHE_HEADERS = {
   "Cache-Control": "public, max-age=300, must-revalidate",
 };
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "P";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 export default async function AppleIcon() {
   // Prefer the uploaded favicon when it's a raster format. iOS won't
@@ -35,7 +29,7 @@ export default async function AppleIcon() {
   }
   // Fallback: render a 180x180 brand square with company initials.
   const company = await getSetting("company").catch(() => null);
-  const initials = initialsFor(company?.name ?? "Payroll");
+  const initials = initialsFor(company?.name ?? "Payroll", "P");
   const brand = company?.brandColorHex ?? "#067049";
   return new ImageResponse(
     (

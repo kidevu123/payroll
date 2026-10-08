@@ -10,6 +10,7 @@
 // already contains the wordmark text.
 
 import { cn } from "@/lib/utils";
+import { initialsFor } from "@/lib/text/initials";
 
 export type WordmarkProps = {
   name: string;
@@ -34,13 +35,6 @@ const SIZES = {
   xl: { box: "h-12 w-12", logoH: "h-16", logoMinW: "min-w-[64px]", logoMaxW: "max-w-[320px]", text: "text-2xl", radius: "rounded-xl" },
   "2xl": { box: "h-16 w-16", logoH: "h-24", logoMinW: "min-w-[96px]", logoMaxW: "max-w-[420px]", text: "text-3xl", radius: "rounded-xl" },
 } as const;
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 export function Wordmark({
   name,

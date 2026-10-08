@@ -22,29 +22,7 @@ import {
 import { ExceptionBadge } from "@/components/domain/exception-badge";
 import type { MissedPunchIssue } from "@/lib/missed-punch/claim";
 import { MissedPunchForm } from "./form";
-
-function formatWallClock(d: Date, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(d);
-}
-
-function toDatetimeLocalValue(d: Date, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
+import { formatWallClock, toDatetimeLocalValue } from "@/lib/time/format";
 
 export default async function MissedPunchFixPage({
   params,

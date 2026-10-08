@@ -10,6 +10,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { initialsFor } from "@/lib/text/initials";
 
 const SIZE_CLASS = {
   sm: "h-7 w-7 text-[10px]",
@@ -26,13 +27,6 @@ const TONE_CLASS = [
   "bg-danger-50 text-danger-700",
   "bg-surface-2 text-text",
 ] as const;
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 function toneFor(name: string): string {
   let h = 0;

@@ -24,14 +24,6 @@ export function toLocalInputValue(d: Date | string | null, timezone: string): st
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-export function formatWallClock(d: Date | string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(coerceDate(d));
-}
-
 export function formatNgtecoSourceLine(notes: string): string {
   const dev = notes.match(/dev:([^\s·]+)/)?.[1];
   const scrape = notes.match(/scrape:([^·]+)/)?.[1];
@@ -67,3 +59,5 @@ export function findFixTarget(punches: Punch[]): Punch | null {
     null
   );
 }
+
+export { formatWallClock } from "@/lib/time/format";

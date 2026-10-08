@@ -4,6 +4,7 @@ import * as React from "react";
 import { Bell, BookmarkPlus, Check, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { urlBase64ToBuffer } from "@/lib/notifications/url-base64";
+import { isIOSSafari, isStandalonePWA } from "@/lib/pwa/platform";
 
 const DISMISS_KEY = "milo.onboarding.dismissed.v1";
 
@@ -11,23 +12,6 @@ type Step =
   | "install" // not yet installed to home screen
   | "notify" // installed, but no notifications yet
   | "done"; // both done — hide
-
-function isIOSSafari(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isIDevice =
-    /iPad|iPhone|iPod/.test(ua) ||
-    (navigator.platform === "MacIntel" &&
-      (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1);
-  return isIDevice;
-}
-
-function isStandalonePWA(): boolean {
-  if (typeof window === "undefined") return false;
-  type Nav = Navigator & { standalone?: boolean };
-  if ((navigator as Nav).standalone === true) return true;
-  return window.matchMedia("(display-mode: standalone)").matches;
-}
 
 /**
  * Top-of-employee-portal onboarding nudge.

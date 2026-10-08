@@ -3,6 +3,7 @@
 // (time page, two payroll job handlers, three employee pages, two payroll
 // modules). One implementation, tested; callers import from here.
 import { companyDayIso } from "./company-day";
+import { coerceDate } from "./wall-clock";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -40,4 +41,29 @@ export function formatClockTime(d: Date | null, tz: string, locale: string): str
 export function timeOf(value: string): string {
   const t = value.indexOf("T");
   return t === -1 ? value : value.slice(t + 1);
+}
+
+/** "9:05 AM" in the given zone, from a Date or an ISO string. */
+export function formatWallClock(d: Date | string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(coerceDate(d));
+}
+
+/** An instant as the "YYYY-MM-DDTHH:MM" a datetime-local input wants, in the given zone. */
+export function toDatetimeLocalValue(d: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }

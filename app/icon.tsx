@@ -5,17 +5,11 @@
 import { ImageResponse } from "next/og";
 import { readAsset } from "@/lib/branding/storage";
 import { getSetting } from "@/lib/settings/runtime";
+import { initialsFor } from "@/lib/text/initials";
 
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 export const dynamic = "force-dynamic";
-
-function initialsFor(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "P";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 // Browsers cache favicons aggressively; we need them to re-check after an
 // upload. Short max-age + must-revalidate + ETag-via-content gives us the
@@ -40,7 +34,7 @@ export default async function Icon() {
   }
   // No favicon uploaded — render initials onto the brand color.
   const company = await getSetting("company").catch(() => null);
-  const initials = initialsFor(company?.name ?? "Payroll");
+  const initials = initialsFor(company?.name ?? "Payroll", "P");
   const brand = company?.brandColorHex ?? "#067049";
   return new ImageResponse(
     (

@@ -24,6 +24,7 @@ import {
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
 import { formatMoney } from "@/lib/utils";
+import { fmtRange } from "./doc-format";
 
 const NAVY = "#16233b";
 const NAVY_SOFT = "#334155";
@@ -332,10 +333,6 @@ const styles = StyleSheet.create({
   footerRight: { fontSize: 6.5, color: MUTED, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
 });
 
-const MONTHS = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
-];
 const MONTHS_LONG = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -376,18 +373,6 @@ function fmtTime(t: string | undefined): string {
   const ampm = h < 12 ? "a" : "p";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${m[2]}${ampm}`;
-}
-
-/** "2026-07-20","2026-07-26" -> "JUL 20 - JUL 26, 2026" */
-function fmtRange(startIso: string, endIso: string): string {
-  const s = startIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const e = endIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!s || !e) return `${startIso} - ${endIso}`;
-  const sm = MONTHS[parseInt(s[2]!, 10) - 1];
-  const em = MONTHS[parseInt(e[2]!, 10) - 1];
-  const sd = parseInt(s[3]!, 10);
-  const ed = parseInt(e[3]!, 10);
-  return `${sm} ${sd} - ${em} ${ed}, ${e[1]}`;
 }
 
 /** "2026-07-24T18:46:37Z" -> "Jul 24, 2026" */

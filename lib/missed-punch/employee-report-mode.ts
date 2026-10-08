@@ -3,6 +3,7 @@ import {
   isMissingClockInPunch,
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
+import { formatWallClock, toDatetimeLocalValue } from "@/lib/time/format";
 
 type PunchLike = {
   clockIn: Date;
@@ -44,29 +45,6 @@ export type EmployeeReportFixMode =
       recordedClockOut?: never;
       recordedUnpairedPunch?: never;
     };
-
-function formatWallClock(d: Date, timezone: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(d);
-}
-
-function toDatetimeLocalValue(d: Date, timezone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const get = (type: string) =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
 
 export function buildEmployeeReportFixMode(args: {
   date: string;

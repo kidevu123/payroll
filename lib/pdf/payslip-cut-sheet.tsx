@@ -24,6 +24,7 @@ import {
 } from "@react-pdf/renderer";
 import type { AdminReportInput } from "./types";
 import { formatMoney } from "@/lib/utils";
+import { fmtRange } from "./doc-format";
 
 const NAVY = "#16233b";
 const INK = "#0f172a";
@@ -204,26 +205,11 @@ const styles = StyleSheet.create({
   keep: { fontSize: 5.5, color: SUBTLE, marginTop: 3, letterSpacing: 0.3 },
 });
 
-const MONTHS = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
-];
-
 /** "2026-07-22" -> "07/22/26" */
 function fmtDateMDY(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!m) return iso;
   return `${m[2]}/${m[3]}/${m[1]!.slice(2)}`;
-}
-
-/** "2026-07-20","2026-07-26" -> "JUL 20 - JUL 26, 2026" */
-function fmtRange(startIso: string, endIso: string): string {
-  const s = startIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const e = endIso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!s || !e) return `${startIso} - ${endIso}`;
-  const sm = MONTHS[parseInt(s[2]!, 10) - 1];
-  const em = MONTHS[parseInt(e[2]!, 10) - 1];
-  return `${sm} ${parseInt(s[3]!, 10)} - ${em} ${parseInt(e[3]!, 10)}, ${e[1]}`;
 }
 
 const CARDS_PER_ROW = 4;

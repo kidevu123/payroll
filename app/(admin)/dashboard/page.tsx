@@ -39,12 +39,9 @@ import { requireSession } from "@/lib/auth-guards";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { formatTimeShort } from "@/lib/utils";
 import { db } from "@/lib/db";
+import { todayInCompanyTz } from "@/lib/time/format";
 
 export const dynamic = "force-dynamic";
-
-function todayInTz(tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
 
 function hourInTz(tz: string): number {
   const h = new Intl.DateTimeFormat("en-US", {
@@ -67,7 +64,7 @@ function shortDateLabel(isoDate: string): string {
 export default async function DashboardPage() {
   const session = await requireSession();
   const company = await getSetting("company");
-  const today = todayInTz(company.timezone);
+  const today = todayInCompanyTz(company.timezone);
   const hour = hourInTz(company.timezone);
 
   const [

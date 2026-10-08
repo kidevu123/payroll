@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { DASH } from "./theme";
 import { ThemeToggle } from "./theme-toggle";
 import { isNavActive } from "@/components/admin/nav-active";
+import { initialsFor } from "@/lib/text/initials";
 
 type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
@@ -69,13 +70,6 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
 ];
 
 const FOOTER_NAV: NavItem = { href: "/settings", labelKey: "settings", icon: Settings2 };
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 export type DarkShellUser = {
   name: string;
@@ -221,7 +215,7 @@ export function DashboardDarkShell({
               className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
               style={{ background: DASH.accentGradient, color: DASH.onAccent }}
             >
-              {initialsOf(user.name)}
+              {initialsFor(user.name, "?")}
             </span>
           )}
         </div>
@@ -357,7 +351,7 @@ export function DashboardDarkShell({
                   className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold"
                   style={{ background: DASH.accentGradient, color: DASH.onAccent }}
                 >
-                  {initialsOf(user.name)}
+                  {initialsFor(user.name, "?")}
                 </span>
               )}
               <span className="hidden lg:block min-w-0 flex-1 text-left">

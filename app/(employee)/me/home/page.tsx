@@ -59,12 +59,9 @@ import {
   filterAlertsForPollSync,
   staleAlertsToResolve,
 } from "@/lib/payroll/sync-missed-punch-alerts";
+import { todayInCompanyTz } from "@/lib/time/format";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-function todayInTz(tz: string) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
 
 export default async function EmployeeHome() {
   const session = await requireSession();
@@ -101,7 +98,7 @@ export default async function EmployeeHome() {
     getSetting("payPeriod"),
     getSetting("automation"),
   ]);
-  const today = todayInTz(company.timezone);
+  const today = todayInCompanyTz(company.timezone);
   // Pick the period that matches THIS employee's pay schedule. A weekly
   // employee on May 5 should see the May 4-10 weekly period, not the
   // overlapping May 1-15 semi-monthly one. Falls back to the generic
