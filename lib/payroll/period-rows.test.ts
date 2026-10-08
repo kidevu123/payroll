@@ -141,14 +141,20 @@ describe("signOffGroups", () => {
     // An OPEN dispute is still only in Disputed, even if it was signed first.
     expect(g.disputed.map((p) => p.employeeId)).toEqual(["open"]);
   });
-  it("every paying payslip is in exactly one bucket", () => {
+  it("every paying payslip is in exactly one bucket, for all 16 sign-off states", () => {
     const t = new Date();
-    const all = [
-      slip("1", {}), slip("2", { acknowledgedAt: t }), slip("3", { acknowledgedAt: t, signedAt: t }),
-      slip("4", { disputedAt: t }), slip("5", { disputedAt: t, disputeResolvedAt: t }),
-      slip("6", { disputedAt: t, disputeResolvedAt: t, acknowledgedAt: t, signedAt: t }),
-    ];
+    const all = Array.from({ length: 16 }, (_, i) =>
+      slip(`s${i}`, {
+        signedAt: i & 1 ? t : null,
+        acknowledgedAt: i & 2 ? t : null,
+        disputedAt: i & 4 ? t : null,
+        disputeResolvedAt: i & 8 ? t : null,
+      }),
+    );
     const g = signOffGroups(all, paying);
-    expect(g.signed.length + g.ackd.length + g.pending.length + g.disputed.length).toBe(g.active.length);
+    for (const p of all) {
+      const homes = [g.signed, g.ackd, g.pending, g.disputed].filter((b) => b.includes(p)).length;
+      expect(`${p.employeeId}:${homes}`).toBe(`${p.employeeId}:1`);
+    }
   });
 });
