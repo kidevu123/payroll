@@ -3,6 +3,7 @@
 // .env.golden.local under a frozen clock, fetches each route as the owner and
 // the employee, normalizes the HTML and records or compares tests/golden/.
 import { spawn, execSync } from "node:child_process";
+import net from "node:net";
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -151,16 +152,34 @@ async function get(jar, path, rawFile) {
 
 async function waitHealthy() {
   for (let i = 0; i < 60; i++) {
+    if (serverExit !== null) throw new Error(`golden: the server exited (code ${serverExit}) before becoming healthy; run "npx next build" first?`);
     try { const r = await fetch(`${BASE}/api/health`); if (r.ok) return; } catch {}
     await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error("server never became healthy");
 }
 
-const server = spawn("npx", ["next", "start", "-p", "3111"], {
+// Refuse to run if something already owns the port. Otherwise our server dies
+// with EADDRINUSE, the health probe is answered by the squatter, and the
+// comparison silently runs against code that is not the current build.
+const portTaken = await new Promise((resolve) => {
+  const sock = net.connect({ port: 3111, host: "127.0.0.1" });
+  sock.once("connect", () => { sock.destroy(); resolve(true); });
+  sock.once("error", () => resolve(false));
+});
+if (portTaken) {
+  console.error("golden: port 3111 is already in use; stop whatever is listening there and re-run.");
+  process.exit(2);
+}
+
+// The next binary directly, not via npx: SIGTERM then reaches the server
+// itself instead of a wrapper that may leave it running.
+let serverExit = null;
+const server = spawn(process.execPath, [join(ROOT, "node_modules/next/dist/bin/next"), "start", "-p", "3111"], {
   cwd: ROOT, stdio: ["ignore", "ignore", "inherit"],
   env: { ...process.env, TZ: "UTC", GOLDEN_NOW, NODE_OPTIONS: `--require ${join(ROOT, "scripts/golden/fixed-clock.cjs")}` },
 });
+server.once("exit", (code) => { serverExit = code ?? 1; });
 let failures = 0;
 try {
   await waitHealthy();
