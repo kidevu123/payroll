@@ -4,6 +4,7 @@
 // the employee, normalizes the HTML and records or compares tests/golden/.
 import { spawn, execSync } from "node:child_process";
 import net from "node:net";
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +25,7 @@ const openWeekly = q("select id from pay_periods where state='OPEN' and end_date
 const monthly = q("select id from pay_periods where end_date-start_date>20 order by start_date desc limit 1");
 const paidCash = q("select id from pay_periods where payment_method='CASH' limit 1");
 const marcus = q("select id from employees where display_name='Marcus Brown'");
+const marcusPayslip = q(`select id from payslips where employee_id='${marcus}' order by id limit 1`);
 
 const ROUTES = [
   ["owner", "time", "/time"],
@@ -124,6 +126,30 @@ function resolveStreaming(html) {
   return out.replace(/<!--\$[?!]?-->|<!--\/\$-->/g, "");
 }
 
+// PDFs are pinned by a hash of their bytes with the volatile metadata removed:
+// the trailer /ID (random per render) and the creation / modification dates.
+// Streams are compressed deterministically, so the rest is stable.
+const BINARY_ROUTES = [
+  ["owner", "pdf-signature-report", `/api/payslips/period/${lockedWeekly}/signature`],
+  ["owner", "pdf-cut-sheet", `/api/payroll/${lockedWeekly}/payslips-cut-sheet`],
+  ["owner", "pdf-employee-guide", "/api/guides/employee"],
+  ["owner", "pdf-employee-batch", `/api/employees/${marcus}/payslips/batch-pdf?ids=${marcusPayslip}`],
+];
+function pdfFingerprint(buf) {
+  const text = buf
+    .toString("latin1")
+    .replace(/\/ID\s*\[\s*<[0-9a-fA-F]+>\s*<[0-9a-fA-F]+>\s*\]/g, "/ID[]")
+    .replace(/\/(CreationDate|ModDate)\s*\(D:[^)]*\)/g, "/$1()");
+  return `${createHash("sha256").update(text, "latin1").digest("hex")} ${buf.length} bytes\n`;
+}
+async function getBinary(jar, path) {
+  const res = await fetch(BASE + path, { headers: { cookie: jar.header() }, redirect: "manual" });
+  if (res.status !== 200) throw new Error(`${path}: HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.subarray(0, 4).toString("latin1") !== "%PDF") throw new Error(`${path}: not a PDF`);
+  return pdfFingerprint(buf);
+}
+
 function normalize(html) {
   return resolveStreaming(html)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")
@@ -175,6 +201,16 @@ async function waitHealthy() {
   throw new Error("server never became healthy");
 }
 
+// The PDF documents are compiled separately from the Next bundle (the
+// Dockerfile does the same). Recompile them on every run: otherwise a change
+// under lib/pdf/*.tsx would be compared against stale compiled output.
+if (process.env.PDF_DOCS_DIR) {
+  execSync(
+    `npx esbuild lib/pdf/payslip.tsx lib/pdf/signature-report.tsx lib/pdf/admin-report.tsx lib/pdf/employee-guide.tsx lib/pdf/payslip-cut-sheet.tsx lib/pdf/payslip-batch-sheet.tsx --bundle --platform=node --target=node20 --format=cjs --jsx=automatic --outdir="${process.env.PDF_DOCS_DIR}" --out-extension:.js=.js --log-level=error`,
+    { cwd: ROOT, stdio: "inherit" },
+  );
+}
+
 // Refuse to run if something already owns the port. Otherwise our server dies
 // with EADDRINUSE, the health probe is answered by the squatter, and the
 // comparison silently runs against code that is not the current build.
@@ -212,6 +248,15 @@ try {
     const tmp = join(OUT, role, `${label}.actual.html`); writeFileSync(tmp, html);
     console.log(`DIFF     ${role}/${label}`);
     try { execSync(`diff -u "${file}" "${tmp}" | head -40`, { stdio: "inherit" }); } catch {}
+  }
+  for (const [role, label, path] of BINARY_ROUTES) {
+    const print = await getBinary(jars[role], path);
+    const file = join(OUT, role, `${label}.sha256`);
+    if (mode === "record") { writeFileSync(file, print); console.log(`recorded ${role}/${label}`); continue; }
+    if (!existsSync(file)) { console.log(`MISSING ${role}/${label}`); failures++; continue; }
+    if (readFileSync(file, "utf8") === print) { console.log(`same     ${role}/${label}`); continue; }
+    failures++;
+    console.log(`DIFF     ${role}/${label}  want ${readFileSync(file, "utf8").trim()}  got ${print.trim()}`);
   }
 } finally {
   server.kill("SIGTERM");

@@ -124,3 +124,10 @@ Marcus Brown, the owner, the Day shift); look them up if the database is
 rebuilt. With this data every golden was re-recorded from the ORIGINAL
 pre-refactor commit (d2f8579) in a worktree and the refactored code was
 checked against it.
+
+### PDFs
+
+Four PDFs are pinned as `tests/golden/owner/pdf-*.sha256`: a hash of the bytes
+with the trailer `/ID` and the creation / modification dates blanked. The
+harness recompiles the PDF documents into `PDF_DOCS_DIR` on every run, so a
+change under `lib/pdf/*.tsx` is always what gets compared.
