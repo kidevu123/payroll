@@ -40,6 +40,7 @@ import { SignOutButton } from "@/components/admin/sign-out-button";
 import { cn } from "@/lib/utils";
 import { DASH } from "./theme";
 import { ThemeToggle } from "./theme-toggle";
+import { isNavActive } from "@/components/admin/nav-active";
 
 type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
@@ -68,11 +69,6 @@ const SECTIONS: { headingKey: string; items: NavItem[] }[] = [
 ];
 
 const FOOTER_NAV: NavItem = { href: "/settings", labelKey: "settings", icon: Settings2 };
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -314,7 +310,7 @@ export function DashboardDarkShell({
                     href={href}
                     label={tNav(labelKey)}
                     Icon={Icon}
-                    active={isActive(pathname, href)}
+                    active={isNavActive(pathname, href)}
                     badge={(badges?.[href] ?? 0) > 0 ? badges![href]! : null}
                   />
                 ))}
@@ -331,7 +327,7 @@ export function DashboardDarkShell({
                 href={FOOTER_NAV.href}
                 label={tNav(FOOTER_NAV.labelKey)}
                 Icon={FOOTER_NAV.icon}
-                active={isActive(pathname, FOOTER_NAV.href)}
+                active={isNavActive(pathname, FOOTER_NAV.href)}
                 badge={null}
               />
             </div>

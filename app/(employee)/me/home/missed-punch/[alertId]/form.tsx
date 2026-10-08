@@ -11,12 +11,7 @@ import {
 import { ReasonField } from "@/components/employee/reason-field";
 import { submitMissedPunchAction } from "./actions";
 import type { MissedPunchIssue } from "@/lib/missed-punch/claim";
-
-/** "2026-07-13T17:00" (page-computed guess) -> "17:00" for <input type="time">. */
-function timeOf(value: string): string {
-  const t = value.indexOf("T");
-  return t === -1 ? value : value.slice(t + 1);
-}
+import { timeOf } from "@/lib/time/format";
 
 export function MissedPunchForm({
   alertId,

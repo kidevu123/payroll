@@ -20,13 +20,9 @@ import { canonicalEndForSchedule } from "@/lib/payroll/period-boundaries";
 import { paySchedules } from "@/lib/db/schema";
 import { shouldUseStoredPayrollTotals } from "@/lib/payroll/total-source";
 import type { AdminReportInput } from "./types";
-import { companyDayIso } from "@/lib/time/company-day";
 import { readSignatureDataUrl } from "@/lib/payslips/signature-storage";
 import { pdfDocPath } from "@/lib/pdf/doc-path";
-
-function tzDayKey(d: Date, tz: string): string {
-  return companyDayIso(d, tz);
-}
+import { tzDayKey, tzTimeOfDay } from "@/lib/pdf/day-in-out";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -47,25 +43,6 @@ function enumerateDays(startIso: string, endIso: string): string[] {
     out.push(d.toISOString().slice(0, 10));
   }
   return out;
-}
-
-function tzTimeOfDay(d: Date, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  let h = "00";
-  let m = "00";
-  let s = "00";
-  for (const p of parts) {
-    if (p.type === "hour") h = p.value === "24" ? "00" : p.value;
-    else if (p.type === "minute") m = p.value;
-    else if (p.type === "second") s = p.value;
-  }
-  return `${h}:${m}:${s}`;
 }
 
 export function normalizePrintablePersonName(

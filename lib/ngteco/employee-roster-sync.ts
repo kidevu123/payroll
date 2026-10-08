@@ -23,22 +23,13 @@ import {
 } from "./scraper";
 import { sanitizeNgtecoPersonName } from "./person-name";
 import { normalizeRef } from "./normalize-ref";
+import { isEnvelope } from "@/lib/crypto/envelope";
 
 export const NGTECO_IMPORT_NOTE_PREFIX = "NGTECO_IMPORT:";
 export const NGTECO_SETUP_IGNORED_TAG = "setup_ignored";
 
 const STORAGE_ROOT = process.env.NGTECO_STORAGE_DIR ?? "/data/ngteco";
 const SYNC_STATE_PATH = `${STORAGE_ROOT}/last-employee-roster-sync.json`;
-
-function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "ciphertext" in value &&
-    "iv" in value
-  );
-}
-
 
 const emailSchema = z.string().email();
 

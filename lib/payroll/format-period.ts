@@ -31,3 +31,16 @@ export function formatPeriodRange(startIso: string, endIso: string): string {
   const right = `${MONTH_SHORT[b.getUTCMonth()]} ${String(b.getUTCDate()).padStart(2, "0")}, ${b.getUTCFullYear()}`;
   return `${left} – ${right}`;
 }
+
+/** "Sep 28 – Oct 4": month and day on both ends, no year (dashboard cards). */
+export function shortRange(startIso: string, endIso: string): string {
+  const fmt = (iso: string) => {
+    const [, m, d] = iso.split("-").map(Number) as [number, number, number];
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(2000, m - 1, d)));
+  };
+  return `${fmt(startIso)} – ${fmt(endIso)}`;
+}

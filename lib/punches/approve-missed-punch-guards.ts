@@ -1,14 +1,12 @@
 // Pure helpers for missed-punch approval — keep duplicate shifts off the books.
 
+import { asDate } from "@/lib/time/wall-clock";
+
 export type PunchDayRow = {
   clockIn: Date | string;
   clockOut: Date | string | null;
   voidedAt?: Date | string | null;
 };
-
-function asDate(v: Date | string): Date {
-  return v instanceof Date ? v : new Date(v);
-}
 
 export function punchesForCalendarDay<T extends PunchDayRow>(
   rows: T[],

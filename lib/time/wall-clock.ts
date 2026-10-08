@@ -81,3 +81,9 @@ export function coerceDate(d: Date | string): Date {
   }
   return parsed;
 }
+
+/** A Date as-is, a string parsed. Unlike coerceDate it never throws: an
+ *  unparseable string yields an Invalid Date for the caller to check. */
+export function asDate(v: Date | string): Date {
+  return v instanceof Date ? v : new Date(v);
+}

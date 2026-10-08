@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-guards";
 import { getOrg } from "@/lib/db/queries/zoho";
 import { open as openSealed } from "@/lib/crypto/vault";
+import { isEnvelope } from "@/lib/crypto/envelope";
 
 // expenses.DELETE is required for the Re-push flow (delete the prior
 // expense, then post fresh). WorkDrive.files.CREATE is required for
@@ -20,13 +21,6 @@ const SCOPES = [
   "ZohoBooks.contacts.READ",
   "WorkDrive.files.CREATE",
 ].join(",");
-
-function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
-  return (
-    typeof value === "object" && value !== null &&
-    "ciphertext" in value && "iv" in value
-  );
-}
 
 export async function GET(req: Request): Promise<Response> {
   await requireAdmin();

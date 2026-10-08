@@ -7,13 +7,7 @@ import { getOrg, setOrgRefreshToken } from "@/lib/db/queries/zoho";
 import { open as openSealed } from "@/lib/crypto/vault";
 import { writeAudit } from "@/lib/db/audit";
 import { logger } from "@/lib/telemetry";
-
-function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
-  return (
-    typeof value === "object" && value !== null &&
-    "ciphertext" in value && "iv" in value
-  );
-}
+import { isEnvelope } from "@/lib/crypto/envelope";
 
 export async function GET(req: Request): Promise<Response> {
   const session = await requireAdmin();

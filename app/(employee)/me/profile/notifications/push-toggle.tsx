@@ -4,16 +4,7 @@ import * as React from "react";
 import { AlertTriangle, Bell, BellOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-
-function urlBase64ToBuffer(base64: string): ArrayBuffer {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(safe);
-  const buf = new ArrayBuffer(raw.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
-  return buf;
-}
+import { urlBase64ToBuffer } from "@/lib/notifications/url-base64";
 
 /**
  * iOS Web Push only delivers when the page is launched from a Home

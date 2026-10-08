@@ -13,6 +13,8 @@
 // Use it in any view that lists punches and in computePay's pre-pass so
 // payslips don't double-count.
 
+import { asDate } from "@/lib/time/wall-clock";
+
 export type PunchLike = {
   id: string;
   /**
@@ -27,10 +29,6 @@ export type PunchLike = {
   clockIn: Date | string;
   clockOut: Date | string | null;
 };
-
-function asDate(v: Date | string): Date {
-  return v instanceof Date ? v : new Date(v);
-}
 
 export function dedupNearDuplicatePunches<T extends PunchLike>(
   rows: T[],

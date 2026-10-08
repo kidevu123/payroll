@@ -15,6 +15,7 @@ import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
   type ManualPunchSyncJobData,
 } from "@/lib/ngteco/manual-punch-sync";
+import { parsePunchInput } from "@/lib/punches/parse-punch-input";
 
 // ISO datetime regex — input must be e.g. "2026-04-30T06:30" or
 // "2026-04-30T06:30:00Z". Without this, garbage like "2026-13-99"
@@ -48,15 +49,6 @@ const schema = z.object({
     .nullable()
     .transform((v) => v || null),
 });
-
-async function parsePunchInput(input: string): Promise<Date | null> {
-  if (isBareWallClock(input)) {
-    const company = await getSetting("company");
-    return wallClockToUtc(input, company.timezone);
-  }
-  const d = new Date(input);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
 
 /**
  * Add a manual punch from anywhere — resolves the pay period from the

@@ -12,12 +12,7 @@ import {
 import { ReasonField } from "@/components/employee/reason-field";
 import { reportPunchFixAction } from "./actions";
 import type { EmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
-
-/** "2026-07-13T08:00" (report-mode default) -> "08:00" for <input type="time">. */
-function timeOf(value: string): string {
-  const t = value.indexOf("T");
-  return t === -1 ? value : value.slice(t + 1);
-}
+import { timeOf } from "@/lib/time/format";
 
 export function ReportFixForm({
   date,

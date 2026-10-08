@@ -20,6 +20,7 @@ import {
   gatewayDeleteExpense,
   gatewayAttachReceipt,
 } from "./gateway";
+import { isEnvelope } from "@/lib/crypto/envelope";
 
 type CachedToken = { accessToken: string; expiresAt: number };
 const tokenCache = new Map<string, CachedToken>();
@@ -33,15 +34,6 @@ const tokenCache = new Map<string, CachedToken>();
  */
 export function invalidateZohoTokenCache(orgId: string): void {
   tokenCache.delete(orgId);
-}
-
-function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "ciphertext" in value &&
-    "iv" in value
-  );
 }
 
 async function decryptOrgSecrets(org: ZohoOrganization): Promise<{

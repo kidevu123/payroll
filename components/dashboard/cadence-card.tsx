@@ -18,6 +18,7 @@ import { CadenceSparkline } from "./charts/lazy";
 import { DashCard, Delta, Eyebrow } from "./dash-primitives";
 import { DASH } from "./theme";
 import type { CadenceCard as CadenceData } from "@/lib/payroll/dashboard-metrics";
+import { shortRange } from "@/lib/payroll/format-period";
 
 type NextStep = {
   label: string;
@@ -82,18 +83,6 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   WEEKLY: Clock4,
   BIWEEKLY: Layers,
 };
-
-function shortRange(startIso: string, endIso: string): string {
-  const fmt = (iso: string) => {
-    const [, m, d] = iso.split("-").map(Number) as [number, number, number];
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(Date.UTC(2000, m - 1, d)));
-  };
-  return `${fmt(startIso)} – ${fmt(endIso)}`;
-}
 
 export function CadenceCard({ card }: { card: CadenceData }) {
   const step = resolveNextStep(card);

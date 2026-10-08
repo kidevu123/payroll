@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Wordmark } from "@/components/brand/wordmark";
 import { LanguageSwitcher } from "./language-switcher";
 import type { Surface } from "@/lib/auth/role-matrix";
+import { isNavActive } from "@/components/admin/nav-active";
 
 type NavItem = { href: string; labelKey: string; icon: LucideIcon };
 
@@ -60,11 +61,6 @@ const QUICK_NAV_HREFS = [
   "/reports",
   "/cash-drawer",
 ] as const;
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
 
 function useMobileNavData(allowedSurfaces?: ReadonlyArray<Surface> | undefined) {
   const allowSet = React.useMemo(
@@ -236,7 +232,7 @@ function MobileDrawer({
               </div>
               <ul className="space-y-0.5">
                 {sec.items.map(({ href, labelKey, icon: Icon }) => {
-                  const active = isActive(pathname, href);
+                  const active = isNavActive(pathname, href);
                   const badge = badges?.[href] ?? 0;
                   return (
                     <li key={href}>
@@ -371,7 +367,7 @@ export function MobileQuickNav({
       >
         <div className="mx-auto grid max-w-screen-sm auto-cols-fr grid-flow-col items-stretch px-1 py-1">
           {quickItems.map(({ href, labelKey, icon: Icon }) => {
-            const active = isActive(pathname, href);
+            const active = isNavActive(pathname, href);
             return (
               <Link
                 key={href}

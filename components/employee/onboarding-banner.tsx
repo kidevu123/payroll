@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Bell, BookmarkPlus, Check, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { urlBase64ToBuffer } from "@/lib/notifications/url-base64";
 
 const DISMISS_KEY = "milo.onboarding.dismissed.v1";
 
@@ -26,16 +27,6 @@ function isStandalonePWA(): boolean {
   type Nav = Navigator & { standalone?: boolean };
   if ((navigator as Nav).standalone === true) return true;
   return window.matchMedia("(display-mode: standalone)").matches;
-}
-
-function urlBase64ToBuffer(base64: string): ArrayBuffer {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(safe);
-  const buf = new ArrayBuffer(raw.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
-  return buf;
 }
 
 /**

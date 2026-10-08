@@ -28,6 +28,7 @@ import {
 } from "@/lib/db/queries/requests";
 import { getSetting } from "@/lib/settings/runtime";
 import { addDaysIso } from "@/lib/utils";
+import { shortRange } from "@/lib/payroll/format-period";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Serializable output shapes (all consumed by "use client" chart components)
@@ -149,18 +150,6 @@ function nameFromEmail(email: string | null | undefined, fallback: string): stri
 function pctDelta(latest: number, prior: number): number | null {
   if (prior === 0) return null;
   return ((latest - prior) / prior) * 100;
-}
-
-function shortRange(startIso: string, endIso: string): string {
-  const fmt = (iso: string) => {
-    const [, m, d] = iso.split("-").map(Number) as [number, number, number];
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(Date.UTC(2000, m - 1, d)));
-  };
-  return `${fmt(startIso)} – ${fmt(endIso)}`;
 }
 
 /** "June 16, 2026" from an ISO date string. */

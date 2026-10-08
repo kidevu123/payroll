@@ -8,11 +8,7 @@ import { AlertCircle } from "lucide-react";
 import type { EmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 import type { KioskCopy } from "@/lib/kiosk/copy";
 import { kioskReportPunchFixAction } from "../../../actions";
-
-function timeOf(value: string): string {
-  const t = value.indexOf("T");
-  return t === -1 ? value : value.slice(t + 1);
-}
+import { timeOf } from "@/lib/time/format";
 
 const FIELD =
   "h-16 w-full rounded-xl border-2 border-border bg-surface px-4 text-2xl font-semibold tabular-nums";

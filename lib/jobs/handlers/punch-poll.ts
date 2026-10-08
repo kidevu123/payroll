@@ -20,13 +20,7 @@ import {
   filterAlertsForPollSync,
   syncMissedPunchAlerts,
 } from "@/lib/payroll/sync-missed-punch-alerts";
-
-function isEnvelope(value: unknown): value is { ciphertext: string; iv: string } {
-  return (
-    typeof value === "object" && value !== null &&
-    "ciphertext" in value && "iv" in value
-  );
-}
+import { isEnvelope } from "@/lib/crypto/envelope";
 
 /**
  * ISO timestamp for 00:00 (midnight) of TODAY (or N days ago) in `tz`.

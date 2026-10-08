@@ -35,3 +35,9 @@ export function formatClockTime(d: Date | null, tz: string, locale: string): str
   if (!d) return "—";
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: tz }).format(d);
 }
+
+/** The time part of a datetime-local value ("2026-10-05T09:30" -> "09:30"); a bare time passes through. */
+export function timeOf(value: string): string {
+  const t = value.indexOf("T");
+  return t === -1 ? value : value.slice(t + 1);
+}
