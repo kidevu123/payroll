@@ -10,10 +10,7 @@ import type { PayPeriod } from "@/lib/db/schema";
 import { createRun, getRunForPeriod } from "@/lib/db/queries/payroll-runs";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
-
-function todayInTimezone(tz: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
+import { todayInCompanyTz } from "@/lib/time/format";
 
 export async function handlePayrollRunTick(boss: {
   send: (name: string, data: object) => Promise<unknown>;
@@ -24,7 +21,7 @@ export async function handlePayrollRunTick(boss: {
     return;
   }
   const company = await getSetting("company");
-  const today = todayInTimezone(company.timezone);
+  const today = todayInCompanyTz(company.timezone);
   // The default tick fires on the weekly cron, so it runs the WEEKLY cadence.
   // Use that schedule's own tagged period (and tag the run with it) so the run
   // never mixes in semi-monthly/monthly employees and never creates an orphan

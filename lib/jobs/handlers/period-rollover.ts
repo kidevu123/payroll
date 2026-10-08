@@ -16,18 +16,14 @@ import { logger } from "@/lib/telemetry";
 import { ensurePeriodForSchedule } from "@/lib/db/queries/pay-periods";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { getSetting } from "@/lib/settings/runtime";
-
-function todayInTimezone(tz: string): string {
-  // YYYY-MM-DD in the company TZ.
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-}
+import { todayInCompanyTz } from "@/lib/time/format";
 
 export async function runPeriodRollover(): Promise<{
   schedulesProcessed: number;
   periodsCreated: number;
 }> {
   const company = await getSetting("company");
-  const today = todayInTimezone(company.timezone);
+  const today = todayInCompanyTz(company.timezone);
   const schedules = await listSchedules(); // active only
   let periodsCreated = 0;
   for (const s of schedules) {
