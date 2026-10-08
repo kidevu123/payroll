@@ -158,8 +158,11 @@ function normalize(html) {
     // into a child component changes them while the DOM is otherwise the
     // same. Masked; the pairing itself still has to match on both sides.
     .replace(/_R_[A-Za-z0-9]+_/g, "_R_ID_")
-    // Server-action hidden inputs carry a per-request encryption nonce.
-    .replace(/(name="\$ACTION_[^"]*" value=")[^"]*(")/g, "$1ACTION$2")
+    // Server-action hidden inputs: framework plumbing. Their values are
+    // per-request encryption nonces and React does not emit them in a stable
+    // ORDER (a pin flaked on "$ACTION_1:1" arriving before "$ACTION_1:0"), so
+    // they are dropped whole. The <form> and its real fields stay.
+    .replace(/<input type="hidden" name="\$ACTION_[^"]*"(?: value="[^"]*")?\/>/g, "")
     .replace(/\/_next\/static\/[^/"']+\//g, "/_next/static/HASH/")
     .replace(/-[a-f0-9]{16}\.(js|css)/g, "-HASH.$1")
     .replace(/commit\/[a-f0-9]{7,40}/g, "commit/SHA")
