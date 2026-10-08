@@ -116,6 +116,11 @@ function resolveStreaming(html) {
 function normalize(html) {
   return resolveStreaming(html)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")
+    // React useId tokens (_R_a6lubsnmpfdb_, used by Radix for aria-controls /
+    // id pairs) encode the component's POSITION in the tree, so moving markup
+    // into a child component changes them while the DOM is otherwise the
+    // same. Masked; the pairing itself still has to match on both sides.
+    .replace(/_R_[A-Za-z0-9]+_/g, "_R_ID_")
     // Server-action hidden inputs carry a per-request encryption nonce.
     .replace(/(name="\$ACTION_[^"]*" value=")[^"]*(")/g, "$1ACTION$2")
     .replace(/\/_next\/static\/[^/"']+\//g, "/_next/static/HASH/")

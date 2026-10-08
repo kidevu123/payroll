@@ -73,7 +73,9 @@ npm run golden:record    # rewrite tests/golden/ (decision required)
 The server runs with `TZ=UTC`, `GOLDEN_NOW=2026-10-06T18:00:00Z` and
 `NODE_OPTIONS=--require scripts/golden/fixed-clock.cjs`, which freezes
 `Date.now()` and the no-argument `Date` constructor. Nothing in the Dockerfile
-or the app loads that module. Normalization strips `<script>` elements,
+or the app loads that module. Normalization masks React `useId` tokens (`_R_…_`: they encode a component's
+position in the tree, so they shift when markup moves into a child component),
+strips `<script>` elements,
 `/_next/static/` build hashes, the footer's commit SHA and server time;
 everything else, including whitespace, must match.
 
