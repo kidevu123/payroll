@@ -23,6 +23,7 @@ const lockedWeekly = q("select id from pay_periods where start_date='2026-09-28'
 const openWeekly = q("select id from pay_periods where state='OPEN' and end_date-start_date=6 order by start_date desc limit 1");
 const monthly = q("select id from pay_periods where end_date-start_date>20 order by start_date desc limit 1");
 const paidCash = q("select id from pay_periods where payment_method='CASH' limit 1");
+const marcus = q("select id from employees where display_name='Marcus Brown'");
 
 const ROUTES = [
   ["owner", "time", "/time"],
@@ -44,6 +45,16 @@ const ROUTES = [
   ["owner", "payroll-open-weekly", `/payroll/${openWeekly}`],
   ["owner", "payroll-monthly", `/payroll/${monthly}`],
   ["owner", "payroll-paid-cash", `/payroll/${paidCash}`],
+  ["owner", "calendar", "/calendar"],
+  ["owner", "calendar-agenda", "/calendar?tab=agenda"],
+  ["owner", "calendar-totals", "/calendar?tab=totals"],
+  ["owner", "calendar-september", "/calendar?year=2026&month=9"],
+  ["owner", "payroll-salaried", "/payroll?schedule=salaried"],
+  ["owner", "run-payroll-upload", "/run-payroll/upload"],
+  ["owner", "day-complete", `/time/${openWeekly}/2026-10-05/${marcus}`],
+  ["owner", "day-open-punch", `/time/${openWeekly}/2026-10-09/${marcus}`],
+  ["owner", "day-paid-period", `/time/${paidCash}/2026-09-22/${marcus}`],
+  ["owner", "requests", "/requests"],
   ["employee", "me-home", "/me/home"],
   ["employee", "me-time", "/me/time"],
   ["employee", "me-pay", "/me/pay"],

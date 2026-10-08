@@ -98,3 +98,29 @@ SQL
 These were recorded from the pre-split code (commit fc86d7e) and then checked
 against the split, which is how a golden is legitimately added: record on the
 known-good code, compare on the new.
+
+### Added for the next-tier files (2026-10-08)
+
+Approved time off on days with no punches (time-off cells), a schedule note
+(must NOT hide punches), a pending request, and a salaried employee:
+
+```
+psql -d payroll_mobile_ui <<'SQL'
+-- approved time off on days with no punches, so the grid shows time-off cells
+insert into time_off_requests (id, employee_id, start_date, end_date, type, reason, status, resolved_by_id, resolved_at, created_at) values
+ ('44444444-4444-4444-8444-444444444441','619253b9-8419-41bd-bc94-d1e91d5b4b87','2026-10-11','2026-10-11','SICK','golden: sick','APPROVED','b459d50e-b132-42d3-b725-6c5bfc0493ff','2026-10-05T15:00:00Z','2026-10-05T14:00:00Z'),
+ ('44444444-4444-4444-8444-444444444442','64bb68c2-84a5-44dd-82c6-4a6f82ef025b','2026-10-04','2026-10-04','PERSONAL','golden: pto','APPROVED','b459d50e-b132-42d3-b725-6c5bfc0493ff','2026-10-01T15:00:00Z','2026-10-01T14:00:00Z'),
+ ('44444444-4444-4444-8444-444444444443','aafbd56e-33ae-49f4-b6dd-133bc5124f5c','2026-10-11','2026-10-11','UNPAID','golden: unpaid','APPROVED','b459d50e-b132-42d3-b725-6c5bfc0493ff','2026-10-05T15:00:00Z','2026-10-05T14:00:00Z'),
+ ('44444444-4444-4444-8444-444444444444','619253b9-8419-41bd-bc94-d1e91d5b4b87','2026-10-06','2026-10-06','SCHEDULE_NOTE','golden: leaving early','APPROVED','b459d50e-b132-42d3-b725-6c5bfc0493ff','2026-10-05T15:00:00Z','2026-10-05T14:00:00Z'),
+ ('44444444-4444-4444-8444-444444444445','bb29fe2b-a887-49a7-b8f2-fadddf598916','2026-10-20','2026-10-21','OTHER','golden: appointment','PENDING',null,null,'2026-10-06T13:00:00Z');
+-- a salaried employee (Salaried tab; excluded from the time grid and period totals)
+insert into employees (id, display_name, legal_name, email, hired_on, pay_type, status, shift_id, language, created_at, updated_at)
+values ('55555555-5555-4555-8555-555555555555','Golden Salaried','Golden Salaried','golden.salaried@example.com','2026-01-05','SALARIED','ACTIVE','ceb1ae49-2f5d-4531-adfc-0b8e45ab468f','en','2026-01-05T12:00:00Z','2026-01-05T12:00:00Z');
+SQL
+```
+
+The ids are the demo database's (Elena Rojas, James Walker, Sofia Patel,
+Marcus Brown, the owner, the Day shift); look them up if the database is
+rebuilt. With this data every golden was re-recorded from the ORIGINAL
+pre-refactor commit (d2f8579) in a worktree and the refactored code was
+checked against it.
