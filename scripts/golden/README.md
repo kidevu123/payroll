@@ -76,3 +76,23 @@ The server runs with `TZ=UTC`, `GOLDEN_NOW=2026-10-06T18:00:00Z` and
 or the app loads that module. Normalization strips `<script>` elements,
 `/_next/static/` build hashes, the footer's commit SHA and server time;
 everything else, including whitespace, must match.
+
+### Added for the reports table split (2026-10-08)
+
+Two runs on one locked period (the multi-run sub-lines) and one Salaried-tab
+paystub upload with no payroll run (the salaried paystub line):
+
+```
+psql -d payroll_mobile_ui <<'SQL'
+insert into payroll_runs (id, period_id, state, scheduled_for, published_at, source, total_amount_cents, created_by_name, posted_at, created_at)
+values
+ ('11111111-1111-4111-8111-111111111111',(select id from pay_periods where start_date='2026-09-14'),'PUBLISHED','2026-09-20T23:00:00Z','2026-09-21T13:00:00Z','MANUAL_CSV',1200000,'Owner','2026-09-21T13:00:00Z','2026-09-21T13:00:00Z'),
+ ('22222222-2222-4222-8222-222222222222',(select id from pay_periods where start_date='2026-09-14'),'PUBLISHED','2026-09-20T23:00:00Z','2026-09-22T15:30:00Z','MANUAL_CSV',340000,'Owner','2026-09-22T15:30:00Z','2026-09-22T15:30:00Z');
+insert into payroll_period_documents (id, period_id, employee_id, kind, file_path, mime, original_filename, size_bytes, uploaded_by_id, uploaded_at, pay_period_start, pay_period_end, amount_cents)
+values ('33333333-3333-4333-8333-333333333333', null, (select id from employees where display_name='Aaliyah Hernandez'), 'PAYSTUB', '/tmp/payroll-golden-storage/uploads/payroll-docs/golden-paystub.pdf', 'application/pdf', 'golden-paystub.pdf', 1024, (select id from users where role='OWNER'), '2026-09-01T14:00:00Z', '2026-08-01', '2026-08-31', 412345);
+SQL
+```
+
+These were recorded from the pre-split code (commit fc86d7e) and then checked
+against the split, which is how a golden is legitimately added: record on the
+known-good code, compare on the new.

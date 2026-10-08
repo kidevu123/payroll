@@ -21,7 +21,7 @@ function row(over: Partial<ReportRow>): ReportRow {
     periodId: "p1",
     startDate: "2026-09-28",
     endDate: "2026-10-04",
-    source: "MANUAL_UPLOAD" as ReportRow["source"],
+    source: "MANUAL_CSV" as ReportRow["source"],
     state: "PUBLISHED" as ReportRow["state"],
     scheduleName: "Weekly",
     amountCents: 100_000,
