@@ -11,6 +11,7 @@ import {
   adminCancelTimeOffAction,
   adminUpdateTimeOffAction,
 } from "./actions";
+import { useDateRange } from "@/components/domain/use-date-range";
 
 export function MissedPunchActions({ requestId }: { requestId: string }) {
   const [mode, setMode] = React.useState<"idle" | "approving" | "rejecting">("idle");
@@ -214,6 +215,12 @@ export function EditApprovedTimeOffAction({
   };
 }) {
   const [open, setOpen] = React.useState(false);
+  const range = useDateRange(request.startDate, request.endDate);
+  // Reopening the editor starts from the request's saved dates again.
+  const resetRange = range.reset;
+  React.useEffect(() => {
+    if (!open) resetRange();
+  }, [open, resetRange]);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -241,8 +248,8 @@ export function EditApprovedTimeOffAction({
       className="space-y-2 rounded-input border border-border bg-surface p-2"
     >
       <div className="grid grid-cols-2 gap-2">
-        <Input name="startDate" type="date" defaultValue={request.startDate} required />
-        <Input name="endDate" type="date" defaultValue={request.endDate} required />
+        <Input name="startDate" type="date" {...range.start} required />
+        <Input name="endDate" type="date" {...range.end} required />
       </div>
       <select
         name="type"

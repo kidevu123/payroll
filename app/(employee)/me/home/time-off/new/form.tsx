@@ -12,6 +12,7 @@ import {
   FormError,
 } from "@/components/employee/form-field";
 import { submitTimeOffAction } from "./actions";
+import { useDateRange } from "@/components/domain/use-date-range";
 
 type DayOffType = "PERSONAL" | "SICK" | "UNPAID" | "OTHER";
 type RequestMode = "DAY_OFF" | "SCHEDULE_NOTE";
@@ -26,6 +27,7 @@ export function TimeOffForm({
   const t = useTranslations("employee.timeOff");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const range = useDateRange(defaultDate, defaultDate);
 
   const [mode, setMode] = React.useState<RequestMode>("DAY_OFF");
   // Hourly employees submit unpaid full-day leave; salaried employees keep
@@ -104,7 +106,7 @@ export function TimeOffForm({
               id="startDate"
               name="startDate"
               type="date"
-              defaultValue={defaultDate}
+              {...range.start}
               required
               label={t("start")}
             />
@@ -112,7 +114,7 @@ export function TimeOffForm({
               id="endDate"
               name="endDate"
               type="date"
-              defaultValue={defaultDate}
+              {...range.end}
               required
               label={t("end")}
             />

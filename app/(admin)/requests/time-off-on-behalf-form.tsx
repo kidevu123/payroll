@@ -4,6 +4,7 @@ import * as React from "react";
 import { CalendarPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createTimeOffOnBehalfAction } from "./actions";
+import { useDateRange } from "@/components/domain/use-date-range";
 
 type EmployeeOption = { id: string; displayName: string };
 
@@ -22,6 +23,13 @@ export function TimeOffOnBehalfForm({
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+  const range = useDateRange();
+  // The dialog is one-shot: closing it clears the dates, as it did when the
+  // inputs were uncontrolled and simply unmounted.
+  const resetRange = range.reset;
+  React.useEffect(() => {
+    if (!open) resetRange();
+  }, [open, resetRange]);
 
   return (
     <>
@@ -124,6 +132,7 @@ export function TimeOffOnBehalfForm({
                     <input
                       type="date"
                       name="startDate"
+                      {...range.start}
                       required
                       className="w-full rounded-input border border-border/70 bg-surface px-3 h-10 text-sm"
                     />
@@ -133,6 +142,7 @@ export function TimeOffOnBehalfForm({
                     <input
                       type="date"
                       name="endDate"
+                      {...range.end}
                       required
                       className="w-full rounded-input border border-border/70 bg-surface px-3 h-10 text-sm"
                     />

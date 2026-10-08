@@ -7,6 +7,7 @@ import * as React from "react";
 import { AlertCircle } from "lucide-react";
 import type { KioskCopy } from "@/lib/kiosk/copy";
 import { kioskTimeOffAction } from "../../actions";
+import { useDateRange } from "@/components/domain/use-date-range";
 
 const FIELD =
   "h-16 w-full rounded-xl border-2 border-border bg-surface px-4 text-2xl font-semibold tabular-nums";
@@ -23,6 +24,7 @@ export function KioskTimeOffForm({
   const [type, setType] = React.useState<TimeOffType>("SICK");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const range = useDateRange(todayIso, todayIso, todayIso);
 
   const types: { value: TimeOffType; label: string }[] = [
     { value: "SICK", label: c.typeSick },
@@ -79,7 +81,7 @@ export function KioskTimeOffForm({
             name="startDate"
             type="date"
             required
-            defaultValue={todayIso}
+            {...range.start}
             min={todayIso}
             className={FIELD}
           />
@@ -92,8 +94,7 @@ export function KioskTimeOffForm({
             id="kiosk-to-end"
             name="endDate"
             type="date"
-            defaultValue={todayIso}
-            min={todayIso}
+            {...range.end}
             className={FIELD}
           />
         </div>

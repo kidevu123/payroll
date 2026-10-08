@@ -10,6 +10,7 @@ import {
   FormError,
 } from "@/components/employee/form-field";
 import { submitMyTimeOffChangeAction } from "../../new/actions";
+import { useDateRange } from "@/components/domain/use-date-range";
 
 type DayOffType = "PERSONAL" | "SICK" | "UNPAID" | "OTHER";
 
@@ -30,6 +31,7 @@ export function ChangeTimeOffForm({
   const t = useTranslations("employee.timeOff");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const range = useDateRange(initial.startDate, initial.endDate);
 
   return (
     <form
@@ -58,7 +60,7 @@ export function ChangeTimeOffForm({
           id="changeStartDate"
           name="startDate"
           type="date"
-          defaultValue={initial.startDate}
+          {...range.start}
           required
           label={t("start")}
         />
@@ -66,7 +68,7 @@ export function ChangeTimeOffForm({
           id="changeEndDate"
           name="endDate"
           type="date"
-          defaultValue={initial.endDate}
+          {...range.end}
           required
           label={t("end")}
         />
