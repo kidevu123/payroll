@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KIND_LABEL, centsToInput, formatMoney, formatRange } from "./upload-format";
+import { KIND_LABEL, centsToInput, formatRange } from "./upload-format";
 import { normalizeDateForGuess } from "@/lib/punches/normalize-date";
 
 describe("formatRange", () => {
@@ -13,11 +13,7 @@ describe("formatRange", () => {
   });
 });
 
-describe("money", () => {
-  it("formats cents as dollars", () => {
-    expect(formatMoney(412345)).toBe("$4,123.45");
-    expect(formatMoney(0)).toBe("$0.00");
-  });
+describe("net input and kind labels", () => {
   it("pre-fills the net input from cents", () => {
     expect(centsToInput(214320)).toBe("2143.20");
     expect(centsToInput(5)).toBe("0.05");

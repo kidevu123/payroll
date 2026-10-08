@@ -6,7 +6,8 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setSalariedDocNetAmountAction } from "./actions";
-import { centsToInput, formatMoney, type DocLite } from "@/lib/salaried/upload-format";
+import { centsToInput, type DocLite } from "@/lib/salaried/upload-format";
+import { formatMoney } from "@/lib/utils";
 
 /**
  * Inline-editable net amount. Click the amount → it becomes an input →

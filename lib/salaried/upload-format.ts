@@ -29,10 +29,6 @@ export function formatRange(start: string | null, end: string | null): string | 
   return `${left} – ${right}`;
 }
 
-export function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-}
-
 /** "2143.20" from integer cents — for pre-filling the editable net input. */
 export function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2);
