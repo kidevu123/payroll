@@ -5,8 +5,6 @@ import type React from "react";
 import { ChevronRight } from "lucide-react";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import {
   PayslipPdfActions,
   payslipPdfHref,
@@ -18,7 +16,7 @@ import type { PeriodReview } from "@/lib/db/queries/period-review";
 
 
 export function EmployeeTotalsTable({ review, isAccountant }: { review: PeriodReview; isAccountant: boolean }) {
-  const { period, punches, payRules, tz, employees, payslipByEmployee, displayRows, totals, tempWorkersTotalCents, periodGrandTotalCents } = review;
+  const { period, payRules, tz, payslipByEmployee, displayRows, totals, tempWorkersTotalCents, periodGrandTotalCents } = review;
   return (
     <div className="hidden overflow-x-auto md:block">
       <div className="min-w-[820px]">

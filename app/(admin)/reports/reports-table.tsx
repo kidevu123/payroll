@@ -29,7 +29,6 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Download } from "lucide-react";
 import type { ReportRow } from "@/lib/db/queries/payroll-runs";
 import type { ZohoOrganization } from "@/lib/db/schema";
 import {

@@ -9,14 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { HoursDisplay } from "@/components/domain/hours-display";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import type { PeriodReview } from "@/lib/db/queries/period-review";
 import { EmployeeTotalsMobile } from "@/components/payroll/period/employee-totals-mobile";
 import { EmployeeTotalsTable } from "@/components/payroll/period/employee-totals-table";
 
 export function EmployeeTotals({ review, isAccountant }: { review: PeriodReview; isAccountant: boolean }) {
-  const { period, punches, payRules, employees, rendered, displayRows, totals } = review;
+  const { payRules, rendered, displayRows, totals } = review;
   return (
     <>
       {/* Per-employee summary — each row expands inline to show that

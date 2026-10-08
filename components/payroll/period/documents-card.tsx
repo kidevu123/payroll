@@ -5,8 +5,6 @@ import type React from "react";
 import { Download, Printer, Scissors, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import { CashDenominationButton } from "@/app/(admin)/payroll/[periodId]/cash-denomination-button";
 import { PaydaySigningButton } from "@/app/(admin)/payroll/[periodId]/payday-signing-button";
 import { backupAdminReportToZohoAction } from "@/app/(admin)/payroll/actions";

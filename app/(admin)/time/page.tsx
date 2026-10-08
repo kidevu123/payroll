@@ -3,7 +3,6 @@
 //   period queries   -> lib/db/queries/time-grid.ts
 //   markup           -> components/time/*
 // The rendered DOM is pinned by tests/golden (npm run golden:check).
-import Link from "next/link";
 import { getLastPoll } from "@/lib/db/queries/poll-history";
 import {
   ScheduleTabs,

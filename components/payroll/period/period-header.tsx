@@ -11,8 +11,6 @@ import { SchedulePill } from "@/components/domain/schedule-pill";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import { LockButtons } from "@/app/(admin)/payroll/[periodId]/lock-buttons";
 import { AssignScheduleButton } from "@/app/(admin)/payroll/[periodId]/assign-schedule-button";
 import { PublishPeriodButton } from "@/app/(admin)/payroll/[periodId]/publish-period-button";
@@ -21,7 +19,7 @@ import { formatShortDate, periodDayCount } from "@/lib/payroll/period-view";
 import type { PeriodReview } from "@/lib/db/queries/period-review";
 
 export function PeriodHeader({ review, isAccountant }: { review: PeriodReview; isAccountant: boolean }) {
-  const { period, payRules, schedules, tz, run, headerScheduleId, headerSchedule, runSchedule, employees, displayRows, totals, tempWorkersTotalCents, periodGrandTotalCents } = review;
+  const { period, payRules, schedules, tz, run, headerScheduleId, headerSchedule, runSchedule, displayRows, totals, tempWorkersTotalCents, periodGrandTotalCents } = review;
   return (
     <>
       {/* Sticky action bar — keeps state pill, totals, primary CTAs visible

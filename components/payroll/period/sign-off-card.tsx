@@ -7,14 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import { payslipHasPay } from "@/lib/payroll/payslip-pay";
 import { signOffGroups } from "@/lib/payroll/period-rows";
 import type { PeriodReview } from "@/lib/db/queries/period-review";
 
 export function SignOffCard({ review }: { review: PeriodReview }) {
-  const { allEmployees, allPayslips, rows } = review;
+  const { allEmployees, allPayslips } = review;
   return (
     <>
       {/* Acknowledgement roll — owner ask: "where does that go right

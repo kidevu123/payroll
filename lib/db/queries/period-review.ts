@@ -3,7 +3,6 @@
 // payslips, totals, documents and the cash breakdown. Moved verbatim out of
 // app/(admin)/payroll/[periodId]/page.tsx; the rules it applies are the pure
 // functions in lib/payroll/period-rows.ts (unit-tested there).
-import type React from "react";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
@@ -13,7 +12,7 @@ import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
 import { taskPayLineItems, payrollRuns, paySchedules } from "@/lib/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { listTempWorkers } from "@/lib/db/queries/temp-workers";
 import { listDocs, listUnattachedDocsForRange } from "@/lib/db/queries/payroll-documents";
 import { listPayslipsForPeriod } from "@/lib/db/queries/payslips";

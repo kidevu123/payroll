@@ -5,7 +5,6 @@ import type React from "react";
 import { ChevronRight } from "lucide-react";
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { HoursDisplay } from "@/components/domain/hours-display";
-import { db } from "@/lib/db";
 import {
   PayslipPdfActions,
   payslipPdfHref,
@@ -17,7 +16,7 @@ import type { PeriodReview } from "@/lib/db/queries/period-review";
 
 
 export function EmployeeTotalsMobile({ review, isAccountant }: { review: PeriodReview; isAccountant: boolean }) {
-  const { period, punches, payRules, tz, employees, payslipByEmployee, displayRows, totals } = review;
+  const { period, payRules, tz, payslipByEmployee, displayRows, totals } = review;
   return (
     <div className="space-y-3 p-4 md:hidden">
       {displayRows.map((row) => {

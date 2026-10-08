@@ -6,8 +6,6 @@
 import { notFound } from "next/navigation";
 import type React from "react";
 import { MoneyDisplay } from "@/components/domain/money-display";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import { TempWorkersSection } from "./temp-workers-section";
 import { PayrollDocsSection } from "./payroll-docs-section";
 import { PayslipManageSection } from "./payslip-manage-section";
@@ -34,28 +32,12 @@ export default async function PeriodReviewPage({
   const {
     period,
     allEmployees,
-    punches,
     payRules,
-    schedules,
     tempWorkers,
     allPayslips,
     payrollDocs,
-    tz,
     duplicateDetails,
-    run,
-    headerScheduleId,
-    headerSchedule,
     runSchedule,
-    employees,
-    rows,
-    rendered,
-    payslipByEmployee,
-    displayRows,
-    totals,
-    tempWorkersTotalCents,
-    periodGrandTotalCents,
-    cashSummary,
-    periodLabel,
   } = review;
 
   return (

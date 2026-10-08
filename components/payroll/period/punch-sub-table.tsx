@@ -3,7 +3,6 @@
 import Link from "next/link";
 import type React from "react";
 import { companyDayIso } from "@/lib/time/company-day";
-import { formatDayLabel, formatHm } from "@/lib/payroll/period-view";
 
 export function PunchSubTable({
   punches,

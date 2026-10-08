@@ -1,14 +1,12 @@
 // Banners between the sign-off card and the totals table: the stored-vs-live
 // hours drift warning and employee-raised payslip disputes.
 import type React from "react";
-import { db } from "@/lib/db";
-import { and } from "drizzle-orm";
 import { RecomputeBanner } from "@/app/(admin)/payroll/[periodId]/recompute-banner";
 import { DisputesPanel } from "@/app/(admin)/payroll/[periodId]/disputes-panel";
 import type { PeriodReview } from "@/lib/db/queries/period-review";
 
 export function PeriodAlerts({ review, isAccountant }: { review: PeriodReview; isAccountant: boolean }) {
-  const { period, allEmployees, punches, allPayslips, employees, displayRows } = review;
+  const { period, allEmployees, allPayslips, displayRows } = review;
   return (
     <>
       {/* Drift banner — shows when stored payslip hours diverge from
