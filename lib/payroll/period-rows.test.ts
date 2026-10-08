@@ -21,8 +21,9 @@ describe("filterPeriodEmployees", () => {
     expect(filterPeriodEmployees(all, { cohort: ["b", "c"], scheduleId: "weekly" }).map((e) => e.id)).toEqual(["b", "c"]);
   });
   it("schedule filter is an exact match; employees with no schedule are NOT included", () => {
-    // The comment in the page said unassigned employees are wildcards; the
-    // code has been an exact match. Pinned as the code behaves.
+    // Deliberate, by owner directive: weekly and semi-monthly runs must never
+    // mix employees. When no-schedule employees matched every schedule, one
+    // was paid on BOTH runs. The publish job has the same exact match.
     expect(filterPeriodEmployees(all, { cohort: null, scheduleId: "weekly" }).map((e) => e.id)).toEqual(["a"]);
   });
   it("no cohort and no schedule: everyone", () => {
@@ -120,10 +121,34 @@ describe("signOffGroups", () => {
     expect(g.disputed.map((p) => p.employeeId)).toEqual(["disp"]);
     expect(g.pending.map((p) => p.employeeId)).toEqual(["pend"]);
   });
-  it("a resolved dispute is in no bucket (pinned as the page behaves)", () => {
+  it("a RESOLVED dispute goes back to the bucket its sign-off state earns", () => {
+    // Was a bug: a resolved dispute landed in no bucket at all, so the
+    // header's "n of m signed" could never reach m for that period.
     const t = new Date();
-    const g = signOffGroups([slip("r", { disputedAt: t, disputeResolvedAt: t })], paying);
-    expect([g.signed, g.ackd, g.disputed, g.pending].every((b) => b.length === 0)).toBe(true);
-    expect(g.active.length).toBe(1);
+    const resolved = { disputedAt: t, disputeResolvedAt: t };
+    const g = signOffGroups(
+      [
+        slip("rs", { ...resolved, signedAt: t, acknowledgedAt: t }),
+        slip("ra", { ...resolved, acknowledgedAt: t }),
+        slip("rp", resolved),
+        slip("open", { disputedAt: t, signedAt: t, acknowledgedAt: t }),
+      ],
+      paying,
+    );
+    expect(g.signed.map((p) => p.employeeId)).toEqual(["rs"]);
+    expect(g.ackd.map((p) => p.employeeId)).toEqual(["ra"]);
+    expect(g.pending.map((p) => p.employeeId)).toEqual(["rp"]);
+    // An OPEN dispute is still only in Disputed, even if it was signed first.
+    expect(g.disputed.map((p) => p.employeeId)).toEqual(["open"]);
+  });
+  it("every paying payslip is in exactly one bucket", () => {
+    const t = new Date();
+    const all = [
+      slip("1", {}), slip("2", { acknowledgedAt: t }), slip("3", { acknowledgedAt: t, signedAt: t }),
+      slip("4", { disputedAt: t }), slip("5", { disputedAt: t, disputeResolvedAt: t }),
+      slip("6", { disputedAt: t, disputeResolvedAt: t, acknowledgedAt: t, signedAt: t }),
+    ];
+    const g = signOffGroups(all, paying);
+    expect(g.signed.length + g.ackd.length + g.pending.length + g.disputed.length).toBe(g.active.length);
   });
 });

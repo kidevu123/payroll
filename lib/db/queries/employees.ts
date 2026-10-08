@@ -43,8 +43,9 @@ export type EmployeeListFilters = {
    *
    * `payScheduleIdOrNull`: same shape as the exact-match form, but ALSO
    * matches employees with NULL pay_schedule_id (legacy ride-along).
-   * Use this everywhere the upload action's manual-import treats null as
-   * a wildcard — publish handler, run-detail, admin-report, period-detail.
+   * Do NOT use it to decide who is paid: the publish handler, run detail,
+   * admin report and period detail all use the exact match, by owner
+   * directive (the wildcard paid one employee on two runs).
    */
   payScheduleId?: string | "none";
   payScheduleIdOrNull?: string;

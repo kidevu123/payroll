@@ -84,8 +84,9 @@ export async function loadPeriodReview(periodId: string) {
 
   // Filter employees with the same precedence the publish handler uses:
   //   1. run.cohortEmployeeIds (admin-locked cohort) — strongest signal
-  //   2. run.payScheduleId OR period.payScheduleId (auto-cohort, treats
-  //      NULL-schedule employees as wildcards matching any schedule)
+  //   2. run.payScheduleId OR period.payScheduleId (auto-cohort: an EXACT
+  //      match, as in the publish job; an employee with no schedule is not
+  //      on a scheduled period, by owner directive)
   //   3. all
   // SALARIED staff are excluded from punch-driven views regardless.
   const effectiveScheduleId = runScheduleId ?? period.payScheduleId ?? null;

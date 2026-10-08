@@ -13,10 +13,13 @@ import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
  * Salaried staff are always excluded: they are not paid from punches and
  * surface in the W2 section instead.
  *
- * Note: the schedule branch is an EXACT match, so an employee with no
- * schedule is not shown on a scheduled period. (A comment that lived beside
- * this code said unassigned employees were wildcards; the code has not done
- * that. Behaviour preserved; changing it is a product decision.)
+ * The schedule branch is an EXACT match ON PURPOSE, the same as the publish
+ * job: an employee with no schedule is not on a scheduled period. Owner
+ * directive: weekly and semi-monthly runs must never mix employees; when
+ * no-schedule employees matched every schedule, one was paid on both runs.
+ * Assign a schedule on the Employees page to put someone on a run. (The
+ * /time grid still SHOWS no-schedule employees on every tab so their punches
+ * stay visible; that is display only and pays nobody.)
  */
 export function filterPeriodEmployees<
   E extends { id: string; payScheduleId: string | null; payType: string },
@@ -155,7 +158,8 @@ export function buildDisplayRows<
  * zero-pay row (did not work this period) is bookkeeping, never something to
  * sign. Signed = drew a signature on the tablet. Acknowledged = tapped OK on
  * the phone but has not signed. A payslip with an open dispute is only in
- * Disputed. A payslip whose dispute was resolved is in none of the four.
+ * Disputed; once the dispute is resolved it returns to whichever of the other
+ * three its sign-off state earns. Every counted payslip is in exactly one.
  */
 export function signOffGroups<
   S extends {
@@ -167,11 +171,14 @@ export function signOffGroups<
   },
 >(payslips: S[], hasPay: (p: S) => boolean): { active: S[]; signed: S[]; ackd: S[]; disputed: S[]; pending: S[] } {
   const active = payslips.filter((p) => !p.voidedAt && hasPay(p));
+  // Only an OPEN dispute takes a payslip out of the sign-off buckets. Once the
+  // office resolves it, the payslip counts again by its signature / OK state.
+  const openDispute = (p: S) => !!p.disputedAt && !p.disputeResolvedAt;
   return {
     active,
-    signed: active.filter((p) => p.signedAt && !p.disputedAt),
-    ackd: active.filter((p) => p.acknowledgedAt && !p.signedAt && !p.disputedAt),
-    disputed: active.filter((p) => p.disputedAt && !p.disputeResolvedAt),
-    pending: active.filter((p) => !p.acknowledgedAt && !p.disputedAt),
+    signed: active.filter((p) => p.signedAt && !openDispute(p)),
+    ackd: active.filter((p) => p.acknowledgedAt && !p.signedAt && !openDispute(p)),
+    disputed: active.filter(openDispute),
+    pending: active.filter((p) => !p.acknowledgedAt && !p.signedAt && !openDispute(p)),
   };
 }

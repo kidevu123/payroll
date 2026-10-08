@@ -15,7 +15,8 @@ export type PeriodView = {
 
 /**
  * The window that immediately follows `prevEnd` for a cadence: the next 7
- * (or 14) days for weekly/biweekly, the next full calendar month otherwise.
+ * (or 14) days for weekly/biweekly, otherwise the next full calendar month
+ * that starts after `prevEnd`.
  */
 export function nextWindowAfter(prevEnd: string, kind: PeriodKind): { start: string; end: string } {
   const startDate = new Date(`${prevEnd}T00:00:00Z`);
@@ -25,9 +26,15 @@ export function nextWindowAfter(prevEnd: string, kind: PeriodKind): { start: str
     end.setUTCDate(end.getUTCDate() + (kind === "WEEKLY" ? 6 : 13));
     return { start: startDate.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
   }
+  // A period that ended on a month's last day: the day after is already the
+  // 1st, so THAT month is the next window. Only a mid-month end rolls on to
+  // the following month. (Adding a month in both cases skipped one: after
+  // Nov 30 the grid offered January.)
   const start = new Date(startDate);
-  start.setUTCDate(1);
-  start.setUTCMonth(start.getUTCMonth() + 1);
+  if (start.getUTCDate() !== 1) {
+    start.setUTCDate(1);
+    start.setUTCMonth(start.getUTCMonth() + 1);
+  }
   const end = new Date(start);
   end.setUTCMonth(end.getUTCMonth() + 1);
   end.setUTCDate(0);
