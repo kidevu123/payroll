@@ -212,4 +212,4 @@ export async function regeneratePayslipPdf(payslipId: string): Promise<string | 
   });
 }
 
-export { buildDayInOut, tzDayKey } from "@/lib/pdf/day-in-out";
+export { tzDayKey } from "@/lib/pdf/day-in-out";

@@ -102,19 +102,8 @@ export async function getPayslip(id: string): Promise<Payslip | null> {
   return row ?? null;
 }
 
-export async function getPayslipForEmployeePeriod(
-  employeeId: string,
-  periodId: string,
-): Promise<Payslip | null> {
-  const [row] = await db
-    .select()
-    .from(payslips)
-    .where(and(eq(payslips.employeeId, employeeId), eq(payslips.periodId, periodId)));
-  return row ?? null;
-}
-
 /**
- * Same as getPayslipForEmployeePeriod, but only returns the row when the
+ * The employee's payslip for a period, but only returned when the
  * underlying payroll_run has been published to the portal. /me/pay/[id] uses
  * this so unpublished runs render the "no payslip yet" empty state instead
  * of leaking pre-publish drafts.

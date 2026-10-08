@@ -1,16 +1,12 @@
 // Common footer line: short commit SHA + server time + signature.
 // The package.json version was historically also shown, but the team
 // stopped bumping it consistently, so the SHA is the authoritative
-// "what's running" marker. VERSION stays exported for any other consumer
-// (PDFs etc.) but is not displayed.
+// "what's running" marker.
 //
 // SHA / BUILD_AT injected at build time via NEXT_PUBLIC_GIT_SHA /
 // NEXT_PUBLIC_BUILD_AT (Dockerfile build stage).
 
 import * as React from "react";
-import pkg from "../package.json" with { type: "json" };
-
-const VERSION = pkg.version;
 const SHA = process.env.NEXT_PUBLIC_GIT_SHA?.slice(0, 7) ?? "dev";
 const DEFAULT_TIMEZONE = "America/New_York";
 
@@ -68,5 +64,3 @@ export function AppFooter({
     </footer>
   );
 }
-
-export const APP_VERSION = VERSION;

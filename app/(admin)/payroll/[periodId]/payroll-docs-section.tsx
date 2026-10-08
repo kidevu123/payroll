@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, FileText, Plus, Trash2, Upload, X } from "lucide-react";
 import type { Employee, PayrollPeriodDocument } from "@/lib/db/schema";

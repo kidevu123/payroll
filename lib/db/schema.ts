@@ -27,7 +27,6 @@ import {
   jsonb,
   index,
   uniqueIndex,
-  primaryKey,
   customType,
 } from "drizzle-orm/pg-core";
 

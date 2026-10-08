@@ -1,17 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  Square,
-  X,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cancelPollAction } from "@/app/(admin)/payroll/actions";
-import { cn } from "@/lib/utils";
 
 const WATCH_KEY = "payroll:poll-watch";
 const POLL_MS = 2_000;
@@ -143,10 +133,6 @@ function deriveUi(
 
   const tracked = watch ? matchesWatch(watch, status) : false;
   const running = status.phase === "running";
-  const terminal =
-    status.phase === "succeeded" ||
-    status.phase === "failed" ||
-    status.phase === "stuck";
 
   if (!tracked && !running) {
     return {
@@ -210,106 +196,6 @@ function deriveUi(
       "Poll finished with an error. Check Settings → NGTeco or server logs.",
     progress: "error",
   };
-}
-
-function PollStatusBarView({
-  ui,
-  onDismiss,
-  onCancel,
-}: {
-  ui: ReturnType<typeof deriveUi>;
-  onDismiss: () => void;
-  onCancel: () => void;
-}) {
-  if (!ui.show) return null;
-
-  const isInFlight =
-    ui.phase === "running" || ui.phase === "queued" || ui.phase === "stuck";
-
-  const Icon =
-    ui.progress === "success"
-      ? CheckCircle2
-      : ui.progress === "error"
-        ? AlertTriangle
-        : ui.phase === "running" || ui.phase === "queued"
-          ? Loader2
-          : Activity;
-
-  // Accent color per state, pulled from the dashboard palette so the bar reads
-  // as part of the (dark) dashboard — and flips correctly in light mode too.
-  // These CSS vars are defined globally, so no cross-module import is needed.
-  const accent =
-    ui.progress === "success"
-      ? "var(--dash-emerald)"
-      : ui.progress === "error"
-        ? "var(--dash-rose)"
-        : "var(--dash-cyan)";
-  const spinning = ui.phase === "running" || ui.phase === "queued";
-
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={cn(
-        "border-b border-border bg-surface px-3 py-2 text-text sm:px-4",
-        // Only the light shell needs to clear its fixed mobile Topbar; the
-        // dark shell renders this bar inside an already-offset canvas.
-      )}
-      style={{
-        // Subtle state-tinted wash over the dark surface + a colored left edge.
-        background: `linear-gradient(90deg, color-mix(in srgb, ${accent} 14%, transparent), color-mix(in srgb, ${accent} 5%, transparent))`,
-        borderLeft: `3px solid ${accent}`,
-      }}
-    >
-      <div className="mx-auto flex max-w-screen-2xl items-start gap-3">
-        <Icon
-          className={cn("mt-0.5 h-4 w-4 shrink-0", spinning && "animate-spin")}
-          style={{ color: accent }}
-        />
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-sm font-semibold text-text">{ui.title}</p>
-            {ui.detail && <p className="text-xs text-text-muted">{ui.detail}</p>}
-          </div>
-          {(spinning || ui.progress === "success" || ui.progress === "error") && (
-            <div
-              className="h-1.5 overflow-hidden rounded-full"
-              style={{ background: "color-mix(in srgb, var(--dash-text-faint) 25%, transparent)" }}
-            >
-              <div
-                className={cn("h-full rounded-full", spinning ? "w-full animate-pulse" : "w-full")}
-                style={{ background: accent }}
-              />
-            </div>
-          )}
-        </div>
-        {isInFlight && (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 shrink-0 gap-1.5 px-2"
-            style={{ color: "var(--dash-rose)" }}
-            onClick={onCancel}
-            aria-label="Stop the running poll and kill its browser"
-          >
-            <Square className="h-3.5 w-3.5" />
-            <span className="text-xs font-medium">Stop poll</span>
-          </Button>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-7 shrink-0 px-2 text-text-muted hover:text-text"
-          onClick={onDismiss}
-          aria-label="Dismiss poll status"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 export function PollStatusProvider({
@@ -433,26 +319,6 @@ export function PollStatusProvider({
     <PollStatusContext.Provider value={value}>
       {children}
     </PollStatusContext.Provider>
-  );
-}
-
-export function PollStatusBar({
-}: {
-  /** Set when the bar sits directly under the light shell's fixed mobile
-   *  Topbar (below lg). The dark shell canvas already pads for its top bar. */
-} = {}) {
-  const ctx = React.useContext(PollStatusContext);
-  if (!ctx) return null;
-
-  const ui = deriveUi(ctx.watch ?? readWatch(), ctx.status);
-  const show = ctx.visible && ui.show;
-
-  return (
-    <PollStatusBarView
-      ui={show ? ui : { ...ui, show: false }}
-      onDismiss={ctx.dismiss}
-      onCancel={ctx.cancel}
-    />
   );
 }
 

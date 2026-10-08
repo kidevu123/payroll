@@ -327,7 +327,7 @@ export async function listReports(
    * own (the enum only covers WEEKLY/BIWEEKLY/SEMI_MONTHLY/MONTHLY), so it
    * matches runs whose schedule name does NOT read as a recurring cadence
    * (or has no schedule attached) — the same classification the Reports
-   * overview donut uses in lib/reports/reports-overview.ts (cadenceOf).
+   * overview donut used (that module is gone; the rule lives here now).
    * Pass `null` (default) to return everything including legacy runs with
    * no schedule attached.
    */
@@ -388,7 +388,7 @@ export async function listReports(
   // Sort by the actual period the run pays out, newest first.
   // WEEKLY/SEMI_MONTHLY/MONTHLY filter on the schedule's period_kind enum.
   // "SALARIED" is synthetic: it has no period_kind, so match it the way the
-  // Reports overview donut classifies cadence (reports-overview.ts → cadenceOf)
+  // The retired reports overview donut classified cadence the same way
   // — a run is salaried when its schedule name does NOT read as a recurring
   // cadence (no semi/twice/bi-month/week/month), or has no schedule at all.
   // Keeping the two in lock-step is what makes the Salaried tab show exactly

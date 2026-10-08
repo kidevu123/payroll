@@ -271,47 +271,6 @@ function MobileDrawer({
   );
 }
 
-export function MobileNav({
-  company,
-  allowedSurfaces,
-  currentLocale,
-  badges,
-}: {
-  company: { name: string; logoPath: string | null };
-  allowedSurfaces?: ReadonlyArray<Surface> | undefined;
-  currentLocale: "en" | "es";
-  badges?: Record<string, number> | undefined;
-}) {
-  const pathname = usePathname() ?? "";
-  const tNav = useTranslations("nav");
-  const { sections } = useMobileNavData(allowedSurfaces);
-  const { open, setOpen } = useDrawerState(pathname);
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={tNav("openNavigation")}
-        className="lg:hidden inline-flex h-9 w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 items-center justify-center rounded-input hover:bg-surface-2/40"
-      >
-        <Menu className="h-5 w-5" aria-hidden />
-      </button>
-
-      {open && (
-        <MobileDrawer
-          company={company}
-          currentLocale={currentLocale}
-          sections={sections}
-          pathname={pathname}
-          onClose={() => setOpen(false)}
-          badges={badges}
-        />
-      )}
-    </>
-  );
-}
-
 export function MobileQuickNav({
   company,
   allowedSurfaces,

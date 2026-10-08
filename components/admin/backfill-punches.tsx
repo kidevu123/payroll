@@ -18,7 +18,7 @@ const PRESETS: Array<{ daysBack: number; label: string }> = [
 ];
 
 export function BackfillPunchesButton(): React.JSX.Element {
-  const { startWatching, status, isActive } = usePollStatus();
+  const { startWatching, isActive } = usePollStatus();
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<PollNowResult | null>(null);

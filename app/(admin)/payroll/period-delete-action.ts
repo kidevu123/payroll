@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import {

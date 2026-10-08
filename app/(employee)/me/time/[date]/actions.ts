@@ -3,7 +3,6 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, gte, lte } from "drizzle-orm";
 import { requireSession } from "@/lib/auth-guards";
 import {
   createMissedPunchRequest,
@@ -11,8 +10,6 @@ import {
 } from "@/lib/db/queries/requests";
 import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
 import { adminUserIds } from "@/lib/db/queries/recipients";
-import { db } from "@/lib/db";
-import { payPeriods } from "@/lib/db/schema";
 import { dispatch } from "@/lib/notifications/router";
 import { getSetting } from "@/lib/settings/runtime";
 import { parseMissedPunchClaim } from "@/lib/missed-punch/claim";

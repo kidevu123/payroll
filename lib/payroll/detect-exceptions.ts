@@ -1,4 +1,4 @@
-import { eachDayIso, utcDayIso } from "@/lib/time/format";
+import { eachDayIso } from "@/lib/time/format";
 import { companyDayIso } from "@/lib/time/company-day";
 // Missed-punch detection per spec §6.2. Pure function: takes employees,
 // punches, holidays, time-off, and a period; returns the alerts that should
@@ -17,7 +17,6 @@ import { companyDayIso } from "@/lib/time/company-day";
 //   SUSPICIOUS_DURATION   A complete punch's hours fall outside the
 //                         configured short/long thresholds.
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
 const SAME_DAY_CLOSE_MIN_AGE_MS = 6 * MS_PER_HOUR;
 

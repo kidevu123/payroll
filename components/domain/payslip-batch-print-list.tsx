@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";

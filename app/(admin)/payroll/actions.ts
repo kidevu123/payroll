@@ -21,7 +21,6 @@ import { notifyEmployeesPayslipsPublished } from "@/lib/payroll/published-notifi
 import {
   finishPoll,
   getInProgressPoll,
-  getLastPoll,
   reconcileOrphanedPolls,
 } from "@/lib/db/queries/poll-history";
 import {
@@ -35,10 +34,7 @@ import {
   unvoidPayslip,
   voidPayslip,
 } from "@/lib/db/queries/payslips";
-import {
-  findDuplicatePunchClusters,
-  mergeDuplicatePunches,
-} from "@/lib/db/queries/punches";
+import { mergeDuplicatePunches } from "@/lib/db/queries/punches";
 
 const idSchema = z.string().uuid();
 
@@ -591,39 +587,6 @@ export async function mergeDuplicatePunchesAction(
       error: err instanceof Error ? err.message : "Could not merge duplicates.",
     };
   }
-}
-
-export async function countDuplicateClustersAction(
-  periodId: string | null,
-): Promise<number> {
-  await requireAdmin();
-  if (periodId !== null && !idSchema.safeParse(periodId).success) return 0;
-  const filters = periodId ? { periodId } : {};
-  const clusters = await findDuplicatePunchClusters(filters);
-  return clusters.length;
-}
-
-export async function getLastPollAction(): Promise<{
-  startedAt: string | null;
-  finishedAt: string | null;
-  ok: boolean;
-  triggeredBy: string;
-  pairsInserted: number | null;
-  pairsUpdated: number | null;
-  errorMessage: string | null;
-} | null> {
-  await requireAdmin();
-  const last = await getLastPoll();
-  if (!last) return null;
-  return {
-    startedAt: last.startedAt.toISOString(),
-    finishedAt: last.finishedAt?.toISOString() ?? null,
-    ok: last.ok,
-    triggeredBy: last.triggeredBy,
-    pairsInserted: last.pairsInserted,
-    pairsUpdated: last.pairsUpdated,
-    errorMessage: last.errorMessage,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

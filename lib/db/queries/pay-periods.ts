@@ -12,7 +12,6 @@ import {
   type PaySchedule,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
-import { getSetting } from "@/lib/settings/runtime";
 import { getNextPeriodBounds } from "@/lib/payroll/period-boundaries";
 import type { Actor } from "./employees";
 

@@ -90,49 +90,6 @@ export async function createTempWorker(
   });
 }
 
-export type UpdateTempWorkerPatch = Partial<
-  Pick<
-    NewTempWorkerEntry,
-    "workerName" | "description" | "hours" | "amountCents" | "notes"
-  >
->;
-
-export async function updateTempWorker(
-  id: string,
-  patch: UpdateTempWorkerPatch,
-  actor: Actor,
-): Promise<TempWorkerEntry> {
-  return db.transaction(async (tx) => {
-    const [before] = await tx
-      .select()
-      .from(tempWorkerEntries)
-      .where(eq(tempWorkerEntries.id, id));
-    if (!before)
-      throw new Error(`updateTempWorker: ${id} not found`);
-    if (before.deletedAt)
-      throw new Error("updateTempWorker: cannot edit a deleted entry");
-    const [row] = await tx
-      .update(tempWorkerEntries)
-      .set(patch)
-      .where(eq(tempWorkerEntries.id, id))
-      .returning();
-    if (!row) throw new Error("updateTempWorker: returning() empty");
-    await writeAudit(
-      {
-        actorId: actor.id,
-        actorRole: actor.role,
-        action: "temp_worker.update",
-        targetType: "TempWorkerEntry",
-        targetId: id,
-        before,
-        after: row,
-      },
-      tx,
-    );
-    return row;
-  });
-}
-
 export async function deleteTempWorker(
   id: string,
   actor: Actor,

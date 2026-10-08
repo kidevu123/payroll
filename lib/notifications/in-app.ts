@@ -4,7 +4,6 @@
 // per-user overrides, and Web Push dispatch. Today this is just the
 // minimum needed for the bell badge in the admin topbar to populate.
 
-import { and, eq, isNull, count } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { notifications, type NewNotification } from "@/lib/db/schema";
 

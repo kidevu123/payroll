@@ -4,7 +4,7 @@
 // All mutations run inside a transaction with the audit insert; if audit
 // fails, the mutation rolls back.
 
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   employees,

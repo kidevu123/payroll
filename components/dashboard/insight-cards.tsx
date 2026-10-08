@@ -3,7 +3,6 @@
 
 import {
   Activity,
-  ArrowRight,
   CheckCircle2,
   RefreshCw,
   Sparkles,
@@ -233,7 +232,7 @@ function healthLabel(score: number): { word: string; caption: string } {
 }
 
 export function HealthCard({ health }: { health: DashboardMetrics["health"] }) {
-  const { word, caption } = healthLabel(health.score);
+  const { word } = healthLabel(health.score);
   return (
     <DashCard glow className="flex h-full flex-col gap-3">
       <Eyebrow>Payroll health score</Eyebrow>

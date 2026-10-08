@@ -27,7 +27,6 @@ import { formatMoney } from "@/lib/utils";
 import { fmtRange } from "./doc-format";
 
 const NAVY = "#16233b";
-const NAVY_SOFT = "#334155";
 const GOLD = "#c8971f";
 const INK = "#0f172a";
 const MUTED = "#64748b";
