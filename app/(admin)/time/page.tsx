@@ -42,6 +42,18 @@ import { companyDayIso } from "@/lib/time/company-day";
 import { todayInCompanyTz, eachDayIso } from "@/lib/time/format";
 import { gridLastDay, type PeriodView } from "@/lib/time-grid/period-select";
 import {
+  MOBILE_STATUS,
+  cellAriaLabel,
+  cellPillClasses,
+  cellStateFor,
+  legendDotClass,
+  summarizeCell,
+  timeInitials,
+  timeOffLabel,
+  type CellState,
+  type PunchLite,
+} from "@/lib/time-grid/cell-state";
+import {
   findAdjacentPeriods,
   loadPeriodForTab,
   pickPeriodForTab,
@@ -53,103 +65,6 @@ import {
 
 function dayOf(d: Date, tz: string): string {
   return companyDayIso(d, tz);
-}
-
-type CellState =
-  | "complete"
-  | "incomplete"
-  | "missed"   // past day with no punch — genuinely absent
-  | "future"   // day hasn't happened yet — no punch expected
-  | "inactive"
-  | "pto"      // approved PERSONAL / paid time off
-  | "sick"     // approved SICK
-  | "unpaid"   // approved UNPAID
-  | "other";   // approved OTHER
-
-// Background + text for cells that show a filled chip (data cells).
-function cellPillClasses(state: CellState): string {
-  switch (state) {
-    case "complete":
-      return "bg-success-50 text-success-800";
-    case "incomplete":
-      return "bg-warning-50 text-warning-800";
-    case "pto":
-      return "bg-success-100/80 text-success-900";
-    case "sick":
-      return "bg-warning-100/80 text-warning-900";
-    case "unpaid":
-      return "bg-surface-2 text-text-muted";
-    case "other":
-      return "bg-info-50 text-info-800";
-    default:
-      return "";
-  }
-}
-
-// Dot color for the legend.
-function legendDotClass(state: CellState): string {
-  switch (state) {
-    case "complete":
-      return "bg-success-500";
-    case "incomplete":
-      return "bg-warning-500";
-    case "missed":
-      return "bg-danger-500";
-    case "pto":
-      return "bg-success-500";
-    default:
-      return "bg-border-strong";
-  }
-}
-
-// Mobile attendance-list status badge label + dash-palette color per state.
-const MOBILE_STATUS: Record<CellState, { label: string; color: string }> = {
-  complete: { label: "Complete", color: "var(--dash-emerald)" },
-  incomplete: { label: "Unpaired", color: "var(--dash-amber)" },
-  missed: { label: "Missing", color: "var(--dash-rose)" },
-  future: { label: "—", color: "var(--dash-text-faint)" },
-  inactive: { label: "Inactive", color: "var(--dash-text-faint)" },
-  pto: { label: "PTO", color: "var(--dash-blue)" },
-  sick: { label: "Sick", color: "var(--dash-blue)" },
-  unpaid: { label: "Unpaid", color: "var(--dash-text-faint)" },
-  other: { label: "Time off", color: "var(--dash-blue)" },
-};
-
-function timeInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "—";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
-
-function timeOffStateFor(
-  type: "UNPAID" | "SICK" | "PERSONAL" | "OTHER",
-): CellState {
-  switch (type) {
-    case "PERSONAL":
-      return "pto";
-    case "SICK":
-      return "sick";
-    case "UNPAID":
-      return "unpaid";
-    case "OTHER":
-      return "other";
-  }
-}
-
-function timeOffLabel(state: CellState): string {
-  switch (state) {
-    case "pto":
-      return "PTO";
-    case "sick":
-      return "Sick";
-    case "unpaid":
-      return "Unpaid";
-    case "other":
-      return "Off";
-    default:
-      return "";
-  }
 }
 
 export default async function TimePage({
@@ -420,31 +335,14 @@ export default async function TimePage({
   // thing inline, per cell).
   const cellFor = (e: (typeof employees)[number], d: string) => {
     const list = grid.get(e.id)?.get(d) ?? [];
-    const offType = timeOffByDay.get(`${e.id}|${d}`);
-    let state: CellState;
-    if (list.length === 0) {
-      if (offType) state = timeOffStateFor(offType);
-      else if (d > today) state = "future";
-      else state = "missed";
-    } else if (
-      list.some(
-        (p) =>
-          isAmbiguousSinglePunch(p) ||
-          isMissingClockInPunch(p) ||
-          isOpenShiftPunch(p),
-      )
-    ) {
-      state = "incomplete";
-    } else state = "complete";
-    if (e.status !== "ACTIVE") state = "inactive";
-    const sorted = [...list].sort(
-      (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
-    );
-    const closedMs = sorted.reduce(
-      (acc, p) =>
-        p.clockOut ? acc + (p.clockOut.getTime() - p.clockIn.getTime()) : acc,
-      0,
-    );
+    const state = cellStateFor({
+      punches: list,
+      offType: timeOffByDay.get(`${e.id}|${d}`),
+      dayIso: d,
+      today,
+      employeeActive: e.status === "ACTIVE",
+    });
+    const { sorted, closedMs } = summarizeCell(list);
     return {
       e,
       state,
@@ -881,46 +779,9 @@ export default async function TimePage({
                 </td>
                 {days.map((d) => {
                   const isToday = d === today;
-                  const isFutureDay = d > today;
-                  const list = grid.get(e.id)?.get(d) ?? [];
-                  const offType = timeOffByDay.get(`${e.id}|${d}`);
-                  let state: CellState;
-                  if (list.length === 0) {
-                    if (offType) {
-                      state = timeOffStateFor(offType);
-                    } else if (isFutureDay) {
-                      // Day hasn't happened — don't show red
-                      state = "future";
-                    } else {
-                      state = "missed";
-                    }
-                  } else if (
-                    list.some(
-                      (p) =>
-                        isAmbiguousSinglePunch(p) ||
-                        isMissingClockInPunch(p) ||
-                        isOpenShiftPunch(p),
-                    )
-                  ) {
-                    state = "incomplete";
-                  } else {
-                    state = "complete";
-                  }
-                  if (e.status !== "ACTIVE") state = "inactive";
-
-                  const sorted = [...list].sort(
-                    (a, b) => a.clockIn.getTime() - b.clockIn.getTime(),
-                  );
+                  const { state, sorted, closedMs, cellPeriodId } = cellFor(e, d);
                   const first = sorted[0];
                   const last = sorted[sorted.length - 1];
-                  const cellPeriodId = resolveTimeCellPeriodId({
-                    currentPeriodId: period.id,
-                    punches: sorted,
-                  });
-                  const closedMs = sorted.reduce((acc, p) => {
-                    if (!p.clockOut) return acc;
-                    return acc + (p.clockOut.getTime() - p.clockIn.getTime());
-                  }, 0);
                   const hours = closedMs / (1000 * 60 * 60);
 
                   const cellContent = (
@@ -1002,8 +863,6 @@ function Legend({ label, state }: { label: string; state: CellState }) {
     </span>
   );
 }
-
-type PunchLite = { clockIn: Date; clockOut: Date | null };
 
 function PunchCellContent({
   state,
@@ -1095,20 +954,6 @@ function PunchCellContent({
   );
 }
 
-function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): string {
-  if (state === "inactive") return "Inactive employee";
-  if (state === "pto") return "Approved time off — PTO";
-  if (state === "sick") return "Approved time off — Sick";
-  if (state === "unpaid") return "Approved time off — Unpaid";
-  if (state === "other") return "Approved time off";
-  if (list.length === 0) return "No punches — missed day";
-  const lines = list.map((p) => {
-    const inS = formatTimeShort(p.clockIn, tz);
-    const outS = p.clockOut ? formatTimeShort(p.clockOut, tz) : "still open";
-    return `${inS} to ${outS}`;
-  });
-  return lines.join("; ");
-}
 
 // ── #57 attendance-board KPI + rail components ───────────────────────────
 
