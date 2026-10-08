@@ -1,5 +1,7 @@
 # Multi-phase build handoff
 
+> **Historical.** This was the hand-off procedure for the original phased build (spring 2026). It is kept as a record and is not maintained: production now deploys from `main`, not `rebuild/foundation`. For current operations see [`runbook.md`](runbook.md).
+
 Phase 0 is live on LX120. Phases 0.5 through 6 are queued for autonomous execution per the owner's direction. This file is the operational runbook for Claude Code (or any contributor) driving that build.
 
 The phase plan and per-phase deliverables live in `docs/phases.md`. This file is the *how*: how to drive each phase, how to verify it, how to recover from failures.

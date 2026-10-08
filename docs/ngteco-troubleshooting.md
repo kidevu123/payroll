@@ -2,7 +2,14 @@
 
 The NGTeco import is the only step that depends on a vendor we can't change. This doc captures everything that has gone wrong and how to recover.
 
-## How a run actually executes
+## Two ways punches arrive
+
+- **The hourly poll** (`ngteco.punch.poll`) is the everyday path. It calls NGTeco's REST API directly, with no browser, and falls back to the browser scraper only if the API returns an error. "Poll punches now" and "Backfill" on the Time page use the same path. Setting `NGTECO_FORCE_SCRAPER=1` forces the scraper; that is for emergencies only.
+- **The per-run import** (`ngteco.import`) runs at the start of each payroll run and from "Run import now" in NGTeco settings. It always uses the browser scraper.
+
+Most of this document is about the scraper, because that is the part that breaks when NGTeco changes its portal. If the hourly poll is failing, look at the poll's own error on the Time page first: an API error there is a credentials or NGTeco-side problem, not a selector problem.
+
+## How a run actually executes (the per-run import)
 
 1. **Schedule** — `payroll.run.tick` fires on `automation.payrollRun.cron`. Default: Sunday 7pm ET. Creates a `PayrollRun` row in `SCHEDULED`, enqueues `ngteco.import { runId }`.
 2. **Ingest** — `ngteco.import` worker picks up the job. Loads selectors from `lib/ngteco/selectors.json` fresh, opens a Playwright persistent-context profile at `/data/ngteco/profile/`, navigates the portal, exports the punch CSV.

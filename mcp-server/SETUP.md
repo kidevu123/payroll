@@ -56,6 +56,6 @@ If you run against a tunneled DB from your Mac:
 
 ## Tools available
 
-17 tools — employees, periods, punches, payroll runs, NGTeco poll/backfill, hall-monitor audit, lock/unlock period, create/edit/void punch.
+27 tools — employees, periods, punches, payroll runs, payslips, period documents and print reports, NGTeco poll/backfill, lock/unlock and mark paid, create/edit/void punch, paystub upload.
 
 See `mcp-server/README.md` for the full list.

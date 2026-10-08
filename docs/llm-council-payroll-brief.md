@@ -1,5 +1,7 @@
 # LLM Council brief — Milo payroll platform
 
+> **Historical.** A June 2026 review prompt. It refers to the Hall monitor, which was removed in August 2026.
+
 Use this prompt with the **llm-council** skill (`python3 ~/.cursor/skills/llm-council/scripts/query_llms.py "$(cat docs/llm-council-payroll-brief.md)"`).
 
 ## System summary

@@ -1,5 +1,7 @@
 # Legacy Flask app → v1.2 feature gap inventory
 
+> **Historical.** A May 2026 audit of the legacy Python app against the rebuild at the time. Many gaps listed here have since been closed; check the code or [`CLAUDE.md`](../CLAUDE.md) before relying on any line. The legacy app is preserved at the git tag `legacy-python-app`.
+
 Audit of `/data/legacy/simple_app.py` (~6000 LOC) against the current Next.js
 app. Goal: keep the new UI + employee portal but recover the operational
 nuances the owner relied on. Already-done items are listed for completeness.

@@ -1,6 +1,6 @@
 # Payroll MCP Server
 
-MCP server for the Milo payroll app. Gives AI agents read/write access to employees, punches, pay periods, NGTeco polls, and hall-monitor audits.
+MCP server for the Milo payroll app. Gives AI agents read/write access to employees, punches, pay periods, payroll runs, payslips, period documents and NGTeco polls.
 
 ## Setup
 
@@ -61,10 +61,14 @@ For production DB access from your Mac, tunnel Postgres from the LXC or point `D
 
 ## Tools
 
+27 tools. Each tool declares in code whether it is read-only; the Type column below is a summary.
+
 | Tool | Type |
 |------|------|
 | `payroll_list_employees` | read |
 | `payroll_get_employee` | read |
+| `payroll_list_employee_payslips` | read |
+| `payroll_list_employee_documents` | read |
 | `payroll_list_periods` | read |
 | `payroll_get_period` | read |
 | `payroll_list_punches` | read |
@@ -73,13 +77,22 @@ For production DB access from your Mac, tunnel Postgres from the LXC or point `D
 | `payroll_list_run_exceptions` | read |
 | `payroll_list_payslips` | read |
 | `payroll_poll_status` | read |
-| `payroll_run_hall_monitor` | read |
+| `payroll_get_period_bank_cash_list` | read |
+| `payroll_download_period_signature` | read |
+| `payroll_download_period_cut_sheet` | read |
 | `payroll_poll_now` | write |
 | `payroll_poll_backfill` | write |
 | `payroll_lock_period` | write |
 | `payroll_unlock_period` | write |
+| `payroll_mark_paid` | write |
+| `payroll_unmark_paid` | write |
 | `payroll_create_punch` | write |
 | `payroll_edit_punch` | write |
 | `payroll_void_punch` | write |
+| `payroll_upload_period_paystub` | write |
+| `payroll_upload_salaried_paystub` | write |
+| `payroll_delete_period_document` | write |
+
+The employee tools return whole employee rows, including phone, email and Zelle contact.
 
 Design: `docs/superpowers/specs/2026-06-08-payroll-mcp-server-design.md`

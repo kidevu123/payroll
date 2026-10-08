@@ -1,152 +1,170 @@
 # Payroll
 
-Self-hosted payroll and employee operations platform. Single-tenant, single-purpose, gross-pay only. Designed so the owner runs payroll in under five minutes a week.
+A self-hosted, single-tenant payroll and employee operations platform for a small manufacturing and distribution business. Gross pay only. The owner runs payroll in a few minutes a week; the system does the rest: it pulls punches from the NGTeco timeclock on a schedule, detects problems, notifies the right person, generates payslips and waits for the owner to approve.
 
-This is a ground-up rebuild — see `docs/spec.md` for the design contract. This README is operational.
+This README is the operational overview. Related reading:
 
-## Status
+| Document | What it covers |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | System diagram, the weekly payroll run, how the code is layered |
+| [`docs/spec.md`](docs/spec.md) | The original design contract |
+| [`docs/runbook.md`](docs/runbook.md) | Day-to-day operations, common issues, rollback, restore |
+| [`docs/deploy-proxmox.md`](docs/deploy-proxmox.md) | Installing on a Proxmox LXC |
+| [`CLAUDE.md`](CLAUDE.md) | The running project log: every significant change, decision and known gap |
 
-**Phase 6 — Polish & reports.** What ships on top of Phase 5:
+## What it does
 
-- `/reports` — YTD totals per employee for a given year, payroll-trends line chart (hours + net $), CSV exports for employees / payslips / punches / audit / period totals.
-- `/audit` — date-range, action keyword search, and inline before/after diff with changed-key highlighting.
-- Operations docs filled in: `runbook.md` (Sunday close walk-through, restore drill, common issues), `ngteco-troubleshooting.md`, `admin-onboarding.md`, `employee-onboarding.md`.
-- `lib/reports/csv-export.ts` at 100% branch coverage; RFC-4180 quoting.
+**For the office (admin dashboard)**
 
-**Phase 5 — Requests + notifications + Web Push.** Missed-punch fix flow + time-off requests, in-app + Web Push dispatcher (VAPID-backed), admin /requests inbox with inline approve/reject, bell badge with unread count.
+- Time grid per pay period, with a day editor for fixing or adding punches, and back pay for a shift reported after its week was paid.
+- Pay periods on multiple schedules (weekly, biweekly, semi-monthly, monthly), each with its own run. Employees are paid only on the schedule they are assigned to.
+- Payroll run workflow: ingest punches, detect exceptions, give employees a fix window, review, approve, publish payslips.
+- Reports: year summary, pay runs ledger, per-employee and per-schedule tables, CSV exports.
+- Requests inbox for missed-punch fixes and time off, including filing time off on an employee's behalf.
+- Cash drawer ledger with petty-cash receipts, and an accountant role scoped to it.
+- Salaried staff: paystub uploads per period, with the net amount read from the PDF.
+- Calendar (time off, holidays, birthdays), announcements with saved templates, audit log with before/after diffs.
+- Settings for everything company-specific: pay rules, schedules, shifts, holidays, branding, roles and permissions, automation, NGTeco, Zoho, Google Calendar, single sign-on.
 
-**Phase 4 — Employee PWA.** Mobile-first /me/* shell with bottom-nav, dynamic manifest, service worker offline shell, next-intl wired with employee-facing en + es coverage.
+**For employees (installable phone app, English and Spanish)**
 
-**Phase 3 — Payroll run state machine + PDFs.** What ships on top of Phase 2:
+- Home, timesheet, pay, calendar and profile.
+- Report a missed punch with a time-only picker; request time off.
+- View payslips in the app, confirm hours, or report a problem.
+- Choose a payout preference (cash or Zelle). This is display-only and does not affect payroll math.
 
-- Pure missed-punch detection in `lib/payroll/detect-exceptions.ts` (NO_PUNCH / MISSING_OUT / MISSING_IN / SUSPICIOUS_DURATION) at 100% branch coverage.
-- Run state machine: `transitionRun` with explicit legal-edge table per spec §6. Sunday cron → ingest → detect → AWAITING_EMPLOYEE_FIXES (or AWAITING_ADMIN_REVIEW) → APPROVED → PUBLISHED. ngteco-import chains into detect-exceptions on success.
-- PDFs via `@react-pdf/renderer`: individual payslip, single-page admin signature report (25-employee constraint), optional cut-sheet.
-- Dashboard centerpiece (`PayrollRunCard`) — state-driven, fills ~50% viewport, single primary CTA.
-- `/payroll/run/[runId]` review with state-aware Approve flow that enqueues the publish job.
-- Employee `/pay` + `/pay/[periodId]` viewer with iframe of the auth-gated `/api/payslips/[id]/pdf` route + inline Acknowledge.
-- In-app notifications stub (Phase 5 promotes it to the full router with Web Push).
+**For the warehouse (shared tablet kiosk)**
 
-**Phase 2 — NGTeco automation.** Encrypted credentials, Playwright scraper with persistent profile + 2FA/CAPTCHA detection + screenshot/HTML capture on failure, parser at 100% branch coverage, run history + run detail UI, two new pg-boss queues (`ngteco.import`, `payroll.run.tick`).
+- PIN sign-in by clock ID, with an automatic sign-out after 45 seconds idle.
+- Hours, pay, fix a punch, request time off.
+- Sign your own payslip on the tablet. A payday mode, unlocked by a one-time office code, lets everyone sign in turn without seeing anyone else's pay.
 
-**Phase 1 — Admin core.** What ships:
+**Integrations**
 
-- Foundation from Phase 0 (Next.js 15 / React 19 / TypeScript strict, Drizzle schema, Auth.js v5 + Argon2id, pg-boss, OTel, Docker, LX120 deploy automation).
-- Pure pay computation in `lib/payroll/` with 100% branch coverage gated in CI: `computePay`, `period-boundaries`, `rounding`. Fixtures cover short days, suspicious longs, midnight crossings, mid-period rate changes, flat-task and mixed-mode employees, incomplete punches.
-- Typed query layer in `lib/db/queries/` with transactional audit (audit insert enrolls in the same Drizzle transaction as every mutation): employees, shifts, pay periods, punches, rate history, audit reads.
-- Admin pages: employees CRUD with rate history, time grid (per-period, color-coded, click-to-edit), period review with computed totals, audit log viewer (owner-only).
-- Settings tabs (full implementations replacing Phase 0 stubs): pay periods, pay rules, shifts (CRUD + reorder + archive), security.
-- pg-boss `period.rollover` job — daily 00:30 in company TZ, idempotent.
-- `scripts/import-employees.ts` — dry-run-by-default CSV importer with title-case + dedupe.
-- `scripts/seed-demo.ts` — 24 employees, 5 periods, realistic punches, two seeded alerts on the open period.
+- **NGTeco** timeclock: hourly punch poll over its REST API, with a headless-browser scraper kept as a fallback.
+- **Zoho Books**: the office pushes payroll expenses from the Reports page, booked per employee where configured.
+- **Authentik**: single sign-on with automatic account provisioning.
+- **Google Calendar**: approved time off as calendar events.
+- **Web Push** notifications, plus in-app notifications. Email is disabled.
+- **MCP server**: lets an AI agent read payroll data and perform a limited set of actions (see [`mcp-server/README.md`](mcp-server/README.md)).
 
-Phase 0.5 fix included: `setSetting` no longer throws when the prior row is missing or shape-stale (the bug that caused `/setup` to silently lose company settings).
+## Tech stack
+
+Next.js 15 (App Router), React 19, TypeScript strict. Postgres 16 through Drizzle. Auth.js v5 with email and password (Argon2id). Tailwind v4 with shadcn primitives. `pg-boss` for background jobs (no Redis). Playwright for the NGTeco fallback scraper. `@react-pdf/renderer` for PDFs. `next-intl` for English and Spanish. OpenTelemetry with a Prometheus metrics endpoint. One multi-stage Dockerfile, deployed with Docker Compose to a Proxmox LXC.
 
 ## Local development
 
 ```bash
-nvm use                                   # uses .nvmrc → Node 22.11
+nvm use                                   # .nvmrc: Node 22.11 (the production image runs Node 24)
 npm install
 cp .env.example .env
-# Generate secrets:
 echo "AUTH_SECRET=$(openssl rand -base64 48)" >> .env
 echo "NGTECO_VAULT_KEY=$(openssl rand -base64 32)" >> .env
 
-# Bring up Postgres only (or use the full compose stack):
-docker compose up -d db
-
-npm run db:generate                       # only when schema changed
+docker compose up -d db                   # Postgres only
 npm run db:migrate
-npm run seed
+npm run seed                              # or: npm run seed:demo
 npm run dev                               # http://localhost:3000
 ```
 
-First visit goes to `/setup` (no users yet). Create the OWNER, then sign in.
+The first visit goes to `/setup` to create the owner account.
 
-## Deploy to LX120
+Two things to know:
 
-One-shot install on the LXC (run as root):
+- **Empty databases.** `npm run db:migrate` cannot build a database from empty in one pass (Postgres rejects using a new enum value in the same transaction that adds it). For a scratch database, apply the files in `drizzle/` one at a time with `psql`, in order. Production is unaffected because it applied them incrementally.
+- **After changing the schema,** run `npm run db:generate` and commit the generated migration.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/main/deploy/lxc/install.sh \
-  | bash -s -- main
-```
-
-What it does:
-
-1. Installs Docker if missing
-2. Clones the repo into `/opt/payroll`
-3. Generates `/etc/payroll/.env` with random `AUTH_SECRET`, `NGTECO_VAULT_KEY`, Postgres password (mode 0600)
-4. Installs `payroll-deploy.{service,timer}` — every 60s the LXC fetches the branch, and rebuilds + recreates the stack if HEAD changed
-5. Starts everything
-
-After that, your dev loop is:
+## Checks
 
 ```bash
-git push origin main
-# ...wait up to ~60s
-# LX120 has it.
+npm run typecheck        # tsc --noEmit
+npm run lint             # next lint
+npx vitest run           # unit tests
+npx next build && npm run golden:check   # rendered pages and PDFs against pinned output
 ```
 
-To switch deployment to `main` (after Phase 1 ships), edit `/etc/systemd/system/payroll-deploy.service.d/override.conf`, set `PAYROLL_BRANCH=main`, then `systemctl daemon-reload && systemctl restart payroll-deploy.service`.
+- **Unit tests** cover the rules in `lib/`. `npm test` also runs them but adds coverage thresholds that currently fail on `lib/payroll` even when every test passes; use `npx vitest run` for a plain pass or fail.
+- **Golden check** renders 32 pages and 4 PDFs from the built app against a scratch database with a frozen clock, and compares them byte for byte with `tests/golden/`. It is the safety net for refactors. Setup is in [`scripts/golden/README.md`](scripts/golden/README.md). A pin changes only by a deliberate decision.
+- **Deploy tooling tests** are plain bash: `bash deploy/test/payroll-deploy.test.sh` and `bash deploy/test/verify-image.test.sh`. Run them after touching the deploy unit or the image check.
 
-See `docs/deploy-proxmox.md` for sizing, mounts, backup retention, and restore.
+## Deploy
+
+Production runs in a Proxmox LXC and deploys from the `main` branch.
+
+```bash
+git push origin main      # live within about a minute, plus build time
+./deploy.sh               # or: push, deploy now, and verify health and the running commit
+```
+
+A systemd timer in the container checks `main` every 60 seconds and rebuilds only when the commit changed. Each rebuild keeps the outgoing image as `payroll-app:previous` for rollback, and a failed build is recorded so it is not retried in a loop.
+
+After a deploy, on the server:
+
+```bash
+cd /opt/payroll
+bash deploy/verify-image.sh 2300    # 12 checks on the live container
+bash scripts/smoke.sh               # every route answers
+```
+
+Things to keep in mind:
+
+- **A deploy restarts the app.** The punch poll runs at the top of every hour, so avoid deploying then.
+- **A cold build needs about 10 GB of free disk.** Check `df -h /` first.
+- **Back up the database before a deploy that includes a migration.**
+
+Installation, sizing and backups are in [`docs/deploy-proxmox.md`](docs/deploy-proxmox.md); rollback and recovery are in [`docs/runbook.md`](docs/runbook.md).
 
 ## Project layout
 
-Everything in this tree is opinionated by the spec.
-
 ```
 /app
-  /(employee)              # mobile PWA (Phase 4)
-  /(admin)                 # admin dashboard
-  /(auth)                  # login + first-run setup
-  /api/health              # health probe used by docker compose + deploy script
-  /api/auth/[...nextauth]  # Auth.js handlers (only API route shipping today)
+  /(admin)        admin dashboard: time, payroll, reports, requests, employees, settings, ...
+  /(employee)/me  employee phone app
+  /(auth)         login and first-run setup
+  /kiosk          shared-tablet kiosk and payday signing
+  /api            health, auth, PDFs, push, integrations
 /components
-  /ui                      # shadcn primitives
-  /admin                   # admin shell (sidebar, topbar)
+  /ui             shared primitives (buttons, cards, KPI card, inputs)
+  /domain         shared app pieces (status chips, money, PDF links, payslip card)
+  /time, /reports, /payroll, /calendar, /dashboard, /admin, /employee
 /lib
-  /db                      # Drizzle schema, queries, audit
-  /settings                # typed Setting access + Zod schemas
-  /jobs                    # pg-boss bootstrap
-  /crypto                  # AES-GCM vault for stored secrets
-  /auth.ts, auth-guards.ts # Auth.js setup + role helpers
-  /telemetry.ts            # OTel + structured logger
-  /utils.ts                # cn(), formatMoney(), formatHours()
-/messages                  # next-intl translations
-/drizzle                   # generated migrations
-/scripts                   # migrate, seed (idempotent)
-/deploy/lxc                # install.sh + systemd units
-/docs                      # spec, deploy notes, runbook, i18n glossary
+  /db             Drizzle schema, queries, audit
+  /payroll        pay computation and payroll rules
+  /time-grid, /time, /time-off, /punches, /missed-punch, /reports, /salaried
+  /pdf            PDF documents and their builders
+  /ngteco         timeclock API client, scraper, importer
+  /jobs           pg-boss queues and handlers
+  /settings       typed settings and their schemas
+  /crypto         AES-GCM vault for stored secrets
+  /authentik, /zoho, /google, /notifications, /kiosk, /payslips
+/messages         translations (en, es)
+/drizzle          generated SQL migrations
+/scripts          migrate, seed, repair tools, golden harness, smoke test
+/deploy           installer, systemd units, image check, their tests
+/mcp-server       MCP server for AI agents
+/tests/golden     pinned pages and PDF fingerprints
+/docs             architecture, spec, runbook, guides
 ```
 
-## Conventions (locked)
+The rule the code follows: **pages fetch data, call `lib/`, and render components. Rules and maths live in `lib/` with tests.** See [`docs/architecture.md`](docs/architecture.md).
 
-- **Money is integer cents.** Always. The `formatMoney(cents)` helper is the only place cents become dollars.
-- **Times are `timestamptz`.** Display respects `company.timezone` (Setting).
-- **Server actions are the API.** Live next to their page in `actions.ts`, start with `"use server"`, validate with Zod.
-- **Authz at the action layer**, not just middleware. `requireAdmin()` / `requireOwner()` from `lib/auth-guards`.
-- **Every mutation writes an audit row** before commit (`writeAudit()` in `lib/db/audit`).
-- **No emoji.** Anywhere. Use Lucide icons + colored chips + text labels.
-- **Lists use shadcn primitives.** Don't import emoji glyphs, even from third-party libraries.
+## Conventions
 
-## Tests
+- **Money is integer cents.** `formatMoney(cents)` is the only place cents become dollars for display; a test enforces it.
+- **Times are `timestamptz`.** Display uses the company timezone, which is a setting.
+- **Server actions are the API.** They live in `actions.ts` next to their page, start with `"use server"`, and validate input with Zod.
+- **Authorization at the action layer,** not only in middleware: `requireAdmin()` / `requireOwner()` from `lib/auth-guards`.
+- **Every mutation writes an audit row** in the same transaction.
+- **Soft-delete only.** Nothing leaves the database.
+- **No emoji** anywhere: UI, PDFs, notifications, commit messages.
+- **Settings are levers.** Anything plausibly company-specific is configurable from Settings, not hardcoded.
 
-```bash
-npm test            # vitest run
-npm run typecheck   # tsc --noEmit
-npm run lint
-```
+## Operations at a glance
 
-`npm test` runs vitest with v8 coverage; the gate is 100% on `lib/payroll/**/*.ts` for lines, functions, branches, and statements. Phase 2 adds Playwright snapshot tests against fixtures.
-
-## Operations
-
-- **Logs:** structured JSON to stdout. `docker compose logs -f app | jq`.
-- **Backups:** `data/backups/payroll-*.dump` once per day, pruned after 30d.
-- **Restore:** `docs/runbook.md` covers it.
-- **Health:** `GET /api/health` returns 200 with `{ status: "ok", checks: { app, db, boss } }`.
+- **Health:** `GET /api/health` returns `{ status: "ok", checks: { app, db, boss } }`.
+- **Logs:** structured JSON to stdout: `docker compose logs -f app`.
+- **Metrics:** Prometheus endpoint on port 9464.
+- **Backups:** a daily database dump under `data/backups/`, pruned after 30 days. Restore steps are in the runbook.
 
 ## License
 

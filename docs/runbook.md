@@ -174,10 +174,10 @@ curl -s http://localhost:3000/api/health | jq
 
 ## Rolling forward branches
 
-When `rebuild/foundation` merges to `main`, switch the LXC to track main:
+Production tracks `main` since 2026-10-08 (before that, `rebuild/foundation`). The branch is `PAYROLL_BRANCH` in the drop-in below. To point the LXC at a different branch:
 
 ```
-sudo sed -i 's|rebuild/foundation|main|' /etc/systemd/system/payroll-deploy.service.d/override.conf
+sudo sed -i 's|^Environment=PAYROLL_BRANCH=.*|Environment=PAYROLL_BRANCH=<branch>|' /etc/systemd/system/payroll-deploy.service.d/override.conf
 sudo systemctl daemon-reload
 sudo systemctl restart payroll-deploy.service
 ```

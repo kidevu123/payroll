@@ -1,5 +1,7 @@
 # Multi-phase build plan
 
+> **Historical.** This was the task list for the original build (Phases 1-6, spring 2026), all of which shipped. It is kept as a record and is not maintained; branch names and commands in it are from that time. For the system as it is now see [`architecture.md`](architecture.md) and the [README](../README.md).
+
 This document is the canonical task list for Phases 1-6. Each phase has a goal, an explicit file inventory, the queries/components/tests it adds, what migrations it ships, and a verifiable definition of done. Phase 7 is "future hooks" — do not build, leave the doors open.
 
 The spec is the source of truth (`docs/spec.md`). This document expands the spec's §15 phase outline into concrete deliverables.

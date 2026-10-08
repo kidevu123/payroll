@@ -34,8 +34,8 @@ The compose stack does not terminate TLS; do that upstream. When fronted, set `T
 As root inside the LXC:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/rebuild/foundation/deploy/lxc/install.sh \
-  | bash -s -- rebuild/foundation
+curl -fsSL https://raw.githubusercontent.com/kidevu123/payroll/main/deploy/lxc/install.sh \
+  | bash -s -- main
 ```
 
 The installer:
@@ -54,10 +54,10 @@ The very first request to `/` redirects to `/setup`. Create the OWNER account th
 
 ## Branches
 
-The installer pins to `rebuild/foundation` until Phase 1 ships. To switch:
+Production deploys from `main` (it was `rebuild/foundation` until 2026-10-08). The tracked branch is `PAYROLL_BRANCH` in the drop-in below; to track a different branch, change it there:
 
 ```
-sudo sed -i 's|rebuild/foundation|main|' /etc/systemd/system/payroll-deploy.service.d/override.conf
+sudo sed -i 's|^Environment=PAYROLL_BRANCH=.*|Environment=PAYROLL_BRANCH=main|' /etc/systemd/system/payroll-deploy.service.d/override.conf
 sudo systemctl daemon-reload
 sudo systemctl restart payroll-deploy.service
 ```

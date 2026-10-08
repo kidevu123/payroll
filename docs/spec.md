@@ -6,6 +6,19 @@
 
 ---
 
+## Changes since v2 (read this first)
+
+This spec is the original design contract and is kept as written. The product has moved on in the places below; where they differ, the running code and the project log in [`CLAUDE.md`](../CLAUDE.md) are current, and [`architecture.md`](architecture.md) describes the system as built.
+
+- **Pay schedules.** Periods exist per schedule (weekly, biweekly, semi-monthly, monthly), each with its own run. A run pays only employees whose schedule matches it exactly.
+- **NGTeco.** The hourly punch poll uses NGTeco's REST API and falls back to the browser scraper only on error. The scraper sections below describe the fallback and the per-run import.
+- **Added since v2:** the warehouse kiosk with PIN sign-in, payslip e-signature and payday signing, the cash drawer and accountant role, salaried paystub uploads, back pay for late-reported shifts, Zoho Books, Authentik single sign-on, Google Calendar, announcement templates, the employee payout preference, role permissions, and the MCP server.
+- **Removed:** the Hall monitor and the Assistant (retired August 2026). The standalone Salaried page is now a tab on Payroll.
+- **Email** is disabled; notifications are push and in-app only.
+- **Deployment.** The production branch is `main` since 2026-10-08. The runtime image is slim Node 24 with a headless Chromium.
+
+---
+
 ## 1. The Goal
 
 A self-hosted payroll and employee operations platform for a small manufacturing/distribution business. **The owner runs payroll in under five minutes a week.** Everything else is automated. The system reaches into NGTeco (the existing timeclock vendor, no open API), pulls punches on a schedule, detects problems, notifies the right person, generates payslips, and waits for the owner to tap one button.
@@ -498,7 +511,7 @@ DO NOT:
 For the very first session (spec writer's instructions):
 
 1. Read this spec end to end. Respond with phased plan, ambiguities, and §21 answers. Done.
-2. Create a rebuild branch — do not touch main until Phase 1 ships. Done (`rebuild/foundation`).
+2. Create a rebuild branch — do not touch main until Phase 1 ships. Done (`rebuild/foundation`; merged into `main`, which became the production branch on 2026-10-08).
 3. Phase 0 only. Stop after Phase 0 is committed and demonstrably working. Done (locally; bring-up steps in `docs/handoff.md`).
 
 For all subsequent sessions: stop and ask before starting any new phase. Read this spec, read CLAUDE.md, read `docs/handoff.md` if Phase 0 isn't deployed yet.
