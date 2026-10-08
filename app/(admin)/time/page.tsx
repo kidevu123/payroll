@@ -31,7 +31,6 @@ import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
 import {
   isAmbiguousSinglePunch,
   isMissingClockInPunch,
-  isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
@@ -53,6 +52,7 @@ import {
   type CellState,
   type PunchLite,
 } from "@/lib/time-grid/cell-state";
+import { computeGridKpis, fmtHm, mobileSummaryLine } from "@/lib/time-grid/kpis";
 import {
   findAdjacentPeriods,
   loadPeriodForTab,
@@ -218,18 +218,6 @@ export default async function TimePage({
       return e.payScheduleId === period.payScheduleId;
     });
 
-  // Count IN-only punches whose date is BEFORE today's calendar date in
-  // the company timezone. These are the punches that look like "open"
-  // cells from prior days — exactly what an operator notices when a
-  // sync was missed. The Backfill alert renders only when this is > 0,
-  // so when the system is healthy the /time page stays uncluttered.
-  const todayIso = todayInCompanyTz(company.timezone);
-  const staleOpenPunchCount = punchesInRange.reduce((n, p) => {
-    if (p.clockOut !== null) return n;
-    const d = dayOf(p.clockIn, company.timezone);
-    return d < todayIso ? n + 1 : n;
-  }, 0);
-
   // Group punches by employeeId + day, then dedup near-duplicates within
   // each cell so the grid doesn't show "1" / "2" cells for what's really
   // a single shift represented twice.
@@ -249,79 +237,6 @@ export default async function TimePage({
     }
   }
 
-  // ── KPI + rail metrics (drives the #57 attendance board) ──────────────
-  const tz = company.timezone;
-  let totalMinutes = 0;
-  const minutesByEmp = new Map<string, number>();
-  for (const p of punchesInRange) {
-    if (!p.clockOut) continue;
-    const mins = (p.clockOut.getTime() - p.clockIn.getTime()) / 60000;
-    if (mins <= 0) continue;
-    totalMinutes += mins;
-    minutesByEmp.set(p.employeeId, (minutesByEmp.get(p.employeeId) ?? 0) + mins);
-  }
-  const fmtHm = (mins: number): string =>
-    `${Math.floor(mins / 60).toLocaleString()}h ${Math.round(mins % 60)}m`;
-  const teamSize = employees.filter((e) => e.status === "ACTIVE").length;
-  const clockedInToday = new Set(
-    punchesInRange
-      .filter((p) => dayOf(p.clockIn, tz) === todayIso)
-      .map((p) => p.employeeId),
-  ).size;
-  const teamPct = teamSize ? Math.round((clockedInToday / teamSize) * 100) : 0;
-  const openNow = punchesInRange.filter(
-    (p) => p.clockOut === null && dayOf(p.clockIn, tz) === todayIso,
-  ).length;
-  // Overtime: minutes beyond 40h per employee across the displayed window.
-  const OT_MIN = 40 * 60;
-  let regularMin = 0;
-  let overtimeMin = 0;
-  for (const m of minutesByEmp.values()) {
-    if (m > OT_MIN) {
-      regularMin += OT_MIN;
-      overtimeMin += m - OT_MIN;
-    } else regularMin += m;
-  }
-  const overtimeRisk = [...minutesByEmp.values()].filter((m) => m >= OT_MIN * 0.875).length;
-  // Unpaired / ambiguous punches across the window (exceptions queue).
-  const unpairedCount = punchesInRange.filter(
-    (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p),
-  ).length;
-  // Today's column snapshot for the summary donut.
-  const todaySummary = { present: 0, incomplete: 0, missing: 0, timeOff: 0, unpaid: 0 };
-  for (const e of employees) {
-    if (e.status !== "ACTIVE") continue;
-    const list = grid.get(e.id)?.get(todayIso) ?? [];
-    const offType = timeOffByDay.get(`${e.id}|${todayIso}`);
-    if (list.length === 0) {
-      if (offType === "UNPAID") todaySummary.unpaid++;
-      else if (offType) todaySummary.timeOff++;
-      else todaySummary.missing++;
-    } else if (
-      list.some(
-        (p) => isAmbiguousSinglePunch(p) || isMissingClockInPunch(p) || isOpenShiftPunch(p),
-      )
-    ) {
-      todaySummary.incomplete++;
-    } else todaySummary.present++;
-  }
-  const summaryTotal =
-    todaySummary.present +
-    todaySummary.incomplete +
-    todaySummary.missing +
-    todaySummary.timeOff +
-    todaySummary.unpaid;
-  // Per-day labor hours for the rail sparkline.
-  const hoursByDay = days.map((d) => {
-    let mins = 0;
-    for (const p of punchesInRange) {
-      if (!p.clockOut) continue;
-      if (dayOf(p.clockIn, tz) !== d) continue;
-      mins += (p.clockOut.getTime() - p.clockIn.getTime()) / 60000;
-    }
-    return Math.round((mins / 60) * 10) / 10;
-  });
-
   // Mobile day selector — show one day at a time as a vertical list. Default
   // to today when it's in the window, else the last day. URL-driven (?day=).
   const selectedDay =
@@ -331,8 +246,8 @@ export default async function TimePage({
         ? today
         : (days[days.length - 1] ?? today);
 
-  // Per-cell state for the phone views (the desktop grid derives the same
-  // thing inline, per cell).
+  // One cell = one employee on one day. The desktop grid, the phone list and
+  // the KPI figures all go through this.
   const cellFor = (e: (typeof employees)[number], d: string) => {
     const list = grid.get(e.id)?.get(d) ?? [];
     const state = cellStateFor({
@@ -354,34 +269,17 @@ export default async function TimePage({
       }),
     };
   };
+  const employeeById = new Map(employees.map((e) => [e.id, e]));
+  const kpis = computeGridKpis({
+    punches: punchesInRange,
+    employees,
+    days,
+    today,
+    tz: company.timezone,
+    cellState: (employeeId, d) => cellFor(employeeById.get(employeeId)!, d).state,
+  });
   const mobileRows = employees.map((e) => cellFor(e, selectedDay));
-  // Days with at least one unpaired / open punch get a dot on the day strip.
-  // Today is excluded: a shift still on the clock is not a problem yet.
-  const issuesByDay = new Map(
-    days.map((d) => [
-      d,
-      d === today
-        ? 0
-        : employees.reduce(
-            (n, e) => n + (cellFor(e, d).state === "incomplete" ? 1 : 0),
-            0,
-          ),
-    ]),
-  );
-  const mobileSummary = (() => {
-    const count = (st: CellState[]) =>
-      mobileRows.filter((r) => st.includes(r.state)).length;
-    const parts = [
-      [count(["complete"]), "complete"],
-      [count(["incomplete"]), "unpaired"],
-      [count(["missed"]), "missing"],
-      [count(["pto", "sick", "unpaid", "other"]), "off"],
-    ] as const;
-    return parts
-      .filter(([n]) => n > 0)
-      .map(([n, label]) => `${n} ${label}`)
-      .join(" · ");
-  })();
+  const mobileSummary = mobileSummaryLine(mobileRows.map((r) => r.state));
 
   // Punch sync controls moved here from /payroll (owner: "there is no
   // reason for poll now to be on the payroll page — it belongs on Time").
@@ -532,15 +430,15 @@ export default async function TimePage({
 
       {/* KPI row — five attendance metrics (matches #57). */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
-        <KpiCard wide icon={Clock} tone="emerald" value={fmtHm(totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
-        <KpiCard icon={Users} tone="blue" value={`${clockedInToday} / ${teamSize}`} label="Employees clocked in" sub={`${teamPct}% of team`} />
-        <KpiCard icon={AlertTriangle} tone="amber" value={staleOpenPunchCount} label="Missing punches" sub={staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
-        <KpiCard icon={CalendarX2} tone="cyan" value={openNow} label="Open shifts" sub="In progress now" />
-        <KpiCard icon={TimerReset} tone="rose" value={overtimeRisk} label="Overtime risk" sub={overtimeRisk > 0 ? "Review needed" : "On track"} />
+        <KpiCard wide icon={Clock} tone="emerald" value={fmtHm(kpis.totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
+        <KpiCard icon={Users} tone="blue" value={`${kpis.clockedInToday} / ${kpis.teamSize}`} label="Employees clocked in" sub={`${kpis.teamPct}% of team`} />
+        <KpiCard icon={AlertTriangle} tone="amber" value={kpis.staleOpenPunchCount} label="Missing punches" sub={kpis.staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
+        <KpiCard icon={CalendarX2} tone="cyan" value={kpis.openNow} label="Open shifts" sub="In progress now" />
+        <KpiCard icon={TimerReset} tone="rose" value={kpis.overtimeRisk} label="Overtime risk" sub={kpis.overtimeRisk > 0 ? "Review needed" : "On track"} />
       </div>
 
-      {staleOpenPunchCount > 0 && (
-        <BackfillAlert openCountFromPriorDays={staleOpenPunchCount} />
+      {kpis.staleOpenPunchCount > 0 && (
+        <BackfillAlert openCountFromPriorDays={kpis.staleOpenPunchCount} />
       )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -577,7 +475,7 @@ export default async function TimePage({
                   weekday: "short",
                   timeZone: "UTC",
                 }).format(dt);
-                const issues = issuesByDay.get(d) ?? 0;
+                const issues = kpis.issuesByDay.get(d) ?? 0;
                 return (
                   <Link
                     key={d}
@@ -835,20 +733,20 @@ export default async function TimePage({
           <div className="order-first empty:hidden xl:order-none">
             <MissedPunchRailCard timezone={company.timezone} />
           </div>
-          <TodaySummaryCard summary={todaySummary} total={summaryTotal} />
+          <TodaySummaryCard summary={kpis.todaySummary} total={kpis.summaryTotal} />
           <ExceptionsQueueCard
-            missing={staleOpenPunchCount}
-            unpaired={unpairedCount}
-            openShifts={openNow}
+            missing={kpis.staleOpenPunchCount}
+            unpaired={kpis.unpairedCount}
+            openShifts={kpis.openNow}
           />
           <LaborHoursCard
-            regularMin={regularMin}
-            overtimeMin={overtimeMin}
-            totalMin={totalMinutes}
-            spark={hoursByDay}
+            regularMin={kpis.regularMin}
+            overtimeMin={kpis.overtimeMin}
+            totalMin={kpis.totalMinutes}
+            spark={kpis.hoursByDay}
             fmtHm={fmtHm}
           />
-          <MiloInsightCard overtimeRisk={overtimeRisk} />
+          <MiloInsightCard overtimeRisk={kpis.overtimeRisk} />
         </aside>
       </div>
     </div>
