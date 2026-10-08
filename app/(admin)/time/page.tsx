@@ -1,18 +1,5 @@
 import Link from "next/link";
-import {
-  AlertTriangle,
-  CalendarDays,
-  CalendarX2,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Plus,
-  Sparkles,
-  TimerReset,
-  Upload,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Upload } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
 import { Button } from "@/components/ui/button";
@@ -28,13 +15,9 @@ import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { listApprovedInRange } from "@/lib/db/queries/time-off";
 import { dedupNearDuplicatePunches } from "@/lib/punches/dedup";
-import {
-  isAmbiguousSinglePunch,
-  isMissingClockInPunch,
-} from "@/lib/punches/missing-punch";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveTimeCellPeriodId } from "@/lib/time/grid-links";
-import { formatHoursMinutes, formatTimeShort, localMidnightUtc, addDaysIso } from "@/lib/utils";
+import { formatTimeShort, localMidnightUtc, addDaysIso } from "@/lib/utils";
 import { BackfillAlert } from "@/components/admin/backfill-alert";
 import { MissedPunchRailCard } from "@/components/domain/missed-punch-rail-card";
 import { companyDayIso } from "@/lib/time/company-day";
@@ -43,16 +26,18 @@ import { gridLastDay, type PeriodView } from "@/lib/time-grid/period-select";
 import {
   MOBILE_STATUS,
   cellAriaLabel,
-  cellPillClasses,
   cellStateFor,
-  legendDotClass,
   summarizeCell,
   timeInitials,
-  timeOffLabel,
-  type CellState,
-  type PunchLite,
 } from "@/lib/time-grid/cell-state";
-import { computeGridKpis, fmtHm, mobileSummaryLine } from "@/lib/time-grid/kpis";
+import { computeGridKpis, mobileSummaryLine } from "@/lib/time-grid/kpis";
+import { ExceptionsQueueCard } from "@/components/time/exceptions-queue-card";
+import { MiloInsightCard } from "@/components/time/insight-card";
+import { KpiCards } from "@/components/time/kpi-cards";
+import { LaborHoursCard } from "@/components/time/labor-hours-card";
+import { Legend } from "@/components/time/legend";
+import { PunchCell } from "@/components/time/punch-cell";
+import { TodaySummaryCard } from "@/components/time/today-summary-card";
 import {
   findAdjacentPeriods,
   loadPeriodForTab,
@@ -428,14 +413,7 @@ export default async function TimePage({
         </div>
       </div>
 
-      {/* KPI row — five attendance metrics (matches #57). */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
-        <KpiCard wide icon={Clock} tone="emerald" value={fmtHm(kpis.totalMinutes)} label="Total hours" sub={`${days.length}-day period`} />
-        <KpiCard icon={Users} tone="blue" value={`${kpis.clockedInToday} / ${kpis.teamSize}`} label="Employees clocked in" sub={`${kpis.teamPct}% of team`} />
-        <KpiCard icon={AlertTriangle} tone="amber" value={kpis.staleOpenPunchCount} label="Missing punches" sub={kpis.staleOpenPunchCount > 0 ? "Needs attention" : "All clear"} />
-        <KpiCard icon={CalendarX2} tone="cyan" value={kpis.openNow} label="Open shifts" sub="In progress now" />
-        <KpiCard icon={TimerReset} tone="rose" value={kpis.overtimeRisk} label="Overtime risk" sub={kpis.overtimeRisk > 0 ? "Review needed" : "On track"} />
-      </div>
+      <KpiCards kpis={kpis} dayCount={days.length} />
 
       {kpis.staleOpenPunchCount > 0 && (
         <BackfillAlert openCountFromPriorDays={kpis.staleOpenPunchCount} />
@@ -683,7 +661,7 @@ export default async function TimePage({
                   const hours = closedMs / (1000 * 60 * 60);
 
                   const cellContent = (
-                    <PunchCellContent
+                    <PunchCell
                       state={state}
                       first={first}
                       last={last}
@@ -744,374 +722,10 @@ export default async function TimePage({
             overtimeMin={kpis.overtimeMin}
             totalMin={kpis.totalMinutes}
             spark={kpis.hoursByDay}
-            fmtHm={fmtHm}
           />
           <MiloInsightCard overtimeRisk={kpis.overtimeRisk} />
         </aside>
       </div>
-    </div>
-  );
-}
-
-function Legend({ label, state }: { label: string; state: CellState }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`h-2 w-2 rounded-full shrink-0 ${legendDotClass(state)}`} />
-      {label}
-    </span>
-  );
-}
-
-function PunchCellContent({
-  state,
-  first,
-  last,
-  count,
-  hours,
-  tz,
-}: {
-  state: CellState;
-  first: PunchLite | undefined;
-  last: PunchLite | undefined;
-  count: number;
-  hours: number;
-  tz: string;
-}) {
-  // Empty / non-data states: just a dash character with color.
-  if (state === "future") {
-    return <span className="text-border-strong text-[11px] select-none">—</span>;
-  }
-  if (state === "inactive") {
-    return <span className="text-text-subtle/30 text-[11px] select-none">—</span>;
-  }
-  if (state === "missed") {
-    return <span className="text-danger-500 text-body font-medium">—</span>;
-  }
-
-  // Time-off label: compact uppercase badge. min-h matches the two-line
-  // data pills (px-2 py-1 + two text rows) so pill heights stay even
-  // across a grid row instead of this single-line chip sitting short.
-  if (state === "pto" || state === "sick" || state === "unpaid" || state === "other") {
-    return (
-      <span className={`inline-flex min-h-[2.25rem] items-center justify-center rounded-[5px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${cellPillClasses(state)}`}>
-        {timeOffLabel(state)}
-      </span>
-    );
-  }
-
-  // Data states (complete / incomplete): pill with time range + duration.
-  if (!first) return <span className="text-border-strong text-[11px]">—</span>;
-  if (state === "incomplete" && last && isAmbiguousSinglePunch(last)) {
-    const punchLabel = formatTimeShort(last.clockIn, tz);
-    return (
-      <span
-        className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
-      >
-        <span className="text-micro uppercase">
-          Unpaired
-        </span>
-        <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
-          {punchLabel}
-        </span>
-      </span>
-    );
-  }
-  if (state === "incomplete" && last && isMissingClockInPunch(last)) {
-    const outLabel = last.clockOut
-      ? formatTimeShort(last.clockOut, tz)
-      : "open";
-    return (
-      <span
-        className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug ${cellPillClasses(state)}`}
-      >
-        <span className="text-micro uppercase">
-          Missing in
-        </span>
-        <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
-          out {outLabel}
-        </span>
-      </span>
-    );
-  }
-  const inLabel = formatTimeShort(first.clockIn, tz);
-  const outLabel = last && last.clockOut ? formatTimeShort(last.clockOut, tz) : "open";
-  return (
-    <span
-      className={`inline-flex flex-col items-center gap-0 rounded-[6px] px-2 py-1 w-full max-w-[108px] mx-auto leading-snug transition-all hover:brightness-95 ${cellPillClasses(state)}`}
-    >
-      <span className="tabular-nums text-[10px] font-semibold whitespace-nowrap">
-        {inLabel}
-        <span className="opacity-40 mx-0.5">&ndash;</span>
-        {outLabel}
-        {count > 1 ? <span className="ml-0.5 text-[11px] opacity-60">+{count - 1}</span> : null}
-      </span>
-      <span className="text-[11px] font-medium opacity-65">
-        {state === "incomplete" ? "in progress" : formatHoursMinutes(hours)}
-      </span>
-    </span>
-  );
-}
-
-
-// ── #57 attendance-board KPI + rail components ───────────────────────────
-
-const KPI_TONE: Record<string, string> = {
-  emerald: "var(--dash-emerald)",
-  blue: "var(--dash-blue)",
-  amber: "var(--dash-amber)",
-  cyan: "var(--dash-cyan)",
-  rose: "var(--dash-rose)",
-};
-
-function KpiCard({
-  icon: Icon,
-  tone,
-  value,
-  label,
-  sub,
-  wide = false,
-}: {
-  icon: LucideIcon;
-  tone: keyof typeof KPI_TONE;
-  value: string | number;
-  label: string;
-  sub: string;
-  /** Spans both columns of the phone grid (icon beside the figure) so five
-   *  cards tile 1 + 2 + 2 instead of leaving an orphan in the last row. */
-  wide?: boolean;
-}) {
-  const c = KPI_TONE[tone];
-  return (
-    <div
-      // Phone: the icon plate tucks into the top-right corner so the figure
-      // leads and each card is ~80px instead of ~150px — five stacked plates
-      // pushed the roster a full screen down.
-      className={`relative rounded-card border border-border bg-surface p-3 shadow-card ${
-        wide ? "max-sm:col-span-2" : ""
-      }`}
-    >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg max-sm:absolute max-sm:right-3 max-sm:top-3 max-sm:h-7 max-sm:w-7"
-        style={{ background: `color-mix(in srgb, ${c} 16%, transparent)`, color: c }}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-      <div className="min-w-0">
-        <div
-          className="mt-2 text-xl font-bold leading-tight tabular-nums tracking-tight text-text max-sm:mt-0 max-sm:pr-9"
-        >
-          {value}
-        </div>
-        <div className="truncate text-[12px] font-medium text-text-muted">{label}</div>
-        <div className="truncate text-[11px] font-medium" style={{ color: c }}>
-          {sub}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const SUMMARY_SEGMENTS: { key: string; label: string; color: string }[] = [
-  { key: "present", label: "Present", color: "var(--dash-emerald)" },
-  { key: "incomplete", label: "Incomplete", color: "var(--dash-amber)" },
-  { key: "missing", label: "Missing", color: "var(--dash-rose)" },
-  { key: "timeOff", label: "Time off", color: "var(--dash-blue)" },
-  { key: "unpaid", label: "Unpaid", color: "var(--dash-text-faint)" },
-];
-
-function TodaySummaryCard({
-  summary,
-  total,
-}: {
-  summary: Record<string, number>;
-  total: number;
-}) {
-  let acc = 0;
-  const stops: string[] = [];
-  for (const s of SUMMARY_SEGMENTS) {
-    const v = summary[s.key] ?? 0;
-    if (total > 0 && v > 0) {
-      const start = (acc / total) * 360;
-      acc += v;
-      const end = (acc / total) * 360;
-      stops.push(`${s.color} ${start}deg ${end}deg`);
-    }
-  }
-  const ring =
-    total > 0
-      ? `conic-gradient(${stops.join(", ")})`
-      : "conic-gradient(var(--dash-border) 0deg 360deg)";
-  return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Today&rsquo;s summary</h3>
-        <span className="text-micro uppercase text-text-subtle">
-          Updated just now
-        </span>
-      </div>
-      <div className="mt-3 flex items-center gap-4">
-        <div
-          className="relative h-[88px] w-[88px] shrink-0 rounded-full"
-          style={{ background: ring }}
-        >
-          <div className="absolute inset-[11px] flex flex-col items-center justify-center rounded-full bg-surface">
-            <span className="text-lg font-bold leading-none tabular-nums">{total}</span>
-            <span className="text-[10px] text-text-muted">Total</span>
-          </div>
-        </div>
-        <ul className="flex-1 space-y-1">
-          {SUMMARY_SEGMENTS.map((s) => (
-            <li key={s.key} className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 text-text-muted">
-                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
-                {s.label}
-              </span>
-              <span className="font-semibold tabular-nums">{summary[s.key] ?? 0}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-function ExceptionsQueueCard({
-  missing,
-  unpaired,
-  openShifts,
-}: {
-  missing: number;
-  unpaired: number;
-  openShifts: number;
-}) {
-  const total = missing + unpaired + openShifts;
-  const rows = [
-    { label: "Missing punches", value: missing, color: "var(--dash-rose)" },
-    { label: "Unpaired punches", value: unpaired, color: "var(--dash-amber)" },
-    { label: "Open shifts", value: openShifts, color: "var(--dash-cyan)" },
-  ];
-  return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-          Exceptions queue
-          {total > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning-50 px-1.5 text-[11px] font-bold text-warning-700">
-              {total}
-            </span>
-          )}
-        </h3>
-      </div>
-      <ul className="mt-3 space-y-2">
-        {rows.map((r) => (
-          <li key={r.label} className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 text-text-muted">
-              <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
-              {r.label}
-            </span>
-            <span className="font-semibold tabular-nums">{r.value}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (data.length < 2) return null;
-  const max = Math.max(...data, 1);
-  const w = 132;
-  const h = 30;
-  const pts = data
-    .map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * (h - 2) - 1}`)
-    .join(" ");
-  return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <polyline
-        points={pts}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function LaborHoursCard({
-  regularMin,
-  overtimeMin,
-  totalMin,
-  spark,
-  fmtHm,
-}: {
-  regularMin: number;
-  overtimeMin: number;
-  totalMin: number;
-  spark: number[];
-  fmtHm: (mins: number) => string;
-}) {
-  return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Labor hours</h3>
-        <span className="text-micro uppercase text-text-subtle">
-          This pay period
-        </span>
-      </div>
-      <dl className="mt-3 space-y-1.5 text-xs">
-        <div className="flex items-center justify-between">
-          <dt className="text-text-muted">Regular</dt>
-          <dd className="font-semibold tabular-nums">{fmtHm(regularMin)}</dd>
-        </div>
-        <div className="flex items-center justify-between">
-          <dt className="text-text-muted">Overtime</dt>
-          <dd className="font-semibold tabular-nums" style={{ color: "var(--dash-amber)" }}>
-            {fmtHm(overtimeMin)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between border-t border-border pt-1.5">
-          <dt className="font-medium">Total</dt>
-          <dd className="font-bold tabular-nums">{fmtHm(totalMin)}</dd>
-        </div>
-      </dl>
-      <div className="mt-2">
-        <Sparkline data={spark} color="var(--dash-cyan)" />
-      </div>
-    </div>
-  );
-}
-
-function MiloInsightCard({ overtimeRisk }: { overtimeRisk: number }) {
-  return (
-    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-center gap-1.5">
-        <Sparkles className="h-3.5 w-3.5 text-brand-700" />
-        <h3 className="text-sm font-semibold">Milo insight</h3>
-        <span
-          className="rounded px-1 text-micro uppercase"
-          style={{
-            background: "color-mix(in srgb, var(--dash-cyan) 18%, transparent)",
-            color: "var(--dash-cyan)",
-          }}
-        >
-          Beta
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-text-muted">
-        {overtimeRisk > 0
-          ? `${overtimeRisk} team member${overtimeRisk === 1 ? "" : "s"} approaching overtime this period. Consider adjusting shifts or approving overtime.`
-          : "No overtime risk this period — labor is tracking on plan."}
-      </p>
-      {overtimeRisk > 0 && (
-        <Link
-          href="/time"
-          className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-input border border-border py-1.5 text-xs font-semibold text-brand-700 transition-colors hover:bg-surface-2/40"
-        >
-          Review overtime risk <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
-      )}
     </div>
   );
 }
