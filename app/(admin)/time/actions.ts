@@ -10,8 +10,6 @@ import {
   editPunch,
   voidPunch,
 } from "@/lib/db/queries/punches";
-import { getSetting } from "@/lib/settings/runtime";
-import { wallClockToUtc, isBareWallClock } from "@/lib/time/wall-clock";
 import { buildTimeEditorHref } from "@/lib/time/grid-links";
 import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,

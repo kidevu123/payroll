@@ -9,8 +9,6 @@ import { payPeriods } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/auth-guards";
 import { createPunch } from "@/lib/db/queries/punches";
 import { resolvePeriodIdForEmployeeDay } from "@/lib/db/queries/pay-periods";
-import { getSetting } from "@/lib/settings/runtime";
-import { isBareWallClock, wallClockToUtc } from "@/lib/time/wall-clock";
 import {
   NGTECO_MANUAL_PUNCH_SYNC_QUEUE,
   type ManualPunchSyncJobData,
