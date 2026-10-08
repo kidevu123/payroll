@@ -169,3 +169,20 @@ export function cellAriaLabel(state: CellState, list: PunchLite[], tz: string): 
   });
   return lines.join("; ");
 }
+
+/** Everything the grid needs to render one employee-day cell. */
+export type GridCell = {
+  state: CellState;
+  sorted: PunchLite[];
+  closedMs: number;
+  /** Period the day editor should open under, or null when there is none. */
+  cellPeriodId: string | null;
+};
+
+/** One row of the phone attendance list: a cell plus whose it is. */
+export type GridRow = GridCell & { e: { id: string; displayName: string } };
+
+export function cellKey(employeeId: string, dayIso: string): string {
+  return `${employeeId}|${dayIso}`;
+}
+
