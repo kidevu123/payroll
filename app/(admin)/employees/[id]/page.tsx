@@ -1,27 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
-import {
-  ArrowLeft,
-  Pencil,
-  Receipt,
-  Download,
-  FileText,
-  Briefcase,
-  Calendar,
-  CircleDollarSign,
-  Mail,
-  Phone,
-  Languages,
-  Link as LinkIcon,
-  Wallet,
-} from "lucide-react";
+import { ArrowLeft, Pencil, Receipt, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/domain/status-pill";
 import { ShiftChip } from "@/components/domain/shift-chip";
 import { Avatar } from "@/components/domain/avatar";
-import { MoneyDisplay } from "@/components/domain/money-display";
 import { RateHistoryList } from "@/components/domain/rate-history-list";
 import { PunchRow } from "@/components/domain/punch-row";
 import { getEmployee } from "@/lib/db/queries/employees";
@@ -39,7 +24,16 @@ import { ReinstateEmployeeButton } from "./reinstate-button";
 import { AccountSection } from "./account-section";
 import { RecomputePayslipsButton } from "./recompute-button";
 import { PayslipBatchPrintList } from "@/components/domain/payslip-batch-print-list";
-import { formatMoney } from "@/lib/utils";
+import { formatHours, formatMoney } from "@/lib/utils";
+import { formatPeriodRange, shortRange } from "@/lib/payroll/format-period";
+import { todayInCompanyTz } from "@/lib/time/format";
+import {
+  formatIsoDate,
+  formatTenure,
+  parseEmployeeNotes,
+  summarizePay,
+} from "@/lib/employees/profile-summary";
+import { DetailsCard, EmployeeSummary, NotesCard } from "./profile-panels";
 
 export default async function EmployeeDetailPage({
   params,
@@ -84,6 +78,24 @@ export default async function EmployeeDetailPage({
       : employee.payType === "FLAT_TASK"
         ? "Flat / task"
         : "Salaried (W2)";
+  const timezone = company?.timezone ?? "America/New_York";
+  const today = todayInCompanyTz(timezone);
+
+  const payslipRows = payslipsWithPeriods.map(({ payslip, period }) => ({
+    payslip,
+    periodStart: period?.startDate ?? "",
+    periodEnd: period?.endDate ?? "",
+    periodLabel: period
+      ? formatPeriodRange(period.startDate, period.endDate)
+      : "Unknown period",
+    shortLabel: period ? shortRange(period.startDate, period.endDate) : "",
+    hours: Number(payslip.hoursWorked),
+    payCents: payslip.roundedPayCents,
+  }));
+  const paySummary = summarizePay(payslipRows, today);
+  // Rates come newest first; the current one is the latest already in effect
+  // (a raise entered ahead of time must not show as today's rate).
+  const currentRate = rates.find((r) => r.effectiveFrom <= today) ?? null;
 
   return (
     <div className="space-y-5">
@@ -130,111 +142,102 @@ export default async function EmployeeDetailPage({
         <ReinstateEmployeeButton id={employee.id} name={employee.displayName} />
       )}
 
-      {/* Two-column split:
-          Left  — stats card (status, rate, hire date, shift, etc.)
-          Right — work history (rate history + payslips + punches)        */}
-      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
-        {/* Left: stats */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Overview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <Stat
-                Icon={CircleDollarSign}
-                label={isFlatTask ? "Default flat rate" : "Current rate"}
-                value={
-                  employee.hourlyRateCents !== null ? (
-                    <span>
-                      <MoneyDisplay cents={employee.hourlyRateCents} monospace={false} />
-                      <span className="text-text-muted">{isFlatTask ? " /task" : "/hr"}</span>
-                    </span>
-                  ) : (
-                    <span className="text-text-subtle">—</span>
-                  )
-                }
-              />
-              <Stat
-                Icon={Briefcase}
-                label="Pay type"
-                value={payTypeLabel}
-              />
-              <Stat
-                Icon={Calendar}
-                label="Hired on"
-                value={employee.hiredOn}
-              />
-              <Stat
-                Icon={Calendar}
-                label="Pay schedule"
-                value={schedule ? schedule.name : <span className="text-text-subtle">Unassigned</span>}
-              />
-              <Stat
-                Icon={Phone}
-                label="Phone"
-                value={employee.phone ?? <span className="text-text-subtle">—</span>}
-              />
-              <Stat
-                Icon={Wallet}
-                label="Paid by"
-                value={
+      <EmployeeSummary
+        rateLabel={isFlatTask ? "Default flat rate" : "Current rate"}
+        rateCents={
+          isFlatTask
+            ? employee.hourlyRateCents
+            : (currentRate?.hourlyRateCents ?? employee.hourlyRateCents)
+        }
+        rateUnit={isFlatTask ? " /task" : "/hr"}
+        rateSince={currentRate?.effectiveFrom ?? null}
+        lastPaid={
+          paySummary.lastPaid
+            ? {
+                payCents: paySummary.lastPaid.payCents,
+                periodLabel: paySummary.lastPaid.shortLabel,
+                hoursLabel: `${formatHours(paySummary.lastPaid.hours)} h`,
+              }
+            : null
+        }
+        year={paySummary.year}
+        ytdPayCents={paySummary.ytdPayCents}
+        ytdHoursLabel={`${formatHours(paySummary.ytdHours)} h`}
+        ytdPaidCount={paySummary.ytdPaidCount}
+        tenure={formatTenure(employee.hiredOn, today)}
+        hiredOn={employee.hiredOn}
+      />
+
+      {/* Two columns from xl up (lg leaves the right column ~360px once the
+          sidebar is counted, which wraps the punch times):
+          Left rail — who they are and how they are paid (details, rates, notes)
+          Right     — what happened (payslips, documents, punches)
+          Between md and xl the rail lays its cards side by side instead of
+          stretching one label/value list across the full page width.        */}
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
+        <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
+          <DetailsCard
+            rows={[
+              { label: "Pay type", value: payTypeLabel },
+              {
+                label: "Pay schedule",
+                value: schedule ? (
+                  schedule.name
+                ) : (
+                  <span className="text-text-subtle">Unassigned</span>
+                ),
+              },
+              { label: "Hired", value: formatIsoDate(employee.hiredOn) },
+              {
+                label: "Paid by",
+                value:
                   employee.payoutPreference === "ZELLE" ? (
-                    <span className="truncate block">
-                      Zelle · {employee.zelleContact}
-                    </span>
+                    `Zelle · ${employee.zelleContact}`
                   ) : employee.payoutPreference === "CASH" ? (
                     "Cash"
                   ) : (
                     <span className="text-text-subtle">Not set</span>
-                  )
-                }
-              />
-              <Stat
-                Icon={Mail}
-                label="Email"
-                value={<span className="truncate block">{employee.email}</span>}
-              />
-              <Stat
-                Icon={Languages}
-                label="Language"
-                value={employee.language === "en" ? "English" : "Español"}
-              />
-              <Stat
-                Icon={LinkIcon}
-                label="NGTeco ref"
-                value={
-                  employee.ngtecoEmployeeRef ?? (
-                    <span className="text-text-subtle">Not bound</span>
-                  )
-                }
-              />
-              {employee.notes ? (
-                <div className="pt-2 border-t border-border/60 space-y-1">
-                  <div className="text-xs text-text-muted">Notes</div>
-                  <p className="whitespace-pre-wrap text-sm">{employee.notes}</p>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+                  ),
+              },
+              { label: "Phone", value: employee.phone },
+              { label: "Email", value: employee.email },
+              {
+                label: "Language",
+                value: employee.language === "en" ? "English" : "Español",
+              },
+              {
+                label: "NGTeco ref",
+                value: employee.ngtecoEmployeeRef ?? (
+                  <span className="text-text-subtle">Not bound</span>
+                ),
+              },
+            ]}
+          />
+
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle>Rate history</CardTitle>
+                <Button asChild size="sm" variant="secondary">
+                  <Link href={`/employees/${employee.id}/rate`}>
+                    <Receipt className="h-4 w-4" /> Add rate
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <RateHistoryList rates={rates} />
+              </CardContent>
+            </Card>
+
+            <NotesCard
+              entries={parseEmployeeNotes(employee.notes)}
+              timezone={timezone}
+            />
+          </div>
         </div>
 
         {/* Right: work history + payslips + punches */}
         <div className="space-y-4 min-w-0">
-          <Card>
-            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Rate history</CardTitle>
-              <Button asChild size="sm" variant="secondary">
-                <Link href={`/employees/${employee.id}/rate`}>
-                  <Receipt className="h-4 w-4" /> Add rate
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <RateHistoryList rates={rates} />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>Payslips</CardTitle>
@@ -242,27 +245,29 @@ export default async function EmployeeDetailPage({
                 <RecomputePayslipsButton employeeId={employee.id} />
               )}
             </CardHeader>
-            <CardContent className="py-2">
-              {payslipsWithPeriods.length === 0 ? (
-                <p className="text-sm text-text-muted py-2">
+            {payslipRows.length === 0 ? (
+              <CardContent>
+                <p className="text-sm text-text-muted">
                   No payslips yet for this employee.
                 </p>
-              ) : (
-                <PayslipBatchPrintList
-                  employeeId={employee.id}
-                  items={payslipsWithPeriods.map(({ payslip, period }) => ({
-                    id: payslip.id,
-                    periodLabel: period
-                      ? `${period.startDate} – ${period.endDate}`
-                      : "Unknown period",
-                    hoursLabel: `${Number(payslip.hoursWorked).toFixed(2)} h`,
-                    payLabel: formatMoney(payslip.roundedPayCents),
-                    acknowledged: Boolean(payslip.acknowledgedAt),
-                    pdfPath: payslip.pdfPath,
-                  }))}
-                />
-              )}
-            </CardContent>
+              </CardContent>
+            ) : (
+              <PayslipBatchPrintList
+                employeeId={employee.id}
+                items={payslipRows.map((row) => ({
+                  id: row.payslip.id,
+                  periodLabel: row.periodLabel,
+                  hoursLabel: `${formatHours(row.hours)} h`,
+                  payLabel: formatMoney(row.payCents),
+                  isEmpty: row.hours === 0 && row.payCents === 0,
+                  acknowledged: Boolean(row.payslip.acknowledgedAt),
+                  disputed: Boolean(
+                    row.payslip.disputedAt && !row.payslip.disputeResolvedAt,
+                  ),
+                  pdfPath: row.payslip.pdfPath,
+                }))}
+              />
+            )}
           </Card>
 
           {payrollDocs.length > 0 && (
@@ -287,7 +292,7 @@ export default async function EmployeeDetailPage({
                             {d.originalFilename}
                           </p>
                           <p className="text-xs text-text-muted">
-                            {d.kind} · uploaded {d.uploadedAt.toISOString().slice(0, 10)}
+                            {d.kind} · uploaded {formatIsoDate(d.uploadedAt.toISOString().slice(0, 10))}
                           </p>
                         </div>
                       </div>
@@ -315,7 +320,7 @@ export default async function EmployeeDetailPage({
                   <PunchRow
                     key={p.id}
                     punch={p}
-                    timezone={company?.timezone ?? "America/New_York"}
+                    timezone={timezone}
                   />
                 ))
               )}
@@ -337,28 +342,6 @@ export default async function EmployeeDetailPage({
       {employee.status !== "TERMINATED" && (
         <ArchiveEmployeeButton id={employee.id} name={employee.displayName} />
       )}
-    </div>
-  );
-}
-
-function Stat({
-  Icon,
-  label,
-  value,
-}: {
-  Icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-2.5 min-w-0">
-      <Icon className="h-4 w-4 text-text-subtle shrink-0 mt-0.5" aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <div className="text-micro uppercase text-text-subtle">
-          {label}
-        </div>
-        <div className="text-sm text-text">{value}</div>
-      </div>
     </div>
   );
 }

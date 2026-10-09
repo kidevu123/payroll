@@ -3,6 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import type { EmployeeRateHistoryRow } from "@/lib/db/schema";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
 import { MoneyDisplay } from "./money-display";
 
 export function RateHistoryList({
@@ -35,19 +36,17 @@ export function RateHistoryList({
               i === 0 ? "bg-brand-700" : "bg-border",
             )}
           />
-          <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm">
-              <span className="font-medium">
-                <MoneyDisplay cents={r.hourlyRateCents} monospace={false} />/hr
-              </span>
-              <span className="ml-2 text-text-muted">
-                effective {r.effectiveFrom}
-              </span>
-            </div>
-            {r.reason ? (
-              <span className="truncate text-xs text-text-muted">{r.reason}</span>
-            ) : null}
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="font-medium tabular-nums">
+              <MoneyDisplay cents={r.hourlyRateCents} monospace={false} />/hr
+            </span>
+            <span className="shrink-0 text-text-muted">
+              {formatIsoDate(r.effectiveFrom)}
+            </span>
           </div>
+          {r.reason ? (
+            <p className="mt-0.5 text-xs text-text-muted">{r.reason}</p>
+          ) : null}
         </li>
       ))}
     </ol>
