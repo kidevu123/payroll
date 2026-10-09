@@ -192,6 +192,7 @@
       "title": "Mi tiempo",
       "subtitle": "Las últimas cuatro semanas más esta semana.",
       "weekOf": "Semana del {date}",
+      "thisWeek": "Esta semana",
       "in": "Entrada",
       "out": "Salida",
       "hours": "Horas",

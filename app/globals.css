@@ -600,3 +600,24 @@ td.num,
   40% { width: 82%; }
   to { width: 97%; }
 }
+
+/* ── Date and time inputs on iPhone ──────────────────────────────────────────
+   iOS Safari draws date/time inputs as its own control with a fixed intrinsic
+   width, so `width: 100%` is ignored: two of them in a two-column grid grow
+   past their columns and overlap (the employee fix-request form). Dropping
+   the native appearance makes them obey the box model like a text input; the
+   tap still opens the system picker. iOS also centres the value and lets an
+   empty one collapse, hence the two rules on the inner value. */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.5em;
+}

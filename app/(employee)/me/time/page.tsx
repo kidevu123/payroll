@@ -19,6 +19,8 @@ import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
 import { companyDayIso } from "@/lib/time/company-day";
 import { formatClockTime } from "@/lib/time/format";
+import { MicroLabel } from "@/components/ui/typography";
+import { cn } from "@/lib/utils";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -101,6 +103,7 @@ export default async function EmployeeTime() {
     weekMap.set(day, list);
   }
   const weekKeys = [...byWeek.keys()].sort().reverse();
+  const currentWeekKey = startOfWeek(today, payPeriod.startDayOfWeek);
 
   // Today's punches — surfaced front-and-center.
   const todayPunches = punches.filter(
@@ -204,8 +207,9 @@ export default async function EmployeeTime() {
           title={t("noPunches")}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-5">
           {weekKeys.map((wk) => {
+            const isCurrentWeek = wk === currentWeekKey;
             const days = byWeek.get(wk)!;
             let weekMs = 0;
             for (const list of days.values()) {
@@ -215,14 +219,38 @@ export default async function EmployeeTime() {
               }
             }
             return (
-              <Card key={wk}>
-                <CardHeader className="flex-row items-baseline justify-between gap-3">
-                  <CardTitle>
-                    {t("weekOf", {
-                      date: fmtDay(wk, dateLocale, { month: "short", day: "numeric" }),
-                    })}
-                  </CardTitle>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums text-text">
+              // Each week is its own block: a tinted header band carries the
+              // week and its total, so the eye finds where one week ends and
+              // the next begins. The current week takes the brand colour;
+              // past weeks stay neutral (colour marks status, not decoration).
+              <Card
+                key={wk}
+                className={cn(
+                  "overflow-hidden",
+                  isCurrentWeek ? "border-brand-700/60" : "border-border-strong/70",
+                )}
+              >
+                <CardHeader
+                  className={cn(
+                    "flex-row items-center justify-between gap-3 border-l-4",
+                    isCurrentWeek
+                      ? "border-l-brand-700 bg-brand-700/15"
+                      : "border-l-border-strong bg-surface-2",
+                  )}
+                >
+                  <div className="min-w-0">
+                    {isCurrentWeek ? (
+                      <MicroLabel as="p" tone="brand" className="mb-0.5">
+                        {t("thisWeek")}
+                      </MicroLabel>
+                    ) : null}
+                    <CardTitle>
+                      {t("weekOf", {
+                        date: fmtDay(wk, dateLocale, { month: "short", day: "numeric" }),
+                      })}
+                    </CardTitle>
+                  </div>
+                  <span className="shrink-0 text-right text-subheading tabular-nums text-text">
                     <HoursDisplay
                       hours={weekMs / MS_PER_HOUR}
                       decimals={payRules.hoursDecimalPlaces}

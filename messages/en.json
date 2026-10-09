@@ -192,6 +192,7 @@
       "title": "My time",
       "subtitle": "Last four weeks plus this week.",
       "weekOf": "Week of {date}",
+      "thisWeek": "This week",
       "in": "In",
       "out": "Out",
       "hours": "Hours",

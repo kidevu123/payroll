@@ -41,11 +41,11 @@ export function LanguageSwitcher({ current }: { current: "en" | "es" }) {
           type="button"
           disabled={pending !== null}
           onClick={() => pick(loc)}
-          // 44px min target so the switcher works on phones (the
-          // employee portal is mobile-first and the only place an
-          // employee can change their UI language).
+          // 44px target on phones (the employee portal is mobile-first and
+          // the only place an employee can change their UI language); the
+          // denser 36px from md up, where it sits in the admin shell.
           className={
-            "min-h-[36px] min-w-[44px] px-2 rounded-input text-xs font-medium transition-colors flex items-center justify-center " +
+            "min-h-11 md:min-h-[36px] min-w-[44px] px-2 rounded-input text-xs font-medium transition-colors flex items-center justify-center " +
             (current === loc
               ? "bg-brand-50 text-brand-800"
               : "text-text-muted hover:bg-surface")

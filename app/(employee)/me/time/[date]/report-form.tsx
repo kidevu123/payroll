@@ -31,12 +31,9 @@ export function ReportFixForm({
 
   if (!open) {
     return (
-      <Button
-        size="lg"
-        variant="secondary"
-        className="w-full sm:w-auto"
-        onClick={() => setOpen(true)}
-      >
+      // Primary, full width: this is the one action on the day screen, and as
+      // a grey outline it read as part of the background.
+      <Button size="lg" className="w-full" onClick={() => setOpen(true)}>
         <Flag className="h-4 w-4" /> {t("reportFix")}
       </Button>
     );

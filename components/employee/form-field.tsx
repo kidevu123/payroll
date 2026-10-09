@@ -13,6 +13,18 @@ import { Input, type InputProps } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+// One wrapper for every labelled control. Two things it guarantees when
+// fields sit side by side in a grid:
+//   - `h-full flex-col` + `mt-auto` on the control pins the control to the
+//     bottom of its grid cell, so when one label wraps to two lines ("Correct
+//     clock out (optional)") the boxes still share a top edge instead of the
+//     wrapped one dropping lower.
+//   - `min-w-0` lets the cell shrink below the control's intrinsic width.
+//     iOS gives date/time inputs a fixed intrinsic width; without this the
+//     two boxes grew past their columns and overlapped.
+const FIELD_WRAPPER = "flex h-full min-w-0 flex-col gap-1.5";
+const CONTROL_BOTTOM = "mt-auto";
+
 // 44px tall controls — comfortable thumb targets on a phone. Applied on top
 // of the shared Input so we don't touch the shared primitive.
 const TOUCH_CONTROL =
@@ -33,11 +45,15 @@ export function Field({
   ...props
 }: { label: React.ReactNode } & InputProps) {
   return (
-    <div className="space-y-1.5">
+    <div className={FIELD_WRAPPER}>
       <Label htmlFor={id} className="text-sm">
         {label}
       </Label>
-      <Input id={id} className={cn(TOUCH_CONTROL, className)} {...props} />
+      <Input
+        id={id}
+        className={cn(TOUCH_CONTROL, CONTROL_BOTTOM, className)}
+        {...props}
+      />
     </div>
   );
 }
@@ -54,13 +70,13 @@ export function SelectField({
   children: React.ReactNode;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <div className="space-y-1.5">
+    <div className={FIELD_WRAPPER}>
       <Label htmlFor={id} className="text-sm">
         {label}
       </Label>
       <select
         id={id}
-        className={cn(FIELD_BASE, TOUCH_CONTROL, className)}
+        className={cn(FIELD_BASE, TOUCH_CONTROL, CONTROL_BOTTOM, className)}
         {...props}
       >
         {children}
@@ -80,7 +96,7 @@ export function TextareaField({
   label: React.ReactNode;
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <div className="space-y-1.5">
+    <div className={FIELD_WRAPPER}>
       <Label htmlFor={id} className="text-sm">
         {label}
       </Label>
@@ -89,6 +105,7 @@ export function TextareaField({
         rows={rows}
         className={cn(
           FIELD_BASE,
+          CONTROL_BOTTOM,
           "py-2.5 text-base leading-relaxed sm:text-sm",
           className,
         )}

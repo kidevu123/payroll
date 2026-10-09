@@ -370,12 +370,15 @@ async function PayslipBody({
             <CardTitle>{t("printablePayslip")}</CardTitle>
             <CardDescription>{t("printableDescription")}</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
+          {/* The actions sit on the card's own content edge. They used to be
+              wrapped in a second bordered strip pulled up under the header
+              (pt-0), which read as a clipped, off-grid box. */}
+          <CardContent>
             <PayslipPdfActions
               url={pdfUrl}
               printLabel={t("printPayslip")}
               downloadLabel={t("downloadPayslip")}
-              className="rounded-input border border-border/70"
+              className="justify-start border-t-0 bg-transparent px-0 py-0 sm:px-0"
             />
           </CardContent>
         </Card>
@@ -385,7 +388,7 @@ async function PayslipBody({
             <CardTitle>{t("printablePayslip")}</CardTitle>
             <CardDescription>{t("printSummaryHint")}</CardDescription>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent>
             <PrintPageButton label={t("printSummary")} />
           </CardContent>
         </Card>
