@@ -91,7 +91,11 @@ COPY . .
 # a single failed build leaves the timer in "no changes" mode forever
 # (it compares HEAD-before-fetch vs HEAD-after-reset, both equal once
 # the failed reset already landed). See deploy/lxc/payroll-deploy.service.
-RUN GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
+# The cache mount keeps Next's compiler cache (.next/cache) between builds.
+# It lives in the build cache, not in any image layer, so it does not grow
+# the image and it is not part of the standalone output.
+RUN --mount=type=cache,target=/app/.next/cache \
+    GIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo unknown) \
     && BUILD_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
     && echo "Building $GIT_SHA at $BUILD_AT" \
     && NEXT_PUBLIC_GIT_SHA=$GIT_SHA NEXT_PUBLIC_BUILD_AT=$BUILD_AT \

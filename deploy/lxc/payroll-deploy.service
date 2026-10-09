@@ -27,19 +27,22 @@ WorkingDirectory=/opt/payroll
 # the running container's image on purpose, not :latest — a build that dies
 # mid-export can leave :latest pointing at a half-written image, and tagging
 # THAT as previous would overwrite the only good rollback.
-# After a build, successful or not, dangling images are removed and the build
-# cache is trimmed to its most recently used 6 GB. Left alone, the cache grew
-# by gigabytes per deploy until builds failed with "no space left on device".
-# It is a CAP, not a wipe, on purpose: a plain `docker builder prune -f`
-# (what this unit ran until 2026-10-09) deletes every cache record that is
-# not part of the final image, which is all of the deps / prod-deps / build
-# stages. The next deploy then re-ran apt-get, both `npm ci` passes and the
-# Chromium download from scratch: measured 13-15 minutes per deploy, every
-# deploy. With the cap those stages survive between deploys.
-# Safety net for the disk: if less than 8 GB is free after the capped prune
-# (the cap could not get under it, or something else filled the disk), the
-# whole build cache is cleared, which is the old behaviour. One slow deploy
-# is the price; a full disk is what took production down before.
+# After a build, successful or not, dangling images are removed. The build
+# cache is LEFT ALONE unless the disk is running low, and then it is cleared
+# completely. There is deliberately no partial prune. Measured on this host
+# (Docker 29, containerd image store) on 2026-10-09:
+#   - plain `docker builder prune -f` (what this unit ran before) deletes
+#     every stage that is not in the final image, so each deploy re-ran
+#     apt-get, both `npm ci` passes and the Chromium download: 12-15 minutes.
+#   - `--max-used-space 6gb` and `--filter until=...` both keep gigabytes of
+#     records but break the chain, and the next build reuses nothing. They
+#     cost the disk space AND the time.
+#   - with the cache untouched, a rebuild reuses everything up to `COPY . .`
+#     and takes about 5 minutes (it is the `next build` step that is left).
+# A deploy adds roughly 1 GB of cache, so the disk check below fires every
+# several deploys; that one deploy is cold and the cycle restarts. Under
+# 10 GB free is the trigger because a cold build needs about 7 GB of
+# headroom, and a full disk is what took production down before.
 # A failed build writes its SHA to .deploy-failed-sha and the unit stops
 # rebuilding that SHA on every 60-second tick (it still ensures the old
 # services are up). The next commit, or deleting the marker, re-arms it. The
@@ -59,10 +62,10 @@ ExecStart=/bin/bash -c '\
   failed=$(cat "$marker" 2>/dev/null || true); \
   cleanup() { \
     /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-    /usr/bin/docker builder prune -f --max-used-space 6gb >/dev/null 2>&1 || true; \
     free_kb=$(df -Pk / | tail -1 | tr -s " " | cut -d " " -f4); \
-    if [ -n "$free_kb" ] && [ "$free_kb" -lt 8388608 ]; then \
-      echo "under 8 GB free after the capped prune; clearing the whole build cache"; \
+    echo "free disk after build: $free_kb kB"; \
+    if [ -n "$free_kb" ] && [ "$free_kb" -lt 10485760 ]; then \
+      echo "under 10 GB free; clearing the whole build cache (the next deploy will be a cold build)"; \
       /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
     fi; \
   }; \
