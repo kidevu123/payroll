@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth-guards";
 import { hashPassword } from "@/lib/auth";
+import { logger } from "@/lib/telemetry";
 import { db } from "@/lib/db";
 import { payslips, payPeriods } from "@/lib/db/schema";
 import {
@@ -14,6 +15,7 @@ import {
   createEmployee,
   getEmployee,
   ignoreNgtecoSetupEmployee,
+  reinstateEmployee,
   updateEmployee,
 } from "@/lib/db/queries/employees";
 import { addRate } from "@/lib/db/queries/rate-history";
@@ -310,6 +312,34 @@ export async function archiveEmployeeAction(
   revalidatePath("/employees");
   revalidatePath(`/employees/${id}`);
   redirect("/employees");
+}
+
+/**
+ * Bring a terminated employee back. Stays on the detail page so the admin
+ * sees the restored status (and, when it landed on Inactive, can go straight
+ * to Edit to finish classification and rate).
+ */
+export async function reinstateEmployeeAction(
+  id: string,
+): Promise<{ error?: string } | void> {
+  const session = await requireAdmin();
+  if (!idSchema.safeParse(id).success) return { error: "Invalid id." };
+  const before = await getEmployee(id);
+  if (!before) return { error: "Employee not found." };
+  if (before.status !== "TERMINATED") {
+    return { error: "This employee is not terminated." };
+  }
+  try {
+    await reinstateEmployee(id, {
+      id: session.user.id,
+      role: session.user.role,
+    });
+  } catch (err) {
+    logger.error({ err, employeeId: id }, "employees.reinstate: failed");
+    return { error: "Could not reinstate this employee. Try again." };
+  }
+  revalidatePath("/employees");
+  revalidatePath(`/employees/${id}`);
 }
 
 const rateSchema = z.object({

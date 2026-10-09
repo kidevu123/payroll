@@ -35,6 +35,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
+import { ReinstateEmployeeButton } from "./reinstate-button";
 import { AccountSection } from "./account-section";
 import { RecomputePayslipsButton } from "./recompute-button";
 import { PayslipBatchPrintList } from "@/components/domain/payslip-batch-print-list";
@@ -124,6 +125,10 @@ export default async function EmployeeDetailPage({
           </Button>
         </div>
       </div>
+
+      {employee.status === "TERMINATED" && (
+        <ReinstateEmployeeButton id={employee.id} name={employee.displayName} />
+      )}
 
       {/* Two-column split:
           Left  — stats card (status, rate, hire date, shift, etc.)

@@ -1,5 +1,6 @@
 // Employee queries. Soft-delete only — `archiveEmployee` flips status to
-// TERMINATED and never DELETEs.
+// TERMINATED and never DELETEs. `reinstateEmployee` is the way back for a
+// terminated employee who returns.
 //
 // All mutations run inside a transaction with the audit insert; if audit
 // fails, the mutation rolls back.
@@ -382,6 +383,87 @@ export async function archiveEmployee(
         targetId: id,
         before,
         after: { ...row, linkedUserDisabled: !!linkedUser },
+      },
+      tx,
+    );
+    return row;
+  });
+}
+
+/**
+ * Status a terminated employee lands on when reinstated: ACTIVE when they can
+ * be paid as-is, otherwise INACTIVE so the admin finishes classification and
+ * rate on the edit form (the same gate updateEmployeeAction applies).
+ */
+export function reinstatedStatus(input: {
+  payType: Employee["payType"];
+  payScheduleId: string | null;
+  hourlyRateCents: number | null;
+}): "ACTIVE" | "INACTIVE" {
+  return activationRequirementsMessage(input) === null ? "ACTIVE" : "INACTIVE";
+}
+
+/**
+ * Undo archiveEmployee for an employee who came back. Restores the payroll
+ * status, appends a dated note (the termination note stays as history) and
+ * re-enables the linked login that archiveEmployee disabled. Rate history,
+ * punches and payslips were never touched by the archive, so nothing else
+ * needs restoring.
+ *
+ * Decision log: the login is re-enabled unconditionally. archiveEmployee
+ * disables it unconditionally and does not record whether it was already
+ * disabled, so "returning employee can sign in again" is the least surprising
+ * inverse. An admin who wants it off can disable it from the Account panel.
+ */
+export async function reinstateEmployee(
+  id: string,
+  actor: Actor,
+): Promise<Employee> {
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(employees)
+      .where(eq(employees.id, id));
+    if (!before) throw new Error(`reinstateEmployee: employee ${id} not found`);
+    if (before.status !== "TERMINATED") {
+      throw new Error("reinstateEmployee: employee is not terminated");
+    }
+    const note = `[${new Date().toISOString()}] reinstated`;
+    const [row] = await tx
+      .update(employees)
+      .set({
+        status: reinstatedStatus(before),
+        notes: before.notes ? `${before.notes}\n${note}` : note,
+        updatedAt: new Date(),
+      })
+      // Re-check the status in the write itself: if another admin reinstated
+      // (or edited) the row after the read above, this matches nothing and
+      // the transaction stops instead of writing a second note and audit row.
+      .where(and(eq(employees.id, id), eq(employees.status, "TERMINATED")))
+      .returning();
+    if (!row) {
+      throw new Error("reinstateEmployee: employee is not terminated");
+    }
+    const [linkedUser] = await tx
+      .select({ id: users.id, disabledAt: users.disabledAt })
+      .from(users)
+      .where(eq(users.employeeId, id));
+    const linkedUserEnabled = !!linkedUser?.disabledAt;
+    if (linkedUser && linkedUserEnabled) {
+      await tx
+        .update(users)
+        .set({ disabledAt: null, updatedAt: new Date() })
+        .where(eq(users.id, linkedUser.id));
+    }
+    await writeAudit(
+      {
+        actorId: actor.id,
+        actorRole: actor.role,
+        action: "employee.reinstate",
+        targetType: "Employee",
+        targetId: id,
+        before,
+        after: { ...row, linkedUserEnabled },
       },
       tx,
     );

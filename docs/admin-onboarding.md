@@ -8,7 +8,7 @@ Use the email + password the owner gave you. First login may prompt you to set a
 
 ## What you can do
 
-- Manage employees: add new hires, edit their profile, archive (soft-delete; nothing gets removed from history).
+- Manage employees: add new hires, edit their profile, archive (soft-delete; nothing gets removed from history), and reinstate an archived employee who returns from their employee page.
 - Manage shifts: rename, reorder, archive. The "Day" shift seeds by default.
 - Edit punches: every change requires a reason; the original timestamps are preserved on the row and visible to the audit log.
 - Lock + unlock pay periods. Unlocking a paid period is forbidden.
