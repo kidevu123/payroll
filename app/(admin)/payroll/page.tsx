@@ -24,6 +24,10 @@ import {
   Pencil,
   ChevronRight,
   CalendarClock,
+  AlertTriangle,
+  Banknote,
+  ClipboardCheck,
+  CalendarPlus,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -196,19 +200,6 @@ export default async function PayrollPage({
 
   const phaseCount = (phase: PeriodPhase) =>
     periods.filter((p) => p.phase === phase).length;
-  const summaryParts = [
-    phaseCount("NEEDS_PROCESSING") > 0
-      ? `${phaseCount("NEEDS_PROCESSING")} to process`
-      : null,
-    phaseCount("AWAITING_PAYMENT") > 0
-      ? `${phaseCount("AWAITING_PAYMENT")} awaiting payment`
-      : null,
-    phaseCount("RUNNING") > 0 ? `${phaseCount("RUNNING")} in progress` : null,
-    phaseCount("UPCOMING") > 0 ? `${phaseCount("UPCOMING")} upcoming` : null,
-  ].filter(Boolean);
-  const periodSummary =
-    summaryParts.length > 0 ? summaryParts.join(" · ") : undefined;
-
   const kpis = {
     awaiting: periods.filter((p) => p.phase === "AWAITING_PAYMENT"),
     running: periods.filter((p) => p.phase === "RUNNING"),
@@ -227,7 +218,6 @@ export default async function PayrollPage({
           <h1 className="mt-0.5 text-title tracking-tight antialiased text-text">Pay Periods</h1>
           <p className="mt-1 text-sm text-text-muted">
             Open and locked pay periods that still need work. Paid periods live in Reports.
-            {periodSummary ? <span className="text-text-subtle"> · {periodSummary}</span> : null}
           </p>
         </div>
         <Button asChild variant="secondary" size="sm" className="h-10">
@@ -248,64 +238,99 @@ export default async function PayrollPage({
 
       <ScheduleTabs current={tab} basePath="/payroll" />
 
-      {/* One table, grouped by lifecycle phase. The group header names the
-          state once; the row itself carries the figures. (Before: a card per
-          row inside a card, a colored bar + a chip + a sentence all saying
-          the same thing, and no numbers at all.) */}
-      <div className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
-        {periods.length === 0 ? (
+      {/* One card per lifecycle phase, in the order the work happens. Each
+          card opens with a coloured band that names the phase, says what to
+          do, and totals it, so the three kinds of period no longer read as
+          one undifferentiated table. (Before: a single table whose group
+          headers were 10px labels on a faint tint.) */}
+      {periods.length === 0 ? (
+        <div className="overflow-hidden rounded-card border border-border/70 bg-surface shadow-card">
           <EmptyState
             icon={Wallet}
             title="No periods need work"
             description="Open and locked pay periods will appear here. Paid periods live in Reports."
           />
-        ) : (
-          <>
-            <div
-              className={`hidden md:grid ${LIST_GRID} items-center gap-x-4 border-b border-border/70 bg-surface px-5 py-2 text-micro uppercase text-text-subtle`}
-            >
-              <div>Pay period</div>
-              <div>Schedule</div>
-              <div className="text-right">Employees</div>
-              <div className="text-right">Hours</div>
-              <div className="text-right">Total</div>
-              <div />
-            </div>
-            {PHASE_ORDER.filter((ph) => phaseCount(ph) > 0).map((ph) => (
-              <section key={ph} aria-label={PHASE_META[ph].label}>
-                <div className="flex items-center gap-2 border-b border-border/60 bg-surface-2/20 px-5 py-2">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${PHASE_META[ph].dot}`}
-                    aria-hidden
-                  />
-                  <span className={`text-micro uppercase ${PHASE_META[ph].tone}`}>
-                    {PHASE_META[ph].label}
-                  </span>
-                  <span className="text-micro uppercase text-text-subtle tabular-nums">
-                    {phaseCount(ph)}
-                  </span>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {PHASE_ORDER.filter((ph) => phaseCount(ph) > 0).map((ph) => {
+            const meta = PHASE_META[ph];
+            const rows = periods.filter((p) => p.phase === ph);
+            const groupHours = rows.reduce((n, p) => n + p.figures.hours, 0);
+            const groupCents = rows.reduce(
+              (n, p) => n + (p.figures.totalCents ?? 0),
+              0,
+            );
+            const hasTotal = rows.some((p) => p.figures.totalCents !== null);
+            return (
+              <section
+                key={ph}
+                id={meta.anchor}
+                aria-labelledby={`${meta.anchor}-title`}
+                className="scroll-mt-4 overflow-hidden rounded-card border border-border/70 bg-surface shadow-card"
+              >
+                <header
+                  className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-l-4 border-b-border/60 px-5 py-3 ${meta.band}`}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <meta.Icon
+                      className={`mt-0.5 h-5 w-5 shrink-0 ${meta.icon}`}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <h2
+                        id={`${meta.anchor}-title`}
+                        className="flex items-center gap-2 text-subheading tracking-tight text-text"
+                      >
+                        {meta.label}
+                        <span className="rounded-chip border border-border/70 bg-surface px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-text-muted">
+                          {rows.length}
+                        </span>
+                      </h2>
+                      <p className="mt-0.5 text-xs text-text-muted">{meta.hint}</p>
+                    </div>
+                  </div>
+                  <p className="text-right text-xs tabular-nums text-text-muted">
+                    {groupHours > 0 ? (
+                      <>
+                        <HoursDisplay hours={groupHours} decimals={2} /> h
+                      </>
+                    ) : null}
+                    {hasTotal ? (
+                      <span className="ml-3 text-sm font-semibold text-text">
+                        <MoneyDisplay cents={groupCents} />
+                      </span>
+                    ) : null}
+                  </p>
+                </header>
+                <div
+                  className={`hidden md:grid ${LIST_GRID} items-center gap-x-4 border-b border-border/60 px-5 py-2 text-micro uppercase text-text-subtle`}
+                >
+                  <div>Pay period</div>
+                  <div>Schedule</div>
+                  <div className="text-right">Employees</div>
+                  <div className="text-right">Hours</div>
+                  <div className="text-right">Total</div>
+                  <div />
                 </div>
                 <div className="divide-y divide-border/60">
-                  {periods
-                    .filter((p) => p.phase === ph)
-                    .map((p) => (
-                      <PeriodRow key={p.id} p={p} />
-                    ))}
+                  {rows.map((p) => (
+                    <PeriodRow key={p.id} p={p} />
+                  ))}
                 </div>
               </section>
-            ))}
-            <div className="border-t border-border/70 px-5 py-3 text-xs tabular-nums text-text-muted">
-              Showing {periods.length} {periods.length === 1 ? "period" : "periods"} that still need work
-            </div>
-          </>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
+// Each row is its own grid, so every track is fixed or the one flexible
+// column; the last track holds the delete control and the action label.
 const LIST_GRID =
-  "md:grid-cols-[minmax(0,1.6fr)_8rem_6rem_6rem_7.5rem_5.5rem]";
+  "md:grid-cols-[minmax(0,1.6fr)_8rem_6rem_6rem_7.5rem_8.5rem]";
 
 const PHASE_ORDER: PeriodPhase[] = [
   "NEEDS_PROCESSING",
@@ -314,22 +339,65 @@ const PHASE_ORDER: PeriodPhase[] = [
   "UPCOMING",
 ];
 
+// Colour follows the status vocabulary (see status-pill.tsx): amber = someone
+// has to act, brand = money is ready to go out, blue = in progress and
+// nothing to do, neutral = not started. The same colour and icon are used on
+// the matching summary tile above the list.
 const PHASE_META: Record<
   PeriodPhase,
-  { label: string; dot: string; tone: string }
+  {
+    label: string;
+    anchor: string;
+    hint: string;
+    Icon: React.ComponentType<{ className?: string }>;
+    band: string;
+    icon: string;
+    /** Label on the right of each row; null = a plain chevron. */
+    action: string | null;
+    actionClass: string;
+  }
 > = {
   NEEDS_PROCESSING: {
     label: "Needs processing",
-    dot: "bg-warning-600",
-    tone: "text-warning-700",
+    anchor: "needs-processing",
+    hint: "These periods have ended. Review the hours, then lock each one.",
+    Icon: ClipboardCheck,
+    band: "border-l-warning-500 bg-warning-500/10",
+    icon: "text-warning-600",
+    action: "Review",
+    actionClass: "border-warning-500/40 bg-warning-500/10 text-warning-800",
   },
   AWAITING_PAYMENT: {
     label: "Awaiting payment",
-    dot: "bg-warning-600",
-    tone: "text-warning-700",
+    anchor: "awaiting-payment",
+    hint: "Reviewed and locked. Pay each one to close it out.",
+    Icon: Banknote,
+    band: "border-l-brand-700 bg-brand-700/10",
+    icon: "text-brand-700 dark:text-brand-400",
+    action: "Pay",
+    actionClass:
+      "border-brand-700/40 bg-brand-700/10 text-brand-800 dark:border-brand-400/40 dark:text-brand-300",
   },
-  RUNNING: { label: "In progress", dot: "bg-success-600", tone: "text-text-muted" },
-  UPCOMING: { label: "Upcoming", dot: "bg-text/25", tone: "text-text-subtle" },
+  RUNNING: {
+    label: "In progress",
+    anchor: "in-progress",
+    hint: "Still collecting hours. Nothing to do until the period ends.",
+    Icon: CalendarClock,
+    band: "border-l-info-600 bg-info-600/10",
+    icon: "text-info-600",
+    action: null,
+    actionClass: "",
+  },
+  UPCOMING: {
+    label: "Upcoming",
+    anchor: "upcoming",
+    hint: "Has not started yet.",
+    Icon: CalendarPlus,
+    band: "border-l-border-strong bg-surface-2",
+    icon: "text-text-subtle",
+    action: null,
+    actionClass: "",
+  },
 };
 
 type PeriodRowData = {
@@ -346,6 +414,7 @@ type PeriodRowData = {
 
 function PeriodRow({ p }: { p: PeriodRowData }) {
   const detail = phaseDetail(p.phase, p.startDate, p.displayEnd, p.progress);
+  const meta = PHASE_META[p.phase];
   return (
     <div
       className={`group relative grid grid-cols-1 gap-y-2 px-5 py-2.5 transition-colors hover:bg-surface-2/40 focus-within:bg-surface-2/40 md:grid md:items-center md:gap-x-4 ${LIST_GRID}`}
@@ -359,17 +428,33 @@ function PeriodRow({ p }: { p: PeriodRowData }) {
         <span className="block truncate text-sm font-medium tabular-nums tracking-tight text-text">
           {formatPeriodRange(p.startDate, p.displayEnd)}
         </span>
-        <span className="mt-0.5 block text-xs text-text-muted">
-          {detail}
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+          <span>{detail}</span>
           {p.incomplete > 0 ? (
-            <>
-              {" · "}
-              <span className="font-medium text-warning-700">
-                {p.incomplete} incomplete punch{p.incomplete === 1 ? "" : "es"}
-              </span>
-            </>
+            <span className="inline-flex items-center gap-1 rounded-chip border border-warning-500/40 bg-warning-500/10 px-1.5 py-0.5 text-[11px] font-medium text-warning-800">
+              <AlertTriangle className="h-3 w-3" aria-hidden />
+              {p.incomplete} incomplete punch{p.incomplete === 1 ? "" : "es"}
+            </span>
           ) : null}
         </span>
+        {p.phase === "RUNNING" && p.progress ? (
+          // How far through the period we are, at a glance.
+          <span
+            className="mt-1.5 block h-1 w-40 max-w-full overflow-hidden rounded-full bg-surface-3"
+            role="progressbar"
+            aria-label="Period progress"
+            aria-valuemin={0}
+            aria-valuemax={p.progress.total}
+            aria-valuenow={p.progress.day}
+          >
+            <span
+              className="block h-full rounded-full bg-info-600"
+              style={{
+                width: `${Math.min(100, Math.round((p.progress.day / p.progress.total) * 100))}%`,
+              }}
+            />
+          </span>
+        ) : null}
       </Link>
       <div>
         <SchedulePill name={p.scheduleName} />
@@ -409,10 +494,22 @@ function PeriodRow({ p }: { p: PeriodRowData }) {
         <div className="relative z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
           <PeriodDeleteButton periodId={p.id} state={p.state} />
         </div>
-        <ChevronRight
-          className="hidden h-4 w-4 text-text-subtle transition-transform group-hover:translate-x-0.5 md:block"
-          aria-hidden
-        />
+        {/* What opening this row is for. Decorative: the row link above is
+            the real target, so this is hidden from assistive tech. */}
+        {meta.action ? (
+          <span
+            aria-hidden
+            className={`hidden items-center gap-0.5 rounded-input border px-2 py-1 text-xs font-medium md:inline-flex ${meta.actionClass}`}
+          >
+            {meta.action}
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        ) : (
+          <ChevronRight
+            className="hidden h-4 w-4 text-text-subtle transition-transform group-hover:translate-x-0.5 md:block"
+            aria-hidden
+          />
+        )}
       </div>
     </div>
   );
@@ -441,9 +538,9 @@ function phaseDetail(
         ? `Day ${progress.day} of ${progress.total} · ends ${friendlyDate(endDate)}`
         : `Ends ${friendlyDate(endDate)}`;
     case "NEEDS_PROCESSING":
-      return `Ended ${friendlyDate(endDate)} · ready to review and lock`;
+      return `Ended ${friendlyDate(endDate)}`;
     case "AWAITING_PAYMENT":
-      return "Reviewed and locked · ready to pay";
+      return "Locked";
     case "UPCOMING":
       return `Starts ${friendlyDate(startDate)}`;
   }
