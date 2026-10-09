@@ -32,6 +32,9 @@ if grep -q "docker tag sha256:running payroll-app:previous" "$SHIM_LOG"; then pa
 if ! grep -q "docker tag payroll-app:latest payroll-app:previous" "$SHIM_LOG"; then pass "never tags :latest as previous"; else bad "never tags :latest as previous"; fi
 [ "$rc" = 0 ] && pass "successful deploy exits 0" || bad "successful deploy exits 0 (rc=$rc)"
 grep -q "builder prune -f" "$SHIM_LOG" && pass "prunes cache after success" || bad "prunes cache after success"
+# The routine prune is CAPPED, not a wipe: an uncapped prune deletes the deps
+# stages and makes every deploy a 15-minute cold build.
+grep -q "builder prune -f --max-used-space" "$SHIM_LOG" && pass "routine prune keeps recent cache (capped)" || bad "routine prune keeps recent cache (capped)"
 
 # 2. A failed build still cleans up, exits non-zero, and is NOT retried on the same HEAD
 setup; push_commit two

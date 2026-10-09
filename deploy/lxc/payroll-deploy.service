@@ -5,7 +5,8 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
-# A full `docker compose --build` (next build + typecheck) runs 2-3 minutes.
+# A full `docker compose --build` (next build + typecheck) runs several minutes
+# warm and about 15 cold.
 # Without this, the unit inherits DefaultTimeoutStartSec (90s) and systemd
 # SIGTERMs the build mid-typecheck — which is exactly what silently bricked
 # auto-deploy for days. Bound it generously (30 min) rather than `infinity`
@@ -26,14 +27,19 @@ WorkingDirectory=/opt/payroll
 # the running container's image on purpose, not :latest — a build that dies
 # mid-export can leave :latest pointing at a half-written image, and tagging
 # THAT as previous would overwrite the only good rollback.
-# After a build, successful or not, dangling images and dangling build cache
-# are removed. Left alone, the cache grew by gigabytes per deploy until
-# builds failed with "no space left on device"; a failed export leaves
-# gigabytes of leftovers too. Only DANGLING cache goes: the live cache (the
-# current image's layers, ~2-3 GB) is what makes a routine deploy a
-# 2-minute cached build instead of a 15-minute cold one. A hard size cap was
-# tried and rejected: Docker's --max-used-space refuses to prune below the
-# live set, so it reclaimed nothing.
+# After a build, successful or not, dangling images are removed and the build
+# cache is trimmed to its most recently used 6 GB. Left alone, the cache grew
+# by gigabytes per deploy until builds failed with "no space left on device".
+# It is a CAP, not a wipe, on purpose: a plain `docker builder prune -f`
+# (what this unit ran until 2026-10-09) deletes every cache record that is
+# not part of the final image, which is all of the deps / prod-deps / build
+# stages. The next deploy then re-ran apt-get, both `npm ci` passes and the
+# Chromium download from scratch: measured 13-15 minutes per deploy, every
+# deploy. With the cap those stages survive between deploys.
+# Safety net for the disk: if less than 8 GB is free after the capped prune
+# (the cap could not get under it, or something else filled the disk), the
+# whole build cache is cleared, which is the old behaviour. One slow deploy
+# is the price; a full disk is what took production down before.
 # A failed build writes its SHA to .deploy-failed-sha and the unit stops
 # rebuilding that SHA on every 60-second tick (it still ensures the old
 # services are up). The next commit, or deleting the marker, re-arms it. The
@@ -51,18 +57,25 @@ ExecStart=/bin/bash -c '\
   /usr/bin/docker ps -aq --filter status=exited --filter status=created --filter label=com.docker.compose.project=payroll | xargs -r /usr/bin/docker rm -f >/dev/null 2>&1 || true; \
   marker="$PAYROLL_DIR/.deploy-failed-sha"; \
   failed=$(cat "$marker" 2>/dev/null || true); \
+  cleanup() { \
+    /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
+    /usr/bin/docker builder prune -f --max-used-space 6gb >/dev/null 2>&1 || true; \
+    free_kb=$(df -Pk / | tail -1 | tr -s " " | cut -d " " -f4); \
+    if [ -n "$free_kb" ] && [ "$free_kb" -lt 8388608 ]; then \
+      echo "under 8 GB free after the capped prune; clearing the whole build cache"; \
+      /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+    fi; \
+  }; \
   rebuild() { \
     cid=$(/usr/bin/docker compose ps -q app 2>/dev/null | head -1 || true); \
     if [ -n "$cid" ]; then img=$(/usr/bin/docker inspect -f "{{.Image}}" "$cid" 2>/dev/null || true); [ -n "$img" ] && /usr/bin/docker tag "$img" payroll-app:previous >/dev/null 2>&1 || true; fi; \
     echo "free disk before build: $(df -h / | tail -1 | tr -s " " | cut -d " " -f4)"; \
     if /usr/bin/docker compose up -d --build --remove-orphans; then \
       rm -f "$marker"; \
-      /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-      /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+      cleanup; \
     else \
       echo "$after" > "$marker"; \
-      /usr/bin/docker image prune -f >/dev/null 2>&1 || true; \
-      /usr/bin/docker builder prune -f >/dev/null 2>&1 || true; \
+      cleanup; \
       echo "build of $after FAILED; leftovers pruned; not retrying until a new commit lands or $marker is removed"; \
       exit 1; \
     fi; \

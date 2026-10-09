@@ -2,6 +2,8 @@
 # Multi-stage build for the payroll app.
 #
 # Stages:
+#   manifests — package.json + lockfile with the version pinned to a constant,
+#           so a version bump alone does not invalidate the deps stages.
 #   deps  — install full deps with native modules (argon2, postgres.js).
 #   build — compile Next.js with output: standalone.
 #   prod-deps — production-only node_modules.
@@ -10,6 +12,22 @@
 #   run   — the runtime image: slim Node + the standalone bundle + the
 #           migrate/seed scripts + production node_modules + the Chromium
 #           headless shell (the NGTeco scraper's only browser).
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Stage 0: manifests
+# ──────────────────────────────────────────────────────────────────────────────
+# Every commit bumps "version" in package.json and package-lock.json. Copying
+# those files straight into the deps stages changed their cache key on every
+# deploy, so both `npm ci` passes (and everything built on their output, down
+# to the Chromium download in the run stage) re-ran each time although no
+# dependency had changed. This stage rewrites the version to a constant; the
+# deps stages copy the result, and BuildKit keys a COPY --from on file
+# CONTENT, so they are rebuilt only when a dependency really changes. The
+# build stage still gets the real package.json through `COPY . .`.
+FROM node:22-bookworm-slim AS manifests
+WORKDIR /manifests
+COPY package.json package-lock.json* ./
+RUN node -e 'const fs=require("fs");const fix=(f,e)=>{if(!fs.existsSync(f))return;const j=JSON.parse(fs.readFileSync(f,"utf8"));e(j);fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")};fix("package.json",j=>{j.version="0.0.0"});fix("package-lock.json",j=>{j.version="0.0.0";if(j.packages&&j.packages[""])j.packages[""].version="0.0.0"})'
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 1: deps
@@ -22,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates python3 build-essential libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json* ./
+COPY --from=manifests /manifests/ ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -40,7 +58,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates python3 build-essential libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json* ./
+COPY --from=manifests /manifests/ ./
 # @next/swc-* is the SWC compiler binary (137 MB). Only `next build` and
 # `next dev` load it; the build stage has its own copy and the running
 # server never touches it.
