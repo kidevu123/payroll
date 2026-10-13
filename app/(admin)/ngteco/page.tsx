@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/domain/status-pill";
 import { listRuns } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 function durationOf(run: { ingestStartedAt: Date | null; ingestCompletedAt: Date | null }): string {
   if (!run.ingestStartedAt) return "—";
@@ -67,7 +68,7 @@ export default async function NgtecoRunsPage() {
                       />
                     </td>
                     <td className="px-3 py-2 text-text-muted">
-                      {p ? `${p.startDate} – ${p.endDate}` : "—"}
+                      {p ? formatPeriodRange(p.startDate, p.endDate) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-text-muted">
                       {durationOf(r)}

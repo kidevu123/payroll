@@ -12,6 +12,7 @@ import {
   adminUpdateTimeOffAction,
 } from "./actions";
 import { useDateRange } from "@/components/domain/use-date-range";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function MissedPunchActions({ requestId }: { requestId: string }) {
   const [mode, setMode] = React.useState<"idle" | "approving" | "rejecting">("idle");
@@ -104,7 +105,7 @@ export function TimeOffActions({
     setError(null);
     const form = new FormData();
     form.set("status", "APPROVED");
-    const r = await resolveTimeOffAction(requestId, employeeId, form);
+    const r = await resolveTimeOffAction(requestId, employeeId, form).catch(actionFailed);
     setPending(false);
     if (r?.error) setError(r.error);
   }

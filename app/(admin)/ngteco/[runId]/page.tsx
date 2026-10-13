@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusPill } from "@/components/domain/status-pill";
 import { getRun, listExceptions } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 export default async function NgtecoRunDetail({
   params,
@@ -37,7 +38,7 @@ export default async function NgtecoRunDetail({
         <StatusPill status={run.state as never} />
       </div>
       <p className="text-sm text-text-muted">
-        Period {period?.startDate} – {period?.endDate}
+        Period {period ? formatPeriodRange(period.startDate, period.endDate) : "—"}
       </p>
 
       {run.lastError && (

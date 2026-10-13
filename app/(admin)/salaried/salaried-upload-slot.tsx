@@ -18,6 +18,7 @@ import {
 } from "@/lib/salaried/upload-format";
 import { ReadStatus } from "./salaried-read-status";
 import { DocRow } from "./salaried-doc-row";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /**
  * Per-employee paystub manager: the document list plus an ADD affordance.
@@ -165,7 +166,7 @@ export function SalariedUploadSlot({
     form.set("amountDollars", netDollars);
     form.set("payPeriodStart", inferred.kind === "OK" ? inferred.startDate : "");
     form.set("payPeriodEnd", inferred.kind === "OK" ? inferred.endDate : "");
-    const r = await uploadSalariedDocAction(employeeId, form);
+    const r = await uploadSalariedDocAction(employeeId, form).catch(actionFailed);
     setPending(false);
     if (r?.error) {
       setError(r.error);

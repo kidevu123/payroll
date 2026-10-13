@@ -4,6 +4,7 @@ import * as React from "react";
 import { Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { recomputeAllPayslipsForEmployeeAction } from "../actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function RecomputePayslipsButton({
   employeeId,
@@ -26,7 +27,7 @@ export function RecomputePayslipsButton({
           setPending(true);
           setError(null);
           setResult(null);
-          const r = await recomputeAllPayslipsForEmployeeAction(employeeId);
+          const r = await recomputeAllPayslipsForEmployeeAction(employeeId).catch(actionFailed);
           setPending(false);
           if ("error" in r) setError(r.error);
           else setResult({ recomputed: r.recomputed, skipped: r.skipped });

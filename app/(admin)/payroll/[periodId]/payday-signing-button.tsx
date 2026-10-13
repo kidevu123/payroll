@@ -9,6 +9,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { PenLine, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createPaydayCodeAction } from "./payroll-docs-actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function PaydaySigningButton({
   periodId,
@@ -32,7 +33,7 @@ export function PaydaySigningButton({
   const mint = async () => {
     setPending(true);
     setError(null);
-    const result = await createPaydayCodeAction(periodId);
+    const result = await createPaydayCodeAction(periodId).catch(actionFailed);
     setPending(false);
     if ("error" in result) {
       setError(result.error);

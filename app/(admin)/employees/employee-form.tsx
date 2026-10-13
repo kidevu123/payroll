@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createEmployeeAction, updateEmployeeAction } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 type EmployeePrefill = {
   displayName?: string;
@@ -57,8 +58,8 @@ export function EmployeeForm(props: Props) {
     setError(null);
     const result =
       props.mode === "create"
-        ? await createEmployeeAction(form)
-        : await updateEmployeeAction(props.employee.id, form);
+        ? await createEmployeeAction(form).catch(actionFailed)
+        : await updateEmployeeAction(props.employee.id, form).catch(actionFailed);
     setPending(false);
     if (result?.error) setError(result.error);
   }

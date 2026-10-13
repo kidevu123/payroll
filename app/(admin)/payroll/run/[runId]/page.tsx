@@ -33,6 +33,7 @@ import { eq } from "drizzle-orm";
 import { AlertTriangle } from "lucide-react";
 import { RunActions } from "./run-actions";
 import { companyDayIso } from "@/lib/time/company-day";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 export default async function RunReviewPage({
   params,
@@ -175,11 +176,13 @@ export default async function RunReviewPage({
           </Link>
         </Button>
         <div className="mt-2 flex items-center gap-3">
-          <h1 className="text-title tracking-tight antialiased text-text tabular-nums">{run.id.slice(0, 8)}…</h1>
+          <h1 className="text-title tracking-tight antialiased text-text tabular-nums">
+            {formatPeriodRange(period.startDate, period.endDate)}
+          </h1>
           <StatusPill status={run.state as never} />
         </div>
         <p className="text-sm text-text-muted">
-          Period: {period.startDate} – {period.endDate} · {employees.length} employees ·{" "}
+          Payroll run · {employees.length} employees ·{" "}
           {unresolvedAlerts} unresolved alert{unresolvedAlerts === 1 ? "" : "s"}
         </p>
       </div>

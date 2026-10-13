@@ -7,6 +7,7 @@ import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { syncNgtecoEmployeeRosterAction } from "@/app/(admin)/employees/actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 type SyncFeedback = {
   tone: "ok" | "error";
@@ -54,7 +55,7 @@ export function EmployeesPageHeader({
             onClick={async () => {
               setPending(true);
               setFeedback(null);
-              const result = await syncNgtecoEmployeeRosterAction();
+              const result = await syncNgtecoEmployeeRosterAction().catch(actionFailed);
               setPending(false);
               if ("error" in result && result.error) {
                 setFeedback({ tone: "error", text: result.error });

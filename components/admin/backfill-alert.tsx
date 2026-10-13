@@ -7,6 +7,7 @@ import {
   backfillPollAction,
   type PollNowResult,
 } from "@/app/(admin)/payroll/actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /* Surfaced on /time only when there's something to act on — i.e.,
  * the page found N open IN-only punches dated BEFORE today. The cron
@@ -30,7 +31,7 @@ export function BackfillAlert({
   async function run() {
     setBusy(true);
     setResult(null);
-    const r = await backfillPollAction(3);
+    const r = await backfillPollAction(3).catch(actionFailed);
     setBusy(false);
     setResult(r);
   }

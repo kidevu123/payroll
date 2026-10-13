@@ -60,6 +60,8 @@ import {
   staleAlertsToResolve,
 } from "@/lib/payroll/sync-missed-punch-alerts";
 import { todayInCompanyTz } from "@/lib/time/format";
+import { formatDateSpan } from "@/lib/payroll/format-period";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -268,7 +270,7 @@ export default async function EmployeeHome() {
       <PageHeader
         density="employee"
         title={t("greeting", { name: firstName })}
-        meta={today}
+        meta={formatIsoDate(today)}
       />
 
       {/* Impossible-to-miss acknowledgement prompt. Renders only when this
@@ -474,8 +476,7 @@ export default async function EmployeeHome() {
                           {typeLabel}
                         </p>
                         <p className="text-[11px] text-text-muted tabular-nums">
-                          {r.startDate}
-                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          {formatDateSpan(r.startDate, r.endDate)}
                         </p>
                       </div>
                       <div className="shrink-0 inline-flex items-center gap-2">

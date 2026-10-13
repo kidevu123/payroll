@@ -23,6 +23,7 @@ import {
 import { MoneyDisplay } from "@/components/domain/money-display";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { DepositForm, WithdrawForm, PettyCashForm, LedgerRowActions } from "./forms";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 export const dynamic = "force-dynamic";
 
@@ -224,7 +225,7 @@ export default async function CashDrawerPage() {
                             href={`/payroll/${period.id}`}
                             className="text-text-muted hover:text-brand-700 hover:underline underline-offset-2"
                           >
-                            {period.startDate} – {period.endDate}
+                            {formatPeriodRange(period.startDate, period.endDate)}
                           </Link>
                         ) : (
                           <span className="text-text-subtle">manual</span>

@@ -6,6 +6,7 @@ import {
   EditApprovedTimeOffAction,
 } from "@/app/(admin)/requests/request-actions";
 import { TYPE_COLORS, TYPE_LABEL } from "@/lib/time/calendar-grid";
+import { formatDateSpan } from "@/lib/payroll/format-period";
 
 export function CalendarEntry({
   entry,
@@ -48,8 +49,7 @@ export function CalendarEntry({
       <div className="absolute left-0 top-full z-20 mt-1 w-64 space-y-2 rounded-card border border-border bg-surface p-2 shadow-pop">
         <div className="text-[11px] font-medium text-text">{entry.emp}</div>
         <div className="text-[10px] text-text-muted tabular-nums">
-          {entry.startDate}
-          {entry.startDate !== entry.endDate ? ` – ${entry.endDate}` : ""}
+          {formatDateSpan(entry.startDate, entry.endDate)}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-1">
           <EditApprovedTimeOffAction

@@ -5,6 +5,7 @@ import * as React from "react";
 import type { PaySchedule } from "@/lib/db/schema";
 import { Button } from "@/components/ui/button";
 import { createEmployeeFromCsvAction, type CsvPreviewEmployee } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /**
  * One row in the CSV preview list. Handles its own "+ Add as new"
@@ -154,7 +155,7 @@ export function PreviewRow({
                 fd.set("displayName", name.trim());
                 fd.set("hourlyRateDollars", rate.trim());
                 if (scheduleId) fd.set("payScheduleId", scheduleId);
-                const r = await createEmployeeFromCsvAction(fd);
+                const r = await createEmployeeFromCsvAction(fd).catch(actionFailed);
                 setPending(false);
                 if ("error" in r) {
                   setError(r.error);

@@ -5,6 +5,7 @@ import { Combine, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mergeDuplicatePunchesAction } from "../actions";
 import type { DuplicatePunchDetail } from "@/lib/punches/duplicate-details";
+import { actionFailed } from "@/lib/client/action-failed";
 
 function shortId(id: string): string {
   return id.length > 8 ? id.slice(0, 8) : id;
@@ -110,7 +111,7 @@ export function DedupPunchesButton({
         onClick={async () => {
           setPending(true);
           setError(null);
-          const r = await mergeDuplicatePunchesAction(periodId);
+          const r = await mergeDuplicatePunchesAction(periodId).catch(actionFailed);
           setPending(false);
           if ("ok" in r) {
             setResult({ voided: r.voided, clusters: r.clusters });

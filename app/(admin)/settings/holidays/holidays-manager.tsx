@@ -10,6 +10,8 @@ import {
   createHolidayAction,
   deleteHolidayAction,
 } from "./actions";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
   const [error, setError] = React.useState<string | null>(null);
@@ -54,7 +56,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
               >
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="tabular-nums text-text">{h.date}</span>
+                  <span className="tabular-nums text-text">{formatIsoDate(h.date)}</span>
                   <span className="text-text-muted">{h.label}</span>
                 </div>
                 <Button
@@ -65,7 +67,7 @@ export function HolidaysManager({ holidays }: { holidays: Holiday[] }) {
                   onClick={async () => {
                     if (!confirm(`Delete "${h.label}" on ${h.date}?`)) return;
                     setPending(true);
-                    const result = await deleteHolidayAction(h.id);
+                    const result = await deleteHolidayAction(h.id).catch(actionFailed);
                     setPending(false);
                     if (result?.error) setError(result.error);
                   }}

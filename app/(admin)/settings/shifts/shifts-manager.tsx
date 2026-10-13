@@ -13,6 +13,7 @@ import {
   reorderShiftsAction,
   updateShiftAction,
 } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
   const [items, setItems] = React.useState(shifts);
@@ -35,7 +36,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
     setItems(reordered);
     setPending(true);
     setError(null);
-    const result = await reorderShiftsAction(reordered.map((s) => s.id));
+    const result = await reorderShiftsAction(reordered.map((s) => s.id)).catch(actionFailed);
     setPending(false);
     if (result?.error) setError(result.error);
   }
@@ -80,7 +81,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move up"
                     onClick={() => move(i, -1)}
                     disabled={i === 0 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30 max-md:flex max-md:h-9 max-md:w-9 max-md:items-center max-md:justify-center"
                   >
                     <ChevronUp className="h-3.5 w-3.5" />
                   </button>
@@ -89,7 +90,7 @@ export function ShiftsManager({ shifts }: { shifts: Shift[] }) {
                     aria-label="Move down"
                     onClick={() => move(i, 1)}
                     disabled={i === items.length - 1 || pending}
-                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30"
+                    className="rounded p-0.5 text-text-muted hover:bg-surface-2/40 disabled:opacity-30 max-md:flex max-md:h-9 max-md:w-9 max-md:items-center max-md:justify-center"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>

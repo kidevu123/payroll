@@ -7,6 +7,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Keypad } from "../keypad";
 import { paydayUnlockAction } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function PaydayCodeForm() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export function PaydayCodeForm() {
     setError(null);
     const form = new FormData();
     form.set("code", code);
-    const result = await paydayUnlockAction(form);
+    const result = await paydayUnlockAction(form).catch(actionFailed);
     if ("error" in result) {
       setError(result.error);
       setCode("");

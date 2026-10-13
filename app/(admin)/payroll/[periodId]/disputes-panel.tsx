@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveDisputeAction } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export type DisputeRow = {
   payslipId: string;
@@ -54,7 +55,7 @@ export function DisputesPanel({ disputes }: { disputes: DisputeRow[] }) {
                 onClick={async () => {
                   setPending(d.payslipId);
                   setError(null);
-                  const r = await resolveDisputeAction(d.payslipId);
+                  const r = await resolveDisputeAction(d.payslipId).catch(actionFailed);
                   setPending(null);
                   if (r?.error) {
                     setError(r.error);

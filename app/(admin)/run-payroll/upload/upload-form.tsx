@@ -24,6 +24,7 @@ import {
 import { normalizeDateForGuess } from "@/lib/punches/normalize-date";
 import { PreviewRow } from "./upload-preview-row";
 import { formatMoney } from "@/lib/utils";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 type SuccessState = { runId: string; summary: ManualImportSummary };
 type PreviewState = {
@@ -259,7 +260,7 @@ export function UploadForm({ schedules }: { schedules: PaySchedule[] }) {
                   <ul className="text-xs text-warning-800 space-y-0.5">
                     {overlaps.slice(0, 5).map((o) => (
                       <li key={o.runId}>
-                        • {o.startDate} – {o.endDate} · <span className="font-mono">{o.source}</span> · {o.state}
+                        • {formatPeriodRange(o.startDate, o.endDate)} · <span className="font-mono">{o.source}</span> · {o.state}
                         {o.totalAmountCents
                           ? ` · ${formatMoney(o.totalAmountCents)}`
                           : ""}

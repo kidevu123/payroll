@@ -17,6 +17,7 @@ import { payPeriods } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import { getSetting } from "@/lib/settings/runtime";
 import { companyDayIso } from "@/lib/time/company-day";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 type SearchParams = Promise<{
   employeeId?: string;
@@ -237,7 +238,7 @@ export default async function PunchesAdmin({
                         href={`/payroll/${period.id}`}
                         className="hover:underline text-text-muted"
                       >
-                        {period.startDate} → {period.endDate}
+                        {formatPeriodRange(period.startDate, period.endDate)}
                       </Link>
                     ) : (
                       "—"

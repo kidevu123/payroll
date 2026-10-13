@@ -22,6 +22,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { getSetting } from "@/lib/settings/runtime";
 import type { Payslip } from "@/lib/db/schema";
 import { ConfirmHoursActions } from "@/app/(employee)/me/home/confirm-hours-actions";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 /**
  * A published payslip is "awaiting acknowledgement" when it has not yet been
@@ -83,8 +84,7 @@ export async function ConfirmHoursHero({
               Confirm your hours
             </p>
             <p className="text-[11px] text-text-muted leading-relaxed">
-              {period.startDate}{" "}
-              <span className="text-text-subtle">–</span> {period.endDate}
+              {formatPeriodRange(period.startDate, period.endDate)}
               {pending.length > 1 ? (
                 <span className="text-text-subtle"> · {pending.length - 1} more to confirm</span>
               ) : null}

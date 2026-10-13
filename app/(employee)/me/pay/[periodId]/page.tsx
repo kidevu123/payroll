@@ -41,6 +41,7 @@ import { PrintPageButton } from "@/components/employee/print-page-button";
 import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
 import { listFixableDays } from "@/lib/missed-punch/fixable-days";
 import { companyDayIso } from "@/lib/time/company-day";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -150,7 +151,7 @@ export default async function EmployeePayslipViewer({
         <Card>
           <CardHeader>
             <CardTitle>
-              {period.startDate} – {period.endDate}
+              {formatPeriodRange(period.startDate, period.endDate)}
             </CardTitle>
             <CardDescription>{t("noPayslip")}</CardDescription>
           </CardHeader>
@@ -360,9 +361,7 @@ async function PayslipBody({
                 {t("payPeriod")}
               </p>
               <p className="text-base font-semibold tracking-tight text-text antialiased">
-                {period.startDate}{" "}
-                <span className="text-text-subtle font-normal">–</span>{" "}
-                {period.endDate}
+                {formatPeriodRange(period.startDate, period.endDate)}
               </p>
             </div>
             {isDisputed ? (

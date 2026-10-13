@@ -6,6 +6,7 @@ import {
 import { isAdminManageableTimeOff } from "@/lib/time-off/change-request";
 import { TYPE_COLORS, TYPE_LABEL, nameFromMap } from "@/lib/time/calendar-grid";
 import type { CalendarView } from "@/lib/db/queries/calendar-view";
+import { formatDateSpan } from "@/lib/payroll/format-period";
 
 export function CalendarAgendaTab({ view }: { view: CalendarView }) {
   const { tab, approved, empMap, todayIso, partialLabel, monthName } = view;
@@ -57,8 +58,7 @@ export function CalendarAgendaTab({ view }: { view: CalendarView }) {
                           </span>
                         </div>
                         <div className="mt-0.5 text-[11px] text-text-muted tabular-nums">
-                          {r.startDate}
-                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          {formatDateSpan(r.startDate, r.endDate)}
                           {partial ? ` · ${partial}` : ""}
                         </div>
                         {r.reason && (

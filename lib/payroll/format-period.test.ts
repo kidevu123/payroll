@@ -30,3 +30,21 @@ describe("formatPeriodRange", () => {
     expect(formatPeriodRange("nonsense", "also-bad")).toBe("nonsense – also-bad");
   });
 });
+
+import { formatDateSpan } from "./format-period";
+
+describe("formatDateSpan", () => {
+  it("prints one date when both ends are the same day", () => {
+    expect(formatDateSpan("2026-10-19", "2026-10-19")).toBe("Oct 19, 2026");
+    expect(formatDateSpan("2026-10-05", "")).toBe("Oct 05, 2026");
+  });
+
+  it("prints a range when the ends differ", () => {
+    expect(formatDateSpan("2026-10-19", "2026-10-21")).toBe("Oct 19 – Oct 21, 2026");
+  });
+
+  it("falls back rather than throwing on bad input", () => {
+    expect(formatDateSpan("", "2026-10-21")).toBe("—");
+    expect(formatDateSpan("soon", "soon")).toBe("soon");
+  });
+});

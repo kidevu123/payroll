@@ -44,3 +44,18 @@ export function shortRange(startIso: string, endIso: string): string {
   };
   return `${fmt(startIso)} – ${fmt(endIso)}`;
 }
+
+/**
+ * One calendar date, or a range when the two ends differ:
+ * "Oct 19, 2026" or "Oct 19 – Oct 21, 2026". For time off and similar spans
+ * that are often a single day.
+ */
+export function formatDateSpan(startIso: string, endIso: string): string {
+  if (!startIso) return "—";
+  if (!endIso || endIso === startIso) {
+    const d = new Date(`${startIso}T12:00:00Z`);
+    if (Number.isNaN(d.getTime())) return startIso;
+    return `${MONTH_SHORT[d.getUTCMonth()]} ${String(d.getUTCDate()).padStart(2, "0")}, ${d.getUTCFullYear()}`;
+  }
+  return formatPeriodRange(startIso, endIso);
+}

@@ -24,6 +24,7 @@ import {
 import { countRecentAnnouncements } from "@/lib/db/queries/announcements";
 import { resolveLocale } from "@/lib/i18n";
 import type { CommandTarget } from "@/components/admin/command-palette";
+import { formatPeriodRange } from "@/lib/payroll/format-period";
 
 const SETTINGS_TARGETS: CommandTarget[] = [
   {
@@ -198,7 +199,7 @@ export default async function AdminLayout({
   }));
   const periodTargets: CommandTarget[] = periods.map((p) => ({
     id: `per-${p.id}`,
-    label: `${p.startDate} → ${p.endDate}`,
+    label: formatPeriodRange(p.startDate, p.endDate),
     hint: p.state,
     href: `/payroll/${p.id}`,
     group: "period",

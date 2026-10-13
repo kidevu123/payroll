@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { setSalariedDocNetAmountAction } from "./actions";
 import { centsToInput, type DocLite } from "@/lib/salaried/upload-format";
 import { formatMoney } from "@/lib/utils";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /**
  * Inline-editable net amount. Click the amount → it becomes an input →
@@ -49,7 +50,7 @@ export function InlineNet({ doc }: { doc: DocLite }) {
   async function save() {
     setPending(true);
     setError(null);
-    const r = await setSalariedDocNetAmountAction(doc.id, value.trim());
+    const r = await setSalariedDocNetAmountAction(doc.id, value.trim()).catch(actionFailed);
     setPending(false);
     if (r?.error) {
       setError(r.error);

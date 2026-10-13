@@ -13,6 +13,7 @@ import {
   uploadFaviconAction,
   uploadLogoAction,
 } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function BrandingForm({ company }: { company: CompanySettings }) {
   const [error, setError] = React.useState<string | null>(null);
@@ -155,7 +156,7 @@ export function BrandingForm({ company }: { company: CompanySettings }) {
               onClick={async () => {
                 setPending("icons");
                 setError(null);
-                const result = await regenerateIconsAction();
+                const result = await regenerateIconsAction().catch(actionFailed);
                 setPending(null);
                 if (result?.error) setError(result.error);
               }}

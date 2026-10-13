@@ -8,6 +8,7 @@ import { listAudit } from "@/lib/db/queries/audit";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AuditRowDiff } from "./row-diff";
+import { getSetting } from "@/lib/settings/runtime";
 
 type SearchParams = Promise<{
   before?: string;
@@ -23,6 +24,18 @@ export default async function AuditPage({
 }: {
   searchParams: SearchParams;
 }) {
+  // Company time, readable: the log used to print UTC timestamps
+  // ("2026-10-13 19:14:05Z"), four or five hours off the wall clock.
+  const auditCompany = await getSetting("company").catch(() => null);
+  const whenFmt = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: auditCompany?.timezone ?? "America/New_York",
+  });
   await requireOwner();
   const params = await searchParams;
   const beforeNum = params.before ? Number.parseInt(params.before, 10) : undefined;
@@ -120,7 +133,7 @@ export default async function AuditPage({
           {rows.map((r) => (
             <AuditRowDiff
               key={r.id}
-              when={r.createdAt.toISOString().replace("T", " ").slice(0, 19) + "Z"}
+              when={whenFmt.format(r.createdAt)}
               action={r.action}
               targetType={r.targetType}
               targetId={r.targetId}

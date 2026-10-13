@@ -5,6 +5,7 @@ import { AlertTriangle, CircleAlert, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { reportPayslipProblemAction } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /**
  * Inline expandable problem-report form. Hidden until the employee taps
@@ -93,7 +94,7 @@ export function ReportProblemButton({
           onClick={async () => {
             setPending(true);
             setError(null);
-            const r = await reportPayslipProblemAction(payslipId, reason);
+            const r = await reportPayslipProblemAction(payslipId, reason).catch(actionFailed);
             setPending(false);
             if (r?.error) {
               setError(r.error);

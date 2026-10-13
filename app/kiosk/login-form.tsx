@@ -6,6 +6,7 @@
 import * as React from "react";
 import { kioskLoginAction } from "./actions";
 import { Keypad } from "./keypad";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function KioskLoginForm() {
   const [step, setStep] = React.useState<"id" | "pin">("id");
@@ -30,7 +31,7 @@ export function KioskLoginForm() {
     const form = new FormData();
     form.set("clockId", clockId);
     form.set("pin", pin);
-    const result = await kioskLoginAction(form);
+    const result = await kioskLoginAction(form).catch(actionFailed);
     setPending(false);
     if (result?.error) {
       setError(result.error);

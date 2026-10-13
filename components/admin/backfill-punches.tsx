@@ -8,6 +8,7 @@ import {
   type PollNowResult,
 } from "@/app/(admin)/payroll/actions";
 import { usePollStatus } from "@/components/admin/poll-status-provider";
+import { actionFailed } from "@/lib/client/action-failed";
 
 const PRESETS: Array<{ daysBack: number; label: string }> = [
   { daysBack: 1, label: "Yesterday + today" },
@@ -40,7 +41,7 @@ export function BackfillPunchesButton(): React.JSX.Element {
     setBusy(true);
     setResult(null);
     setOpen(false);
-    const r = await backfillPollAction(daysBack);
+    const r = await backfillPollAction(daysBack).catch(actionFailed);
     setBusy(false);
     setResult(r);
     if ("ok" in r) {

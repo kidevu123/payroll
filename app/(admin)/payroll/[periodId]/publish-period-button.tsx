@@ -4,6 +4,7 @@ import * as React from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { publishLockedPeriodAction } from "../actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function PublishPeriodButton({
   periodId,
@@ -37,7 +38,7 @@ export function PublishPeriodButton({
         onClick={async () => {
           setPending(true);
           setError(null);
-          const result = await publishLockedPeriodAction(periodId);
+          const result = await publishLockedPeriodAction(periodId).catch(actionFailed);
           setPending(false);
           if (result?.error) setError(result.error);
         }}

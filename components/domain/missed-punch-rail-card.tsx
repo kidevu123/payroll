@@ -9,6 +9,7 @@ import { listPendingMissedPunchRequestsForReview } from "@/lib/db/queries/reques
 import { listEmployees } from "@/lib/db/queries/employees";
 import { MissedPunchReviewSummary } from "@/components/domain/missed-punch-review-summary";
 import { MissedPunchActions } from "@/app/(admin)/requests/request-actions";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
 
 export async function MissedPunchRailCard({ timezone }: { timezone: string }) {
   const [pending, employees] = await Promise.all([
@@ -35,7 +36,7 @@ export async function MissedPunchRailCard({ timezone }: { timezone: string }) {
               {nameById.get(r.employeeId) ?? r.employeeId}
             </span>
             <span className="text-[11px] text-text-muted tabular-nums shrink-0">
-              {r.date}
+              {formatIsoDate(r.date)}
             </span>
           </div>
           <MissedPunchReviewSummary ctx={review} timezone={timezone} />

@@ -18,6 +18,7 @@ import {
   voidEntryAction,
   updateEntryAction,
 } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function DepositForm() {
   const [pending, setPending] = React.useState(false);
@@ -42,7 +43,7 @@ export function DepositForm() {
       }}
       className="space-y-3"
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 items-end gap-3">
         <div className="space-y-1">
           <Label htmlFor="dep-amount">Amount ($)</Label>
           <Input
@@ -162,7 +163,7 @@ export function PettyCashForm() {
       }}
       className="space-y-3"
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 items-end gap-3">
         <div className="space-y-1">
           <Label htmlFor="pc-amount">Amount ($)</Label>
           <Input
@@ -264,7 +265,7 @@ export function LedgerRowActions({
     fd.set("amountDollars", amount);
     fd.set("notes", noteVal);
     if (kind === "DEPOSIT") fd.set("invoiceNumber", invVal);
-    const r = await updateEntryAction(fd);
+    const r = await updateEntryAction(fd).catch(actionFailed);
     setPending(false);
     if (r && "error" in r && r.error) setError(r.error);
     else setMode("idle");
@@ -273,7 +274,7 @@ export function LedgerRowActions({
   async function del() {
     setPending(true);
     setError(null);
-    const r = await voidEntryAction(entryId);
+    const r = await voidEntryAction(entryId).catch(actionFailed);
     setPending(false);
     if (r && "error" in r && r.error) {
       setError(r.error);

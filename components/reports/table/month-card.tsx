@@ -55,7 +55,7 @@ export function MonthCard({
             onClick={onToggle}
             aria-expanded={!collapsed}
             aria-label={collapsed ? `Expand ${month.label}` : `Collapse ${month.label}`}
-            className="-ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
+            className="-ml-1 flex h-6 w-6 shrink-0 items-center max-md:h-11 max-md:w-11 justify-center rounded-chip text-text-muted hover:bg-surface-2 hover:text-text"
           >
             <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} aria-hidden />
           </button>

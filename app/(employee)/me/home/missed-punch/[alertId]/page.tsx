@@ -23,6 +23,7 @@ import { ExceptionBadge } from "@/components/domain/exception-badge";
 import type { MissedPunchIssue } from "@/lib/missed-punch/claim";
 import { MissedPunchForm } from "./form";
 import { formatWallClock, toDatetimeLocalValue } from "@/lib/time/format";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
 
 export default async function MissedPunchFixPage({
   params,
@@ -80,7 +81,7 @@ export default async function MissedPunchFixPage({
       <Card>
         <CardHeader>
           <CardTitle className="flex min-w-0 flex-wrap items-center gap-2">
-            {alert.date} <ExceptionBadge issue={alert.issue} />
+            {formatIsoDate(alert.date)} <ExceptionBadge issue={alert.issue} />
           </CardTitle>
         </CardHeader>
         <CardContent>

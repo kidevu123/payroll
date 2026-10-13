@@ -11,6 +11,8 @@ import {
   unlockPeriodAction,
   unmarkPaidAction,
 } from "../actions";
+import { formatIsoDate } from "@/lib/employees/profile-summary";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function LockButtons({
   period,
@@ -63,7 +65,7 @@ export function LockButtons({
             className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warning-200 bg-surface p-2.5 shadow-pop space-y-2"
           >
             <p className="text-[11px] text-text-muted leading-snug">
-              Unmark paid for {period.startDate}? If the period was paid from
+              Unmark paid for the period starting {formatIsoDate(period.startDate)}? If the period was paid from
               the cash drawer, the withdrawal is reversed automatically.
             </p>
             <Input
@@ -149,7 +151,7 @@ export function LockButtons({
               }
               fd.set("cashAmountCents", cents.toString());
             }
-            const result = await markPaidAction(period.id, fd);
+            const result = await markPaidAction(period.id, fd).catch(actionFailed);
             setPending(false);
             if (result?.error) setError(result.error);
           }}
@@ -217,7 +219,7 @@ export function LockButtons({
           className="absolute right-0 top-full z-30 mt-2 w-72 rounded-card border border-warning-200 bg-surface p-2.5 shadow-pop space-y-2"
         >
           <p className="text-[11px] text-text-muted leading-snug">
-            Unlock {period.startDate}? Reason will be audited.
+            Unlock the period starting {formatIsoDate(period.startDate)}? Reason will be audited.
           </p>
           <Input
             name="reason"

@@ -12,6 +12,7 @@ import { Activity, AlertTriangle, CheckCircle2, Square, XCircle } from "lucide-r
 import { pollNowAction, type PollNowResult } from "@/app/(admin)/payroll/actions";
 import { usePollLastLabel, usePollStatus } from "@/components/admin/poll-status-provider";
 import { cn } from "@/lib/utils";
+import { actionFailed } from "@/lib/client/action-failed";
 
 type LastPoll = {
   startedAt: string | null;
@@ -107,7 +108,7 @@ export function PollPunchesNowButton({ initialLast }: { initialLast: LastPoll | 
     setResult(null);
     setClickedAt(Date.now());
     setIdAtClick(status?.id ?? null);
-    const r = await pollNowAction();
+    const r = await pollNowAction().catch(actionFailed);
     setBusy(false);
     setResult(r);
     if ("ok" in r) {

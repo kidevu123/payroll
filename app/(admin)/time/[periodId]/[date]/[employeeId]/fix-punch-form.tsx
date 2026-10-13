@@ -22,6 +22,7 @@ import {
   toLocalInputValue,
 } from "@/lib/punches/editor-format";
 import { editPunchAction } from "../../../actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /** Focused fix for open shift, missing clock-in, or ambiguous single punch. */
 export function FixPunchForm({
@@ -87,7 +88,7 @@ export function FixPunchForm({
             return;
           }
         }
-        const result = await editPunchAction(punch.id, form);
+        const result = await editPunchAction(punch.id, form).catch(actionFailed);
         setPending(false);
         if (result?.error) setError(result.error);
       }}

@@ -7,6 +7,7 @@ import {
   rebuildFromBakedSeedAction,
   rebuildFromPdfJsonAction,
 } from "./actions";
+import { actionFailed } from "@/lib/client/action-failed";
 
 /**
  * Owner-only paste-and-rebuild surface. The user pastes the JSON dump
@@ -33,7 +34,7 @@ export function PdfRebuildButton() {
     if (!ok) return;
     setPending(true);
     setResult(null);
-    const r = await rebuildFromPdfJsonAction({ json });
+    const r = await rebuildFromPdfJsonAction({ json }).catch(actionFailed);
     setPending(false);
     setResult(r);
   }
@@ -48,7 +49,7 @@ export function PdfRebuildButton() {
     if (!ok) return;
     setPending(true);
     setResult(null);
-    const r = await rebuildFromBakedSeedAction();
+    const r = await rebuildFromBakedSeedAction().catch(actionFailed);
     setPending(false);
     setResult(r);
   }

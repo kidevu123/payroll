@@ -12,6 +12,7 @@ import { Plane } from "lucide-react";
 import { TYPE_LABEL } from "@/lib/time/calendar-grid";
 import { OverviewStat } from "@/components/calendar/parts";
 import type { CalendarView } from "@/lib/db/queries/calendar-view";
+import { formatDateSpan } from "@/lib/payroll/format-period";
 
 
 export function CalendarRail({ view }: { view: CalendarView }) {
@@ -80,8 +81,7 @@ export function CalendarRail({ view }: { view: CalendarView }) {
                           {emp?.displayName ?? r.employeeId}
                         </span>
                         <span className="text-[11px] text-text-muted tabular-nums shrink-0">
-                          {r.startDate}
-                          {r.startDate !== r.endDate ? ` – ${r.endDate}` : ""}
+                          {formatDateSpan(r.startDate, r.endDate)}
                         </span>
                       </div>
                       <div className="text-[11px] text-text-muted">

@@ -52,6 +52,7 @@ import {
   type MethodFilter,
   type SortKey,
 } from "@/lib/reports/table-model";
+import { actionFailed } from "@/lib/client/action-failed";
 
 export function ReportsTable({
   reports,
@@ -97,7 +98,7 @@ export function ReportsTable({
     }
     setBusyId(`${reportId}:push:${orgId}`);
     setError(null);
-    const result = await pushReportToZohoAction(reportId, orgId);
+    const result = await pushReportToZohoAction(reportId, orgId).catch(actionFailed);
     setBusyId(null);
     if (result?.error) setError(result.error);
   }
@@ -118,7 +119,7 @@ export function ReportsTable({
     if (!ok) return;
     setBusyId(`${reportId}:push:${orgId}`);
     setError(null);
-    const result = await repushReportToZohoAction(reportId, orgId);
+    const result = await repushReportToZohoAction(reportId, orgId).catch(actionFailed);
     setBusyId(null);
     if ("error" in result && result.error) {
       const isDeleteFailure = result.error.includes("Could not delete prior");
@@ -131,7 +132,7 @@ export function ReportsTable({
           setError(null);
           const forced = await repushReportToZohoAction(reportId, orgId, {
             force: true,
-          });
+          }).catch(actionFailed);
           setBusyId(null);
           if ("error" in forced && forced.error) setError(forced.error);
         } else {
@@ -161,7 +162,7 @@ export function ReportsTable({
   async function onPublish(id: string) {
     setBusyId(`${id}:publish`);
     setError(null);
-    const result = await publishReportAction(id);
+    const result = await publishReportAction(id).catch(actionFailed);
     setBusyId(null);
     if (result?.error) setError(result.error);
   }

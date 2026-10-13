@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { recomputeAllPayslipsOnPeriodAction } from "../actions";
 import { formatMoney } from "@/lib/utils";
+import { actionFailed } from "@/lib/client/action-failed";
 
 type DriftEntry = {
   employeeName: string;
@@ -41,7 +42,7 @@ export function RecomputeBanner({
     if (!ok) return;
     setPending(true);
     setError(null);
-    const r = await recomputeAllPayslipsOnPeriodAction(periodId);
+    const r = await recomputeAllPayslipsOnPeriodAction(periodId).catch(actionFailed);
     setPending(false);
     if ("error" in r) {
       setError(r.error);

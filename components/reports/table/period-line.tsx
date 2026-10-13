@@ -25,6 +25,7 @@ import { periodNet, periodGross, type GroupedReport } from "@/lib/reports/table-
 import { PayFromDrawerPanel } from "@/components/reports/table/pay-from-drawer-panel";
 import { PaystubPeriodLine } from "@/components/reports/table/paystub-period-line";
 import { RunSubLines } from "@/components/reports/table/run-sub-lines";
+import { actionFailed } from "@/lib/client/action-failed";
 export function PeriodLine({
   group,
   busyId,
@@ -78,7 +79,7 @@ export function PeriodLine({
     const fd = new FormData();
     fd.set("paymentMethod", "CASH");
     fd.set("cashAmountCents", cents.toString());
-    const r = await markPaidAction(group.periodId, fd);
+    const r = await markPaidAction(group.periodId, fd).catch(actionFailed);
     setPaying(false);
     if (r?.error) setError(r.error);
     else setPayOpen(false);
