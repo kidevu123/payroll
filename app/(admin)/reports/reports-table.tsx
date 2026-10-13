@@ -71,6 +71,10 @@ export function ReportsTable({
 }) {
   const [error, setError] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const errorRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [error]);
   const [confirmDelete, setConfirmDelete] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [status, setStatus] = React.useState<StatusFilter>("all");
@@ -142,10 +146,16 @@ export function ReportsTable({
   async function onDelete(id: string) {
     setBusyId(`${id}:delete`);
     setError(null);
-    const result = await deleteReportAction(id);
-    setBusyId(null);
-    setConfirmDelete(null);
-    if (result?.error) setError(result.error);
+    try {
+      const result = await deleteReportAction(id);
+      if (result?.error) setError(result.error);
+    } catch {
+      // Network drop or a server crash: still release the row.
+      setError("Could not delete this report. Check your connection and try again.");
+    } finally {
+      setBusyId(null);
+      setConfirmDelete(null);
+    }
   }
 
   async function onPublish(id: string) {
@@ -214,8 +224,14 @@ export function ReportsTable({
         }}
       />
 
+      {/* The message sits at the top of the table while the row that raised
+          it can be far below, so it is brought into view and announced. */}
       {error && (
-        <div className="border-b border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm text-danger-700">
+        <div
+          ref={errorRef}
+          role="alert"
+          className="scroll-mt-4 border-b border-danger-200/80 bg-danger-50 px-4 py-2.5 text-sm font-medium text-danger-700"
+        >
           {error}
         </div>
       )}

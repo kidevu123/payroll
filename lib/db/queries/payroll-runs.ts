@@ -24,6 +24,10 @@ import {
   payrollRunStateEnum,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/db/audit";
+import {
+  publishedRunDeleteBlocker,
+  RunDeleteRefusedError,
+} from "@/lib/payroll-runs/delete-guard";
 import { sumByPeriod as sumTempByPeriod } from "@/lib/db/queries/temp-workers";
 
 /** Sum amountCents on non-deleted PAYSTUB documents per period. */
@@ -528,17 +532,35 @@ export async function deleteRun(
   return db.transaction(async (tx) => {
     const [before] = await tx.select().from(payrollRuns).where(eq(payrollRuns.id, id));
     if (!before) throw new Error(`deleteRun: ${id} not found`);
-    // Per CLAUDE.md soft-delete spec, refuse to hard-delete a PUBLISHED
-    // run — payslip history is owed to employees and accountants. Move
-    // through CANCELLED first (or use voidPayslip on individual rows).
+    // A PUBLISHED run is kept when it carries pay history (payslips with
+    // hours or pay, anything an employee confirmed, a Zoho push). An EMPTY
+    // published run has nothing to preserve and may go: the scheduler
+    // publishes a run for every period, including one nobody worked, and
+    // those $0.00 reports could never be removed from /reports.
     if (before.state === "PUBLISHED") {
-      throw new Error(
-        "Cannot delete a PUBLISHED run. Cancel it first via the run detail page, or void specific payslips, then retry.",
-      );
+      const runPayslips = await tx
+        .select({
+          hoursWorked: payslips.hoursWorked,
+          roundedPayCents: payslips.roundedPayCents,
+          voidedAt: payslips.voidedAt,
+          acknowledgedAt: payslips.acknowledgedAt,
+          signedAt: payslips.signedAt,
+        })
+        .from(payslips)
+        .where(eq(payslips.payrollRunId, id));
+      const pushes = await tx
+        .select({ id: zohoPushes.id })
+        .from(zohoPushes)
+        .where(eq(zohoPushes.payrollRunId, id));
+      const blocker = publishedRunDeleteBlocker({
+        payslips: runPayslips,
+        zohoPushCount: pushes.length,
+      });
+      if (blocker) throw new RunDeleteRefusedError(blocker);
     }
-    // For non-PUBLISHED runs (failed ingest, abandoned drafts, cancelled
-    // runs) the payslips are never-published draft scaffolding — no
-    // acknowledged history to preserve (PUBLISHED is blocked above). They must
+    // What is left on the run now is scaffolding with no history to
+    // preserve (draft payslips on an unpublished run, or zero-value rows on
+    // an empty published one; anything real was refused above). They must
     // be HARD-deleted before the run: the payslips.payrollRunId FK is ON DELETE
     // RESTRICT, so merely voiding them (a column update, not a row removal)
     // left the children referencing the run and made `delete(payrollRuns)`

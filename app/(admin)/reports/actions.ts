@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth-guards";
+import { logger } from "@/lib/telemetry";
+import { RunDeleteRefusedError } from "@/lib/payroll-runs/delete-guard";
 import {
   deleteRun,
   getRun,
@@ -20,8 +22,18 @@ export async function deleteReportAction(
 ): Promise<{ error?: string } | void> {
   const session = await requireAdmin();
   if (!idSchema.safeParse(id).success) return { error: "Invalid id." };
-  await deleteRun(id, { id: session.user.id, role: session.user.role });
+  // Every outcome comes back as a value. A thrown error here rejected the
+  // call in the browser, the row's Confirm button never left its busy state
+  // ("…"), and nothing told the owner the delete had been refused.
+  try {
+    await deleteRun(id, { id: session.user.id, role: session.user.role });
+  } catch (err) {
+    if (err instanceof RunDeleteRefusedError) return { error: err.message };
+    logger.error({ err, runId: id }, "reports.delete: failed");
+    return { error: "Could not delete this report. Try again." };
+  }
   revalidatePath("/reports");
+  revalidatePath("/payroll");
 }
 
 /**
