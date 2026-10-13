@@ -31,13 +31,16 @@ import {
   type MissedPunchReviewContext,
 } from "@/lib/missed-punch/review-context";
 import {
+  CORRECTION_ON_PAID_DAY,
   dayHasClosedPunch,
+  dayHasWorkedShift,
   DUPLICATE_SHIFT_ON_DAY,
+  soleClosedPunchOnDay,
   findOpenPunchOnDay,
   punchesForCalendarDay,
 } from "@/lib/punches/approve-missed-punch-guards";
 import { listPunches } from "@/lib/db/queries/punches";
-import { localMidnightUtc } from "@/lib/utils";
+import { addDaysIso, localMidnightUtc } from "@/lib/utils";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 export type Actor = {
@@ -363,6 +366,35 @@ export async function approveMissedPunchRequest(
     );
 
     let punch;
+    // Everything the employee has on the claimed CALENDAR DAY, whichever pay
+    // period each punch is filed under. `dayPunches` above is scoped to one
+    // period and cannot answer "does this day already have hours": a back-pay
+    // punch keeps the day's true timestamps but lives in a later period.
+    const claimedDayPunches = await tx
+      .select()
+      .from(punches)
+      .where(
+        and(
+          eq(punches.employeeId, before.employeeId),
+          isNull(punches.voidedAt),
+          gte(punches.clockIn, localMidnightUtc(claimedDay, company.timezone)),
+          sql`${punches.clockIn} < ${localMidnightUtc(addDaysIso(claimedDay, 1), company.timezone).toISOString()}::timestamptz`,
+        ),
+      );
+    // A day in a PAID week that already has worked hours on file, in any
+    // period, was (or will be) paid for them. The back-pay branch below pays
+    // the claimed span IN FULL into the current week, which would pay that
+    // day twice, so a correction to such a day is refused and left to the
+    // office to settle by hand. This covers the day that was itself settled
+    // as back pay earlier: its punch sits in a later period, not this one.
+    if (
+      targetPeriodPaid &&
+      before.claimedClockIn &&
+      before.claimedClockOut &&
+      dayHasWorkedShift(claimedDayPunches)
+    ) {
+      throw new Error(CORRECTION_ON_PAID_DAY);
+    }
     if (targetPeriodPaid) {
       // Back pay: build the full worked span from claimed + on-file times
       // (a single-sided claim completes against the paid week's on-file
@@ -534,8 +566,39 @@ export async function approveMissedPunchRequest(
             isNull(punches.voidedAt),
           ),
         );
-      const forDay = punchesForCalendarDay(dayPunches, claimedDay, dayFmt.format);
-      if (dayHasClosedPunch(forDay)) {
+      // The employee says the hours on file for this day are wrong. When the
+      // day holds exactly one completed shift, approving the request corrects
+      // that shift: same edit trail as an office edit (first edit keeps the
+      // original clock times). This used to be refused outright, which sent
+      // every "my hours are wrong" case back to the office to fix by hand.
+      // Judged on the whole calendar day (all periods), so a punch filed
+      // under a neighbouring period is not missed and duplicated.
+      const forDay = claimedDayPunches;
+      const sole = soleClosedPunchOnDay(forDay);
+      // Only a punch in the period being resolved is corrected in place; one
+      // that lives in another period falls through to the refusal below.
+      const existing = sole && sole.periodId === periodId ? sole : null;
+      if (existing) {
+        const [updated] = await tx
+          .update(punches)
+          .set({
+            clockIn: before.claimedClockIn,
+            clockOut: before.claimedClockOut,
+            originalClockIn: existing.originalClockIn ?? existing.clockIn,
+            originalClockOut: existing.originalClockOut ?? existing.clockOut,
+            editedById: actor.id,
+            editedAt: new Date(),
+            editReason: `Approved hours correction request ${before.id}`,
+            notes: existing.notes
+              ? `${existing.notes}\nApproved hours correction request ${before.id}`
+              : `Approved hours correction request ${before.id}`,
+          })
+          .where(eq(punches.id, existing.id))
+          .returning();
+        punch = updated;
+      } else if (dayHasClosedPunch(forDay)) {
+        // Several punches on the day: one corrected in/out cannot say which
+        // of them it replaces.
         throw new Error(DUPLICATE_SHIFT_ON_DAY);
       }
     }

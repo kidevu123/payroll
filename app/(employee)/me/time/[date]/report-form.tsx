@@ -17,12 +17,30 @@ import { timeOf } from "@/lib/time/format";
 export function ReportFixForm({
   date,
   mode,
+  isToday,
+  initiallyOpen = false,
+  returnTo = null,
 }: {
   date: string;
   mode: EmployeeReportFixMode;
+  /** Today's shift may still be running, so its clock-out stays optional. */
+  isToday: boolean;
+  /** Open straight into the form (arriving from "Fix hours" / "Add hours"). */
+  initiallyOpen?: boolean;
+  /** Validated server-side; where to land after sending. */
+  returnTo?: string | null;
 }) {
   const t = useTranslations("employee.day");
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = React.useState(initiallyOpen);
+  // Whole-day entry: nothing on file to complete, or one shift to correct.
+  const onFileShift =
+    mode.kind === "NO_PUNCH_OR_CORRECTION" ? mode.onFileShift : undefined;
+  const closedLabel =
+    mode.kind !== "NO_PUNCH_OR_CORRECTION"
+      ? t("reportFix")
+      : onFileShift
+        ? t("fixHours")
+        : t("addHours");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [unpairedMissingSide, setUnpairedMissingSide] = React.useState<
@@ -34,7 +52,7 @@ export function ReportFixForm({
       // Primary, full width: this is the one action on the day screen, and as
       // a grey outline it read as part of the background.
       <Button size="lg" className="w-full" onClick={() => setOpen(true)}>
-        <Flag className="h-4 w-4" /> {t("reportFix")}
+        <Flag className="h-4 w-4" /> {closedLabel}
       </Button>
     );
   }
@@ -51,13 +69,19 @@ export function ReportFixForm({
       className="space-y-4 rounded-card border border-border bg-surface-2 p-4 shadow-card"
     >
       <input type="hidden" name="date" value={date} />
+      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       {mode.kind !== "NO_PUNCH_OR_CORRECTION" ? (
         <input type="hidden" name="issue" value={mode.kind} />
       ) : null}
       <p className="text-sm text-text-muted">
-        {mode.kind === "NO_PUNCH_OR_CORRECTION"
-          ? t("reportInstructions", { date })
-          : t("missingPunchInstructions", { date })}
+        {mode.kind !== "NO_PUNCH_OR_CORRECTION"
+          ? t("missingPunchInstructions", { date })
+          : onFileShift
+            ? t("correctionInstructions", {
+                clockIn: onFileShift.clockIn,
+                clockOut: onFileShift.clockOut,
+              })
+            : t("noHoursInstructions")}
       </p>
       {mode.kind === "MISSING_OUT" ? (
         <>
@@ -158,15 +182,18 @@ export function ReportFixForm({
             id="claimedClockIn"
             name="claimedClockIn"
             type="time"
+            required
             defaultValue={timeOf(mode.defaultClockIn)}
-            label={t("correctClockIn")}
+            label={t("clockIn")}
           />
+          {/* A finished day needs both ends; the server enforces it too. */}
           <Field
             id="claimedClockOut"
             name="claimedClockOut"
             type="time"
+            required={!isToday}
             defaultValue={timeOf(mode.defaultClockOut)}
-            label={t("correctClockOutOptional")}
+            label={isToday ? t("clockOutOptionalToday") : t("clockOut")}
           />
         </div>
       )}
@@ -197,7 +224,7 @@ export function ReportFixForm({
           className="w-full sm:w-auto"
           disabled={pending}
         >
-          {pending ? t("submitting") : t("sendToAdmin")}
+          {pending ? t("submitting") : t("sendForApproval")}
         </Button>
       </div>
     </form>

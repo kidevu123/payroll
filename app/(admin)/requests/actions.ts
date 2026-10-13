@@ -71,7 +71,13 @@ export async function approveMissedPunchAction(
     if (msg.includes("day already has completed punches on file")) {
       return {
         error:
-          "This day already has punch data on file (often from NGTeco). Void or edit the existing punches on the Time page instead of approving a duplicate shift.",
+          "This day has more than one punch on file, so Milo cannot tell which one the corrected times replace. Fix the punches on the Time page, then reject this request.",
+      };
+    }
+    if (msg.includes("day is already paid with hours on file")) {
+      return {
+        error:
+          "This week is already paid and the day has hours on file, so approving would pay the day twice. Add only the difference as a back-pay punch from the day editor, then reject this request.",
       };
     }
     return {

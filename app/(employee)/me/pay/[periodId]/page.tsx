@@ -7,7 +7,15 @@
 import Link from "next/link";
 import { PdfLink } from "@/components/domain/pdf-link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileDown, AlertTriangle, CircleCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  FileDown,
+  AlertTriangle,
+  CircleCheck,
+  Hourglass,
+  PencilLine,
+  Plus,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -30,6 +38,9 @@ import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
 import { PayslipPdfActions } from "@/components/domain/payslip-pdf-actions";
 import { PrintPageButton } from "@/components/employee/print-page-button";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
+import { listFixableDays } from "@/lib/missed-punch/fixable-days";
+import { companyDayIso } from "@/lib/time/company-day";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 
@@ -45,8 +56,10 @@ function fmtDayLabel(iso: string, tz: string, locale: string): string {
 
 export default async function EmployeePayslipViewer({
   params,
+  searchParams,
 }: {
   params: Promise<{ periodId: string }>;
+  searchParams: Promise<{ fixSent?: string }>;
 }) {
   const session = await requireSession();
   const t = await getTranslations("employee.pay");
@@ -156,6 +169,7 @@ export default async function EmployeePayslipViewer({
           rateCents={employee?.hourlyRateCents ?? null}
           payType={employee?.payType ?? "HOURLY"}
           dateLocale={dateLocale}
+          fixSent={(await searchParams).fixSent === "1"}
         />
       )}
     </main>
@@ -170,7 +184,9 @@ async function PayslipBody({
   rateCents,
   payType,
   dateLocale,
+  fixSent,
 }: {
+  fixSent: boolean;
   payslip: NonNullable<Awaited<ReturnType<typeof getPublishedPayslipForEmployeePeriod>>>;
   period: NonNullable<Awaited<ReturnType<typeof getPeriodById>>>;
   payRules: Awaited<ReturnType<typeof getSetting<"payRules">>>;
@@ -200,6 +216,72 @@ async function PayslipBody({
     byDay.set(day, list);
   }
   const days = Array.from(byDay.keys()).sort();
+
+  // Fixing hours from here (hourly staff only: salaried pay is not built from
+  // punches). Every day of the period that has started is offered, including
+  // the ones with nothing on file: a forgotten day has no punch to tap, and
+  // that was the dead end ("she worked Monday and Tuesday and forgot to
+  // clock in, and the only option was Report a problem").
+  const canFixHours = payType === "HOURLY";
+  const pendingDays = new Set(
+    canFixHours
+      ? await listPendingMissedPunchDatesForEmployee(payslip.employeeId)
+      : [],
+  );
+  const fixableDays = canFixHours
+    ? listFixableDays({
+        startDate: period.startDate,
+        endDate: period.endDate,
+        today: companyDayIso(new Date(), tz),
+        punchDays: new Set(days),
+        pendingDays,
+      })
+    : [];
+  // Weekly and semi-monthly periods list their empty days in place, so a
+  // missing day is visible where it belongs. A monthly period would add a
+  // screenful of empty rows, so its empty days go in a compact list below.
+  const INLINE_EMPTY_DAYS_MAX = 16;
+  const emptyDays = fixableDays.filter((d) => !d.hasPunches).map((d) => d.date);
+  const inlineEmptyDays = fixableDays.length <= INLINE_EMPTY_DAYS_MAX;
+  const displayDays = inlineEmptyDays
+    ? Array.from(new Set([...days, ...emptyDays])).sort()
+    : days;
+  // A paid week's existing hours cannot be corrected by request (approving
+  // would pay the day twice); a day with nothing on file still can, as back pay.
+  const canCorrectExisting = canFixHours && period.state !== "PAID";
+  const fixHref = (d: string) =>
+    `/me/time/${d}?fix=1&from=${encodeURIComponent(`/me/pay/${payslip.periodId}`)}`;
+  // The action shown beside one day: a pending chip, a button, or nothing.
+  function dayFixAction(day: string) {
+    const hasPunches = byDay.has(day);
+    if (pendingDays.has(day)) {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-chip border border-warning-500/40 bg-warning-500/10 px-2 py-1 text-[11px] font-medium text-warning-800">
+          <Hourglass className="h-3 w-3" aria-hidden />
+          {t("pendingApproval")}
+        </span>
+      );
+    }
+    if (hasPunches && !canCorrectExisting) return null;
+    if (!canFixHours) return null;
+    return (
+      <Button
+        asChild
+        size="sm"
+        variant={hasPunches ? "ghost" : "secondary"}
+        className="no-print h-9 shrink-0"
+      >
+        <Link href={fixHref(day)}>
+          {hasPunches ? (
+            <PencilLine className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {hasPunches ? t("fixHours") : t("addHours")}
+        </Link>
+      </Button>
+    );
+  }
 
   // Deduped + chronologically sorted punches for a single day. Shared by the
   // mobile stacked-card view and the sm+ table so both render identically.
@@ -402,7 +484,21 @@ async function PayslipBody({
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 py-2">
-          {days.length === 0 ? (
+          {fixSent ? (
+            <p
+              role="status"
+              className="no-print mb-3 flex items-start gap-2 rounded-input border border-success-200/80 bg-success-50 px-3 py-2.5 text-sm font-medium text-success-700"
+            >
+              <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              {t("fixSent")}
+            </p>
+          ) : null}
+          {canFixHours ? (
+            <p className="no-print mb-3 px-1 text-xs leading-relaxed text-text-muted">
+              {t("hoursWrongHint")}
+            </p>
+          ) : null}
+          {displayDays.length === 0 ? (
             <p className="px-4 py-4 text-sm text-text-muted leading-relaxed">
               {t("noClockInRecords")}
             </p>
@@ -411,16 +507,37 @@ async function PayslipBody({
               {/* Mobile: stacked per-day cards — no horizontal scroll, no
                   tiny table cells. The sm+ table view is hidden here. */}
               <ul className="space-y-2.5 sm:hidden">
-                {days.map((d) => {
+                {displayDays.map((d) => {
+                  if (!byDay.has(d)) {
+                    return (
+                      <li
+                        key={d}
+                        className="flex items-center justify-between gap-3 rounded-input border border-dashed border-border-strong/70 px-3 py-2.5"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium tracking-tight text-text-muted antialiased">
+                            {fmtDayLabel(d, tz, dateLocale)}
+                          </span>
+                          <span className="block text-xs text-text-subtle">
+                            {t("noHoursRecorded")}
+                          </span>
+                        </span>
+                        {dayFixAction(d)}
+                      </li>
+                    );
+                  }
                   const list = sortedDayPunches(d);
                   return (
                     <li
                       key={d}
                       className="rounded-input border border-border/70 bg-surface px-3 py-3"
                     >
-                      <p className="text-sm font-medium tracking-tight text-text antialiased">
-                        {fmtDayLabel(d, tz, dateLocale)}
-                      </p>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium tracking-tight text-text antialiased">
+                          {fmtDayLabel(d, tz, dateLocale)}
+                        </p>
+                        {dayFixAction(d)}
+                      </div>
                       <ul className="mt-2 space-y-2">
                         {list.map((p) => {
                           const r = punchRow(p);
@@ -487,10 +604,29 @@ async function PayslipBody({
                           {t("estPay")}
                         </th>
                       )}
+                      {canFixHours && <th className="no-print px-3 py-3" />}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {days.flatMap((d) => {
+                    {displayDays.flatMap((d) => {
+                      if (!byDay.has(d)) {
+                        return [
+                          <tr key={d}>
+                            <td className="px-3 py-3 text-xs font-medium text-text-muted">
+                              {fmtDayLabel(d, tz, dateLocale)}
+                            </td>
+                            <td
+                              colSpan={payType === "HOURLY" ? 4 : 3}
+                              className="px-3 py-3 text-xs text-text-subtle"
+                            >
+                              {t("noHoursRecorded")}
+                            </td>
+                            <td className="no-print px-3 py-2 text-right">
+                              {dayFixAction(d)}
+                            </td>
+                          </tr>,
+                        ];
+                      }
                       const list = sortedDayPunches(d);
                       return list.map((p, i) => {
                         const r = punchRow(p);
@@ -523,6 +659,11 @@ async function PayslipBody({
                                 )}
                               </td>
                             )}
+                            {canFixHours && (
+                              <td className="no-print px-3 py-2 text-right">
+                                {i === 0 ? dayFixAction(d) : null}
+                              </td>
+                            )}
                           </tr>
                         );
                       });
@@ -532,6 +673,33 @@ async function PayslipBody({
               </div>
             </>
           )}
+          {!inlineEmptyDays && emptyDays.length > 0 ? (
+            <div className="no-print mt-4 border-t border-border/60 px-1 pt-3">
+              <p className="text-xs font-medium text-text-muted">
+                {t("moreMissingDays")}
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {emptyDays.map((d) => (
+                  <li key={d}>
+                    {pendingDays.has(d) ? (
+                      <span className="inline-flex min-h-9 items-center gap-1 rounded-chip border border-warning-500/40 bg-warning-500/10 px-2.5 text-xs font-medium text-warning-800">
+                        <Hourglass className="h-3 w-3" aria-hidden />
+                        {fmtDayLabel(d, tz, dateLocale)}
+                      </span>
+                    ) : (
+                      <Link
+                        href={fixHref(d)}
+                        className="inline-flex min-h-9 items-center gap-1 rounded-chip border border-border bg-surface px-2.5 text-xs font-medium text-text transition-colors hover:bg-surface-2/40"
+                      >
+                        <Plus className="h-3 w-3" aria-hidden />
+                        {fmtDayLabel(d, tz, dateLocale)}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <p className="mt-3 px-3 text-[11px] text-text-muted leading-relaxed">
             {t("estPayExplain", {
               rounding: payRules.rounding.toLowerCase().replace(/_/g, " "),

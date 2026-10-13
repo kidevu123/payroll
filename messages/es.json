@@ -205,7 +205,10 @@
       "onTheClock": "marcado",
       "openDayDetail": "Abrir detalle del día · reportar corrección →",
       "updatesLabel": "Actualizaciones",
-      "back": "Atrás"
+      "back": "Atrás",
+      "addMissingDay": "¿Falta un día? Agregue horas",
+      "pendingApproval": "Esperando aprobación",
+      "fixSent": "Enviado para aprobación. Sus horas se actualizan cuando la oficina lo apruebe."
     },
     "day": {
       "back": "Atrás",
@@ -236,7 +239,14 @@
       "reasonQuickForgot": "Olvidé marcar",
       "reasonQuickClock": "El reloj no registró mi marcación",
       "reasonQuickLeftEarly": "Salí temprano / llegué tarde",
-      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer."
+      "alreadyReported": "Su correccion para este dia fue enviada. La oficina la esta revisando — no hay nada mas que hacer.",
+      "fixHours": "Corregir las horas de este día",
+      "addHours": "Agregar horas para este día",
+      "correctionInstructions": "El reloj registró de {clockIn} a {clockOut}. Ingrese las horas que realmente trabajó. La oficina revisará el cambio.",
+      "noHoursInstructions": "No hay horas registradas para este día. Ingrese a qué hora empezó y a qué hora terminó. La oficina lo revisará.",
+      "clockOutOptionalToday": "Salida (déjelo vacío si sigue trabajando)",
+      "sendForApproval": "Enviar para aprobación",
+      "bothTimesRequired": "Ingrese la hora en que empezó y la hora en que terminó."
     },
     "pay": {
       "title": "Mi pago",
@@ -305,7 +315,14 @@
       "close": "Cerrar",
       "problemPlaceholder": "p. ej. Me pagaron 40 horas pero trabajé 48. Faltan las horas del martes y miércoles.",
       "sending": "Enviando...",
-      "sendReport": "Enviar reporte"
+      "sendReport": "Enviar reporte",
+      "fixHours": "Corregir horas",
+      "addHours": "Agregar horas",
+      "noHoursRecorded": "Sin horas registradas",
+      "pendingApproval": "Esperando aprobación",
+      "hoursWrongHint": "¿Horas incorrectas o falta un día? Use Corregir horas o Agregar horas junto a ese día. Su solicitud va a la oficina para aprobación.",
+      "fixSent": "Enviado para aprobación. Su pago se actualiza cuando la oficina lo apruebe.",
+      "moreMissingDays": "Otros días sin horas"
     },
     "missedPunch": {
       "back": "Atrás",
@@ -496,7 +513,8 @@
     "approveHintMissingOut": "Aprobar cierra el turno abierto con esta salida — no crea una segunda marcación.",
     "approveHintMissingIn": "Aprobar fija la entrada en la marcación que solo tenía salida en archivo.",
     "approveHintFull": "Aprobar crea una marcación con las dos horas que ingresó el empleado.",
-    "approveHintProposed": "Aprobar registra la corrección del empleado."
+    "approveHintProposed": "Aprobar registra la corrección del empleado.",
+    "approveHintReplace": "Aprobar reemplaza las horas registradas por las que ingresó el empleado. Las horas originales del reloj quedan en el historial de ediciones."
   },
   "exception": {
     "noPunch": "Sin marcación",

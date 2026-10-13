@@ -13,6 +13,8 @@ import { adminUserIds } from "@/lib/db/queries/recipients";
 import { dispatch } from "@/lib/notifications/router";
 import { getSetting } from "@/lib/settings/runtime";
 import { parseMissedPunchClaim } from "@/lib/missed-punch/claim";
+import { safeFixReturnPath } from "@/lib/missed-punch/fixable-days";
+import { companyDayIso } from "@/lib/time/company-day";
 
 const schema = z.object({
   date: z.string().date(),
@@ -56,6 +58,20 @@ export async function reportPunchFixAction(
   };
   const claim = parseMissedPunchClaim(claimInput);
   if (!claim.ok) return { error: claim.error };
+
+  // A whole-day entry (no punch on file to complete) for a day that is over
+  // needs both ends. A lone clock-in would be approved as a shift that never
+  // closes and pays zero hours, which is the problem the employee came to fix.
+  // Today is exempt: they may still be working.
+  if (
+    !parsed.data.issue &&
+    !claim.clockOut &&
+    parsed.data.date !== companyDayIso(new Date(), company.timezone)
+  ) {
+    return {
+      error: "Enter both the time you started and the time you finished.",
+    };
+  }
 
   // Schedule-aware, deterministic resolution — the ad-hoc unordered limit(1)
   // picked an arbitrary period when multiple pay schedules overlapped the date.
@@ -104,5 +120,16 @@ export async function reportPunchFixAction(
   revalidatePath(`/me/time/${parsed.data.date}`);
   revalidatePath("/me/home");
   revalidatePath("/calendar");
+  // Back to where they started (their payslip or the week list) when the
+  // form was opened from there; otherwise stay on the day.
+  const returnTo = safeFixReturnPath(
+    typeof formData.get("returnTo") === "string"
+      ? (formData.get("returnTo") as string)
+      : null,
+  );
+  if (returnTo) {
+    revalidatePath(returnTo);
+    redirect(`${returnTo}?fixSent=1`);
+  }
   redirect(`/me/time/${parsed.data.date}?reported=1`);
 }

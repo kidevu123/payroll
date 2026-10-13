@@ -205,7 +205,10 @@
       "onTheClock": "on the clock",
       "openDayDetail": "Open day detail · report a fix →",
       "updatesLabel": "Updates",
-      "back": "Back"
+      "back": "Back",
+      "addMissingDay": "Missing a day? Add hours",
+      "pendingApproval": "Waiting for approval",
+      "fixSent": "Sent for approval. Your hours update when the office approves it."
     },
     "day": {
       "back": "Back",
@@ -236,7 +239,14 @@
       "reasonQuickForgot": "I forgot to punch",
       "reasonQuickClock": "The time clock did not take my punch",
       "reasonQuickLeftEarly": "I left early / came in late",
-      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do."
+      "alreadyReported": "Your fix for this day was sent. The office is reviewing it — nothing else to do.",
+      "fixHours": "Fix this day's hours",
+      "addHours": "Add hours for this day",
+      "correctionInstructions": "The clock recorded {clockIn} to {clockOut}. Enter the times you actually worked. The office will review the change.",
+      "noHoursInstructions": "There are no hours on file for this day. Enter when you started and when you finished. The office will review it.",
+      "clockOutOptionalToday": "Clock out (leave empty if you are still working)",
+      "sendForApproval": "Send for approval",
+      "bothTimesRequired": "Enter both the time you started and the time you finished."
     },
     "pay": {
       "title": "My pay",
@@ -305,7 +315,14 @@
       "close": "Close",
       "problemPlaceholder": "e.g. I was paid for 40 hours but I worked 48. The hours from Tuesday and Wednesday are missing.",
       "sending": "Sending...",
-      "sendReport": "Send report"
+      "sendReport": "Send report",
+      "fixHours": "Fix hours",
+      "addHours": "Add hours",
+      "noHoursRecorded": "No hours recorded",
+      "pendingApproval": "Waiting for approval",
+      "hoursWrongHint": "Hours wrong or a day missing? Use Fix hours or Add hours next to that day. Your request goes to the office for approval.",
+      "fixSent": "Sent for approval. Your pay updates when the office approves it.",
+      "moreMissingDays": "Other days with no hours"
     },
     "missedPunch": {
       "back": "Back",
@@ -496,7 +513,8 @@
     "approveHintMissingOut": "Approve closes the open shift with this clock-out — it does not create a second punch.",
     "approveHintMissingIn": "Approve sets clock-in on the punch that only had clock-out on file.",
     "approveHintFull": "Approve creates a punch with both times the employee entered.",
-    "approveHintProposed": "Approve records the employee's correction."
+    "approveHintProposed": "Approve records the employee's correction.",
+    "approveHintReplace": "Approve replaces the times on file with the times the employee entered. The original clock times are kept in the edit history."
   },
   "exception": {
     "noPunch": "No punch",

@@ -18,6 +18,10 @@ import { PeriodAlerts } from "@/components/payroll/period/period-alerts";
 import { PeriodHeader } from "@/components/payroll/period/period-header";
 import { SignOffCard } from "@/components/payroll/period/sign-off-card";
 import { ROUNDING_LABEL } from "@/lib/payroll/period-view";
+import { IncompletePunchesBanner } from "@/components/payroll/period/incomplete-punches-banner";
+import { listIncompletePunches } from "@/lib/payroll/incomplete-punches";
+import { todayInCompanyTz } from "@/lib/time/format";
+import { wallClockToUtc } from "@/lib/time/wall-clock";
 
 export default async function PeriodReviewPage({
   params,
@@ -40,9 +44,25 @@ export default async function PeriodReviewPage({
     runSchedule,
   } = review;
 
+  // Every open punch in the period, whoever it belongs to: see the banner.
+  const todayIso = todayInCompanyTz(review.tz);
+  const incompletePunches = listIncompletePunches({
+    punches: review.punches,
+    employeeNames: new Map(allEmployees.map((e) => [e.id, e.displayName])),
+    timezone: review.tz,
+    todayStart: wallClockToUtc(`${todayIso}T00:00`, review.tz) ?? new Date(),
+  });
+
   return (
     <div className="space-y-5">
       <PeriodHeader review={review} isAccountant={isAccountant} />
+
+      <IncompletePunchesBanner
+        periodId={periodId}
+        punches={incompletePunches}
+        timezone={review.tz}
+        canFix={!isAccountant}
+      />
 
       <PeriodDocumentsCard review={review} isAccountant={isAccountant} />
 

@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { Calendar, ChevronRight } from "lucide-react";
+import { Calendar, ChevronRight, CircleCheck, Hourglass, Plus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { HoursDisplay } from "@/components/domain/hours-display";
@@ -20,6 +20,8 @@ import { resolveLocale } from "@/lib/i18n";
 import { companyDayIso } from "@/lib/time/company-day";
 import { formatClockTime } from "@/lib/time/format";
 import { MicroLabel } from "@/components/ui/typography";
+import { listPendingMissedPunchDatesForEmployee } from "@/lib/db/queries/requests";
+import { listFixableDays } from "@/lib/missed-punch/fixable-days";
 import { cn } from "@/lib/utils";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -50,7 +52,12 @@ function startOfWeek(iso: string, startDayOfWeek: number): string {
   return new Date(d.getTime() - back * MS_PER_DAY).toISOString().slice(0, 10);
 }
 
-export default async function EmployeeTime() {
+export default async function EmployeeTime({
+  searchParams,
+}: {
+  searchParams: Promise<{ fixSent?: string }>;
+}) {
+  const fixSent = (await searchParams).fixSent === "1";
   const session = await requireSession();
   const t = await getTranslations("employee.time");
   const locale = await resolveLocale();
@@ -104,6 +111,9 @@ export default async function EmployeeTime() {
   }
   const weekKeys = [...byWeek.keys()].sort().reverse();
   const currentWeekKey = startOfWeek(today, payPeriod.startDayOfWeek);
+  const pendingFixDays = new Set(
+    await listPendingMissedPunchDatesForEmployee(session.user.employeeId),
+  );
 
   // Today's punches — surfaced front-and-center.
   const todayPunches = punches.filter(
@@ -124,6 +134,16 @@ export default async function EmployeeTime() {
         meta={fmtDay(today, dateLocale, { weekday: "long", month: "long", day: "numeric" })}
         actions={<AutoRefresh intervalMs={60_000} label={t("updatesLabel")} />}
       />
+
+      {fixSent ? (
+        <p
+          role="status"
+          className="flex items-start gap-2 rounded-card border border-success-200/80 bg-success-50 px-3.5 py-3 text-sm font-medium text-success-700"
+        >
+          <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          {t("fixSent")}
+        </p>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -210,7 +230,22 @@ export default async function EmployeeTime() {
         <div className="space-y-5">
           {weekKeys.map((wk) => {
             const isCurrentWeek = wk === currentWeekKey;
+
             const days = byWeek.get(wk)!;
+            // Days of this week with nothing on file. A forgotten day has no
+            // row to tap, so it gets a chip that opens the add-hours form.
+            const weekEnd = new Date(
+              new Date(`${wk}T00:00:00Z`).getTime() + 6 * MS_PER_DAY,
+            )
+              .toISOString()
+              .slice(0, 10);
+            const emptyDays = listFixableDays({
+              startDate: wk,
+              endDate: weekEnd,
+              today,
+              punchDays: new Set(days.keys()),
+              pendingDays: pendingFixDays,
+            }).filter((d) => !d.hasPunches);
             let weekMs = 0;
             for (const list of days.values()) {
               for (const p of list) {
@@ -309,6 +344,41 @@ export default async function EmployeeTime() {
                     );
                   })}
                 </CardContent>
+                {emptyDays.length > 0 ? (
+                  <div className="border-t border-border/60 px-6 py-3">
+                    <p className="text-xs font-medium text-text-muted">
+                      {t("addMissingDay")}
+                    </p>
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {emptyDays.map((d) => (
+                        <li key={d.date}>
+                          {d.pending ? (
+                            <span
+                              title={t("pendingApproval")}
+                              className="inline-flex min-h-11 items-center gap-1.5 rounded-chip border border-warning-500/40 bg-warning-500/10 px-3 text-sm font-medium text-warning-800"
+                            >
+                              <Hourglass className="h-3.5 w-3.5" aria-hidden />
+                              <span className="first-letter:uppercase">
+                                {fmtDay(d.date, dateLocale, { weekday: "short", day: "numeric" })}
+                              </span>
+                              <span className="sr-only">{t("pendingApproval")}</span>
+                            </span>
+                          ) : (
+                            <Link
+                              href={`/me/time/${d.date}?fix=1&from=${encodeURIComponent("/me/time")}`}
+                              className="inline-flex min-h-11 items-center gap-1.5 rounded-chip border border-border bg-surface px-3 text-sm font-medium text-text transition-colors hover:bg-surface-2 active:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-700/60"
+                            >
+                              <Plus className="h-3.5 w-3.5" aria-hidden />
+                              <span className="first-letter:uppercase">
+                                {fmtDay(d.date, dateLocale, { weekday: "short", day: "numeric" })}
+                              </span>
+                            </Link>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </Card>
             );
           })}

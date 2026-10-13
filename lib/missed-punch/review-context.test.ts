@@ -216,3 +216,41 @@ describe("buildMissedPunchReviewContext", () => {
     expect(ctx.proposedClockOut).toEqual(claimedOut);
   });
 });
+
+describe("buildMissedPunchReviewContext: correcting a completed day", () => {
+  const onFile = {
+    clockIn: new Date("2026-06-02T14:09:00.000Z"),
+    clockOut: new Date("2026-06-02T22:29:00.000Z"),
+    voidedAt: null,
+    notes: null,
+  } as never;
+  const request = {
+    date: "2026-06-02",
+    claimedClockIn: new Date("2026-06-02T12:00:00.000Z"),
+    claimedClockOut: new Date("2026-06-02T22:29:00.000Z"),
+  };
+
+  it("shows the shift on file and marks the request as replacing it", () => {
+    const ctx = buildMissedPunchReviewContext(request, null, [onFile], dayKey);
+    expect(ctx.onFileClockIn).toEqual(new Date("2026-06-02T14:09:00.000Z"));
+    expect(ctx.onFileClockOut).toEqual(new Date("2026-06-02T22:29:00.000Z"));
+    expect(ctx.proposedClockIn).toEqual(request.claimedClockIn);
+    expect(ctx.replacesOnFile).toBe(true);
+  });
+
+  it("does not mark a brand-new day as a replacement", () => {
+    const ctx = buildMissedPunchReviewContext(request, null, [], dayKey);
+    expect(ctx.onFileClockIn).toBeNull();
+    expect(ctx.replacesOnFile).toBe(false);
+  });
+
+  it("does not mark a single-sided claim as a replacement", () => {
+    const ctx = buildMissedPunchReviewContext(
+      { ...request, claimedClockIn: null },
+      "MISSING_OUT",
+      [{ clockIn: new Date("2026-06-02T14:09:00.000Z"), clockOut: null, voidedAt: null } as never],
+      dayKey,
+    );
+    expect(ctx.replacesOnFile).toBe(false);
+  });
+});

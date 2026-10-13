@@ -5,6 +5,7 @@ import {
   isOpenShiftPunch,
 } from "@/lib/punches/missing-punch";
 import type { MissedPunchIssue } from "./claim";
+import { soleClosedPunchOnDay } from "@/lib/punches/approve-missed-punch-guards";
 
 export type MissedPunchReviewContext = {
   issue: MissedPunchIssue | null;
@@ -12,6 +13,12 @@ export type MissedPunchReviewContext = {
   onFileClockOut: Date | null;
   proposedClockIn: Date | null;
   proposedClockOut: Date | null;
+  /**
+   * True when the request corrects a day that already has one completed
+   * shift: approving REPLACES the times on file with the proposed ones
+   * (everywhere else the proposed time fills a gap next to what is on file).
+   */
+  replacesOnFile: boolean;
 };
 
 export function inferMissedPunchIssue(
@@ -79,11 +86,24 @@ export function buildMissedPunchReviewContext(
     if (sentinel?.clockOut) onFileClockOut = sentinel.clockOut;
   }
 
+  // A full in/out claim against a day with one completed shift is a
+  // correction of that shift, so show the reviewer what it replaces.
+  let replacesOnFile = false;
+  if (!effectiveIssue && request.claimedClockIn && request.claimedClockOut) {
+    const existing = soleClosedPunchOnDay(forDay);
+    if (existing) {
+      onFileClockIn = existing.clockIn;
+      onFileClockOut = existing.clockOut;
+      replacesOnFile = true;
+    }
+  }
+
   return {
     issue: effectiveIssue,
     onFileClockIn,
     onFileClockOut,
     proposedClockIn: request.claimedClockIn,
     proposedClockOut: request.claimedClockOut,
+    replacesOnFile,
   };
 }

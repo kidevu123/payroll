@@ -17,6 +17,7 @@ import { resolveLocale } from "@/lib/i18n";
 import { ReportFixForm } from "./report-form";
 import { buildEmployeeReportFixMode } from "@/lib/missed-punch/employee-report-mode";
 import { companyDayIso } from "@/lib/time/company-day";
+import { safeFixReturnPath } from "@/lib/missed-punch/fixable-days";
 import { formatClockTime } from "@/lib/time/format";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
@@ -27,7 +28,7 @@ export default async function EmployeeDay({
   searchParams,
 }: {
   params: Promise<{ date: string }>;
-  searchParams: Promise<{ reported?: string }>;
+  searchParams: Promise<{ reported?: string; fix?: string; from?: string }>;
 }) {
   const session = await requireSession();
   const [t, tDay, locale] = await Promise.all([
@@ -56,6 +57,8 @@ export default async function EmployeeDay({
     punches: dayPunches,
   });
 
+  const returnTo = safeFixReturnPath(sp.from);
+
   let totalMs = 0;
   for (const p of dayPunches) {
     if (p.voidedAt) continue;
@@ -65,8 +68,9 @@ export default async function EmployeeDay({
   return (
     <main className="px-4 py-6 sm:px-6 sm:py-8 space-y-5">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/me/time">
-          <ArrowLeft className="h-4 w-4" /> {t("title")}
+        <Link href={returnTo ?? "/me/time"}>
+          <ArrowLeft className="h-4 w-4" />{" "}
+          {returnTo && returnTo !== "/me/time" ? tDay("back") : t("title")}
         </Link>
       </Button>
       <PageHeader
@@ -150,7 +154,13 @@ export default async function EmployeeDay({
           {tDay("alreadyReported")}
         </p>
       ) : (
-        <ReportFixForm date={date} mode={reportMode} />
+        <ReportFixForm
+          date={date}
+          mode={reportMode}
+          isToday={date === companyDayIso(new Date(), company.timezone)}
+          initiallyOpen={sp.fix === "1"}
+          returnTo={returnTo}
+        />
       )}
     </main>
   );

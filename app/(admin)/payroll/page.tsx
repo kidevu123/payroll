@@ -55,7 +55,12 @@ import {
 } from "@/lib/payroll/period-status";
 import { getSetting } from "@/lib/settings/runtime";
 import { db } from "@/lib/db";
-import { payPeriods, paySchedules, punches, payslips } from "@/lib/db/schema";
+import { employees, payPeriods, paySchedules, punches, payslips } from "@/lib/db/schema";
+import {
+  incompletePunchFixHref,
+  listIncompletePunches,
+  type IncompletePunch,
+} from "@/lib/payroll/incomplete-punches";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { wallClockToUtc } from "@/lib/time/wall-clock";
 import { PageHeader } from "@/components/ui/page-header";
@@ -133,7 +138,6 @@ export default async function PayrollPage({
             periodId: punches.periodId,
             employees: sql<string>`count(distinct ${punches.employeeId})`,
             hours: sql<string>`coalesce(sum(extract(epoch from (${punches.clockOut} - ${punches.clockIn})) / 3600) filter (where ${punches.clockOut} is not null), 0)`,
-            incomplete: sql<string>`count(*) filter (where ${punches.clockOut} is null and ${punches.clockIn} < ${todayStartIso}::timestamptz)`,
           })
           .from(punches)
           .where(and(isNull(punches.voidedAt), inArray(punches.periodId, periodIds)))
@@ -151,6 +155,46 @@ export default async function PayrollPage({
       ])
     : [[], []];
   const punchByPeriod = new Map(punchAgg.map((r) => [r.periodId, r]));
+
+  // The open punches behind each row's warning, so the warning can name the
+  // person and day and link to the fix. A count alone ("1 incomplete punch")
+  // sent the owner hunting through the period for a punch the period page
+  // did not even show.
+  const openPunchRows = periodIds.length
+    ? await db
+        .select({
+          id: punches.id,
+          periodId: punches.periodId,
+          employeeId: punches.employeeId,
+          clockIn: punches.clockIn,
+          clockOut: punches.clockOut,
+          employeeName: employees.displayName,
+        })
+        .from(punches)
+        .leftJoin(employees, eq(employees.id, punches.employeeId))
+        .where(
+          and(
+            isNull(punches.voidedAt),
+            isNull(punches.clockOut),
+            inArray(punches.periodId, periodIds),
+          ),
+        )
+    : [];
+  const incompleteByPeriod = new Map<string, IncompletePunch[]>();
+  for (const periodId of periodIds) {
+    const rows = openPunchRows.filter((r) => r.periodId === periodId);
+    incompleteByPeriod.set(
+      periodId,
+      listIncompletePunches({
+        punches: rows,
+        employeeNames: new Map(
+          rows.flatMap((r) => (r.employeeName ? [[r.employeeId, r.employeeName] as const] : [])),
+        ),
+        timezone: tz,
+        todayStart: new Date(todayStartIso),
+      }),
+    );
+  }
   const payslipByPeriod = new Map(payslipAgg.map((r) => [r.periodId, r]));
 
   // Resolve each period's lifecycle phase up front, then order the list by
@@ -189,7 +233,8 @@ export default async function PayrollPage({
         phase,
         progress: periodProgress(p.startDate, displayEnd, today),
         figures,
-        incomplete: Number(live?.incomplete ?? 0),
+        incomplete: incompleteByPeriod.get(p.id)?.length ?? 0,
+        incompletePunches: incompleteByPeriod.get(p.id) ?? [],
       };
     })
     .sort(
@@ -410,6 +455,7 @@ type PeriodRowData = {
   progress: { day: number; total: number } | null;
   figures: { employees: number; hours: number; totalCents: number | null };
   incomplete: number;
+  incompletePunches: IncompletePunch[];
 };
 
 function PeriodRow({ p }: { p: PeriodRowData }) {
@@ -421,41 +467,56 @@ function PeriodRow({ p }: { p: PeriodRowData }) {
     >
       {/* Stretched link: the whole row is the target; the delete control
           sits above it (z-10) so it stays independently clickable. */}
-      <Link
-        href={`/payroll/${p.id}`}
-        className="min-w-0 after:absolute after:inset-0 focus:outline-none"
-      >
-        <span className="block truncate text-sm font-medium tabular-nums tracking-tight text-text">
-          {formatPeriodRange(p.startDate, p.displayEnd)}
-        </span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
-          <span>{detail}</span>
-          {p.incomplete > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-chip border border-warning-500/40 bg-warning-500/10 px-1.5 py-0.5 text-[11px] font-medium text-warning-800">
-              <AlertTriangle className="h-3 w-3" aria-hidden />
-              {p.incomplete} incomplete punch{p.incomplete === 1 ? "" : "es"}
+      <div className="min-w-0">
+        <Link
+          href={`/payroll/${p.id}`}
+          className="block after:absolute after:inset-0 focus:outline-none"
+        >
+          <span className="block truncate text-sm font-medium tabular-nums tracking-tight text-text">
+            {formatPeriodRange(p.startDate, p.displayEnd)}
+          </span>
+          <span className="mt-0.5 block text-xs text-text-muted">{detail}</span>
+          {p.phase === "RUNNING" && p.progress ? (
+            // How far through the period we are, at a glance.
+            <span
+              className="mt-1.5 block h-1 w-40 max-w-full overflow-hidden rounded-full bg-surface-3"
+              role="progressbar"
+              aria-label="Period progress"
+              aria-valuemin={0}
+              aria-valuemax={p.progress.total}
+              aria-valuenow={p.progress.day}
+            >
+              <span
+                className="block h-full rounded-full bg-info-600"
+                style={{
+                  width: `${Math.min(100, Math.round((p.progress.day / p.progress.total) * 100))}%`,
+                }}
+              />
             </span>
           ) : null}
-        </span>
-        {p.phase === "RUNNING" && p.progress ? (
-          // How far through the period we are, at a glance.
-          <span
-            className="mt-1.5 block h-1 w-40 max-w-full overflow-hidden rounded-full bg-surface-3"
-            role="progressbar"
-            aria-label="Period progress"
-            aria-valuemin={0}
-            aria-valuemax={p.progress.total}
-            aria-valuenow={p.progress.day}
+        </Link>
+        {/* The warning is its own link, above the row link (z-10): one open
+            punch goes straight to that employee's day; several go to the
+            list at the top of the period page. */}
+        {p.incompletePunches.length > 0 ? (
+          <Link
+            href={
+              p.incompletePunches.length === 1
+                ? incompletePunchFixHref(p.id, p.incompletePunches[0]!)
+                : `/payroll/${p.id}#incomplete-punches`
+            }
+            className="relative z-10 mt-1.5 inline-flex max-w-full items-center gap-1 rounded-chip border border-warning-500/40 bg-warning-500/10 px-2 py-1 text-[11px] font-medium text-warning-800 transition-colors hover:bg-warning-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-500/60"
           >
-            <span
-              className="block h-full rounded-full bg-info-600"
-              style={{
-                width: `${Math.min(100, Math.round((p.progress.day / p.progress.total) * 100))}%`,
-              }}
-            />
-          </span>
+            <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">
+              {p.incompletePunches.length === 1
+                ? `No clock-out: ${p.incompletePunches[0]!.employeeName}, ${shortDay(p.incompletePunches[0]!.day)}`
+                : `${p.incompletePunches.length} incomplete punches`}
+            </span>
+            <span className="shrink-0 font-semibold">· Fix</span>
+          </Link>
         ) : null}
-      </Link>
+      </div>
       <div>
         <SchedulePill name={p.scheduleName} />
       </div>
@@ -516,6 +577,16 @@ function PeriodRow({ p }: { p: PeriodRowData }) {
 }
 
 /** "Jul 12" — friendly label for a YYYY-MM-DD date string. */
+/** "2026-10-08" -> "Thu, Oct 8". */
+function shortDay(dayIso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${dayIso}T12:00:00Z`));
+}
+
 function friendlyDate(date: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC",

@@ -25,10 +25,13 @@ function highlightProposed(
 }
 
 function mergedIn(ctx: MissedPunchReviewContext): Date | null {
+  // A correction replaces what is on file; everything else fills a gap.
+  if (ctx.replacesOnFile) return ctx.proposedClockIn ?? ctx.onFileClockIn;
   return ctx.onFileClockIn ?? ctx.proposedClockIn;
 }
 
 function mergedOut(ctx: MissedPunchReviewContext): Date | null {
+  if (ctx.replacesOnFile) return ctx.proposedClockOut ?? ctx.onFileClockOut;
   return ctx.onFileClockOut ?? ctx.proposedClockOut;
 }
 
@@ -41,8 +44,9 @@ export async function MissedPunchReviewSummary({
 }) {
   const t = await getTranslations("missedPunchReview");
 
-  const approveHint =
-    ctx.issue === "MISSING_OUT"
+  const approveHint = ctx.replacesOnFile
+    ? t("approveHintReplace")
+    : ctx.issue === "MISSING_OUT"
       ? t("approveHintMissingOut")
       : ctx.issue === "MISSING_IN"
         ? t("approveHintMissingIn")

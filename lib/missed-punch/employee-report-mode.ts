@@ -41,6 +41,12 @@ export type EmployeeReportFixMode =
       kind: "NO_PUNCH_OR_CORRECTION";
       defaultClockIn: string;
       defaultClockOut: string;
+      /**
+       * Set when the day already has one completed shift: the form is then a
+       * correction of these times and starts from them. Absent = no hours on
+       * file (or several punches), so the employee enters the day fresh.
+       */
+      onFileShift?: { clockIn: string; clockOut: string };
       recordedClockIn?: never;
       recordedClockOut?: never;
       recordedUnpairedPunch?: never;
@@ -80,6 +86,24 @@ export function buildEmployeeReportFixMode(args: {
       recordedUnpairedPunch: formatWallClock(unpaired.clockIn, args.timezone),
       defaultClockIn: `${args.date}T08:00`,
       defaultClockOut: `${args.date}T17:00`,
+    };
+  }
+
+  // One completed shift on file: the employee is correcting it, so start the
+  // form from what the clock recorded instead of a made-up 8:00.
+  const completed = active.filter(
+    (p) => p.clockOut && p.clockOut.getTime() > p.clockIn.getTime(),
+  );
+  if (active.length === 1 && completed.length === 1) {
+    const shift = completed[0]!;
+    return {
+      kind: "NO_PUNCH_OR_CORRECTION",
+      defaultClockIn: toDatetimeLocalValue(shift.clockIn, args.timezone),
+      defaultClockOut: toDatetimeLocalValue(shift.clockOut!, args.timezone),
+      onFileShift: {
+        clockIn: formatWallClock(shift.clockIn, args.timezone),
+        clockOut: formatWallClock(shift.clockOut!, args.timezone),
+      },
     };
   }
 
