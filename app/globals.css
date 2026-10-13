@@ -621,3 +621,19 @@ input::-webkit-date-and-time-value {
   text-align: left;
   min-height: 1.5em;
 }
+
+/* ── Navigation progress bar (components/ui/nav-progress.tsx) ────────────────
+   Transform only, so it stays on the compositor. Reduced motion: a still bar. */
+@keyframes nav-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+.nav-progress-bar {
+  animation: nav-progress 900ms ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress-bar {
+    animation: none;
+    width: 100%;
+  }
+}

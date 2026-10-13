@@ -16,7 +16,9 @@ import { listPunches } from "@/lib/db/queries/punches";
 import { listSchedules } from "@/lib/db/queries/pay-schedules";
 import { findUserByEmployeeId } from "@/lib/db/queries/users";
 import { listPayslipsForEmployee } from "@/lib/db/queries/payslips";
-import { getPeriodById } from "@/lib/db/queries/pay-periods";
+import { inArray } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { payPeriods } from "@/lib/db/schema";
 import { listEmployeeVisibleDocs } from "@/lib/db/queries/payroll-documents";
 import { getSetting } from "@/lib/settings/runtime";
 import { ArchiveEmployeeButton } from "./archive-button";
@@ -55,13 +57,18 @@ export default async function EmployeeDetailPage({
     listPayslipsForEmployee(employee.id),
     listEmployeeVisibleDocs(employee.id),
   ]);
-  // Resolve period dates for each payslip — small handful per employee.
-  const payslipsWithPeriods = await Promise.all(
-    payslips.map(async (p) => {
-      const period = await getPeriodById(p.periodId);
-      return { payslip: p, period };
-    }),
-  );
+  // Period dates for every payslip in ONE query. This was a query per
+  // payslip: 76 round trips for a weekly employee with a year and a half
+  // of history.
+  const periodIds = [...new Set(payslips.map((p) => p.periodId))];
+  const periodRows = periodIds.length
+    ? await db.select().from(payPeriods).where(inArray(payPeriods.id, periodIds))
+    : [];
+  const periodById = new Map(periodRows.map((p) => [p.id, p]));
+  const payslipsWithPeriods = payslips.map((p) => ({
+    payslip: p,
+    period: periodById.get(p.periodId) ?? null,
+  }));
   payslipsWithPeriods.sort((a, b) => {
     const aDate = a.period?.endDate ?? "";
     const bDate = b.period?.endDate ?? "";

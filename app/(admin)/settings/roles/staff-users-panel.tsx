@@ -13,6 +13,7 @@ import {
   setStaffRoleAction,
 } from "./actions";
 import type { EditableRole } from "@/lib/auth/role-matrix";
+import { actionFailedFor } from "@/lib/client/action-failed";
 
 type Staff = {
   id: string;
@@ -208,7 +209,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                         onClick={async () => {
                           setPending(`pw:${s.id}`);
                           setError(null);
-                          const r = await regenerateStaffTempPasswordAction(s.id);
+                          const r = await regenerateStaffTempPasswordAction(s.id).catch(actionFailedFor<typeof regenerateStaffTempPasswordAction>());
                           setPending(null);
                           if (r?.error) setError(r.error);
                           else if (r?.tempPassword) {
@@ -225,7 +226,7 @@ export function StaffUsersPanel({ staff }: { staff: ReadonlyArray<Staff> }) {
                         onClick={async () => {
                           setPending(`tog:${s.id}`);
                           setError(null);
-                          const r = await setStaffDisabledAction(s.id, !s.disabled);
+                          const r = await setStaffDisabledAction(s.id, !s.disabled).catch(actionFailedFor<typeof setStaffDisabledAction>());
                           setPending(null);
                           if (r?.error) setError(r.error);
                           else router.refresh();

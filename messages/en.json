@@ -283,7 +283,7 @@
       "problemReported": "Problem reported",
       "awaitingReview": "Awaiting review",
       "disputedNotice": "Admin has been notified about your report and will follow up.",
-      "acknowledgedNotice": "Acknowledged {when} UTC",
+      "acknowledgedNotice": "Acknowledged {when}",
       "reviewAndAcknowledge": "Please review the breakdown below and acknowledge once you're satisfied.",
       "discrepancyHeading": "Heads-up: the stored payslip total and the daily breakdown disagree.",
       "perReport": "Per the report:",
@@ -322,7 +322,14 @@
       "pendingApproval": "Waiting for approval",
       "hoursWrongHint": "Hours wrong or a day missing? Use Fix hours or Add hours next to that day. Your request goes to the office for approval.",
       "fixSent": "Sent for approval. Your pay updates when the office approves it.",
-      "moreMissingDays": "Other days with no hours"
+      "moreMissingDays": "Other days with no hours",
+      "confirmHoursTitle": "Confirm your hours",
+      "moreToConfirm": "{count} more to confirm",
+      "confirmHoursBody": "Take a quick look. If your hours and pay look right, confirm below.",
+      "confirmLooksRight": "Looks right, confirm",
+      "confirming": "Confirming…",
+      "somethingOff": "Something's off",
+      "confirmedThanks": "Confirmed, thanks"
     },
     "missedPunch": {
       "back": "Back",
@@ -502,6 +509,24 @@
       "endBeforeStart": "End date can't be before start date.",
       "noPeriod": "No pay period covers that date yet — ask an admin to open one.",
       "describeProblem": "Please describe the problem in 5–1000 characters."
+    },
+    "install": {
+      "installTitle": "Save Milo to your Home Screen",
+      "installBody": "One tap from your home screen, no Safari, no typing. Get instant updates when your payslip is ready.",
+      "installCta": "Add to Home Screen",
+      "notifyTitle": "Turn on notifications",
+      "notifyBody": "We'll ping you the second a new payslip publishes or you have a missed punch. No spam, just the stuff that matters.",
+      "notifyCta": "Enable notifications",
+      "asking": "Asking…",
+      "notNow": "Not now",
+      "howIntro": "Adds a Milo icon next to your other apps. Tap it any time to open Milo without typing a URL.",
+      "iosStep1": "Share button at the bottom of Safari.",
+      "iosStep1Lead": "Tap the",
+      "iosStep2": "Scroll down and tap Add to Home Screen.",
+      "iosStep3": "Tap Add in the top-right. Milo lands on your Home Screen. Open it from there from now on.",
+      "androidStep1": "Open the browser menu (3-dot icon, top-right).",
+      "androidStep2": "Tap Install app or Add to Home Screen.",
+      "androidStep3": "Confirm. Milo shows up alongside your other apps."
     }
   },
   "missedPunchReview": {

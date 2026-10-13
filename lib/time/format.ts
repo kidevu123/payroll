@@ -67,3 +67,15 @@ export function toDatetimeLocalValue(d: Date, timezone: string): string {
     parts.find((p) => p.type === type)?.value ?? "";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
+
+/** "Oct 13, 2026, 3:14 PM" in the given zone. For "when did this happen" lines. */
+export function formatDateTime(d: Date | string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(coerceDate(d));
+}

@@ -19,6 +19,7 @@ import {
   testConnectionAction,
   updateOrgAction,
 } from "./actions";
+import { actionFailedFor } from "@/lib/client/action-failed";
 
 export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
   const [error, setError] = React.useState<string | null>(null);
@@ -150,7 +151,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                           disabled={pending !== null || !hasRefreshToken}
                           onClick={async () => {
                             setPending(`test-${o.id}`);
-                            const result = await testConnectionAction(o.id);
+                            const result = await testConnectionAction(o.id).catch(actionFailedFor<typeof testConnectionAction>());
                             setPending(null);
                             setTestStatus((s) => ({
                               ...s,
@@ -176,7 +177,7 @@ export function ZohoSettings({ orgs }: { orgs: ZohoOrganization[] }) {
                           onClick={async () => {
                             if (!confirm(`Delete the ${o.name} integration?`)) return;
                             setPending(`del-${o.id}`);
-                            const result = await deleteOrgAction(o.id);
+                            const result = await deleteOrgAction(o.id).catch(actionFailedFor<typeof deleteOrgAction>());
                             setPending(null);
                             if (result?.error) setError(result.error);
                           }}

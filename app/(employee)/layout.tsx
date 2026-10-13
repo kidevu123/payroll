@@ -19,6 +19,7 @@ import { AppFooter } from "@/components/app-footer";
 import { getSetting } from "@/lib/settings/runtime";
 import { db } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
+import { NavProgress } from "@/components/ui/nav-progress";
 
 export default async function EmployeeLayout({
   children,
@@ -80,6 +81,7 @@ export default async function EmployeeLayout({
   return (
     <div className="dark min-h-dvh pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pb-[calc(5.5rem+env(safe-area-inset-bottom))] bg-page shell-employee">
       <ServiceWorkerRegister />
+      <NavProgress />
       {/* Phone-first shell: max-w-md feels right on a phone, but on
           tablet (sm+) the 448px cap looked cramped — esp. the calendar
           and pay-history. Bumping to max-w-2xl (672px) above sm gives

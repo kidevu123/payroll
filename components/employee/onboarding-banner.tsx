@@ -5,6 +5,7 @@ import { Bell, BookmarkPlus, Check, Share, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { urlBase64ToBuffer } from "@/lib/notifications/url-base64";
 import { isIOSSafari, isStandalonePWA } from "@/lib/pwa/platform";
+import { useTranslations } from "next-intl";
 
 const DISMISS_KEY = "milo.onboarding.dismissed.v1";
 
@@ -26,6 +27,7 @@ export function OnboardingBanner({
 }: {
   alreadySubscribed: boolean;
 }) {
+  const t = useTranslations("employee.install");
   const [step, setStep] = React.useState<Step | null>(null);
   const [dismissed, setDismissed] = React.useState(false);
   const [showInstallSheet, setShowInstallSheet] = React.useState(false);
@@ -156,18 +158,18 @@ export function OnboardingBanner({
           <div className="flex-1 space-y-1">
             <h3 className="text-sm font-semibold tracking-tight antialiased">
               {step === "install"
-                ? "Save Milo to your Home Screen"
-                : "Turn on notifications"}
+                ? t("installTitle")
+                : t("notifyTitle")}
             </h3>
             <p className="text-xs text-text-muted leading-relaxed">
               {step === "install"
-                ? "One tap from your home screen, no Safari, no typing. Get instant updates when your payslip is ready."
-                : "We'll ping you the second a new payslip publishes or you have a missed punch. No spam — just the stuff that matters."}
+                ? t("installBody")
+                : t("notifyBody")}
             </p>
             <div className="flex items-center gap-2 pt-1.5">
               {step === "install" ? (
                 <Button size="sm" type="button" onClick={onInstallClick}>
-                  <BookmarkPlus className="h-4 w-4" /> Add to Home Screen
+                  <BookmarkPlus className="h-4 w-4" /> {t("installCta")}
                 </Button>
               ) : (
                 <Button
@@ -177,7 +179,7 @@ export function OnboardingBanner({
                   onClick={onEnableNotifications}
                 >
                   <Bell className="h-4 w-4" />
-                  {pending ? "Asking…" : "Enable notifications"}
+                  {pending ? t("asking") : t("notifyCta")}
                 </Button>
               )}
               <Button
@@ -187,7 +189,7 @@ export function OnboardingBanner({
                 onClick={dismiss}
                 className="text-text-muted"
               >
-                Not now
+                {t("notNow")}
               </Button>
             </div>
             {error && (
@@ -213,6 +215,7 @@ export function OnboardingBanner({
 }
 
 function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("employee.install");
   const ios = typeof navigator !== "undefined" && isIOSSafari();
   // Lock body scroll while the sheet is open so the page underneath
   // doesn't scroll when the user touches the backdrop. Cleanup must
@@ -243,7 +246,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong/70" />
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold tracking-tight antialiased">
-            Save Milo to your Home Screen
+            {t("installTitle")}
           </h3>
           <button
             type="button"
@@ -255,8 +258,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="mt-1 text-xs text-text-muted leading-relaxed">
-          Adds a Milo icon next to your other apps. Tap it any time to open
-          Milo without typing a URL.
+          {t("howIntro")}
         </p>
         <ol className="mt-4 space-y-3 text-sm">
           {ios ? (
@@ -266,8 +268,8 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   1
                 </span>
                 <span>
-                  Tap the <Share className="inline h-4 w-4 align-text-bottom" />
-                  {" "}Share button at the bottom of Safari.
+                  {t("iosStep1Lead")} <Share className="inline h-4 w-4 align-text-bottom" />{" "}
+                  {t("iosStep1")}
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -275,7 +277,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   2
                 </span>
                 <span>
-                  Scroll down and tap <strong>Add to Home Screen</strong>.
+                  {t("iosStep2")}
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -283,8 +285,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   3
                 </span>
                 <span>
-                  Tap <strong>Add</strong> in the top-right. Milo lands on
-                  your Home Screen — open it from there from now on.
+                  {t("iosStep3")}
                 </span>
               </li>
             </>
@@ -295,7 +296,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   1
                 </span>
                 <span>
-                  Open the browser menu (3-dot icon, top-right).
+                  {t("androidStep1")}
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -303,8 +304,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   2
                 </span>
                 <span>
-                  Tap <strong>Install app</strong> or{" "}
-                  <strong>Add to Home Screen</strong>.
+                  {t("androidStep2")}
                 </span>
               </li>
               <li className="flex items-start gap-3">
@@ -312,7 +312,7 @@ function InstallInstructionsSheet({ onClose }: { onClose: () => void }) {
                   3
                 </span>
                 <span>
-                  Confirm. Milo shows up alongside your other apps.
+                  {t("androidStep3")}
                 </span>
               </li>
             </>

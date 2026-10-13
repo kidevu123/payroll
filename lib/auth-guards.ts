@@ -1,12 +1,13 @@
 // Authorization helpers. Use in server actions and route handlers — middleware
 // only redirects, actions enforce. Defense in depth (§13).
 
-import { auth, type Role } from "@/lib/auth";
+import { type Role } from "@/lib/auth";
+import { getRequestSession } from "@/lib/auth-session";
 import { redirect } from "next/navigation";
 import { canAccessSurface, type Surface } from "@/lib/auth/role-matrix";
 
 export async function requireSession() {
-  const session = await auth();
+  const session = await getRequestSession();
   if (!session) redirect("/login");
   // If an admin issued this user a temporary password, force a rotate
   // before they can hit anything else. /login/change-password is
@@ -23,7 +24,7 @@ export async function requireSession() {
  * the page they're being redirected to.
  */
 export async function requireSessionAllowingPasswordChange() {
-  const session = await auth();
+  const session = await getRequestSession();
   if (!session) redirect("/login");
   return session;
 }

@@ -66,3 +66,19 @@ describe("fmtHm / mobileSummaryLine", () => {
     expect(mobileSummaryLine([])).toBe("");
   });
 });
+
+describe("computeGridKpis: clocked-in count against the active team", () => {
+  it("does not count a punch from an inactive employee", () => {
+    const k = computeGridKpis({
+      punches: [...punches, p("walkby", "2026-10-06T20:22:00Z", null)],
+      employees: [...employees, { id: "walkby", status: "INACTIVE" }],
+      days,
+      today: "2026-10-06",
+      tz,
+      cellState,
+    });
+    expect(k.clockedInToday).toBe(2);
+    expect(k.teamSize).toBe(3);
+    expect(k.teamPct).toBe(67);
+  });
+});

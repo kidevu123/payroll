@@ -65,6 +65,14 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
+    // Going back to a screen you opened in the last 30 seconds shows it
+    // instantly instead of refetching and flashing its loading skeleton
+    // (Next 15 defaults dynamic pages to 0s, i.e. never reused). Any server
+    // action that revalidates clears this cache, so a change you just made
+    // is never hidden; data changed by someone else can be up to 30s old on
+    // a quick back-and-forth, and the live screens (Time, dashboard) refresh
+    // themselves anyway.
+    staleTimes: { dynamic: 30 },
     // Server actions are the API layer; allow body up to 5MB for photo upload.
     serverActions: {
       bodySizeLimit: '5mb',

@@ -16,6 +16,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { getRequestSession } from "@/lib/auth-session";
 
 export type Locale = "en" | "es";
 
@@ -34,7 +35,7 @@ export async function resolveLocale(): Promise<Locale> {
   }
   // 2. Signed-in employee's language preference.
   try {
-    const session = await auth();
+    const session = await getRequestSession();
     if (session?.user?.employeeId) {
       const [row] = await db
         .select({ lang: employees.language })

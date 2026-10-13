@@ -33,7 +33,7 @@ import { getEmployee } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { getSetting } from "@/lib/settings/runtime";
 import { resolveLocale } from "@/lib/i18n";
-import { formatClockTime } from "@/lib/time/format";
+import { formatClockTime, formatDateTime } from "@/lib/time/format";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { ReportProblemButton } from "./report-problem-button";
 import { PayslipPdfActions } from "@/components/domain/payslip-pdf-actions";
@@ -411,7 +411,7 @@ async function PayslipBody({
               ? t("disputedNotice")
               : isAcknowledged
                 ? t("acknowledgedNotice", {
-                    when: payslip.acknowledgedAt!.toISOString().slice(0, 16).replace("T", " "),
+                    when: formatDateTime(payslip.acknowledgedAt!, tz),
                   })
                 : t("reviewAndAcknowledge")}
           </p>

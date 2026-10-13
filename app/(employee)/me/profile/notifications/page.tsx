@@ -25,8 +25,11 @@ import {
   dismissNotificationAction,
 } from "./actions";
 import { PushToggle } from "./push-toggle";
+import { formatDateTime } from "@/lib/time/format";
+import { getSetting } from "@/lib/settings/runtime";
 
 export default async function NotificationsPage() {
+  const notifTz = (await getSetting("company").catch(() => null))?.timezone ?? "America/New_York";
   const session = await requireSession();
   const t = await getTranslations("employee.notifications");
   const configured = vapidConfigured();
@@ -124,7 +127,7 @@ export default async function NotificationsPage() {
                     {n.kind}
                   </span>
                   <span className="text-[11px] text-text-muted tabular-nums shrink-0">
-                    {n.sentAt?.toISOString().slice(0, 16).replace("T", " ")}
+                    {n.sentAt ? formatDateTime(n.sentAt, notifTz) : ""}
                   </span>
                   <form action={dismissNotificationAction} className="shrink-0">
                     <input type="hidden" name="id" value={n.id} />

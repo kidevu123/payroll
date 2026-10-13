@@ -54,8 +54,8 @@ export function BackfillPunchesButton(): React.JSX.Element {
       <div className="relative block sm:inline-block" ref={wrapRef}>
         <Button
           size="sm"
-          variant="ghost"
-          className="max-sm:min-h-11 max-sm:w-full max-sm:border max-sm:border-border max-sm:bg-surface max-sm:px-2"
+          variant="secondary"
+          className="max-sm:min-h-11 max-sm:w-full max-sm:px-2"
           disabled={busy || inProgress}
           onClick={() => setOpen((v) => !v)}
         >

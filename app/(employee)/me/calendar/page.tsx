@@ -112,7 +112,11 @@ export default async function EmployeeCalendar({
     });
   }
 
-  const dowLabels = ["S", "M", "T", "W", "T", "F", "S"];
+  // Sunday first, matching the grid. Spanish: domingo, lunes, martes, ...
+  const dowLabels =
+    locale === "es"
+      ? ["D", "L", "M", "M", "J", "V", "S"]
+      : ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
     <main className="space-y-6 p-4 sm:p-6 max-w-md sm:max-w-2xl mx-auto">

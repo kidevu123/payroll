@@ -21,6 +21,7 @@ import {
   setRoleAction,
   toggleDisabledAction,
 } from "./account-actions";
+import { actionFailedFor } from "@/lib/client/action-failed";
 
 export function AccountSection({
   employeeId,
@@ -159,7 +160,7 @@ export function AccountSection({
               onClick={async () => {
                 setPending("gen");
                 setError(null);
-                const result = await generateTempPasswordAction(user.id);
+                const result = await generateTempPasswordAction(user.id).catch(actionFailedFor<typeof generateTempPasswordAction>());
                 setPending(null);
                 if (result?.error) setError(result.error);
                 else if (result?.tempPassword) setTempPassword(result.tempPassword);
@@ -231,7 +232,7 @@ export function AccountSection({
               onClick={async () => {
                 setPending("toggle");
                 setError(null);
-                const result = await toggleDisabledAction(user.id, !user.disabledAt);
+                const result = await toggleDisabledAction(user.id, !user.disabledAt).catch(actionFailedFor<typeof toggleDisabledAction>());
                 setPending(null);
                 if (result?.error) setError(result.error);
                 else router.refresh();

@@ -41,7 +41,15 @@ export function computeGridKpis(args: {
   }
   const active = employees.filter((e) => e.status === "ACTIVE");
   const teamSize = active.length;
-  const clockedInToday = new Set(punches.filter((p) => dayOf(p.clockIn) === today).map((p) => p.employeeId)).size;
+  // Counted against the active team, so only active employees count here.
+  // A punch from an inactive person (the owner walking past the clock) made
+  // this read "20 / 19 · 105% of team".
+  const activeIds = new Set(active.map((e) => e.id));
+  const clockedInToday = new Set(
+    punches
+      .filter((p) => dayOf(p.clockIn) === today && activeIds.has(p.employeeId))
+      .map((p) => p.employeeId),
+  ).size;
   const teamPct = teamSize ? Math.round((clockedInToday / teamSize) * 100) : 0;
   const openNow = punches.filter((p) => p.clockOut === null && dayOf(p.clockIn) === today).length;
   let regularMin = 0, overtimeMin = 0;

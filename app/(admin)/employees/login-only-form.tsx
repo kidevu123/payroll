@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createStaffUserAction } from "../settings/roles/actions";
+import { actionFailedFor } from "@/lib/client/action-failed";
 
 /**
  * Step 2 of the "Add person" flow for `kind=login`. A minimal form that
@@ -48,7 +49,7 @@ export function LoginOnlyForm() {
     setPending(true);
     setError(null);
     const email = String(form.get("email") ?? "");
-    const result = await createStaffUserAction(form);
+    const result = await createStaffUserAction(form).catch(actionFailedFor<typeof createStaffUserAction>());
     setPending(false);
     if (result?.error) {
       setError(result.error);

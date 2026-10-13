@@ -20,3 +20,16 @@ export function actionFailed(err: unknown): { error: string } {
   console.error("server action failed", err);
   return { error: ACTION_FAILED_MESSAGE };
 }
+
+/**
+ * Same as actionFailed, typed as the action's own result. For actions whose
+ * result is one object with optional fields (`{ error?, tempPassword? }`),
+ * where a bare `{ error }` union would stop the handler reading the other
+ * fields. Usage: `await fooAction(x).catch(actionFailedFor<typeof fooAction>())`.
+ * Only for results where every field other than `error` is optional.
+ */
+export function actionFailedFor<F extends (...args: never[]) => Promise<unknown>>(): (
+  err: unknown,
+) => Awaited<ReturnType<F>> {
+  return (err) => actionFailed(err) as Awaited<ReturnType<F>>;
+}

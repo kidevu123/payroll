@@ -1,6 +1,6 @@
 {
   "name": "payroll",
-  "version": "1.5.24",
+  "version": "1.5.25",
   "private": true,
   "description": "Self-hosted payroll and employee operations platform.",
   "scripts": {

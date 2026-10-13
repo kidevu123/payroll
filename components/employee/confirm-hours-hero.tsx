@@ -81,12 +81,12 @@ export async function ConfirmHoursHero({
           </span>
           <div>
             <p className="text-sm font-semibold tracking-tight text-text antialiased">
-              Confirm your hours
+              {t("confirmHoursTitle")}
             </p>
             <p className="text-[11px] text-text-muted leading-relaxed">
               {formatPeriodRange(period.startDate, period.endDate)}
               {pending.length > 1 ? (
-                <span className="text-text-subtle"> · {pending.length - 1} more to confirm</span>
+                <span className="text-text-subtle"> · {t("moreToConfirm", { count: pending.length - 1 })}</span>
               ) : null}
             </p>
           </div>
@@ -117,7 +117,7 @@ export async function ConfirmHoursHero({
         </div>
 
         <p className="text-xs text-text-muted leading-relaxed">
-          Take a quick look — if your hours and pay look right, confirm below.
+          {t("confirmHoursBody")}
         </p>
 
         <ConfirmHoursActions
@@ -125,10 +125,10 @@ export async function ConfirmHoursHero({
           payslipId={top.id}
           disputeHref={disputeHref}
           copy={{
-            confirm: "Looks right — confirm",
-            confirming: "Confirming…",
-            somethingOff: "Something's off",
-            confirmed: "Confirmed — thanks",
+            confirm: t("confirmLooksRight"),
+            confirming: t("confirming"),
+            somethingOff: t("somethingOff"),
+            confirmed: t("confirmedThanks"),
           }}
         />
       </CardContent>

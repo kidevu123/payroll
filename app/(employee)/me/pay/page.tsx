@@ -21,6 +21,7 @@ import { db } from "@/lib/db";
 import { payrollRuns, type PayrollPeriodDocument } from "@/lib/db/schema";
 import { getSetting } from "@/lib/settings/runtime";
 import { formatMoney } from "@/lib/utils";
+import { resolveLocale } from "@/lib/i18n";
 
 /**
  * Match a doc to a displayed period via:
@@ -45,6 +46,8 @@ function docsForPeriod(
 }
 
 export default async function EmployeePayList() {
+  // Month headings follow the employee's language.
+  const monthLocale = (await resolveLocale()) === "es" ? "es-MX" : "en-US";
   const session = await requireSession();
   const t = await getTranslations("employee.pay");
   if (!session.user.employeeId) {
@@ -161,7 +164,7 @@ export default async function EmployeePayList() {
       const [y, mo] = key.split("-").map(Number) as [number, number];
       m = {
         key,
-        label: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+        label: new Intl.DateTimeFormat(monthLocale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
           new Date(Date.UTC(y, mo - 1, 1)),
         ),
         rows: [],

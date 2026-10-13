@@ -37,7 +37,7 @@ import { KpiCards } from "@/components/time/kpi-cards";
 import { TimeNoPeriodEmpty, TimeSalariedEmpty } from "@/components/time/empty-states";
 import { PeriodPager } from "@/components/time/period-pager";
 import { PeriodStateBadge } from "@/components/time/period-state-badge";
-import { TimeActions } from "@/components/time/time-actions";
+import { TimeActions, TimeLegend } from "@/components/time/time-actions";
 import { LaborHoursCard } from "@/components/time/labor-hours-card";
 import { TodaySummaryCard } from "@/components/time/today-summary-card";
 import {
@@ -196,23 +196,28 @@ export default async function TimePage({
 
   return (
     <div className="space-y-5">
-      {/* Page header. Below lg everything stacks in one column: the action
-          cluster used to be a shrink-0 right-aligned flex row, which on a
-          phone could not wrap and pushed the whole page ~670px wider than
-          the screen. */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-2.5 lg:space-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-title tracking-tight antialiased text-text">Time</h1>
-            <PeriodStateBadge state={period.state} />
+      {/* Page header, three full-width rows that each read left to right:
+          1. what you are looking at (title, period) and how it is filtered
+          2. the toolbar
+          Everything stacks in one column on a phone. */}
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
+          <div className="min-w-0 space-y-2.5 lg:space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-title tracking-tight antialiased text-text">Time</h1>
+              <PeriodStateBadge state={period.state} />
+            </div>
+            <PeriodPager period={period} lastDay={lastDay} adjacent={adjacent} tab={tab} />
+            {period.state === "UPCOMING" && (
+              <p className="text-caption font-medium text-brand-700 lg:hidden">
+                Live period · punches will land here
+              </p>
+            )}
           </div>
-          <PeriodPager period={period} lastDay={lastDay} adjacent={adjacent} tab={tab} />
-          {period.state === "UPCOMING" && (
-            <p className="text-caption font-medium text-brand-700 lg:hidden">
-              Live period · punches will land here
-            </p>
-          )}
-          <ScheduleTabs current={tab} basePath="/time" />
+          <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+            <TimeLegend />
+            <ScheduleTabs current={tab} basePath="/time" />
+          </div>
         </div>
 
         <TimeActions lastPoll={lastPoll} />

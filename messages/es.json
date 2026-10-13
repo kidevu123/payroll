@@ -283,7 +283,7 @@
       "problemReported": "Problema reportado",
       "awaitingReview": "En revisión",
       "disputedNotice": "El administrador fue notificado sobre su reporte y le dará seguimiento.",
-      "acknowledgedNotice": "Confirmado {when} UTC",
+      "acknowledgedNotice": "Confirmado {when}",
       "reviewAndAcknowledge": "Revise el desglose de abajo y confirme cuando esté de acuerdo.",
       "discrepancyHeading": "Aviso: el total guardado en el recibo y el desglose diario no coinciden.",
       "perReport": "Según el reporte:",
@@ -322,7 +322,14 @@
       "pendingApproval": "Esperando aprobación",
       "hoursWrongHint": "¿Horas incorrectas o falta un día? Use Corregir horas o Agregar horas junto a ese día. Su solicitud va a la oficina para aprobación.",
       "fixSent": "Enviado para aprobación. Su pago se actualiza cuando la oficina lo apruebe.",
-      "moreMissingDays": "Otros días sin horas"
+      "moreMissingDays": "Otros días sin horas",
+      "confirmHoursTitle": "Confirme sus horas",
+      "moreToConfirm": "{count} más por confirmar",
+      "confirmHoursBody": "Revise rápido. Si sus horas y su pago están bien, confirme abajo.",
+      "confirmLooksRight": "Está bien, confirmar",
+      "confirming": "Confirmando…",
+      "somethingOff": "Algo no está bien",
+      "confirmedThanks": "Confirmado, gracias"
     },
     "missedPunch": {
       "back": "Atrás",
@@ -502,6 +509,24 @@
       "endBeforeStart": "La fecha de fin no puede ser antes de la fecha de inicio.",
       "noPeriod": "Aún no hay un período de pago que cubra esa fecha — pídale al administrador que abra uno.",
       "describeProblem": "Por favor describa el problema en 5 a 1000 caracteres."
+    },
+    "install": {
+      "installTitle": "Guarde Milo en su pantalla de inicio",
+      "installBody": "Un toque desde su pantalla de inicio, sin Safari y sin escribir. Reciba avisos al instante cuando su recibo de pago esté listo.",
+      "installCta": "Agregar a inicio",
+      "notifyTitle": "Active las notificaciones",
+      "notifyBody": "Le avisamos en cuanto se publique un recibo nuevo o le falte una marcación. Sin spam, solo lo importante.",
+      "notifyCta": "Activar notificaciones",
+      "asking": "Solicitando…",
+      "notNow": "Ahora no",
+      "howIntro": "Agrega un ícono de Milo junto a sus otras apps. Tóquelo cuando quiera para abrir Milo sin escribir una dirección.",
+      "iosStep1": "botón Compartir en la parte inferior de Safari.",
+      "iosStep1Lead": "Toque el",
+      "iosStep2": "Baje y toque Agregar a inicio.",
+      "iosStep3": "Toque Agregar arriba a la derecha. Milo queda en su pantalla de inicio. Ábralo desde ahí de ahora en adelante.",
+      "androidStep1": "Abra el menú del navegador (ícono de 3 puntos, arriba a la derecha).",
+      "androidStep2": "Toque Instalar app o Agregar a pantalla de inicio.",
+      "androidStep3": "Confirme. Milo aparece junto a sus otras apps."
     }
   },
   "missedPunchReview": {

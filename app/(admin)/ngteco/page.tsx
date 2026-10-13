@@ -6,6 +6,8 @@ import { StatusPill } from "@/components/domain/status-pill";
 import { listRuns } from "@/lib/db/queries/payroll-runs";
 import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { formatPeriodRange } from "@/lib/payroll/format-period";
+import { formatDateTime } from "@/lib/time/format";
+import { getSetting } from "@/lib/settings/runtime";
 
 function durationOf(run: { ingestStartedAt: Date | null; ingestCompletedAt: Date | null }): string {
   if (!run.ingestStartedAt) return "—";
@@ -17,6 +19,7 @@ function durationOf(run: { ingestStartedAt: Date | null; ingestCompletedAt: Date
 }
 
 export default async function NgtecoRunsPage() {
+  const ngTz = (await getSetting("company").catch(() => null))?.timezone ?? "America/New_York";
   const runs = await listRuns(30);
   const periods = await Promise.all(
     runs.map((r) => getPeriodById(r.periodId)),
@@ -74,7 +77,7 @@ export default async function NgtecoRunsPage() {
                       {durationOf(r)}
                     </td>
                     <td className="px-3 py-2 text-text-muted text-xs">
-                      {r.ingestStartedAt?.toISOString().slice(0, 16).replace("T", " ") ?? "—"}
+                      {r.ingestStartedAt ? formatDateTime(r.ingestStartedAt, ngTz) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right">
                       <Button asChild variant="ghost" size="sm">

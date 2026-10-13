@@ -7,7 +7,7 @@ import { getPeriodById } from "@/lib/db/queries/pay-periods";
 import { listEmployees } from "@/lib/db/queries/employees";
 import { listPunches } from "@/lib/db/queries/punches";
 import { canonicalEndForScheduleName } from "@/lib/payroll/period-boundaries";
-import { listRates } from "@/lib/db/queries/rate-history";
+import { listRatesForEmployees } from "@/lib/db/queries/rate-history";
 import { getSetting } from "@/lib/settings/runtime";
 import { computePay } from "@/lib/payroll/computePay";
 import { db } from "@/lib/db";
@@ -119,12 +119,14 @@ export async function loadPeriodReview(periodId: string) {
     tasksByEmployee.set(t.employeeId, list);
   }
 
+  // One query for every employee's rate history (was one per employee).
+  const ratesByEmployee = await listRatesForEmployees(employees.map((e) => e.id));
   const rows = await Promise.all(
     employees.map(async (e) => {
       const ePunches = punchesByEmployee.get(e.id) ?? [];
       const eTasks = tasksByEmployee.get(e.id) ?? [];
       if (ePunches.length === 0 && eTasks.length === 0) return null;
-      const rates = await listRates(e.id);
+      const rates = ratesByEmployee.get(e.id) ?? [];
       const result = computePay({
         punches: ePunches,
         rateAt: (p) => {
