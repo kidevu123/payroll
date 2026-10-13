@@ -26,7 +26,7 @@ import { RecomputePayslipsButton } from "./recompute-button";
 import { PayslipBatchPrintList } from "@/components/domain/payslip-batch-print-list";
 import { formatHours, formatMoney } from "@/lib/utils";
 import { formatPeriodRange, shortRange } from "@/lib/payroll/format-period";
-import { todayInCompanyTz } from "@/lib/time/format";
+import { formatWallClock, todayInCompanyTz } from "@/lib/time/format";
 import {
   formatIsoDate,
   formatTenure,
@@ -34,6 +34,7 @@ import {
   summarizePay,
 } from "@/lib/employees/profile-summary";
 import { DetailsCard, EmployeeSummary, NotesCard } from "./profile-panels";
+import { DeletePunchButton } from "@/components/domain/delete-punch-button";
 
 export default async function EmployeeDetailPage({
   params,
@@ -321,6 +322,12 @@ export default async function EmployeeDetailPage({
                     key={p.id}
                     punch={p}
                     timezone={timezone}
+                    rightSlot={
+                      <DeletePunchButton
+                        punchId={p.id}
+                        describe={`${employee.displayName}, ${formatWallClock(p.clockIn, timezone)}.`}
+                      />
+                    }
                   />
                 ))
               )}

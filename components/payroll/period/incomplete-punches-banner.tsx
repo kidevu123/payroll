@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DeletePunchButton } from "@/components/domain/delete-punch-button";
 import {
   incompletePunchFixHref,
   type IncompletePunch,
@@ -59,7 +60,7 @@ export function IncompletePunchesBanner({
           </h2>
           <p className="mt-0.5 text-xs text-text-muted">
             Clocked in and never clocked out, so {n === 1 ? "this shift counts" : "these shifts count"} as
-            zero hours until a clock-out is added.
+            zero hours. Add the clock-out if it was a real shift, or delete the punch if it was not.
           </p>
         </div>
       </header>
@@ -76,11 +77,20 @@ export function IncompletePunchesBanner({
               </p>
             </div>
             {canFix ? (
-              <Button asChild size="sm">
-                <Link href={incompletePunchFixHref(periodId, p)}>
-                  Fix this punch <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </Link>
-              </Button>
+              // Fix = it was a real shift, add the clock-out. Delete = it was
+              // not a shift at all (walked past the clock).
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <DeletePunchButton
+                  punchId={p.punchId}
+                  describe={`${p.employeeName}, ${dayLabel(p.day)}, ${clockLabel(p.clockIn, timezone)}.`}
+                  label="Delete punch"
+                />
+                <Button asChild size="sm">
+                  <Link href={incompletePunchFixHref(periodId, p)}>
+                    Fix this punch <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                </Button>
+              </div>
             ) : null}
           </li>
         ))}

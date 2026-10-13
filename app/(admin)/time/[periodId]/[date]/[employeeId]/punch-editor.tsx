@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { isAmbiguousSinglePunch, isOpenShiftPunch } from "@/lib/punches/missing-punch";
 import { findFixTarget, formatWallClock } from "@/lib/punches/editor-format";
 import { FixPunchForm } from "./fix-punch-form";
+import { DeletePunchButton } from "@/components/domain/delete-punch-button";
 import { BackPayForm } from "./back-pay-form";
 import { CreateForm } from "./create-punch-form";
 import { EditablePunch } from "./editable-punch";
@@ -56,6 +57,18 @@ export function PunchEditor({
                 : "Clock-out is on file. Enter only the missing clock-in."}
           </p>
           <FixPunchForm punch={fixTarget} timezone={timezone} />
+          {/* Not every lone punch is a shift missing its other half: the
+              clock also picks people up as they walk past. Those need to be
+              removed, not completed. */}
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+            <span className="text-sm text-text-muted">Not a real shift?</span>
+            <DeletePunchButton
+              punchId={fixTarget.id}
+              describe={`Punch at ${formatWallClock(fixTarget.clockIn, timezone)}.`}
+              label="Delete this punch"
+              variant="secondary"
+            />
+          </div>
         </div>
       ) : null}
 

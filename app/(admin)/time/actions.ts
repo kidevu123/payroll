@@ -283,9 +283,15 @@ export async function voidPunchAction(
     });
   } catch (err) {
     if (err instanceof Error && err.message === "PERIOD_PAID") {
-      return { error: "Period is paid. Unmark paid before voiding punches." };
+      return {
+        error:
+          "This pay period is already paid. Unmark it as paid before deleting punches in it.",
+      };
     }
     throw err;
   }
+  // Delete is offered on the period page and the employee page as well.
   revalidatePath("/time");
+  revalidatePath("/payroll", "layout");
+  revalidatePath("/employees", "layout");
 }
